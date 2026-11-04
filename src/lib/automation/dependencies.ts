@@ -580,10 +580,12 @@ function integrationDependency(
             state: 'missing',
             detail:
               context.presenceEnabled === false
-                ? 'This only works while “Location while the app is open” is on, and it is off. It is read only while Diaspora is open, coarse, and no history is kept.'
-                : 'This only works while “Location while the app is open” is on. Diaspora could not check your setting just now.',
-            actionLabel: 'Turn it on',
-            actionRoute: '/settings/presence',
+                ? 'Arrivals are noticed only while Diaspora may use your location while it is open, and that is off. It is rounded to an area and no history is kept.'
+                : 'Arrivals are noticed only while Diaspora may use your location while it is open. Diaspora could not check that just now.',
+            // In place: the setting has no screen of its own since 4 Nov 2026.
+            actionLabel: 'Use my location while the app is open',
+            actionRoute: null,
+            actionKey: 'presence.switchOn',
             gapId: null,
             blocksActivation: false,
           };

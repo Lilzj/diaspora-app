@@ -456,6 +456,8 @@ export function AutomationErrorNotice({
 export interface DependencyListProps {
   dependencies: AutomationDependency[];
   onNavigate?: (route: string) => void;
+  /** Runs a dependency's in-place action, such as switching presence on. */
+  onAction?: (key: NonNullable<AutomationDependency['actionKey']>) => void;
   /** Hide the ones that are already fine, for a compact preview. */
   onlyProblems?: boolean;
 }
@@ -471,6 +473,7 @@ export interface DependencyListProps {
 export function DependencyList({
   dependencies,
   onNavigate,
+  onAction,
   onlyProblems = false,
 }: DependencyListProps) {
   const { tokens } = useTheme();
@@ -542,6 +545,22 @@ export function DependencyList({
                   accessibilityRole="button"
                   accessibilityLabel={dependency.actionLabel}
                   onPress={() => onNavigate(dependency.actionRoute!)}
+                  className="mt-1.5 self-start"
+                >
+                  <Text
+                    style={{ color: tokens.color.primary[600] }}
+                    className="text-[11px] font-black"
+                  >
+                    {dependency.actionLabel} →
+                  </Text>
+                </Pressable>
+              ) : null}
+
+              {dependency.actionLabel && dependency.actionKey && onAction ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={dependency.actionLabel}
+                  onPress={() => onAction(dependency.actionKey!)}
                   className="mt-1.5 self-start"
                 >
                   <Text

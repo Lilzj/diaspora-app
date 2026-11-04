@@ -90,7 +90,8 @@ export const creatorGapKeys = {
   challenge: (id: string) => ['creator-gap', 'challenges', id] as const,
   challengeLeaderboard: (id: string) => ['creator-gap', 'challenges', id, 'leaderboard'] as const,
 
-  grants: (category?: string) => ['creator-gap', 'grants', 'list', category ?? 'all'] as const,
+  grants: (category?: string, state?: string) =>
+    ['creator-gap', 'grants', 'list', category ?? 'all', state ?? 'any'] as const,
   grant: (id: string) => ['creator-gap', 'grants', id] as const,
   grantForm: (id: string) => ['creator-gap', 'grants', id, 'form'] as const,
   grantApplications: () => ['creator-gap', 'grants', 'applications', 'me'] as const,

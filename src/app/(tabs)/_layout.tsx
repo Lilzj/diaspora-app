@@ -107,7 +107,6 @@ export default function TabLayout() {
       {/* Reachable by route but not represented in the tab bar. */}
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="post" options={{ href: null }} />
-      <Tabs.Screen name="saved" options={{ href: null }} />
     </Tabs>
   );
 }

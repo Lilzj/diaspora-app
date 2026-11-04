@@ -18,9 +18,13 @@
 // adds a badge the server did not send.
 //
 // What is left is presentation: grouping by the source the server named, an
-// icon for a Trust award (which carries none on the wire), and wording.
+// icon for a Trust award (its label's own emoji, moved out of the title so it
+// shows once), an emoji for a catalogue icon name (`servedIcon`), and wording.
+// Since 4 Nov 2026 the creator's own read also carries the Trust badges still
+// to earn, each with the server's how-to-earn line as its description.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { isFlagEmoji, servedIcon, splitLeadingEmoji } from '@/lib/served-icon';
 import type { CreatorReputationBadge } from '@/types/creator-economy';
 
 export interface BadgeItem {
@@ -50,18 +54,53 @@ export function badgeSourceLabel(source: string): string {
 }
 
 /**
- * Icons for Trust's award types, which are served without one. Presentation
- * only: an unknown type gets the generic medal, never a guess at its meaning.
+ * Icons for Trust's award types, for a label that carries no emoji of its own.
+ * Presentation only: an unknown type gets the generic medal, never a guess at
+ * its meaning. Keyed by the server's `BadgeType` names, all fourteen.
  */
 const TRUST_BADGE_ICONS: Record<string, string> = {
   PhoneVerified: '📱',
   EmailVerified: '✉️',
-  CountryVerified: '🏠',
-  DiasporaVerified: '🌍',
+  CountryVerified: '🌍',
   GovernmentIdVerified: '🪪',
-  EarlyMember: '🚀',
+  ProfilePhoto: '📷',
+  ProviderVerified: '💼',
+  TopContributor: '🏆',
   VerifiedMember: '✅',
+  TrustedContributor: '🏅',
+  CommunityGuide: '🧭',
+  VerifiedBusiness: '🏢',
+  VerifiedOrganization: '🏛️',
+  EarlyMember: '🌱',
+  Moderator: '⚖️',
 };
+
+/**
+ * Trust's own words for its award types, without the emoji (`BadgeLabels.For`
+ * on the server). The guide read sends an author's badges as the type alone,
+ * and the byline drew "PhoneVerified" (UAT on the emulator, 4 Nov 2026).
+ */
+const TRUST_BADGE_NAMES: Record<string, string> = {
+  PhoneVerified: 'Phone Verified',
+  EmailVerified: 'Email Verified',
+  CountryVerified: 'Country Verified',
+  GovernmentIdVerified: 'Government ID Verified',
+  ProfilePhoto: 'Profile Photo',
+  ProviderVerified: 'Provider Verified',
+  TopContributor: 'Top Contributor',
+  VerifiedMember: 'Verified Member',
+  TrustedContributor: 'Trusted Contributor',
+  CommunityGuide: 'Community Guide',
+  VerifiedBusiness: 'Verified Business',
+  VerifiedOrganization: 'Verified Organization',
+  EarlyMember: 'Early Member',
+  Moderator: 'Moderator',
+};
+
+/** A Trust badge type in words; a type added later is split into words, never printed joined. */
+export function trustBadgeLabel(type: string): string {
+  return TRUST_BADGE_NAMES[type] ?? type.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+}
 
 function formatEarnedAt(iso: string | null | undefined): string | null {
   if (!iso) return null;
@@ -80,13 +119,16 @@ export function toBadgeItem(badge: CreatorReputationBadge): BadgeItem {
         } · ${badge.progress.percentage}%`
       : undefined;
 
+  // Trust's labels lead with their emoji, and a country award with its flag
+  // ("🇳🇬 Nigeria Verified"): drawn beside an icon, that showed twice.
+  const { emoji, text } = splitLeadingEmoji(badge.label);
+  const typeIcon = badge.source === 'trust' ? TRUST_BADGE_ICONS[badge.key] : undefined;
+  const flagged = emoji !== null && isFlagEmoji(emoji);
+
   return {
     id: badge.badgeId,
-    icon:
-      badge.icon ??
-      (badge.source === 'trust' ? TRUST_BADGE_ICONS[badge.key] : undefined) ??
-      '🏅',
-    title: badge.countryCode ? `${badge.label} (${badge.countryCode})` : badge.label,
+    icon: servedIcon(badge.icon, emoji ?? typeIcon ?? '🏅'),
+    title: badge.countryCode && !flagged ? `${text} (${badge.countryCode})` : text,
     description: badge.description ?? null,
     isEarned: badge.isEarned,
     statusText: badge.isEarned ? (earnedOn ? `EARNED ${earnedOn}` : 'EARNED') : 'NOT YET',

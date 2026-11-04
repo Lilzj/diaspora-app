@@ -169,6 +169,8 @@ export interface UserProfile {
   preferredLanguage: string;
   preferredTimeZone: string;
   avatarStorageKey?: string | null;
+  /** The photo's address, for an image to load. `avatarStorageKey` is a media id. */
+  avatarUrl?: string | null;
   role: string;
   accessState: string;
   accountStatus: string;

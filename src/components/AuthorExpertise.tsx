@@ -13,6 +13,8 @@ import { useLiveFollowerCount } from '@/hooks/community-social';
 interface AuthorExpertiseProps {
   userId: string;
   name: string;
+  /** The author's profile photo; initials when absent. */
+  avatarUrl?: string | null;
   reputationLevel: ReputationLevel;
   countryVerifications: CountryVerificationSummary[];
   expertiseCategories: GuideCategory[];
@@ -24,6 +26,7 @@ interface AuthorExpertiseProps {
 export function AuthorExpertise({
   userId,
   name,
+  avatarUrl,
   reputationLevel,
   countryVerifications,
   expertiseCategories,
@@ -40,7 +43,7 @@ export function AuthorExpertise({
   if (variant === 'inline') {
     return (
       <TouchableOpacity onPress={handlePress} className="flex-row items-center">
-        <Avatar name={name} size={20} />
+        <Avatar uri={avatarUrl} name={name} size={20} />
         <Text className="text-xs font-medium text-content-secondary ml-1.5">{name}</Text>
         <ReputationBadge level={reputationLevel} size="sm" showLabel={false} />
         {primaryCountry && (
@@ -55,7 +58,7 @@ export function AuthorExpertise({
   if (variant === 'compact') {
     return (
       <TouchableOpacity onPress={handlePress} className="flex-row items-center">
-        <Avatar name={name} size={32} />
+        <Avatar uri={avatarUrl} name={name} size={32} />
         <View className="ml-2.5 flex-1">
           <View className="flex-row items-center">
             <Text className="text-sm font-semibold text-content-primary">{name}</Text>
@@ -91,7 +94,7 @@ export function AuthorExpertise({
       activeOpacity={0.7}
     >
       <View className="flex-row items-center">
-        <Avatar name={name} size={48} />
+        <Avatar uri={avatarUrl} name={name} size={48} />
         <View className="ml-3 flex-1">
           <Text className="text-base font-semibold text-content-primary">{name}</Text>
           <ReputationBadge level={reputationLevel} size="md" />

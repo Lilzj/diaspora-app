@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 
+import { Avatar } from '@/components/Avatar';
 import { FollowButton } from '@/components/FollowButton';
 import { usePublicCreatorByUser } from '@/hooks/creator-economy';
 import { PublicReputationPanel } from '@/components/creator/ReputationPanel';
@@ -36,19 +37,14 @@ export function ContributorHeader({ userId }: { userId: string }) {
   }
 
   const name = creator?.displayName ?? 'This member';
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
   const followers = followState.data?.followerCount ?? creator?.followers ?? 0;
 
   return (
     <View className="bg-surface-card px-6 py-5 border-b border-faint">
       <View className="flex-row items-center">
-        <View className="w-14 h-14 rounded-full bg-surface-muted items-center justify-center mr-4">
-          <Text className="text-lg font-black text-primary-600">{initials || '?'}</Text>
+        {/* The member's photo; initials only when they have none (UAT, 3 Nov 2026). */}
+        <View className="mr-4">
+          <Avatar uri={creator?.avatarUrl} name={name} size={56} />
         </View>
         <View className="flex-1">
           <Text className="text-lg font-black text-content-primary" numberOfLines={1}>

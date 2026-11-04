@@ -8,7 +8,9 @@
 // price, a negotiable box and a price check, then sent 0 regardless.
 //
 // The budget a buying request gave was never sent at all: the payload read the
-// single `price` field, which that form does not show.
+// single `price` field, which that form does not show. And the form asked for a
+// lowest and a highest figure where the server keeps one, so the lowest was
+// dropped without a word (4 Nov 2026). It now asks for the one it keeps.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { listingFieldsFor, listingPricePayload } from '@/lib/marketplace-listing-fields';
@@ -16,20 +18,20 @@ import { listingFieldsFor, listingPricePayload } from '@/lib/marketplace-listing
 describe('the fields each kind of listing shows', () => {
   it('asks a seller everything', () => {
     expect(listingFieldsFor('Selling')).toEqual({
-      price: true, budgetRange: false, negotiable: true, quantity: true, condition: 'item',
+      price: true, budget: false, negotiable: true, quantity: true, condition: 'item',
     });
   });
 
   it('asks a buyer for a budget and nothing about stock', () => {
     expect(listingFieldsFor('Buying Request')).toEqual({
-      price: false, budgetRange: true, negotiable: false, quantity: false, condition: 'accepted',
+      price: false, budget: true, negotiable: false, quantity: false, condition: 'accepted',
     });
   });
 
   it('asks a giveaway and a donation no price', () => {
     for (const intent of ['Giving Away', 'Donation']) {
       expect(listingFieldsFor(intent)).toEqual({
-        price: false, budgetRange: false, negotiable: false, quantity: true, condition: 'item',
+        price: false, budget: false, negotiable: false, quantity: true, condition: 'item',
       });
     }
   });
@@ -69,5 +71,10 @@ describe('the wizard reads the field map', () => {
 
   it('shows the price block only where the listing has a price', () => {
     expect(wizard).not.toContain("{intent !== 'Giving Away' && (");
+  });
+
+  it('asks a buyer for the one budget figure the server keeps, not a range it would drop half of', () => {
+    expect(wizard).not.toContain('minPrice');
+    expect(wizard).toMatch(/label="Your budget \(up to\)"/);
   });
 });

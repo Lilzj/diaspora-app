@@ -40,11 +40,12 @@ import {
   useGrantForm,
 } from '@/hooks/creator-economy';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { presentGrantApplicationState } from '@/lib/creator-economy';
+import { grantWindowLabel, presentGrantApplicationState } from '@/lib/creator-economy';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
 import { formatRelativeTime } from '@/utils/format';
 import type { FinancialError } from '@/lib/financial-errors';
 import type { CreatorRequirement, GrantApplicationField } from '@/types/creator-economy';
+import { appRouteFor } from '@/lib/server-route';
 
 export default function GrantDetailScreen() {
   const { showAlert } = useNotification();
@@ -128,7 +129,7 @@ export default function GrantDetailScreen() {
   const canSubmit = missing.length === 0 && allAccepted && !actions.submit.isPending;
 
   const openRequirement = useCallback((requirement: CreatorRequirement) => {
-    if (requirement.actionRoute) router.push(requirement.actionRoute as never);
+    if (requirement.actionRoute) router.push(appRouteFor(requirement.actionRoute) as never);
   }, []);
 
   const startApplication = useCallback(() => {
@@ -183,6 +184,8 @@ export default function GrantDetailScreen() {
         },
       ] });
   }, [actions.withdraw, application]);
+
+  const grantWindow = grant ? grantWindowLabel(grant) : null;
 
   const canApply =
     grant?.isEligible &&
@@ -291,24 +294,22 @@ export default function GrantDetailScreen() {
                 ) : null}
               </View>
 
-              {grant.deadlineAt ? (
-                <View className="items-end">
-                  <Text
-                    style={{ color: tokens.color.text.placeholder }}
-                    className="text-[10px] font-black uppercase tracking-widest mb-1"
-                  >
-                    Closes
-                  </Text>
+              {/* The window in words, from the server's state: "Closed",
+                  "Opens 20 Nov", "Closes in 3 weeks" (UAT, 3 Nov 2026). */}
+              {grantWindow ? (
+                <View className="items-end" testID="grant-window">
                   <Text
                     style={{
                       color:
-                        grant.state === 'ClosingSoon'
+                        grantWindow.tone === 'soon'
                           ? tokens.color.warning.default
-                          : tokens.color.text.primary,
+                          : grantWindow.tone === 'closed'
+                            ? tokens.color.error.default
+                            : tokens.color.text.primary,
                     }}
                     className="text-[13px] font-black"
                   >
-                    {formatRelativeTime(grant.deadlineAt)}
+                    {grantWindow.text}
                   </Text>
                 </View>
               ) : null}

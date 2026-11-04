@@ -60,9 +60,12 @@ import {
   useSetGuideBookmark,
 } from '@/hooks/guides';
 import { GUIDE_WORDS_PER_MINUTE, guideErrorMessage } from '@/lib/guides-api';
+import { saveControlFor, viewerStateOf } from '@/lib/guide-viewer';
+import { trustBadgeLabel } from '@/config/badges';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { backOr } from '@/lib/navigation';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
+import { Avatar } from '@/components/Avatar';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
 import { useAuthStore } from '@/store/auth';
 import { useThemeTokens } from '@/design-system';
@@ -262,16 +265,19 @@ export default function GuideReaderScreen() {
   //   * The response is `GuideEngagementResponse`, the counters alone, so the
   //     count on screen comes from the invalidated guide read rather than from
   //     an increment this screen invented.
+  //
+  // Whether this reader already voted, and saved, is the guide read's `viewer`
+  // (since 4 Nov 2026), so both survive leaving the screen.
   const helpfulCount = guide?.engagement.helpfulCount ?? 0;
-  const [isHelpfulActive, setIsHelpfulActive] = useState(false);
+  const viewerState = viewerStateOf(guide);
+  const isHelpfulActive = viewerState.vote === 'Helpful';
 
   const handleHelpfulPress = () => {
-    if (!guide || vote.isPending) return;
+    if (!guide || vote.isPending || isHelpfulActive) return;
 
     vote.mutate(
       { guideId: guide.guideId, kind: 'Helpful' },
       {
-        onSuccess: () => setIsHelpfulActive(true),
         onError: (cause) => {
           showAlert({
             type: 'error',
@@ -283,19 +289,23 @@ export default function GuideReaderScreen() {
     );
   };
 
+  // The button draws the server's answer and a second tap removes the save. It
+  // used to send `saved: true` every time under a fixed "Save guide", so saving
+  // changed nothing a member could see (UAT, 3 Nov 2026).
+  const saveControl = saveControlFor(viewerState, setBookmark.isPending);
+
   const handleBookmarkPress = () => {
     if (!guide || setBookmark.isPending) return;
+    const saving = saveControl.nextSaved;
     setBookmark.mutate(
-      { guideId: guide.guideId, saved: true },
+      { guideId: guide.guideId, saved: saving },
       {
-        onSuccess: () =>
-          showAlert({
-            type: 'success',
-            title: 'Saved',
-            message: 'This guide is in your saved collection.',
-          }),
         onError: (cause) =>
-          showAlert({ type: 'error', title: 'Not saved', message: guideErrorMessage(cause) }),
+          showAlert({
+            type: 'error',
+            title: saving ? 'Not saved' : 'Not removed',
+            message: guideErrorMessage(cause),
+          }),
       }
     );
   };
@@ -616,6 +626,10 @@ export default function GuideReaderScreen() {
             accessibilityRole="button"
             accessibilityLabel="View this author"
           >
+            {/* The author's photo, which the server sends since 4 Nov 2026. */}
+            <View className="mr-3">
+              <Avatar uri={guide.author?.avatarUrl} name={guide.author?.name ?? undefined} size={40} />
+            </View>
             <View className="flex-1 mr-3">
               <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-1">
                 Written by
@@ -656,7 +670,7 @@ export default function GuideReaderScreen() {
                       className="bg-surface-muted rounded-md px-2 py-0.5 mr-1.5 mb-1"
                     >
                       <Text className="text-[10px] font-bold text-content-tertiary">
-                        {badge.badge}
+                        {trustBadgeLabel(badge.badge)}
                         {badge.countryCode ? ` · ${badge.countryCode}` : ''}
                       </Text>
                     </View>
@@ -778,12 +792,17 @@ export default function GuideReaderScreen() {
                 onPress={handleBookmarkPress}
                 disabled={setBookmark.isPending}
                 accessibilityRole="button"
-                accessibilityState={{ disabled: setBookmark.isPending }}
+                accessibilityLabel={viewerState.isSaved ? 'Saved. Tap to remove from Saved' : saveControl.label}
+                accessibilityState={{ disabled: setBookmark.isPending, selected: viewerState.isSaved }}
                 className="flex-1 bg-surface-card border border-subtle py-3 rounded-xl items-center flex-row justify-center gap-1.5"
               >
-                <Text className="text-base">🔖</Text>
-                <Text className="text-xs font-bold text-content-secondary">
-                  {setBookmark.isPending ? 'Saving…' : 'Save guide'}
+                <Text className="text-base">{saveControl.icon}</Text>
+                <Text
+                  className={`text-xs font-bold ${
+                    viewerState.isSaved ? 'text-success-default' : 'text-content-secondary'
+                  }`}
+                >
+                  {saveControl.label}
                 </Text>
               </TouchableOpacity>
             </View>

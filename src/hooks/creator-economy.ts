@@ -706,7 +706,7 @@ export function useChallengeLeaderboard(challengeId: string | undefined) {
 
 export function useCommunityGrants(params: { category?: string; country?: string; state?: string } = {}) {
   const query = useQuery({
-    queryKey: creatorGapKeys.grants(params.category),
+    queryKey: creatorGapKeys.grants(params.category, params.state),
     queryFn: () => certifiedApi.fetchGrants(params),
     ...readOptions,
   });

@@ -29,7 +29,7 @@ export function ContributorRow({ contributor, rank }: ContributorRowProps) {
       style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }}
     >
       {rankEmoji && <Text className="text-xl mr-3">{rankEmoji}</Text>}
-      <Avatar name={contributor.name} size={44} />
+      <Avatar uri={contributor.avatarUrl} name={contributor.name} size={44} />
       <View className="flex-1 ml-3">
         <Text className="text-sm font-semibold text-content-primary">{contributor.name}</Text>
         <ReputationBadge level={contributor.reputationLevel} size="sm" />

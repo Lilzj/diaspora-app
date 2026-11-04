@@ -248,7 +248,7 @@ export default function AccessGatewayScreen() {
       {/* Access Header */}
       <View className="px-6 py-4 flex-row items-center justify-between border-b border-faint bg-surface-card">
         <View className="flex-row items-center">
-          <Avatar name={user?.fullName || 'User'} size={38} />
+          <Avatar uri={user?.avatarUrl} name={user?.fullName || 'User'} size={38} />
           <View className="ml-3">
             <Text className="text-xs text-content-faint font-extrabold uppercase">Account Security</Text>
             <Text className="text-sm font-bold text-content-primary">{user?.fullName}</Text>

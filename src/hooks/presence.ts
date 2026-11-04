@@ -1,18 +1,21 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — "Location while the app is open": the setting and its loop
 //
-// `usePresence` / `useSetPresence` read and switch the server's setting.
+// `usePresence` / `useSetPresence` read and switch the server's setting. It has
+// no screen of its own since 4 Nov 2026: saving an arrival automation switches
+// it on (`useSwitchPresenceOn`) and deleting the last one switches it off.
 // `usePresenceReporter` drives `PresenceLoop` from AppState, mounted once at the
 // root; it does nothing for a signed-out member or while the setting is off.
 // See `lib/location/presence-loop.ts` for how the reporting is bounded.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type * as ExpoLocation from 'expo-location';
 
 import { useAuthStore } from '@/store/auth';
+import { switchPresenceOn, type ArrivalPresencePorts } from '@/lib/automation/arrival-presence';
 import {
   fetchPresence,
   reportPresence,
@@ -87,13 +90,34 @@ export async function readForegroundPermission(): Promise<PresencePermission> {
   return response.status === 'denied' ? 'denied' : 'undetermined';
 }
 
-/** Asks for the foreground grant. Only the settings toggle calls this. */
+/** Asks for the foreground grant. Saving an arrival automation calls this. */
 export async function requestForegroundPermission(): Promise<PresencePermission> {
   const Location = expoLocation();
   if (!Location) return 'undetermined';
   const response = await Location.requestForegroundPermissionsAsync();
   if (response.granted) return 'granted';
   return response.status === 'denied' ? 'denied' : 'undetermined';
+}
+
+/**
+ * The setting's reads and writes, keeping the cached setting current. Used to
+ * switch presence with an arrival automation, now that the screen that held
+ * the switch is gone (UAT, 3 Nov 2026, item 5).
+ */
+export function presencePorts(queryClient: QueryClient): ArrivalPresencePorts {
+  return {
+    requestPermission: requestForegroundPermission,
+    isEnabled: async () => (await fetchPresence()).enabled === true,
+    setEnabled: async (enabled) => {
+      queryClient.setQueryData(presenceKeys.setting(), await setPresence(enabled));
+    },
+  };
+}
+
+/** Asks the phone, then switches presence on. Never throws; see `switchPresenceOn`. */
+export function useSwitchPresenceOn() {
+  const queryClient = useQueryClient();
+  return useCallback(() => switchPresenceOn(presencePorts(queryClient)), [queryClient]);
 }
 
 async function readCoarsePosition() {

@@ -23,16 +23,6 @@ import { unwrapEnvelope } from '@/lib/platform-envelope';
 
 const ROOT = '/location/me/presence';
 
-/** What the setting does, in the words the settings screen and the builder both show. */
-export const PRESENCE_EXPLANATION: readonly string[] = [
-  'Off unless you switch it on.',
-  'Only while Diaspora is open on your screen. Nothing is read when the app is in the background or closed.',
-  'Coarse: your position is rounded and placed in a town or neighbourhood, then thrown away.',
-  'No history is kept. Diaspora remembers only the last area you were in, so it can tell when you arrive somewhere new.',
-  'Switching it off forgets that last area straight away.',
-  'It is used only for your own automations about arriving somewhere. Nobody else is told where you are.',
-];
-
 /** The server's floor, used only when a response omits it. */
 export const DEFAULT_PRESENCE_INTERVAL_SECONDS = 30;
 

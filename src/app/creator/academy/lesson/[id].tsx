@@ -34,6 +34,7 @@ import { trackCreatorEvent } from '@/lib/creator-analytics';
 import type { FinancialError } from '@/lib/financial-errors';
 import type { LessonQuizResult } from '@/types/creator-economy';
 import { backOr } from '@/lib/navigation';
+import { appRouteFor } from '@/lib/server-route';
 
 export default function LessonViewerScreen() {
   const { tokens } = useTheme();
@@ -226,7 +227,7 @@ export default function LessonViewerScreen() {
 
           <LessonViewer
             blocks={lesson.blocks}
-            onAction={(route) => router.push(route as never)}
+            onAction={(route) => router.push(appRouteFor(route) as never)}
           />
 
           {isQuiz && lesson.quiz ? (

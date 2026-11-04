@@ -61,7 +61,8 @@ import { triggerDefinition, triggersForOwner } from '@/lib/automation/triggers';
 import { conditionDefinition, conditionsForTrigger } from '@/lib/automation/conditions';
 import { actionDefinition, actionsForTrigger, anyReachesOtherPeople } from '@/lib/automation/actions';
 import { canUseAction, canUseTrigger } from '@/lib/automation/access';
-import { usePresence } from '@/hooks/presence';
+import { usePresence, useSwitchPresenceOn } from '@/hooks/presence';
+import { ARRIVAL_PRIVACY_NOTE, ARRIVAL_TRIGGER_KEY } from '@/lib/automation/arrival-presence';
 import { servedToOwner } from '@/lib/automation/served-support';
 import { applyTemplateField, draftFromTemplate, templateById } from '@/lib/automation/templates';
 import {
@@ -197,6 +198,7 @@ export default function AutomationBuilderScreen() {
   // `location.enteredArea` is noticed only while "Location while the app is
   // open" is on. Null until the server answers, and then no prompt is shown.
   const { presence } = usePresence();
+  const switchPresenceOn = useSwitchPresenceOn();
 
   // Captured once per render rather than read inside each helper: two reads in
   // one frame could straddle a minute boundary and make a schedule warning
@@ -303,6 +305,14 @@ export default function AutomationBuilderScreen() {
     async (activate: boolean) => {
       setSaveError(null);
       try {
+        // An arrival is noticed only while presence is on, and presence has no
+        // screen of its own any more: saving asks the phone and switches it on
+        // (UAT, 3 Nov 2026, item 5). Refused, the rule still saves, and its
+        // page says arrivals will not be noticed.
+        if (draft.trigger?.key === ARRIVAL_TRIGGER_KEY) {
+          await switchPresenceOn();
+        }
+
         const created = await mutations.create.mutateAsync({
           ...draft,
           name: nameForDraft(draft, trigger?.label),
@@ -320,7 +330,7 @@ export default function AutomationBuilderScreen() {
         setSaveError(cause instanceof AutomationError ? cause : null);
       }
     },
-    [draft, trigger, mutations, preview.canActivate]
+    [draft, trigger, mutations, preview.canActivate, switchPresenceOn]
   );
 
   const handleTest = useCallback(async () => {
@@ -394,8 +404,8 @@ export default function AutomationBuilderScreen() {
             onSelect={selectTrigger}
             servedSupport={servedSupport}
           />
-          {draft.trigger?.key === 'location.enteredArea' && presence && !presence.enabled ? (
-            <PresencePrompt />
+          {draft.trigger?.key === ARRIVAL_TRIGGER_KEY ? (
+            <ArrivalPrivacyNote isOn={presence?.enabled === true} />
           ) : null}
           <IssueList issues={issuesForStep(issues, 'trigger')} />
         </Section>
@@ -477,6 +487,9 @@ export default function AutomationBuilderScreen() {
             <AutomationPreviewCard
               preview={preview}
               onNavigate={(route) => router.push(route as never)}
+              onAction={(key) => {
+                if (key === 'presence.switchOn') void switchPresenceOn();
+              }}
               showAudience={reachesOthers}
             />
           </Section>
@@ -877,36 +890,22 @@ function readFieldValue(
 }
 
 /**
- * Shown under the trigger when the member picks "I arrive in an area I chose"
- * and "Location while the app is open" is off. The rule still saves; this says
- * plainly that it will not fire until the setting is on, and where it is.
+ * Shown under the trigger when the member picks "I arrive in an area I chose":
+ * what saving does with their location, in one line. It replaced a prompt that
+ * sent them to a settings screen of its own (UAT, 3 Nov 2026, item 5).
  */
-function PresencePrompt() {
+function ArrivalPrivacyNote({ isOn }: { isOn: boolean }) {
   const { tokens } = useTheme();
 
   return (
     <View
       accessible
-      style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.warning.default }}
+      style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.surface.border }}
       className="rounded-2xl border p-3 mt-3"
     >
-      <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold">
-        This needs “Location while the app is open”, and it is off.
+      <Text style={{ color: tokens.color.text.secondary }} className="text-[11px] font-semibold leading-relaxed">
+        {isOn ? 'Diaspora already uses your location while it is open, for your arrival automations.' : ARRIVAL_PRIVACY_NOTE}
       </Text>
-      <Text style={{ color: tokens.color.text.secondary }} className="text-[11px] font-semibold mt-1">
-        Your location is read only while Diaspora is open, rounded to an area, and no history is
-        kept. Until you switch it on, this automation will not notice an arrival.
-      </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Turn on location while the app is open"
-        onPress={() => router.push('/settings/presence' as never)}
-        className="mt-2"
-      >
-        <Text style={{ color: tokens.color.primary[600] }} className="text-xs font-black">
-          Turn it on →
-        </Text>
-      </Pressable>
     </View>
   );
 }

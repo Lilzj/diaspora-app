@@ -40,13 +40,18 @@ describe('housing detail with the live payload', () => {
   beforeEach(() => {
     api = new MockAdapter(apiClient);
     api.onGet(/\/housing\/listings\/[^/]+$/).reply(200, LIVE);
+    // The catalogue is a list on the server (`IReadOnlyList<CurrencyResponse>`).
+    // Answered as a page like the rest, `{ items: [] }`, the pay button's
+    // `catalogue.find` threw and took the page down.
+    api.onGet(/\/financial\/currencies$/).reply(200, { data: [] });
     api.onAny().reply(200, { data: { items: [] } });
   });
   afterEach(() => api.restore());
 
   it('renders the home instead of throwing', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <QueryClientProvider client={client}>
         <SafeAreaProvider initialMetrics={METRICS}>
           <ThemeProvider>
             <HousingDetail />
@@ -58,5 +63,11 @@ describe('housing detail with the live payload', () => {
     await waitFor(() => expect(screen.getAllByText(/3 bedroom duplex for rent/).length).toBeGreaterThan(0), {
       timeout: 20000,
     });
+
+    // And it still stands once every request is answered. On CI (#57, #65) a
+    // reply that landed after the first paint took the page down, and the test
+    // passed only when it looked before that reply arrived.
+    await waitFor(() => expect(client.isFetching()).toBe(0), { timeout: 20000 });
+    expect(screen.getAllByText(/3 bedroom duplex for rent/).length).toBeGreaterThan(0);
   }, 40000);
 });

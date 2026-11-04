@@ -87,6 +87,8 @@ export interface User {
   nationality?: string;
   residenceCountry?: string;
   profilePhoto?: string;
+  /** The profile photo's address, from `/auth/me`. */
+  avatarUrl?: string;
   accountState: AccountState;
 }
 
@@ -182,6 +184,9 @@ function mapUser(profile: UserProfile, access: AccessDecision | null): User {
     nationality: profile.nationality,
     residenceCountry: profile.countryOfResidence,
     profilePhoto: profile.avatarStorageKey ?? undefined,
+    // The address, not the key: `avatarStorageKey` is a media id no image can
+    // load, so every Avatar fell back to initials (UAT, 3 Nov 2026).
+    avatarUrl: profile.avatarUrl ?? undefined,
     // The access decision is the authority where the two disagree: it is
     // computed for this sign-in, whereas the profile's copy is a column.
     // Translated, not cast. `as AccountState` used to assert that the backend's

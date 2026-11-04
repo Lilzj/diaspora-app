@@ -1033,7 +1033,7 @@ export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
     domain: 'location',
     label: 'I arrive in an area I chose',
     description:
-      'Runs when you arrive in a town or neighbourhood you picked. It is noticed only while Diaspora is open on your phone, and only if you switch on “Location while the app is open”.',
+      'Runs when you arrive in a town or neighbourhood you picked. It is noticed only while Diaspora is open on your phone. Saving it asks to use your location while the app is open.',
     // A domain event since 21 Oct 2026: the app reports a coarse position while
     // it is open (`POST /location/me/presence/ping`), the server places it in an
     // area and publishes the arrival. Nothing is read in the background.
@@ -1048,7 +1048,7 @@ export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
     requiredIntegrations: ['location.presence'],
     requiresPrivacyConsent: true,
     privacyNote:
-      'This needs “Location while the app is open”, which is off unless you switch it on. Your position is read only while Diaspora is on your screen, rounded, placed in an area and thrown away. Only the last area is remembered, no history is kept, and switching it off forgets that area.',
+      'This needs “Location while the app is open”, which saving an arrival automation switches on and deleting your last one switches off. Your position is read only while Diaspora is on your screen, rounded, placed in an area and thrown away. Only the last area is remembered, no history is kept, and switching it off forgets that area.',
   },
   {
     key: 'location.countryChanged',

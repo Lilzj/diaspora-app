@@ -38,6 +38,7 @@ import type {
   SignupBonusState,
   SponsoredContentState,
 } from '@/types/creator-economy';
+import { formatRelativeTime } from '@/utils/format';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // STATUS PRESENTATION
@@ -604,4 +605,54 @@ export function humanise(value: string): string {
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .trim();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// GRANTS
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** The states a grant takes applications in: what the Open tab asks for. */
+export const OPEN_GRANT_STATES = 'Open,ClosingSoon';
+
+export interface GrantWindowLabel {
+  text: string;
+  tone: 'closed' | 'upcoming' | 'soon' | 'open';
+}
+
+/**
+ * Where a grant is in its window, in words (UAT, 3 Nov 2026, item 7). A closed
+ * grant said "Closes 3 weeks ago" because the card printed the deadline
+ * whatever the state; the state is the server's, and the words follow it.
+ */
+export function grantWindowLabel(
+  grant: { state: string; opensAt?: string | null; deadlineAt?: string | null },
+  now: Date = new Date(),
+): GrantWindowLabel | null {
+  if (grant.state === 'Closed') return { text: 'Closed', tone: 'closed' };
+
+  if (grant.state === 'Upcoming') {
+    if (!grant.opensAt) return { text: 'Not open yet', tone: 'upcoming' };
+    const opens = new Date(grant.opensAt);
+    if (Number.isNaN(opens.getTime())) return { text: 'Not open yet', tone: 'upcoming' };
+    const sameYear = opens.getFullYear() === now.getFullYear();
+    return {
+      text: `Opens ${opens.toLocaleDateString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        ...(sameYear ? {} : { year: 'numeric' }),
+      })}`,
+      tone: 'upcoming',
+    };
+  }
+
+  if (!grant.deadlineAt) return null;
+  return {
+    text: `Closes ${formatRelativeTime(grant.deadlineAt)}`,
+    tone: grant.state === 'ClosingSoon' ? 'soon' : 'open',
+  };
+}
+
+/** A grant category key as words: `small-business` → "Small business". */
+export function grantCategoryLabel(category: string): string {
+  return humanise(category);
 }

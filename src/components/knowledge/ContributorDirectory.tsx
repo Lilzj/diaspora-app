@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
+import { Avatar } from '@/components/Avatar';
 
 import { useCreatorDirectory } from '@/hooks/creator-economy';
 import { useLiveFollowerCount } from '@/hooks/community-social';
@@ -79,12 +80,6 @@ function ContributorRow({ creator }: { creator: PublicCreator }) {
   const target = creator.userId ? `/contributor/${creator.userId}` : null;
   // Moves when the member follows this contributor anywhere (Android UAT, 3 Nov 2026).
   const followers = useLiveFollowerCount(creator.userId ?? undefined, creator.followers);
-  const initials = creator.displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
 
   return (
     <TouchableOpacity
@@ -94,8 +89,8 @@ function ContributorRow({ creator }: { creator: PublicCreator }) {
       accessibilityLabel={`${creator.displayName}, ${creator.contentPublished} published`}
       className="bg-surface-card rounded-2xl border border-subtle p-4 mb-2 flex-row items-center"
     >
-      <View className="w-11 h-11 rounded-full bg-surface-muted items-center justify-center mr-3">
-        <Text className="text-sm font-black text-primary-600">{initials || '?'}</Text>
+      <View className="mr-3">
+        <Avatar uri={creator.avatarUrl} name={creator.displayName} size={44} />
       </View>
       <View className="flex-1">
         <Text className="text-sm font-extrabold text-content-primary" numberOfLines={1}>

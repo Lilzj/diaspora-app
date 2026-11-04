@@ -31,9 +31,17 @@
 //
 // So every card on a live screen read `Peckham ( km away)`.
 //
-// The rule: this feature may narrow by city, words, category and date, and may
-// say so. It may not offer a range, and it may not put a distance on screen
-// until something on the wire carries one.
+// The rule: this feature may not put a distance on screen until something on
+// the wire carries one, and may not offer a range it cannot apply.
+//
+// ── 4 Nov 2026: the wire carries one ─────────────────────────────────────────
+//
+// A search around the member (`latitude`, `longitude`, `radiusKm`) keeps to
+// that circle and returns each event's `distanceKm`, and `sort=Nearest` sorts by
+// it (UAT, 3 Nov 2026, item 2). So Nearby, a radius and Nearest are back, the
+// banner that said the search could not do them is gone, and a card shows a
+// distance only when the server measured one. The cases below hold the same
+// rule against the new contract.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
@@ -68,10 +76,12 @@ describe('the events screen offers no filter range', () => {
   });
 });
 
-describe('no distance is put on screen', () => {
-  it('the event card shows where an event is, not how far away it is', () => {
+describe('a distance is put on screen only when the server measured one', () => {
+  it('the event card draws the served distance through a formatter that has none to draw without one', () => {
+    // `eventDistanceLabel` returns null for an absent distance, so a town
+    // search shows no distance at all rather than "( km away)".
     expect(EVENTS).not.toMatch(/km away/);
-    expect(EVENTS).not.toMatch(/location\.distanceKm/);
+    expect(EVENTS).toMatch(/eventDistanceLabel\(item\.location\?\.distanceKm\)/);
   });
 
   it('the event detail screen does not either', () => {
@@ -101,7 +111,7 @@ describe('the empty state describes the search that was actually run', () => {
   it('names the city, which is what the search narrowed by', () => {
     // The place is the town browsed, else the whole residence country (14 Oct
     // 2026) — never a fixed London/Lagos/Accra list that opened on London.
-    expect(EVENTS).toMatch(/title=\{`No events in \$\{placeName\}`\}/);
+    expect(EVENTS).toMatch(/: `No events in \$\{placeName\}`/);
     expect(EVENTS).toMatch(/const placeName = placeLabel\(selectedLocation\)/);
     expect(EVENTS).toMatch(/return location\.city \|\| location\.country \|\| 'your area'/);
     expect(EVENTS).not.toMatch(/'London'|'Lagos'|'Accra'/);
@@ -130,8 +140,12 @@ describe('the empty state describes the search that was actually run', () => {
     expect(helper).toMatch(/change the city from the picker at the top/);
     expect(helper).toMatch(/another category or a wider date range/);
 
-    // And never the one that does not exist.
-    expect(helper).not.toMatch(/radius|distance|nearby|filter range/i);
+    // A wider radius only where the search was around the member; never a
+    // "filter range", which is no control on this screen.
+    expect(helper).not.toMatch(/filter range/i);
+    const town = helper.slice(helper.indexOf("// Nothing but the city."));
+    expect(town).not.toMatch(/radius|distance|nearby/i);
+    expect(helper).toMatch(/if \(scope === 'nearby'\)[\s\S]*?a wider radius/);
   });
 
   it('does not imply a filter to relax when only the city is applied', () => {
@@ -147,17 +161,15 @@ describe('the empty state describes the search that was actually run', () => {
   });
 });
 
-describe('the notice and the empty state agree', () => {
-  it('the unsupported-filter notice is still there', () => {
-    // The empty state was corrected to match this. If the notice ever goes, the
-    // assertions above stop meaning what they were written to mean.
-    expect(EVENTS).toMatch(/UNSUPPORTED_EVENT_BROWSE_FILTERS/);
+describe('the banner is gone, and what it named is back', () => {
+  it('no longer says the search cannot filter', () => {
+    expect(EVENTS).not.toMatch(/UNSUPPORTED_EVENT_BROWSE_FILTERS/);
+    expect(EVENTS).not.toMatch(/cannot filter events by/i);
+    expect(API).not.toMatch(/label: 'Distance radius'/);
   });
 
-  it('distance is still named as something the search cannot do', () => {
-    // The register the notice is drawn from. It lives in `community-life-api`
-    // rather than the screen, which is why the screen could drift away from it
-    // without anything complaining.
-    expect(API).toMatch(/label: 'Distance radius'/);
+  it('asks the route for the circle and the order it can now honour', () => {
+    expect(API).toMatch(/nearest: 'Nearest'/);
+    expect(EVENTS).toMatch(/radiusKm: eventRadiusKm/);
   });
 });

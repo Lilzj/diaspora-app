@@ -48,6 +48,7 @@ import { trackCreatorEvent } from '@/lib/creator-analytics';
 import { formatRelativeTime } from '@/utils/format';
 import type { FinancialError } from '@/lib/financial-errors';
 import type { CreatorRequirement } from '@/types/creator-economy';
+import { appRouteFor } from '@/lib/server-route';
 
 const APPEAL_MINIMUM = 20;
 
@@ -93,7 +94,7 @@ export default function CreatorVerificationScreen() {
   const canSubmit = unmet.length === 0 && allAcknowledged && !actions.submit.isPending;
 
   const openRequirement = useCallback((requirement: CreatorRequirement) => {
-    if (requirement.actionRoute) router.push(requirement.actionRoute as never);
+    if (requirement.actionRoute) router.push(appRouteFor(requirement.actionRoute) as never);
   }, []);
 
   const submit = useCallback(() => {

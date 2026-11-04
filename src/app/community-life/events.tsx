@@ -17,8 +17,8 @@ import {
   fetchCalendar,
   fetchEvents,
   fetchOrganizations,
-  UNSUPPORTED_EVENT_BROWSE_FILTERS,
 } from '@/lib/community-life-api';
+import { DEFAULT_EVENT_RADIUS_KM, EVENT_RADII_KM, eventDistanceLabel, nearbyPointOf } from '@/lib/events-nearby';
 import { useConnectivityStore } from '@/lib/connectivity';
 import { useSavedStore } from '@/store/saved';
 import { toDateString } from '@/utils/calendar-date';
@@ -124,25 +124,23 @@ function timingWindow(
  * What an empty event list should say, given what the search actually narrowed by.
  *
  * <b>It used to say "No events nearby — Be the first to create an event, or
- * expand your filter range!"</b> Both halves were false. The search narrows by
- * city, words, category and date; proximity is not one of the questions the
- * route can be asked, which is exactly what
- * `UNSUPPORTED_EVENT_BROWSE_FILTERS` tells the member a few hundred pixels
- * higher up the same screen. And there is no filter range to expand — the
- * radius control was removed precisely because it emptied every list.
- *
- * So the sentence is built from the filters that are genuinely applied, and the
- * suggestion names only controls that exist on this screen. A member who is
- * told to widen something that is not there learns to distrust the screen.
+ * expand your filter range!"</b> when the search had narrowed by town, and
+ * there was no range to expand. The sentence is built from the filters that are
+ * genuinely applied, and the suggestion names only controls on this screen: a
+ * wider radius only when the search was around the member (since 4 Nov 2026).
  */
 function describeEmptyEventSearch({
   city,
+  scope,
+  radiusKm,
   category,
   query,
   timeFilter,
   freeOnly,
 }: {
   city: string;
+  scope: 'all' | 'nearby' | 'communities';
+  radiusKm: number;
   category: EventCategory | 'All';
   query: string;
   timeFilter: 'all' | 'today' | 'tomorrow' | 'weekend';
@@ -155,15 +153,27 @@ function describeEmptyEventSearch({
   if (timeFilter !== 'all') narrowedBy.push(timeFilter === 'weekend' ? 'this weekend' : timeFilter);
   if (freeOnly) narrowedBy.push('free events only');
 
-  // Nothing but the city. There is no filter to relax, so do not imply one.
-  if (narrowedBy.length === 0) {
-    return `Nothing is listed in ${city} yet. You can change the city from the picker at the top, or be the first to put something on.`;
-  }
-
   const list =
     narrowedBy.length === 1
       ? narrowedBy[0]
       : `${narrowedBy.slice(0, -1).join(', ')} and ${narrowedBy[narrowedBy.length - 1]}`;
+
+  if (scope === 'nearby') {
+    return narrowedBy.length === 0
+      ? `Nothing is on within ${radiusKm} km of you yet. Try a wider radius, or be the first to put something on.`
+      : `Nothing within ${radiusKm} km matches ${list}. Try a wider radius, another category or a wider date range.`;
+  }
+
+  if (scope === 'communities') {
+    return narrowedBy.length === 0
+      ? 'None of your communities has an event coming up. Join a community to see its events here.'
+      : `Nothing in your communities matches ${list}. Try another category or a wider date range.`;
+  }
+
+  // Nothing but the city. There is no filter to relax, so do not imply one.
+  if (narrowedBy.length === 0) {
+    return `Nothing is listed in ${city} yet. You can change the city from the picker at the top, or be the first to put something on.`;
+  }
 
   return `Nothing in ${city} matches ${list}. Try another category or a wider date range, or change the city from the picker at the top.`;
 }
@@ -217,6 +227,10 @@ export default function CommunityLifeScreen() {
     [chosenLocation, currentLocation, residenceCountry]
   );
   const placeName = placeLabel(selectedLocation);
+  // Near the member: the phone's position or the area they chose, never a
+  // country's middle. Without one, "Nearby" says why it cannot be used.
+  const nearbyPoint = useMemo(() => nearbyPointOf(currentLocation), [currentLocation]);
+  const isSignedIn = useAuthStore((state) => state.isAuthenticated);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -241,31 +255,16 @@ export default function CommunityLifeScreen() {
   // --- Events Tab State ---
   const [eventQuery, setEventQuery] = useState('');
   const [selectedEventCat, setSelectedEventCat] = useState<EventCategory | 'All'>('All');
-  // ── Remediation Wave J — what this screen may and may not ask for ──────────
-  //
-  // Five controls were removed from this state and from the UI below. Each of
-  // them sent a query parameter `GET /community-life/events` does not bind, and
-  // an unbound parameter is discarded by the minimal-API model binder with no
-  // error — so the request came back 200, unfiltered, and the chip stayed lit.
-  // The member operated a control; the server never learned it existed.
-  //
-  //   `eventFilterType`  the seven discovery buckets. Only "Free" survives, as
-  //                      `free=true`, which is a genuine binding. `nearby`,
-  //                      `recommended`, `popular`, `recently_added` and `ai` have
-  //                      no predicate on the route at all.
-  //   `distanceRadius`   a client-side filter on `location.distanceKm`. That
-  //                      field is only ever populated when the server resolved a
-  //                      geographic centre, which a browse never does — so it was
-  //                      always undefined, always compared as 999, and **every
-  //                      radius emptied the list**. This was a live defect, not
-  //                      just a no-op.
-  //   `eventSortBy: 'distance'`
-  //                      no centre to measure from; see `community-life-api.ts`.
-  //
-  // `UNSUPPORTED_EVENT_BROWSE_FILTERS` names them on screen with the reason.
+  // What the list is narrowed to (UAT, 3 Nov 2026, item 2): the town, the
+  // circle around the member, or the communities they belong to. The route
+  // takes a point and a radius, keeps to the circle and measures each event,
+  // and narrows to the member's communities; the screen had withdrawn all of
+  // them under a banner saying it could not.
+  const [eventScope, setEventScope] = useState<'all' | 'nearby' | 'communities'>('all');
+  const [eventRadiusKm, setEventRadiusKm] = useState<number>(DEFAULT_EVENT_RADIUS_KM);
   const [eventFree, setEventFree] = useState(false);
   const [eventTimeFilter, setEventTimeFilter] = useState<'all' | 'today' | 'tomorrow' | 'weekend'>('all');
-  const [eventSortBy, setEventSortBy] = useState<'date' | 'popular' | 'recently_added'>('date');
+  const [eventSortBy, setEventSortBy] = useState<'date' | 'popular' | 'recently_added' | 'nearest'>('date');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [eventsList, setEventsList] = useState<Event[]>([]);
   const [selectedMapEvent, setSelectedMapEvent] = useState<Event | null>(null);
@@ -314,9 +313,16 @@ export default function CommunityLifeScreen() {
     // building its own query string — `cityName`, `query`, `filterType`,
     // `timeFilter`, `sortBy` — none of which the route binds, and that is
     // precisely the class of bug that having one typed client exists to prevent.
+    const isNearby = eventScope === 'nearby' && nearbyPoint !== null;
     fetchEvents({
-      cityName: selectedLocation.city || undefined,
-      countryCode: selectedLocation.countryCode || undefined,
+      // The circle supersedes the town; the member's communities are wherever
+      // those communities hold events.
+      ...(isNearby
+        ? { latitude: nearbyPoint.latitude, longitude: nearbyPoint.longitude, radiusKm: eventRadiusKm }
+        : eventScope === 'communities'
+          ? {}
+          : { cityName: selectedLocation.city || undefined, countryCode: selectedLocation.countryCode || undefined }),
+      joinedCommunities: eventScope === 'communities' || undefined,
       category: selectedEventCat,
       query: eventQuery || undefined,
       free: eventFree || undefined,
@@ -324,7 +330,8 @@ export default function CommunityLifeScreen() {
       // owns the member's clock and time zone. `community-life-api.ts` takes the
       // window and never guesses one.
       ...timingWindow(eventTimeFilter),
-      sortBy: eventSortBy,
+      // Nearest needs a point to measure from.
+      sortBy: eventSortBy === 'nearest' && !isNearby ? 'date' : eventSortBy,
     }).then(page => {
       setEventsList(page.items);
     }).catch(err => {
@@ -332,7 +339,7 @@ export default function CommunityLifeScreen() {
     }).finally(() => {
       setIsLoading(false);
     });
-  }, [selectedLocation, selectedEventCat, eventQuery, eventFree, eventTimeFilter, eventSortBy, isOffline, refreshNonce]);
+  }, [selectedLocation, selectedEventCat, eventQuery, eventFree, eventTimeFilter, eventSortBy, eventScope, eventRadiusKm, nearbyPoint, isOffline, refreshNonce]);
 
   // Fetch Directory Orgs
   useEffect(() => {
@@ -725,43 +732,102 @@ export default function CommunityLifeScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Discovery filters — only the ones the event search binds.
-                *
-                * "Free" is the whole row now. See
-                * `UNSUPPORTED_EVENT_BROWSE_FILTERS` for the five that were
-                * withdrawn and the note below, which names them to the member
-                * rather than letting them vanish between releases.
-                */}
+              {/* What the list is narrowed to: everything in the town, the
+                * circle around the member, or their communities, with Free on
+                * top of any of them (UAT, 3 Nov 2026, item 2). */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
                 {[
-                  { key: 'all' as const, label: 'All Events' },
-                  { key: 'free' as const, label: '💰 Free Events' },
-                ].map((chip) => {
-                  const isSelected = eventFree === (chip.key === 'free');
-                  return (
-                    <TouchableOpacity
-                      key={chip.key}
-                      onPress={() => setEventFree(chip.key === 'free')}
-                      className={`px-4 py-2 rounded-full mr-2 border ${
-                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'
-                      }`}
-                    >
-                      <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
-                        {chip.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                  { key: 'all' as const, label: 'All Events', available: true },
+                  { key: 'nearby' as const, label: '📍 Nearby', available: nearbyPoint !== null },
+                  { key: 'communities' as const, label: '👥 My communities', available: isSignedIn },
+                ]
+                  .filter((chip) => chip.key !== 'communities' || chip.available)
+                  .map((chip) => {
+                    const isSelected = eventScope === chip.key;
+                    return (
+                      <TouchableOpacity
+                        key={chip.key}
+                        testID={`events-scope-${chip.key}`}
+                        onPress={() => {
+                          if (!chip.available) {
+                            showAlert({
+                              type: 'info',
+                              title: 'Nearby needs your location',
+                              message:
+                                'Choose your area or allow location for Diaspora, and events near you will show here.',
+                            });
+                            return;
+                          }
+                          setEventScope(chip.key);
+                          if (chip.key !== 'nearby' && eventSortBy === 'nearest') setEventSortBy('date');
+                        }}
+                        accessibilityRole="button"
+                        // Not `disabled`: TouchableOpacity takes that as its own
+                        // `disabled`, and the tap that says why would never run.
+                        accessibilityState={{ selected: isSelected }}
+                        accessibilityHint={chip.available ? undefined : 'Needs your location'}
+                        className={`px-4 py-2 rounded-full mr-2 border ${
+                          isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-bold ${
+                            isSelected ? 'text-white' : chip.available ? 'text-content-secondary' : 'text-content-faint'
+                          }`}
+                        >
+                          {chip.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                <TouchableOpacity
+                  testID="events-free"
+                  onPress={() => setEventFree((current) => !current)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: eventFree }}
+                  className={`px-4 py-2 rounded-full mr-2 border ${
+                    eventFree ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'
+                  }`}
+                >
+                  <Text className={`text-xs font-bold ${eventFree ? 'text-white' : 'text-content-secondary'}`}>
+                    💰 Free
+                  </Text>
+                </TouchableOpacity>
               </ScrollView>
 
               {/* Sort & Time filter */}
               <View className="bg-surface-card border border-subtle rounded-3xl p-4 mb-3 gap-3">
-                {/* Sort — the three orderings the route can be asked for */}
+                {/* How far, when the list is the circle around the member */}
+                {eventScope === 'nearby' ? (
+                  <View className="flex-row justify-between items-center border-b border-faint pb-2.5">
+                    <Text className="text-[10px] font-black text-content-muted uppercase">Within</Text>
+                    <View className="flex-row gap-1.5">
+                      {EVENT_RADII_KM.map((radius) => (
+                        <TouchableOpacity
+                          key={radius}
+                          onPress={() => setEventRadiusKm(radius)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: eventRadiusKm === radius }}
+                          className={`px-2 py-1 rounded-lg border ${
+                            eventRadiusKm === radius ? 'bg-surface-muted border-primary-300' : 'bg-surface-background border-subtle'
+                          }`}
+                        >
+                          <Text className={`text-[9px] font-black ${
+                            eventRadiusKm === radius ? 'text-primary-500' : 'text-content-tertiary'
+                          }`}>{radius} km</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* Sort — Nearest only when there is a point to measure from */}
                 <View className="flex-row justify-between items-center">
                   <Text className="text-[10px] font-black text-content-muted uppercase">Sort</Text>
                   <View className="flex-row gap-1.5">
                     {[
                       { key: 'date' as const, label: 'Soonest' },
+                      ...(eventScope === 'nearby' ? [{ key: 'nearest' as const, label: 'Nearest' }] : []),
                       { key: 'popular' as const, label: 'Popular' },
                       { key: 'recently_added' as const, label: 'Newest' },
                     ].map(s => (
@@ -804,30 +870,6 @@ export default function CommunityLifeScreen() {
                     ))}
                   </View>
                 </View>
-              </View>
-
-              {/* The filters that are gone, and why.
-                *
-                * Named rather than silently deleted. A member who used "Nearby"
-                * last week is owed an explanation, and "Diaspora cannot filter
-                * events by" is a truer thing to read than a chip that lights up
-                * and changes nothing.
-                */}
-              <View className="bg-surface-muted border border-faint rounded-2xl p-3 mb-4">
-                <View className="flex-row items-center gap-1.5 mb-1">
-                  <Ionicons name="information-circle-outline" size={13} color={tokens.color.text.placeholder} />
-                  <Text className="text-[10px] font-black text-content-tertiary uppercase">
-                    Diaspora cannot filter events by
-                  </Text>
-                </View>
-                <Text className="text-[11px] text-content-tertiary leading-4">
-                  {UNSUPPORTED_EVENT_BROWSE_FILTERS.map((f) => f.label).join(' · ')}
-                </Text>
-                <Text className="text-[10px] text-content-muted leading-4 mt-1">
-                  The event search narrows by words, category, city and date. Distance is not one of
-                  the questions it can be asked, so those controls were removed rather than left to
-                  look as though they worked.
-                </Text>
               </View>
 
               {/* Category selector */}
@@ -1003,12 +1045,16 @@ export default function CommunityLifeScreen() {
                       </Text>
 
                       <View className="flex-row items-center justify-between border-t border-faint pt-3">
-                        <View className="flex-row items-center">
+                        <View className="flex-row items-center flex-1 mr-2">
                           <Ionicons name="location-outline" size={13} color="#6B7280" />
-                          <Text className="text-xs font-semibold text-content-muted ml-1">
+                          <Text className="text-xs font-semibold text-content-muted ml-1 flex-shrink" numberOfLines={1}>
                             {[item.location?.areaName, item.location?.cityName]
                               .filter(Boolean)
                               .join(', ')}
+                            {/* Only when the server measured it: a search around the member. */}
+                            {eventDistanceLabel(item.location?.distanceKm)
+                              ? ` · ${eventDistanceLabel(item.location?.distanceKm)}`
+                              : ''}
                           </Text>
                         </View>
 
@@ -1031,9 +1077,17 @@ export default function CommunityLifeScreen() {
                 ))
               ) : (
                 <EmptyState
-                  title={`No events in ${placeName}`}
+                  title={
+                    eventScope === 'nearby'
+                      ? `No events within ${eventRadiusKm} km`
+                      : eventScope === 'communities'
+                        ? 'No events in your communities'
+                        : `No events in ${placeName}`
+                  }
                   desc={describeEmptyEventSearch({
                     city: placeName,
+                    scope: eventScope,
+                    radiusKm: eventRadiusKm,
                     category: selectedEventCat,
                     query: eventQuery,
                     timeFilter: eventTimeFilter,

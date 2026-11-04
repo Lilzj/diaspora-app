@@ -137,16 +137,17 @@ describe('choosing "I arrive in an area I chose"', () => {
     expect(dependencies.some((d) => d.kind === 'permission')).toBe(false);
   });
 
-  it('prompts to turn presence on when it is off, linking to the setting', () => {
+  it('offers to switch presence on in place when it is off', () => {
     const prompt = checkDependencies(draft, { ...context, presenceEnabled: false }).find(
-      (d) => d.actionRoute === '/settings/presence'
+      (d) => d.actionKey === 'presence.switchOn'
     );
-    expect(prompt?.actionLabel).toBe('Turn it on');
+    expect(prompt?.actionLabel).toBe('Use my location while the app is open');
+    expect(prompt?.actionRoute).toBeNull();
   });
 
-  it('the builder shows the prompt under the trigger', () => {
+  it('the builder says what saving does, and saving switches presence on', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'automation', 'create.tsx'), 'utf8');
-    expect(source).toMatch(/draft\.trigger\?\.key === 'location\.enteredArea' && presence && !presence\.enabled/);
-    expect(source).toContain("router.push('/settings/presence'");
+    expect(source).toMatch(/draft\.trigger\?\.key === ARRIVAL_TRIGGER_KEY \? \(\s*<ArrivalPrivacyNote/);
+    expect(source).toContain('await switchPresenceOn()');
   });
 });

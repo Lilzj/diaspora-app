@@ -123,6 +123,10 @@ export interface GuideAuthorBadgeResponse {
  */
 export interface GuideAuthorResponse {
   userId: string;
+  /** The author's name, from Identity (since 14 Oct 2026). */
+  name?: string | null;
+  /** The author's profile photo, an address an image can load (since 4 Nov 2026). */
+  avatarUrl?: string | null;
   isApprovedContributor: boolean;
   isCommunityGuide: boolean;
   trustLevel: string | null;
@@ -260,6 +264,17 @@ export interface GuideResponse {
   trustMark: GuideTrustMarkResponse;
   engagement: GuideEngagementResponse;
   seo: GuideSeoResponse | null;
+  /**
+   * What the signed-in reader has done to this guide. Null when signed out.
+   * Absent from servers before 4 Nov 2026, which reads as "not saved, no vote".
+   */
+  viewer?: GuideViewerResponse | null;
+}
+
+/** `GuideViewerResponse`: the reader's own save and vote. */
+export interface GuideViewerResponse {
+  isSaved: boolean;
+  vote: GuideVoteKind | null;
 }
 
 /**
