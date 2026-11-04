@@ -41,6 +41,7 @@ import { presentChallengeState } from '@/lib/creator-economy';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
 import { formatRelativeTime } from '@/utils/format';
 import type { FinancialError } from '@/lib/financial-errors';
+import { appRouteFor } from '@/lib/server-route';
 
 export default function ChallengeDetailScreen() {
   const { tokens } = useTheme();
@@ -245,7 +246,7 @@ export default function ChallengeDetailScreen() {
                   <ChallengeTaskRow
                     key={task.taskId}
                     task={task}
-                    onAction={(route) => router.push(route as never)}
+                    onAction={(route) => router.push(appRouteFor(route) as never)}
                   />
                 ))}
               </View>

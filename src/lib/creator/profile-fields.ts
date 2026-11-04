@@ -6,6 +6,8 @@
  * "Edit profile" can take the member to it and open it (Android UAT,
  * 3 Nov 2026), rather than to whichever section a substring matched.
  */
+import { appRouteFor } from '@/lib/server-route';
+
 export type ProfileField = 'cover' | 'bio' | 'categories' | 'expertise' | 'languages';
 
 const FIELD_BY_REQUIREMENT: Record<string, ProfileField> = {
@@ -21,14 +23,7 @@ export function profileFieldFor(requirementKey: string): ProfileField | null {
   return FIELD_BY_REQUIREMENT[requirementKey.toLowerCase()] ?? null;
 }
 
-/**
- * Routes the server names that the app does not have. "Publish something"
- * points at `/knowledge/create`; the guide writer is `/guide/create`.
- */
-const ROUTE_ALIASES: Record<string, string> = {
-  '/knowledge/create': '/guide/create',
-};
-
+/** A served requirement's route, as a screen the app has. See `lib/server-route.ts`. */
 export function requirementRoute(route: string): string {
-  return ROUTE_ALIASES[route] ?? route;
+  return appRouteFor(route);
 }

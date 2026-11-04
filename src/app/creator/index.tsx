@@ -111,6 +111,7 @@ import { formatPoints, presentCreatorStatus, presentVerificationState } from '@/
 import { formatMoney } from '@/lib/money';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
 import type { CreatorRecommendation } from '@/types/creator-economy';
+import { appRouteFor } from '@/lib/server-route';
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'overview', label: '📊 Overview' },
@@ -217,7 +218,7 @@ export default function CreatorStudioScreen() {
       kind: recommendation.kind,
       surface: 'dashboard',
     });
-    router.push(recommendation.actionRoute as never);
+    router.push(appRouteFor(recommendation.actionRoute) as never);
   }, []);
 
   const counts = useMemo(

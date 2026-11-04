@@ -45,6 +45,7 @@ import { trackCreatorEvent } from '@/lib/creator-analytics';
 import { formatRelativeTime } from '@/utils/format';
 import type { FinancialError } from '@/lib/financial-errors';
 import type { CreatorRequirement, GrantApplicationField } from '@/types/creator-economy';
+import { appRouteFor } from '@/lib/server-route';
 
 export default function GrantDetailScreen() {
   const { showAlert } = useNotification();
@@ -128,7 +129,7 @@ export default function GrantDetailScreen() {
   const canSubmit = missing.length === 0 && allAccepted && !actions.submit.isPending;
 
   const openRequirement = useCallback((requirement: CreatorRequirement) => {
-    if (requirement.actionRoute) router.push(requirement.actionRoute as never);
+    if (requirement.actionRoute) router.push(appRouteFor(requirement.actionRoute) as never);
   }, []);
 
   const startApplication = useCallback(() => {
