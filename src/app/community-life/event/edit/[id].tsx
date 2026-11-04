@@ -30,7 +30,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
+import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Button } from '@/components/Button';
@@ -149,6 +149,8 @@ function EditEventForm({ eventId, wire }: { eventId: string; wire: EventWire }) 
   const bottomInset = useBottomInset();
   const client = useQueryClient();
   const { showAlert, showToast } = useNotification();
+  // Camera or gallery, asked (Android UAT, 3 Nov 2026).
+  const photoSource = usePhotoSource();
   const { eventCategories, isUnavailable: catalogueUnavailable } = useCommunityLifeCatalogue();
 
   const initial = useMemo(() => eventEditFormFrom(wire), [wire]);
@@ -179,21 +181,11 @@ function EditEventForm({ eventId, wire }: { eventId: string; wire: EventWire }) 
   const stillNeeded = eventEditMissing(form);
   const valueProblem = stillNeeded.length > 0 ? null : eventEditProblem(form);
 
-  const addPhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      showAlert({ type: 'error', title: 'No access to photos', message: 'Allow Diaspora to use your photos to add one.' });
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets?.length) return;
+  const addPhotoFrom = async (source: PhotoSource) => {
+    const assets = await photoSource.launch(source, { allowsEditing: true, aspect: [16, 9], quality: 0.8 });
+    if (!assets) return;
 
-    const picked = result.assets[0];
+    const picked = assets[0];
     setIsUploading(true);
     try {
       // Uploaded now, attached on save — so a member who leaves without saving
@@ -206,6 +198,8 @@ function EditEventForm({ eventId, wire }: { eventId: string; wire: EventWire }) 
       setIsUploading(false);
     }
   };
+
+  const addPhoto = () => photoSource.ask('Add a photo', (source) => void addPhotoFrom(source));
 
   const save = async () => {
     setIsSaving(true);

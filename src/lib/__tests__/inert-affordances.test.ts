@@ -963,24 +963,27 @@ describe('Creator Studio no longer reports work it did not do', () => {
     expect(card).toContain('Not saved');
   });
 
-  it('says the workspace is read-only before anything is pressed', () => {
-    // A member should not have to press Delete to discover it does nothing.
+  it('offers only the controls that take effect, so it needs no warning banner', () => {
+    // A member should not have to press a control to discover it does nothing.
     //
-    // The banner this used to assert — "Preview — sample content removed …
-    // Diaspora cannot list your published items, drafts, archive or activity
-    // yet" — described a workspace with no data at all. It has data now
-    // (`lib/creator/workspace.ts` fans out over four live `/mine` routes), so
-    // the standing warning narrowed to the half that is still true: reading is
-    // wired, **writing is not**.
+    // The workspace once carried a standing banner, last as "What you can
+    // change here … States like Reserved, Paused, Interviewing and Filled are
+    // not tracked". It existed because the item menu offered those states and
+    // each answered "Not available". Android UAT, 3 Nov 2026: the banner went,
+    // and so did the controls it was apologising for. What the menu offers now
+    // is exactly what a module saves: Sold for a marketplace item, Rented for a
+    // home.
     const section = source('components', 'creator', 'sections', 'WorkspaceSection.tsx');
+    const menu = source('components', 'creator', 'QuickActionsMenu.tsx');
 
-    expect(section).toContain('What you can change here');
+    expect(section).not.toContain('What you can change here');
+    expect(section).not.toContain('are not tracked by any part of the');
 
-    // `duplicate` joined the list when BG-07 shipped. The banner is the one
-    // place a member reads what this sheet can actually do, so it moves with the
-    // sheet or it becomes the next stale sentence.
-    expect(section).toContain(
-      'Archive, restore, delete, duplicate, and marking an item sold or occupied all take effect');
+    for (const untracked of ['Available', 'Reserved', 'Paused', 'Open', 'Interviewing', 'Filled']) {
+      expect(menu).not.toContain(`handleStatusChange('${untracked}')`);
+    }
+    expect(menu).toContain(`handleStatusChange('Sold')`);
+    expect(menu).toContain(`handleStatusChange('Rented')`);
 
     // The sentence that used to follow it — "Duplicating content is not
     // something Diaspora does" — was a PRODUCT decision rather than a stale

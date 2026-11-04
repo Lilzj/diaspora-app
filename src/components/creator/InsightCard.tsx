@@ -3,6 +3,8 @@ import { View, Text, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { UnifiedContentItem } from '@/types/creator';
+import { HEALTH_STATUS_LABEL } from '@/lib/creator/health';
+import { analyticsRouteFor } from '@/lib/creator/editor-route';
 
 interface InsightCardProps {
   item: UnifiedContentItem | null;
@@ -10,10 +12,34 @@ interface InsightCardProps {
   onClose: () => void;
 }
 
+/** Colour for a status, so 44% is not drawn in the green that means healthy. */
+const STATUS_TEXT: Record<string, string> = {
+  healthy: 'text-success-default',
+  needs_attention: 'text-warning-default',
+  expiring_soon: 'text-warning-default',
+  action_required: 'text-error-default',
+};
+
+/**
+ * One item's sheet in the Creator Studio workspace.
+ *
+ * It said only some of what it showed until 3 Nov 2026 (Android UAT): "↑ 18% vs
+ * last week" and "High audience intent" were fixed text, the conversion rate
+ * was `|| '84%'` on a field nothing sets, and each type panel swapped a real
+ * 0 for a figure (`|| 89` helpful votes, `|| 7` applications). The views,
+ * saves and messages it showed were the workspace's placeholder zeros for most
+ * kinds of item. The sheet now opens the item's own analytics for those,
+ * states the facts the item carries, and names its health in words.
+ */
 export const InsightCard: React.FC<InsightCardProps> = ({ item, visible, onClose }) => {
+  // Before the early return: a hook after it ran on some renders and not
+  // others, which React refuses when an item arrives after an empty render.
+  const insets = useSafeAreaInsets();
+
   if (!item) return null;
 
-  const insets = useSafeAreaInsets();
+  const analytics = analyticsRouteFor(item);
+  const status = item.healthStatus ? HEALTH_STATUS_LABEL[item.healthStatus] : null;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}
@@ -40,22 +66,27 @@ export const InsightCard: React.FC<InsightCardProps> = ({ item, visible, onClose
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
-            {/* Key Performance Indicators Grid */}
-            <View className="flex-row flex-wrap gap-2.5 mb-6">
-              <View className="bg-surface-background border border-subtle p-3.5 rounded-2xl w-[48%]">
-                <Text className="text-xs font-bold text-content-muted uppercase">Total Views</Text>
-                <Text className="text-xl font-black text-content-primary mt-1">{item.views}</Text>
-                <Text className="text-[9px] text-emerald-600 font-extrabold mt-0.5">↑ 18% vs last week</Text>
-              </View>
-
-              <View className="bg-surface-background border border-subtle p-3.5 rounded-2xl w-[48%]">
-                <Text className="text-xs font-bold text-content-muted uppercase">Bookmarks / Saves</Text>
-                <Text className="text-xl font-black text-content-primary mt-1">{item.bookmarks}</Text>
-                <Text className="text-[9px] text-content-faint font-semibold mt-0.5">Saved by diaspora users</Text>
-              </View>
+            {/* Where the real figures are: views, enquiries and saves, compared
+                with the period before, on the item's own analytics screen. */}
+            <View className="flex-row gap-2.5 mb-6">
+              {analytics ? (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    onClose();
+                    router.push(analytics as never);
+                  }}
+                  className="flex-1 bg-surface-background border border-subtle p-3.5 rounded-2xl"
+                >
+                  <Text className="text-xs font-black text-content-primary">See full analytics</Text>
+                  <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Views, enquiries and saves</Text>
+                </TouchableOpacity>
+              ) : null}
 
               <TouchableOpacity
                 activeOpacity={0.7}
+                accessibilityRole="button"
                 onPress={() => {
                   onClose();
                   router.push({
@@ -63,74 +94,56 @@ export const InsightCard: React.FC<InsightCardProps> = ({ item, visible, onClose
                     params: { category: item.contentType },
                   });
                 }}
-                className="bg-primary-50/60 border border-primary-200 p-3.5 rounded-2xl w-[48%]"
+                className="flex-1 bg-surface-background border border-subtle p-3.5 rounded-2xl"
               >
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-[10px] font-black text-primary-600 uppercase">Inquiries & Messages</Text>
-                  <Text className="text-xs text-primary-500 font-black">→</Text>
-                </View>
-                <Text className="text-xl font-black text-content-primary mt-1">{item.messagesCount}</Text>
-                <Text className="text-[9px] text-primary-600 font-extrabold mt-0.5">
-                  {item.unreadMessagesCount} unread · Tap for inbox →
-                </Text>
+                <Text className="text-xs font-black text-content-primary">Messages →</Text>
+                <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Enquiries about this item</Text>
               </TouchableOpacity>
-
-              <View className="bg-surface-background border border-subtle p-3.5 rounded-2xl w-[48%]">
-                <Text className="text-xs font-bold text-content-muted uppercase">Conversion Rate</Text>
-                <Text className="text-xl font-black text-success-default mt-1">{item.conversionRate || '84%'}</Text>
-                <Text className="text-[9px] text-content-faint font-semibold mt-0.5">High audience intent</Text>
-              </View>
             </View>
 
-            {/* Type Specific Insights */}
-            {item.contentType === 'Guide' && (
-              <View className="bg-orange-50/40 border border-orange-200 p-4 rounded-2xl mb-6">
-                <Text className="text-xs font-black text-orange-800 uppercase mb-2">📖 Reading Engagement</Text>
-                <Text className="text-xs text-content-secondary font-semibold">Average Reading Time: <Text className="font-black text-content-primary">{item.readingTime || '6 min read'}</Text></Text>
-                <Text className="text-xs text-content-secondary font-semibold mt-1">Helpful Votes: <Text className="font-black text-content-primary">{item.helpfulVotes || 89}</Text></Text>
-              </View>
-            )}
-
-            {item.contentType === 'Marketplace' && (
-              <View className="bg-amber-50/40 border border-amber-200 p-4 rounded-2xl mb-6">
-                <Text className="text-xs font-black text-amber-800 uppercase mb-2">🛍️ Buyer Interest</Text>
-                <Text className="text-xs text-content-secondary font-semibold">Total Offers Received: <Text className="font-black text-content-primary">{item.offersCount || 6} offers</Text></Text>
-                <Text className="text-xs text-content-secondary font-semibold mt-1">Asking Price: <Text className="font-black text-primary-500">{item.price}</Text></Text>
-              </View>
-            )}
-
-            {item.contentType === 'Housing' && (
-              <View className="bg-teal-50/40 border border-teal-200 p-4 rounded-2xl mb-6">
-                <Text className="text-xs font-black text-teal-800 uppercase mb-2">🏠 Tenant Inquiries</Text>
-                <Text className="text-xs text-content-secondary font-semibold">Rental Applications: <Text className="font-black text-content-primary">{item.applicationsCount || 7} submitted</Text></Text>
-                <Text className="text-xs text-content-secondary font-semibold mt-1">Listed Rent: <Text className="font-black text-primary-500">{item.price}</Text></Text>
-              </View>
-            )}
-
-            {item.contentType === 'Job' && (
-              <View className="bg-blue-50/40 border border-blue-200 p-4 rounded-2xl mb-6">
-                <Text className="text-xs font-black text-blue-800 uppercase mb-2">💼 Applicants Breakdown</Text>
-                <Text className="text-xs text-content-secondary font-semibold">Total Applicants: <Text className="font-black text-content-primary">{item.applicantsCount || 19} candidates</Text></Text>
-                <Text className="text-xs text-content-secondary font-semibold mt-1">Salary Range: <Text className="font-black text-content-primary">{item.salaryRange}</Text></Text>
-              </View>
-            )}
+            {/* What the item itself carries. A row with nothing to say is left out. */}
+            {item.contentType === 'Marketplace' && item.price ? (
+              <Fact label="Asking price" value={item.price} />
+            ) : null}
+            {item.contentType === 'Housing' && item.price ? (
+              <Fact label="Listed rent" value={item.price} />
+            ) : null}
+            {item.contentType === 'Job' && item.salaryRange ? (
+              <Fact label="Salary range" value={item.salaryRange} />
+            ) : null}
+            {item.contentType === 'Guide' && typeof item.helpfulVotes === 'number' ? (
+              <Fact label="Helpful votes" value={String(item.helpfulVotes)} />
+            ) : null}
 
             {/* Health Score Panel */}
-            <View className="bg-surface-inverse rounded-2xl p-4 mb-4">
-              <Text className="text-xs font-black text-content-inverse uppercase tracking-wider mb-1">Content Health Rating</Text>
-              <Text className="text-xs text-content-faint">
-                Health Score: <Text className="font-black text-success-default">{item.healthScore}% ({item.healthStatus})</Text>
-              </Text>
-              {(item.healthRecommendations ?? []).map((rec) => (
-                <View key={rec.id} className="bg-surface-inverse p-2.5 rounded-xl mt-2">
-                  <Text className="text-xs font-bold text-amber-300">💡 {rec.title}</Text>
-                  <Text className="text-[10px] text-content-faint mt-0.5">{rec.description}</Text>
-                </View>
-              ))}
-            </View>
+            {typeof item.healthScore === 'number' && status ? (
+              <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-4 mt-2">
+                <Text className="text-xs font-black text-content-primary uppercase tracking-wider mb-1">Content health</Text>
+                <Text className={`text-xs font-black ${STATUS_TEXT[item.healthStatus ?? ''] ?? 'text-content-secondary'}`}>
+                  {item.healthScore}% · {status}
+                </Text>
+                {(item.healthRecommendations ?? []).map((rec) => (
+                  <View key={rec.id} className="mt-2.5">
+                    <Text className="text-xs font-bold text-content-strong">💡 {rec.title}</Text>
+                    {rec.description ? (
+                      <Text className="text-[10px] text-content-faint mt-0.5">{rec.description}</Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </ScrollView>
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
   );
 };
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="flex-row justify-between items-center py-2.5 border-b border-faint">
+      <Text className="text-xs text-content-secondary font-semibold">{label}</Text>
+      <Text className="text-xs font-black text-content-primary">{value}</Text>
+    </View>
+  );
+}

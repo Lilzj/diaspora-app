@@ -66,6 +66,7 @@ import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { editorRouteFor } from '@/lib/creator/editor-route';
 import { useTheme } from '@/design-system';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { useAuthStore } from '@/store/auth';
@@ -761,10 +762,16 @@ export default function CreatorStudioScreen() {
       <ContentHealthCenterModal
         visible={isHealthCentreOpen}
         onClose={() => setHealthCentreOpen(false)}
-        onSelectAction={(_, actionType) => {
+        onSelectAction={(item, actionType) => {
           setHealthCentreOpen(false);
-          if (actionType === 'photos' || actionType === 'edit') {
-            router.push('/housing/create');
+          // The item's own editor, at its photos for a photo tip. This opened
+          // the empty new-listing wizard for every kind of item.
+          const editor =
+            actionType === 'photos' || actionType === 'edit'
+              ? editorRouteFor(item, actionType === 'photos' ? 'photos' : undefined)
+              : null;
+          if (editor) {
+            router.push(editor as never);
           } else {
             workspaceStore.setActiveSection('workspace');
           }

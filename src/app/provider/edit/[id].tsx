@@ -21,7 +21,7 @@ import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
+import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -92,6 +92,8 @@ export default function EditProviderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { provider, isLoading } = useProvider(id ?? null);
   const { showAlert, showToast } = useNotification();
+  // Camera or gallery, asked (Android UAT, 3 Nov 2026).
+  const photoSource = usePhotoSource();
   const queryClient = useQueryClient();
   const memberCurrency = useMemberCurrency();
 
@@ -231,17 +233,13 @@ export default function EditProviderScreen() {
     .filter((row) => !row.removed && row.serviceId !== null && !row.name.trim())
     .forEach(() => missing.push('A name for every menu item'));
 
-  const pickPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets?.length) {
-      setNewPhotos((current) => [...current, toLocalFile(result.assets[0])]);
-    }
+  // The permission is asked first now; the gallery used to open without it.
+  const pickPhotoFrom = async (source: PhotoSource) => {
+    const assets = await photoSource.launch(source, { allowsEditing: true, aspect: [4, 3], quality: 0.8 });
+    if (assets) setNewPhotos((current) => [...current, toLocalFile(assets[0])]);
   };
+
+  const pickPhoto = () => photoSource.ask('Add a photo', (source) => void pickPhotoFrom(source));
 
   const pinFromDevice = async () => {
     setIsPinning(true);

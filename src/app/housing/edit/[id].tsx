@@ -17,13 +17,13 @@
 // and does not choose it here.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -104,10 +104,14 @@ const problemDetail = (cause: unknown): string => {
 };
 
 export default function EditHousingListingScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, focus } = useLocalSearchParams<{ id: string; focus?: string }>();
   const listingId = String(id ?? '');
+  const scrollRef = useRef<ScrollView>(null);
+  const scrolledToPhotos = useRef(false);
   const queryClient = useQueryClient();
   const { showAlert, showToast } = useNotification();
+  // Camera or gallery, asked (Android UAT, 3 Nov 2026).
+  const photoSource = usePhotoSource();
   const userId = useAuthStore((state) => state.user?.userId ?? null);
 
   const listingQuery = useQuery({
@@ -154,14 +158,8 @@ export default function EditHousingListingScreen() {
     setForm((current) => (current ? { ...current, [key]: value } : current));
   }, []);
 
-  const addPhoto = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your photos to upload images.' });
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8 });
-    const picked = !result.canceled ? result.assets?.[0] : undefined;
+  const addPhotoFrom = useCallback(async (source: PhotoSource) => {
+    const picked = (await photoSource.launch(source, { allowsEditing: true, quality: 0.8 }))?.[0];
     if (!picked) return;
 
     // Uploaded now, attached on save. A photo the platform never received must
@@ -169,7 +167,12 @@ export default function EditHousingListingScreen() {
     const asset = await upload.upload(toLocalFile(picked));
     if (!asset) return;
     setAdded((current) => [...current, { mediaId: asset.mediaId, previewUri: asset.thumbnailUrl ?? picked.uri }]);
-  }, [showAlert, upload]);
+  }, [photoSource, upload]);
+
+  const addPhoto = useCallback(
+    () => photoSource.ask('Add a photo', (source) => void addPhotoFrom(source)),
+    [addPhotoFrom, photoSource]
+  );
 
   const keptExisting = existingPhotos.filter((photo) => !removed.includes(photo.mediaId));
   const photoCount = keptExisting.length + added.length;
@@ -311,7 +314,7 @@ export default function EditHousingListingScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface-background" edges={['top']}>
       <ScreenHeader title="Edit home" />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
         <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mt-4 mb-2">About the home</Text>
         <Input label="Title" value={form.title} onChangeText={(text) => set('title', text)} />
         <Input label="Summary" value={form.summary} onChangeText={(text) => set('summary', text)} />
@@ -396,7 +399,20 @@ export default function EditHousingListingScreen() {
           placeholder="Available now"
         />
 
-        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mt-6 mb-2">Photos</Text>
+        <Text
+          className="text-xs font-bold text-content-faint uppercase tracking-widest mt-6 mb-2"
+          // A Content Health photo tip opens this screen with `?focus=photos`
+          // (Android UAT, 3 Nov 2026). The heading is a direct child of the
+          // scroll content, so its layout y is a scroll position.
+          onLayout={(event) => {
+            if (focus !== 'photos' || scrolledToPhotos.current) return;
+            scrolledToPhotos.current = true;
+            const y = event.nativeEvent.layout.y;
+            requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true }));
+          }}
+        >
+          Photos
+        </Text>
         <Text className="text-xs text-content-secondary mb-3">Tap a photo to put it on the card.</Text>
         <View className="flex-row flex-wrap gap-3">
           {[

@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { TagEditor } from '@/components/forms/TagEditor';
-import * as ImagePicker from 'expo-image-picker';
+import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
 import { Image } from 'expo-image';
 import { useMediaUpload, toLocalFile } from '@/hooks/media';
 import { setProfileAvatar } from '@/lib/auth-api';
@@ -52,6 +52,7 @@ import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
 import { formatCount, presentCreatorStatus } from '@/lib/creator-economy';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
 import type { CreatorRequirement } from '@/types/creator-economy';
+import { profileFieldFor, requirementRoute, type ProfileField } from '@/lib/creator/profile-fields';
 
 const BIO_LIMIT = 600;
 
@@ -76,7 +77,15 @@ export default function CreatorProfileScreen() {
   const [languages, setLanguages] = useState<string[]>([]);
   const { selectable: guideCategories } = useGuideCategories();
   const scrollRef = useRef<ScrollView>(null);
-  const sectionTops = useRef<Record<string, number>>({});
+  // The fields the completeness requirements name, measured against the scroll
+  // content when an Edit profile button is pressed (Android UAT, 3 Nov 2026).
+  // `onLayout` gave each anchor's y within its own section, so every button
+  // scrolled to about the same place near the top and opened nothing.
+  const fieldAnchors = useRef<Partial<Record<ProfileField, View | null>>>({});
+  const bioInput = useRef<TextInput>(null);
+  const expertiseInput = useRef<TextInput>(null);
+  const languagesInput = useRef<TextInput>(null);
+  const [areasOpenRequest, setAreasOpenRequest] = useState(0);
   const [isBadgesOpen, setBadgesOpen] = useState(false);
   const [isDirty, setDirty] = useState(false);
 
@@ -132,24 +141,23 @@ export default function CreatorProfileScreen() {
   // The new photo, shown at once: the creator profile catches up when its event lands.
   const [freshAvatar, setFreshAvatar] = useState<string | null>(null);
 
-  const pickAndSet = useCallback(
-    async (which: 'avatar' | 'cover') => {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (permission.status !== 'granted') {
-        showAlert({ type: 'info', title: 'Photos are off', message: 'Allow Diaspora to use your photos to choose one.' });
-        return;
-      }
-      const picked = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+  // Camera or gallery, asked (Android UAT, 3 Nov 2026). A profile photo is
+  // usually of the member, so its camera faces them; a cover faces away.
+  const photoSource = usePhotoSource();
+
+  const setFrom = useCallback(
+    async (which: 'avatar' | 'cover', source: PhotoSource) => {
+      const picked = await photoSource.launch(source, {
         allowsEditing: true,
         aspect: which === 'avatar' ? [1, 1] : [16, 9],
         quality: 0.8,
+        cameraType: which === 'avatar' ? 'front' : 'back',
       });
-      if (picked.canceled || !picked.assets?.[0]) return;
+      if (!picked?.[0]) return;
 
       setImageBusy(which);
       try {
-        const asset = await (which === 'avatar' ? avatarUpload : coverUpload).upload(toLocalFile(picked.assets[0]));
+        const asset = await (which === 'avatar' ? avatarUpload : coverUpload).upload(toLocalFile(picked[0]));
         if (!asset) {
           showAlert({ type: 'error', title: 'Not uploaded', message: 'The photo could not be uploaded. Please try again.' });
           return;
@@ -168,31 +176,54 @@ export default function CreatorProfileScreen() {
         setImageBusy(null);
       }
     },
-    [avatarUpload, coverUpload, profileQuery, showAlert]
+    [avatarUpload, coverUpload, photoSource, profileQuery, showAlert]
+  );
+
+  const pickAndSet = useCallback(
+    async (which: 'avatar' | 'cover') =>
+      photoSource.ask(which === 'avatar' ? 'Your profile photo' : 'Your cover image', (source) => void setFrom(which, source)),
+    [photoSource, setFrom]
   );
 
   const onChangePhoto = useCallback(() => void pickAndSet('avatar'), [pickAndSet]);
 
   // A requirement whose action is this screen moves the member to the field
-  // that meets it (20 Oct 2026); pushing the screen they were already on did
-  // nothing, which is how every "Edit profile" button looked dead.
+  // that meets it and opens it: the bio and the two word lists are focused, the
+  // areas list opens, and the cover asks for a photo.
   const openRequirement = useCallback((requirement: CreatorRequirement) => {
     const route = requirement.actionRoute;
     if (!route) return;
     if (route.split('?')[0] !== '/creator/profile') {
-      router.push(route as never);
+      router.push(requirementRoute(route) as never);
       return;
     }
-    const key = requirement.key.toLowerCase();
-    const section = key.includes('cover')
-      ? 'cover'
-      : key.includes('bio')
-      ? 'about'
-      : key.includes('categor') || key.includes('area') || key.includes('expertise') || key.includes('language')
-        ? 'help'
-        : 'about';
-    scrollRef.current?.scrollTo({ y: Math.max(0, (sectionTops.current[section] ?? 0) - 16), animated: true });
-  }, []);
+
+    const field = profileFieldFor(requirement.key);
+    if (!field) return;
+
+    const scroll = scrollRef.current as (ScrollView & { getInnerViewRef?: () => unknown }) | null;
+    const content = scroll?.getInnerViewRef?.();
+    const anchor = fieldAnchors.current[field];
+    if (scroll && content && anchor) {
+      anchor.measureLayout(
+        content as never,
+        (_x, y) => scroll.scrollTo({ y: Math.max(0, y - 16), animated: true }),
+        () => undefined,
+      );
+    }
+
+    if (field === 'cover') {
+      void pickAndSet('cover');
+      return;
+    }
+    if (field === 'categories') {
+      setAreasOpenRequest((count) => count + 1);
+      return;
+    }
+    // After the scroll has run, so the keyboard does not fight it.
+    const input = field === 'bio' ? bioInput : field === 'expertise' ? expertiseInput : languagesInput;
+    setTimeout(() => input.current?.focus(), 350);
+  }, [pickAndSet]);
 
   // Reputation and badges are one read since 20 Oct 2026,
   // `GET /creators/me/reputation`, on this screen and on Creator Studio's
@@ -236,7 +267,7 @@ export default function CreatorProfileScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Change your profile photo"
-                accessibilityHint="Choose a photo from your phone"
+                accessibilityHint="Take a photo, or choose one from your phone"
                 onPress={onChangePhoto}
                 disabled={imageBusy !== null}
                 style={{ backgroundColor: tokens.color.primary[500] }}
@@ -386,7 +417,7 @@ export default function CreatorProfileScreen() {
 
           {/* ── Cover ────────────────────────────────────────────────────── */}
           <CreatorSection title="Cover image" subtitle="Shown across the top of your public profile">
-            <View onLayout={(event) => { sectionTops.current.cover = event.nativeEvent.layout.y; }} />
+            <View ref={(node) => { fieldAnchors.current.cover = node; }} collapsable={false} />
             <Pressable
               onPress={() => void pickAndSet('cover')}
               disabled={imageBusy !== null}
@@ -413,13 +444,14 @@ export default function CreatorProfileScreen() {
           </CreatorSection>
 
           {/* ── Bio ──────────────────────────────────────────────────────── */}
-          <View onLayout={(event) => { sectionTops.current.about = event.nativeEvent.layout.y; }} />
+          <View ref={(node) => { fieldAnchors.current.bio = node; }} collapsable={false} />
           <CreatorSection
             title="About you"
             subtitle="Shown on your public profile and next to your guides"
           >
             <CreatorCard>
               <TextInput
+                ref={bioInput}
                 accessibilityLabel="Your creator bio"
                 accessibilityHint={`Up to ${BIO_LIMIT} characters. ${bioRemaining} remaining.`}
                 value={bio}
@@ -451,7 +483,7 @@ export default function CreatorProfileScreen() {
             title="What you help with"
             subtitle="Diaspora uses these to put your work in front of the right people"
           >
-            <View onLayout={(event) => { sectionTops.current.help = event.nativeEvent.layout.y; }} />
+            <View ref={(node) => { fieldAnchors.current.categories = node; }} collapsable={false} />
             <CreatorCard>
               <View className="mb-4">
                 <SearchableSelect
@@ -466,9 +498,12 @@ export default function CreatorProfileScreen() {
                     setDirty(true);
                   }}
                   testID="creator-areas"
+                  openRequest={areasOpenRequest}
                 />
               </View>
+              <View ref={(node) => { fieldAnchors.current.expertise = node; }} collapsable={false} />
               <TagEditor
+                inputRef={expertiseInput}
                 label="Expertise"
                 values={expertise}
                 onChange={(next) => {
@@ -479,7 +514,9 @@ export default function CreatorProfileScreen() {
                 max={12}
                 testID="creator-expertise"
               />
+              <View ref={(node) => { fieldAnchors.current.languages = node; }} collapsable={false} />
               <TagEditor
+                inputRef={languagesInput}
                 label="Languages you write in"
                 values={languages}
                 onChange={(next) => {

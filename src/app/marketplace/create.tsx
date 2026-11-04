@@ -30,6 +30,7 @@ import {
   type SellerContact,
 } from '@/lib/marketplace-listings-api';
 import { toListingCondition } from '@/lib/marketplace-categories';
+import { listingFieldsFor, listingPricePayload } from '@/lib/marketplace-listing-fields';
 import { backOr } from '@/lib/navigation';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { CurrencyNote } from '@/components/CurrencyNote';
@@ -328,11 +329,14 @@ export default function CreateListingScreen() {
     });
   }, []);
 
+  /** What this kind of listing asks (Android UAT, 3 Nov 2026). */
+  const fields = listingFieldsFor(intent);
+
   /** Whether this listing has a price to state at all. A giveaway does not. */
-  const isPriced = intent !== 'Giving Away' && intent !== 'Donation';
+  const isPriced = fields.price || fields.budgetRange;
 
   /** A wanted advert states a range; everything else priced states one figure. */
-  const wantsRange = intent === 'Buying Request' || intent === 'Wanted';
+  const wantsRange = fields.budgetRange;
 
   /**
    * What each step needs before it can be left, in the member's own words.
@@ -761,6 +765,9 @@ export default function CreateListingScreen() {
      * caller, and Trust owns whether anybody is verified.
      */
     const townPoint = ownPinOrTown(null, cityName, townPin);
+    // Named key by key rather than spread, so the payload stays a literal the
+    // binding-drift check can read against the route.
+    const pricing = listingPricePayload(intent, { price, maxPrice, negotiable, quantity });
     const payload = {
       title: title.trim(),
       description: description.trim(),
@@ -768,10 +775,10 @@ export default function CreateListingScreen() {
       countryCode: countryCode.trim().toUpperCase(),
       listingType: toListingType(intent, negotiable),
       condition: toListingCondition(condition),
-      price: intent === 'Giving Away' || intent === 'Donation' ? 0 : Number(price) || undefined,
+      price: pricing.price,
       currency: currency || undefined,
-      isNegotiable: intent === 'Giving Away' || intent === 'Donation' ? false : negotiable,
-      quantity: Number(quantity) || 1,
+      isNegotiable: pricing.isNegotiable,
+      quantity: pricing.quantity,
       brand: brand.trim() || undefined,
       cityName: cityName.trim() || undefined,
       // The town's own coordinates when it was picked; the listing is filed by
@@ -1111,7 +1118,9 @@ export default function CreateListingScreen() {
                 onChangeText={setBrand}
               />
 
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Item Condition</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">
+                {fields.condition === 'accepted' ? 'Condition you would accept' : 'Item Condition'}
+              </Text>
               {CONDITIONS.map((cond) => {
                 const isSel = condition === cond.label;
                 return (
@@ -1165,11 +1174,11 @@ export default function CreateListingScreen() {
                 className="h-24"
               />
 
-              {intent !== 'Giving Away' && (
+              {isPriced && (
                 <View>
                   <CurrencyNote currency={memberCurrency} />
 
-                  {intent === 'Buying Request' || intent === 'Wanted' ? (
+                  {wantsRange ? (
                     <View className="flex-row gap-4 mb-2">
                       <View className="flex-1">
                         <Input
@@ -1236,13 +1245,15 @@ export default function CreateListingScreen() {
                 </View>
               )}
 
-              <Input
-                label="Quantity Available"
-                placeholder="e.g. 1"
-                value={quantity}
-                onChangeText={setQuantity}
-                keyboardType="numeric"
-              />
+              {fields.quantity && (
+                <Input
+                  label="Quantity Available"
+                  placeholder="e.g. 1"
+                  value={quantity}
+                  onChangeText={setQuantity}
+                  keyboardType="numeric"
+                />
+              )}
             </View>
           )}
 

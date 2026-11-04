@@ -13,6 +13,8 @@ interface TagEditorProps {
   /** The server's limit on one entry's length. */
   maxLength?: number;
   testID?: string;
+  /** The text box, so a screen can focus it (the creator profile's Edit profile buttons). */
+  inputRef?: React.Ref<TextInput>;
 }
 
 /**
@@ -23,7 +25,7 @@ interface TagEditorProps {
  * Type and press Add (or return); each entry is a chip with a remove button.
  * Duplicates are ignored, whatever their capitals.
  */
-export function TagEditor({ label, values, onChange, placeholder, max, maxLength = 64, testID }: TagEditorProps) {
+export function TagEditor({ label, values, onChange, placeholder, max, maxLength = 64, testID, inputRef }: TagEditorProps) {
   const tokens = useThemeTokens();
   const [draft, setDraft] = useState('');
   const isFull = values.length >= max;
@@ -67,6 +69,7 @@ export function TagEditor({ label, values, onChange, placeholder, max, maxLength
       ) : (
         <View className="flex-row items-center">
           <TextInput
+            ref={inputRef}
             value={draft}
             onChangeText={setDraft}
             onSubmitEditing={add}

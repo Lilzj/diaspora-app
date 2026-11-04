@@ -274,7 +274,7 @@ describe('Journey 3 · a reminder on an event', () => {
     expect(preview.canActivate).toBe(true);
   });
 
-  it('refuses an event-relative schedule with no event chosen', () => {
+  it('saves a reminder for every event the member is going to, with no single event named', () => {
     const schedule = defaultEventSchedule(null);
     expect(schedule.timezone.ianaId).toBeNull();
 
@@ -291,10 +291,16 @@ describe('Journey 3 · a reminder on an event', () => {
       schedule,
     };
 
-    // Refused rather than silently defaulted. Substituting the device's zone
-    // would let this save and then fire at the wrong time for somebody.
-    expect(canSaveDraft(validateDraft(draft, NOW))).toBe(false);
-    expect(issuesForStep(validateDraft(draft, NOW), 'schedule').length).toBeGreaterThan(0);
+    // This used to be refused, for fear that a missing zone would fire the
+    // reminder at the wrong time. It cannot: the server arms each reminder from
+    // that event's own `StartsAt`, an instant, and never reads this zone, so
+    // "1 day before it starts" is 24 hours before that event wherever the member
+    // is. Refusing it meant the template could not be saved at all, behind an
+    // error asking for a timezone on a screen with no picker (Android UAT,
+    // 3 Nov 2026). No zone is substituted either: it stays null.
+    expect(canSaveDraft(validateDraft(draft, NOW))).toBe(true);
+    expect(issuesForStep(validateDraft(draft, NOW), 'schedule')).toEqual([]);
+    expect(draft.schedule!.timezone.ianaId).toBeNull();
   });
 });
 

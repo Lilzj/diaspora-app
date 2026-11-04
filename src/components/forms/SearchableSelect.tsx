@@ -11,7 +11,7 @@
 // which gets them from the server.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export interface SelectOption {
@@ -32,6 +32,12 @@ interface BaseProps {
   /** Shown instead of the list when the options could not be loaded. */
   unavailableMessage?: string | null;
   testID?: string;
+  /**
+   * Opens the list each time it changes to a new non-zero number. A screen that
+   * sends the member to this field ("Edit profile" on a requirement) opens it
+   * rather than leaving them to find the toggle.
+   */
+  openRequest?: number;
 }
 
 interface SingleProps extends BaseProps {
@@ -55,8 +61,13 @@ export function SearchableSelect(props: SingleProps | MultipleProps) {
     isLoading,
     unavailableMessage,
     testID,
+    openRequest,
   } = props;
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (openRequest) setOpen(true);
+  }, [openRequest]);
   const [term, setTerm] = useState('');
 
   const selected = props.multiple ? props.value : props.value ? [props.value] : [];

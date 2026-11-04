@@ -140,12 +140,13 @@ export function resolveTimezone(
       };
 
     case 'event':
-      // Deliberately null rather than a fallback while no event is chosen: an
-      // event-relative schedule with no event is *incomplete*, and validation
-      // refuses to save it. Substituting the device's zone here would let a
-      // half-built automation save and then fire at the wrong time.
+      // Null rather than a fallback while no single event is named. For an
+      // event-relative reminder that is complete: it covers every event the
+      // member is going to, and the server fires each one in that event's own
+      // zone. For a clock schedule it is incomplete, and validation refuses it.
+      // Substituting the device's zone here would make either wrong.
       if (!context.eventZoneId) {
-        return { mode, ianaId: null, label: 'The event’s own time', isExact: false };
+        return { mode, ianaId: null, label: 'Each event’s own time', isExact: false };
       }
       return {
         mode,
@@ -243,12 +244,14 @@ export function previewNextOccurrence(
   schedule: AutomationSchedule,
   now: Date
 ): OccurrencePreview {
-  const zoneId = schedule.timezone.ianaId;
-  if (!zoneId) return NOT_AVAILABLE('Choose an event first, so the time is in the event’s own timezone.');
-
+  // First, so a reminder for every event the member is going to explains itself
+  // rather than asking for an event it has no use for.
   if (schedule.frequency === 'eventRelative') {
     return NOT_AVAILABLE('This runs relative to the event, so the time depends on which event triggers it.');
   }
+
+  const zoneId = schedule.timezone.ianaId;
+  if (!zoneId) return NOT_AVAILABLE('Choose an event first, so the time is in the event’s own timezone.');
 
   if (schedule.frequency === 'custom') {
     // §41: a custom description is held for display and **never parsed**. A
@@ -547,8 +550,15 @@ export function validateSchedule(
     issues.push({ step: 'schedule', targetId: null, message, severity });
 
   // ── Timezone ──────────────────────────────────────────────────────────────
+  // An event-relative reminder in the event's own time needs no zone: the
+  // server never reads it, and fires each reminder in that event's `TimeZoneId`.
+  // The screen has no picker, so asking for one stopped the member saving at all
+  // (Android UAT, 3 Nov 2026).
+  const usesEachEventsZone =
+    schedule.frequency === 'eventRelative' && schedule.timezone.mode === 'event';
+
   if (!schedule.timezone.ianaId) {
-    add('Choose which timezone this schedule follows.');
+    if (!usesEachEventsZone) add('Choose which timezone this schedule follows.');
   } else if (!schedule.timezone.isExact) {
     add(
       `This will run in ${schedule.timezone.label}. Diaspora could not confirm the timezone you asked for, so check the time is what you expect.`,

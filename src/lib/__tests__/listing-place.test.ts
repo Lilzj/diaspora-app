@@ -24,6 +24,8 @@ import {
   distanceKmOf,
   formatDistance,
   placeOf,
+  providerPlaceLine,
+  pinPlaceOf,
 } from '@/lib/listing-place';
 
 /** `GET /jobs` — flat, no `location`, no distance. This is what crashed. */
@@ -129,6 +131,43 @@ describe('formatDistance', () => {
 
   it('is empty for null, so the caller omits the line', () => {
     expect(formatDistance(null)).toBe('');
+  });
+});
+
+// Android UAT, 3 Nov 2026: the Discover provider card printed the server's
+// distance as it came, "Grand Baie · 2.0667064493783025 km away".
+describe('providerPlaceLine', () => {
+  it('rounds the distance like every other card', () => {
+    expect(providerPlaceLine({ cityName: 'Grand Baie', distanceKm: 2.0667064493783025 }))
+      .toBe('📍 Grand Baie · 2.1km away');
+  });
+
+  it('prefers the area to the town', () => {
+    expect(providerPlaceLine({ areaName: 'Pereybère', cityName: 'Grand Baie', distanceKm: 0.42 }))
+      .toBe('📍 Pereybère · 420m away');
+  });
+
+  it('leaves the distance out when there is none', () => {
+    expect(providerPlaceLine({ cityName: 'Grand Baie', distanceKm: null })).toBe('📍 Grand Baie');
+    expect(providerPlaceLine({})).toBe('📍 Location not given');
+  });
+});
+
+// The same day: a map pin with no distance was given 0 km, which the pin card
+// reads as "In Your Neighborhood".
+describe('pinPlaceOf', () => {
+  it('keeps an unknown distance unknown', () => {
+    expect(pinPlaceOf({ latitude: -20.01, longitude: 57.58 }))
+      .toEqual({ latitude: -20.01, longitude: 57.58, distanceKm: null });
+  });
+
+  it('keeps a known distance', () => {
+    expect(pinPlaceOf({ latitude: -20.01, longitude: 57.58, distanceKm: 3.2 })?.distanceKm).toBe(3.2);
+  });
+
+  it('places nothing without both coordinates', () => {
+    expect(pinPlaceOf({ latitude: -20.01 })).toBeNull();
+    expect(pinPlaceOf(undefined)).toBeNull();
   });
 });
 

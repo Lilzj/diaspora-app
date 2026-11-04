@@ -5,6 +5,7 @@ import { useNotification } from '@/providers/notification-provider';
 import { UnifiedContentItem, ContentStatus } from '@/types/creator';
 import { useContentManagementStore } from '@/store/content-management';
 import { canPerform, performWorkspaceAction } from '@/lib/creator/workspace-actions';
+import { editorRouteFor } from '@/lib/creator/editor-route';
 import { router } from 'expo-router';
 
 /**
@@ -332,17 +333,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
                 // Opened an EMPTY create form for every kind of item until 14 Oct
                 // 2026: no create screen can load an existing one. Every kind now
                 // has its own edit screen, on the server's update routes.
-                const editor: Partial<Record<string, string>> = {
-                  Guide: `/guide/edit/${item.id}`,
-                  Housing: `/housing/edit/${item.id}`,
-                  Marketplace: `/marketplace/edit/${item.id}`,
-                  Provider: `/provider/edit/${item.id}`,
-                  Job: `/job/edit/${item.id}`,
-                  Event: `/community-life/event/edit/${item.id}`,
-                  Organization: `/community-life/org/edit/${item.id}`,
-                  Update: `/update/edit/${item.id}`,
-                };
-                const target = editor[item.contentType];
+                const target = editorRouteFor(item);
                 if (target) router.push(target as never);
               }}
               className="flex-row items-center py-3 border-b border-faint"
@@ -403,53 +394,25 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
               </View>
             </TouchableOpacity>
 
-            {/* Contextual Status Management */}
-            <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mt-4 mb-2">Contextual Status</Text>
-            
-            {item.contentType === 'Marketplace' && (
+            {/* Only the states a module saves. The menu also offered Available,
+                Reserved, Paused, Interviewing and Filled, each answering "Not
+                available" when pressed, and the workspace carried a banner
+                apologising for them (Android UAT, 3 Nov 2026). */}
+            {(item.contentType === 'Marketplace' && canPerform('markSold', 'Marketplace'))
+            || (item.contentType === 'Housing' && canPerform('markOccupied', 'Housing')) ? (
               <>
-                <TouchableOpacity onPress={() => handleStatusChange('Available')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-emerald-700">🟢 Mark as Available</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Reserved')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-amber-700">🟡 Mark as Reserved</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Sold')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-blue-700">🔵 Mark as Sold</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Paused')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-purple-700">⏸️ Pause Listing</Text>
-                </TouchableOpacity>
+                <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mt-4 mb-2">Status</Text>
+                {item.contentType === 'Marketplace' ? (
+                  <TouchableOpacity onPress={() => handleStatusChange('Sold')} className="py-2.5 flex-row items-center">
+                    <Text className="text-xs font-bold text-content-strong">🔵 Mark as Sold</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => handleStatusChange('Rented')} className="py-2.5 flex-row items-center">
+                    <Text className="text-xs font-bold text-content-strong">🏠 Mark as Rented</Text>
+                  </TouchableOpacity>
+                )}
               </>
-            )}
-
-            {item.contentType === 'Housing' && (
-              <>
-                <TouchableOpacity onPress={() => handleStatusChange('Available')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-emerald-700">🟢 Mark as Available</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Rented')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-blue-700">🏠 Mark as Rented</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Paused')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-purple-700">⏸️ Pause Listing</Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            {item.contentType === 'Job' && (
-              <>
-                <TouchableOpacity onPress={() => handleStatusChange('Open')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-emerald-700">🟢 Open Job Applications</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Interviewing')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-amber-700">🟡 Set to Interviewing</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Filled')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-blue-700">💼 Mark as Filled</Text>
-                </TouchableOpacity>
-              </>
-            )}
+            ) : null}
 
             <TouchableOpacity onPress={handleRenew} className="flex-row items-center py-3 border-t border-faint mt-2">
               <Text className="text-lg mr-3">🔄</Text>
