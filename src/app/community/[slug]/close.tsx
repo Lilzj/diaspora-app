@@ -407,7 +407,7 @@ export default function CommunityCloseScreen() {
               testID="community-close-submit"
               disabled={request.isPending}
               onPress={submit}
-              style={{ backgroundColor: tokens.color.error.default, opacity: request.isPending ? 0.6 : 1 }}
+              style={{ backgroundColor: tokens.color.error.solid, opacity: request.isPending ? 0.6 : 1 }}
               className="rounded-2xl px-4 py-3.5 mt-4 items-center"
             >
               {request.isPending ? (

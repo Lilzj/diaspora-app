@@ -557,7 +557,7 @@ export default function ListingDetailScreen() {
         {/* Pricing & Intent summary block */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <View className="flex-row justify-between items-center mb-2 flex-wrap gap-2">
-            <View className="bg-primary-50 border border-primary-200 px-3 py-1 rounded-lg">
+            <View className="bg-surface-muted border border-subtle px-3 py-1 rounded-lg">
               <Text className="text-xs font-bold text-primary-500 uppercase tracking-widest">{listing.intent}</Text>
               {/* A donated item says where it goes (16 Oct 2026). */}
               {(listing as { donationCauseTitle?: string | null }).donationCauseTitle ? (
@@ -576,7 +576,7 @@ export default function ListingDetailScreen() {
           {listing.swap ? (
             // A swap has no price to show. What the lister wants back is the
             // whole question a reader has, and any top-up is said in words.
-            <View className="mt-3 bg-primary-50 border border-primary-200 rounded-2xl px-4 py-3">
+            <View className="mt-3 bg-surface-muted border border-subtle rounded-2xl px-4 py-3">
               <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest mb-1">
                 Wants in exchange
               </Text>
@@ -598,7 +598,7 @@ export default function ListingDetailScreen() {
             </Text>
             )}
             {!listing.swap && listing.negotiable && (listing.price ?? 0) > 0 && (
-              <Text className="text-xs font-bold text-success-default bg-success-surface px-2 py-0.5 rounded border border-green-150">
+              <Text className="text-xs font-bold text-success-default bg-surface-muted px-2 py-0.5 rounded border border-green-150">
                 NEGOTIABLE
               </Text>
             )}
@@ -736,8 +736,8 @@ export default function ListingDetailScreen() {
               </View>
             </View>
             {listing.seller.isVerified && (
-              <View className="bg-[#E8F7F4] border border-[#A3EBDB] px-2 py-0.5 rounded">
-                <Text className="text-[8px] font-black text-[#0D7C66] uppercase">Verified</Text>
+              <View className="bg-surface-muted border border-subtle px-2 py-0.5 rounded">
+                <Text className="text-[8px] font-black text-success-default uppercase">Verified</Text>
               </View>
             )}
           </View>

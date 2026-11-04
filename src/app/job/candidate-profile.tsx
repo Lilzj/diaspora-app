@@ -204,7 +204,7 @@ export default function CandidateProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="px-5 pt-4">
-          <View className="p-4 rounded-xl bg-info-surface mb-5">
+          <View className="p-4 rounded-xl bg-surface-muted mb-5">
             <Text className="text-xs font-bold text-info-default leading-relaxed">
               You can apply for jobs without filling this in. Employers see your name and whether
               your Diaspora account is verified. Anything you add here helps you stand out.

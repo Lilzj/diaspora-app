@@ -5,6 +5,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import type { ReplyReference } from '@/types/conversation';
+import { useThemeTokens } from '@/design-system';
 
 interface Props {
   replyTo: ReplyReference;
@@ -13,9 +14,10 @@ interface Props {
 }
 
 export function ReplyBubble({ replyTo, isCurrentUser, onPress }: Props) {
+  const tokens = useThemeTokens();
   const barColor = isCurrentUser ? 'rgba(255,255,255,0.5)' : '#F59300';
   const bgColor = isCurrentUser ? 'rgba(255,255,255,0.15)' : 'rgba(245,147,0,0.08)';
-  const textColor = isCurrentUser ? 'rgba(255,255,255,0.9)' : '#272A35';
+  const textColor = isCurrentUser ? 'rgba(255,255,255,0.9)' : tokens.color.text.primary;
   const subColor = isCurrentUser ? 'rgba(255,255,255,0.7)' : '#6B7280';
 
   return (

@@ -11,21 +11,21 @@ export const ContentTypeChip: React.FC<ContentTypeChipProps> = ({ type, size = '
   const getTypeMeta = () => {
     switch (type) {
       case 'Guide':
-        return { icon: '📖', label: 'Guide', bg: 'bg-orange-50 border-orange-200', text: 'text-orange-700' };
+        return { icon: '📖', label: 'Guide', bg: 'bg-surface-muted border-subtle', text: 'text-warning-default' };
       case 'Update':
-        return { icon: '📢', label: 'Update', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' };
+        return { icon: '📢', label: 'Update', bg: 'bg-surface-muted border-subtle', text: 'text-success-default' };
       case 'Provider':
-        return { icon: '📍', label: 'Provider', bg: 'bg-indigo-50 border-indigo-200', text: 'text-indigo-700' };
+        return { icon: '📍', label: 'Provider', bg: 'bg-surface-muted border-subtle', text: 'text-info-default' };
       case 'Marketplace':
-        return { icon: '🛍️', label: 'Marketplace', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700' };
+        return { icon: '🛍️', label: 'Marketplace', bg: 'bg-surface-muted border-subtle', text: 'text-warning-default' };
       case 'Housing':
-        return { icon: '🏠', label: 'Housing', bg: 'bg-teal-50 border-teal-200', text: 'text-teal-700' };
+        return { icon: '🏠', label: 'Housing', bg: 'bg-surface-muted border-subtle', text: 'text-success-default' };
       case 'Job':
-        return { icon: '💼', label: 'Job', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700' };
+        return { icon: '💼', label: 'Job', bg: 'bg-surface-muted border-subtle', text: 'text-info-default' };
       case 'Event':
-        return { icon: '🎉', label: 'Event', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-700' };
+        return { icon: '🎉', label: 'Event', bg: 'bg-surface-muted border-subtle', text: 'text-info-default' };
       case 'Organization':
-        return { icon: '🏛️', label: 'Organization', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700' };
+        return { icon: '🏛️', label: 'Organization', bg: 'bg-surface-muted border-subtle', text: 'text-error-default' };
       default:
         return { icon: '📝', label: type, bg: 'bg-surface-muted border-subtle', text: 'text-content-secondary' };
     }

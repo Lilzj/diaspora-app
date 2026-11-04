@@ -47,7 +47,7 @@ export function ContributorHeader({ userId }: { userId: string }) {
   return (
     <View className="bg-surface-card px-6 py-5 border-b border-faint">
       <View className="flex-row items-center">
-        <View className="w-14 h-14 rounded-full bg-primary-50 items-center justify-center mr-4">
+        <View className="w-14 h-14 rounded-full bg-surface-muted items-center justify-center mr-4">
           <Text className="text-lg font-black text-primary-600">{initials || '?'}</Text>
         </View>
         <View className="flex-1">

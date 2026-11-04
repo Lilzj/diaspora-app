@@ -548,7 +548,7 @@ function ModeRow({
       onPress={onPress}
       activeOpacity={0.7}
       style={{
-        backgroundColor: isActive ? tokens.color.primary[50] : tokens.color.surface.card,
+        backgroundColor: isActive ? tokens.color.neutral[100] : tokens.color.surface.card,
         borderColor: isActive ? tokens.color.primary[400] : tokens.color.border.default,
       }}
       className="flex-row items-center rounded-2xl border p-3 mb-2"

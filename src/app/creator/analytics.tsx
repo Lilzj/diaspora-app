@@ -537,7 +537,7 @@ function ContentPerformanceCard({
 
         {item.isSponsored ? (
           <View
-            style={{ backgroundColor: tokens.color.primary[50] }}
+            style={{ backgroundColor: tokens.color.neutral[100] }}
             className="flex-row items-center rounded-full px-2 py-0.5"
           >
             <Ionicons name="megaphone" size={9} color={tokens.color.primary[600]} />

@@ -165,7 +165,7 @@ export default function SeriesDetailScreen() {
             {/* Series marker — the thing that makes §11's distinction visible */}
             <View className="flex-row items-center mb-2">
               <View
-                style={{ backgroundColor: tokens.color.secondary[50] }}
+                style={{ backgroundColor: tokens.color.neutral[100] }}
                 className="flex-row items-center rounded-full px-2.5 py-1"
               >
                 <Ionicons name="repeat" size={12} color={tokens.color.secondary[600]} />

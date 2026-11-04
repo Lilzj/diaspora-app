@@ -14,25 +14,25 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
       case 'Open':
       case 'Published':
       case 'Live':
-        return { bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500', icon: '🟢' };
+        return { bg: 'bg-surface-muted border-subtle', text: 'text-success-default', dot: 'bg-emerald-500', icon: '🟢' };
 
       case 'Reserved':
       case 'Interviewing':
       case 'Upcoming':
       case 'Pinned':
-        return { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700', dot: 'bg-amber-500', icon: '🟡' };
+        return { bg: 'bg-surface-muted border-subtle', text: 'text-warning-default', dot: 'bg-amber-500', icon: '🟡' };
 
       case 'Sold':
       case 'Rented':
       case 'Filled':
       case 'Completed':
-        return { bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700', dot: 'bg-blue-500', icon: '🔵' };
+        return { bg: 'bg-surface-muted border-subtle', text: 'text-info-default', dot: 'bg-blue-500', icon: '🔵' };
 
       case 'Paused':
       case 'Temporarily Closed':
       case 'Holiday Mode':
       case 'Unavailable':
-        return { bg: 'bg-purple-50 border-purple-200', text: 'text-purple-700', dot: 'bg-purple-500', icon: '⏸️' };
+        return { bg: 'bg-surface-muted border-subtle', text: 'text-info-default', dot: 'bg-purple-500', icon: '⏸️' };
 
       case 'Archived':
       case 'Closed':
@@ -43,7 +43,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
         return { bg: 'bg-surface-muted border-subtle', text: 'text-content-tertiary', dot: 'bg-content-faint', icon: '📦' };
 
       case 'Draft':
-        return { bg: 'bg-sky-50 border-sky-200', text: 'text-sky-700', dot: 'bg-sky-500', icon: '✏️' };
+        return { bg: 'bg-surface-muted border-subtle', text: 'text-info-default', dot: 'bg-sky-500', icon: '✏️' };
 
       default:
         return { bg: 'bg-surface-muted border-subtle', text: 'text-content-secondary', dot: 'bg-content-faint', icon: '⚪' };

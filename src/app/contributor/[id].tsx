@@ -217,12 +217,12 @@ export default function ContributorProfileScreen() {
                         {guide.readingTimeMinutes} min read
                       </Text>
                       {guide.isVerified && (
-                        <Text className="text-[9px] font-black text-success-default bg-success-surface px-1.5 py-0.5 rounded">
+                        <Text className="text-[9px] font-black text-success-default bg-surface-muted px-1.5 py-0.5 rounded">
                           VERIFIED
                         </Text>
                       )}
                       {guide.isFeatured && (
-                        <Text className="text-[9px] font-black text-primary-500 bg-primary-50 px-1.5 py-0.5 rounded">
+                        <Text className="text-[9px] font-black text-primary-500 bg-surface-muted px-1.5 py-0.5 rounded">
                           FEATURED
                         </Text>
                       )}

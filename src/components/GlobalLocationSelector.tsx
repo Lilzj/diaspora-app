@@ -223,7 +223,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                 </Text>
               </View>
             </View>
-            <View className="bg-success-surface px-2.5 py-1 rounded-full flex-row items-center">
+            <View className="bg-surface-muted px-2.5 py-1 rounded-full flex-row items-center">
               <View className="w-1.5 h-1.5 bg-success-default rounded-full mr-1.5" />
               <Text className="text-[10px] font-extrabold text-success-default uppercase">ACTIVE</Text>
             </View>
@@ -261,7 +261,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
           </View>
 
           {gpsError && (
-            <View className="bg-error-surface border border-red-200 p-3 rounded-xl mb-4 flex-row items-center">
+            <View className="bg-surface-muted border border-subtle p-3 rounded-xl mb-4 flex-row items-center">
               <Ionicons name="alert-circle" size={16} color="#DC2626" />
               <Text className="text-xs font-bold text-error-default ml-2 flex-1">{gpsError}</Text>
               {/* Android shows its permission dialog only so many times; after

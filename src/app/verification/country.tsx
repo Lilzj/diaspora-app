@@ -271,7 +271,7 @@ export default function CountryVerificationScreen() {
         <View className="flex-row justify-between items-center mb-1">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">Date of Arrival</Text>
           {calculatedYears !== null && (
-            <Text className="text-[10px] font-black text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded">
+            <Text className="text-[10px] font-black text-success-default bg-surface-muted px-2 py-0.5 rounded">
               {calculatedYears} years calculated
             </Text>
           )}

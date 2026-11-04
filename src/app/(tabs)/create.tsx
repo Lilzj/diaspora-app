@@ -215,7 +215,7 @@ export default function CreateSelectorScreen() {
 
             <View className="flex-1">
               <View className="flex-row items-center mb-1">
-                <Text className="text-[10px] font-extrabold text-primary-500 tracking-wider mr-2 bg-primary-50 px-2 py-0.5 rounded">
+                <Text className="text-[10px] font-extrabold text-primary-500 tracking-wider mr-2 bg-surface-muted px-2 py-0.5 rounded">
                   {opt.badge}
                 </Text>
               </View>

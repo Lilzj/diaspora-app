@@ -84,17 +84,17 @@ export function MarketplaceCard({ listing: given, variant = 'list' }: Marketplac
   const getIntentStyles = () => {
     switch (intent) {
       case 'Selling':
-        return { bg: 'bg-amber-100 border border-amber-200', text: 'text-amber-800', label: 'For Sale' };
+        return { bg: 'bg-surface-muted border border-subtle', text: 'text-warning-default', label: 'For Sale' };
       // One name for a buying request, whichever mapper produced it (16 Oct 2026).
       case 'Buying Request':
       case 'Wanted':
-        return { bg: 'bg-blue-100 border border-blue-200', text: 'text-blue-800', label: 'Buying' };
+        return { bg: 'bg-surface-muted border border-subtle', text: 'text-info-default', label: 'Buying' };
       case 'Giving Away':
-        return { bg: 'bg-green-100 border border-green-200', text: 'text-green-800', label: 'Free' };
+        return { bg: 'bg-surface-muted border border-subtle', text: 'text-success-default', label: 'Free' };
       case 'Exchange / Swap':
-        return { bg: 'bg-purple-100 border border-purple-200', text: 'text-purple-800', label: 'Swap' };
+        return { bg: 'bg-surface-muted border border-subtle', text: 'text-info-default', label: 'Swap' };
       case 'Donation':
-        return { bg: 'bg-teal-100 border border-teal-200', text: 'text-teal-800', label: 'Donation' };
+        return { bg: 'bg-surface-muted border border-subtle', text: 'text-success-default', label: 'Donation' };
       default:
         return { bg: 'bg-surface-muted border border-subtle', text: 'text-content-strong', label: intent };
     }
@@ -254,7 +254,7 @@ export function MarketplaceCard({ listing: given, variant = 'list' }: Marketplac
               {priceLine()}
             </Text>
             {!swap && negotiable && (price ?? 0) > 0 && (
-              <View className="bg-success-surface px-1 py-0.2 rounded border border-green-150">
+              <View className="bg-surface-muted px-1 py-0.2 rounded border border-green-150">
                 <Text className="text-[8px] font-bold text-success-default uppercase">Nego</Text>
               </View>
             )}

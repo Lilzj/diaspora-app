@@ -139,7 +139,7 @@ export default function MyApplicationsScreen() {
         {/* The error state is its own block rather than a replacement for the
             list: a failed refresh must not blank rows the member was reading. */}
         {error ? (
-          <View className="mx-4 mt-4 p-4 rounded-xl bg-error-surface border border-error-default">
+          <View className="mx-4 mt-4 p-4 rounded-xl bg-surface-muted border border-error-default">
             <Text className="text-sm font-bold text-error-default">{error}</Text>
             <Button label="Try again" variant="outline" size="sm" className="mt-3" onPress={refresh} />
           </View>
@@ -252,7 +252,7 @@ function ApplicationRow({
             is the server's fact about whether a human at the employer has
             opened it — not an inference from the status. */}
         {waiting ? (
-          <View className="px-2.5 py-1 rounded-full bg-warning-surface">
+          <View className="px-2.5 py-1 rounded-full bg-surface-muted">
             <Text className="text-[10px] font-black uppercase text-warning-default">
               Not opened · {application.daysWaiting}d
             </Text>

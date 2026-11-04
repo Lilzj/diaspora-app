@@ -54,6 +54,15 @@
     --color-faint: 243 244 248;               /* #F3F4F8  neutral-100 */
     --color-subtle: 229 231 239;              /* #E5E7EF  neutral-200 */
     --color-line: 200 204 216;                /* #C8CCD8  neutral-300 */
+
+    /* Status text. Coloured text, never a coloured fill: a pale fill does not
+       survive dark mode, and the title on it disappears. The 700 shades, which
+       keep small text near or above 4.5:1 on the muted surface (the 600 shades
+       gave amber 2.9:1). A fill behind white text uses `*-solid`. */
+    --color-success: 21 128 61;               /* #15803D  green-700 */
+    --color-warning: 180 83 9;                /* #B45309  amber-700 */
+    --color-error: 185 28 28;                 /* #B91C1C  red-700   */
+    --color-info: 29 78 216;                  /* #1D4ED8  blue-700  */
   }
 
   @media (prefers-color-scheme: dark) {
@@ -78,6 +87,12 @@
       --color-faint: 34 38 58;                /* #22263A */
       --color-subtle: 42 46 64;               /* #2A2E40 */
       --color-line: 42 46 64;                 /* #2A2E40 */
+
+      /* tailwind.config.js `darkDefault`, which nothing read before. */
+      --color-success: 74 222 128;            /* #4ADE80 */
+      --color-warning: 252 211 77;            /* #FCD34D */
+      --color-error: 248 113 113;             /* #F87171 */
+      --color-info: 96 165 250;               /* #60A5FA */
     }
   }
 }

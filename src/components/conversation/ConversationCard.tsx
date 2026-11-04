@@ -85,12 +85,12 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
     >
       {/* Avatar */}
       <View className="relative mr-3">
-        <View className="w-13 h-13 rounded-full bg-amber-100 border border-amber-200 items-center justify-center overflow-hidden"
+        <View className="w-13 h-13 rounded-full bg-surface-muted border border-subtle items-center justify-center overflow-hidden"
           style={{ width: 52, height: 52 }}>
           {other?.avatarUrl ? (
             <Image source={{ uri: other.avatarUrl }} style={{ width: 52, height: 52 }} contentFit="cover" />
           ) : (
-            <Text className="text-lg font-black text-amber-700">{initials}</Text>
+            <Text className="text-lg font-black text-warning-default">{initials}</Text>
           )}
         </View>
         {/* Online indicator */}
@@ -120,12 +120,12 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
               {conversationTitle(conversation)}
             </Text>
             {other?.trust.isVerified && (
-              <View className="ml-1.5 bg-teal-50 border border-teal-200 px-1 py-0.5 rounded">
-                <Text className="text-[8px] font-black text-teal-700">✓</Text>
+              <View className="ml-1.5 bg-surface-muted border border-subtle px-1 py-0.5 rounded">
+                <Text className="text-[8px] font-black text-success-default">✓</Text>
               </View>
             )}
           </View>
-          <Text className={`text-[11px] ml-2 ${hasUnread ? 'text-amber-600 font-bold' : 'text-content-faint font-semibold'}`}>
+          <Text className={`text-[11px] ml-2 ${hasUnread ? 'text-warning-default font-bold' : 'text-content-faint font-semibold'}`}>
             {lastMsg ? formatTime(lastMsg.createdAt) : ''}
           </Text>
         </View>

@@ -11,6 +11,7 @@ import { ReadReceipt } from './ReadReceipt';
 import { ReplyBubble } from './ReplyBubble';
 import { initialsOf } from '@/lib/conversation-identity';
 import type { Message } from '@/types/conversation';
+import { useThemeTokens } from '@/design-system';
 
 interface Props {
   message: Message;
@@ -33,6 +34,7 @@ function formatVoiceDuration(secs: number): string {
 
 export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLongPress, onReplyPress, onImagePress }: Props) {
   const [voicePlaying, setVoicePlaying] = useState(false);
+  const tokens = useThemeTokens();
 
   // System messages
   if (message.type === 'system') {
@@ -48,16 +50,18 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLon
   // Verification messages
   if (message.type === 'verification') {
     return (
-      <View className="mx-4 my-2 bg-teal-50 border border-teal-200 rounded-2xl p-4 items-center">
+      <View className="mx-4 my-2 bg-surface-muted border border-subtle rounded-2xl p-4 items-center">
         <Text className="text-2xl mb-1">✅</Text>
-        <Text className="text-sm font-bold text-teal-800 text-center">{message.text}</Text>
-        <Text className="text-[10px] text-teal-600 font-semibold mt-1">{formatMessageTime(message.createdAt)}</Text>
+        <Text className="text-sm font-bold text-success-default text-center">{message.text}</Text>
+        <Text className="text-[10px] text-success-default font-semibold mt-1">{formatMessageTime(message.createdAt)}</Text>
       </View>
     );
   }
 
-  const bgColor = isCurrentUser ? '#F59300' : '#F3F4F8';
-  const textColor = isCurrentUser ? '#FFFFFF' : '#272A35';
+  // A received bubble follows the scheme; it was a pale grey with dark text in
+  // dark mode too (Android UAT, 3 Nov 2026). The member's own stays brand amber.
+  const bgColor = isCurrentUser ? '#F59300' : tokens.color.neutral[100];
+  const textColor = isCurrentUser ? '#FFFFFF' : tokens.color.text.primary;
   const borderRadius = isCurrentUser
     ? { borderRadius: 20, borderBottomRightRadius: 4 }
     : { borderRadius: 20, borderBottomLeftRadius: 4 };
@@ -69,13 +73,13 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLon
     >
       {/* Avatar (other user) */}
       {!isCurrentUser && showAvatar && (
-        <View className="w-7 h-7 rounded-full bg-amber-100 border border-amber-200 items-center justify-center mr-2 mb-1 overflow-hidden">
+        <View className="w-7 h-7 rounded-full bg-surface-muted border border-subtle items-center justify-center mr-2 mb-1 overflow-hidden">
           {message.senderAvatarUrl ? (
             <Image source={{ uri: message.senderAvatarUrl }} style={{ width: 28, height: 28 }} contentFit="cover" />
           ) : (
             // No "?" about a real person. The screen names the author from the
             // conversation's participants; with no name there are no initials.
-            <Text className="text-[10px] font-black text-amber-700">{initialsOf(message.senderName)}</Text>
+            <Text className="text-[10px] font-black text-warning-default">{initialsOf(message.senderName)}</Text>
           )}
         </View>
       )}
@@ -154,7 +158,7 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLon
           {!message.isDeleted && message.type === 'document' && message.attachment?.type === 'document' && (
             <View className="px-4 py-3 flex-row items-center">
               <View className="w-10 h-10 rounded-xl items-center justify-center mr-3"
-                style={{ backgroundColor: isCurrentUser ? 'rgba(255,255,255,0.2)' : '#FFF8EB' }}>
+                style={{ backgroundColor: isCurrentUser ? 'rgba(255,255,255,0.2)' : tokens.color.surface.card }}>
                 <Text style={{ fontSize: 20 }}>📄</Text>
               </View>
               <View className="flex-1">

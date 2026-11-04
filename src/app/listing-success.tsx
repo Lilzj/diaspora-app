@@ -143,7 +143,7 @@ export default function ListingSuccessScreen() {
       <ScrollView className="flex-1 mt-6" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="items-center mb-6">
-          <View className="w-24 h-24 rounded-full bg-success-surface items-center justify-center mb-5 border border-success-default/15 shadow-md shadow-success-default/5">
+          <View className="w-24 h-24 rounded-full bg-surface-muted items-center justify-center mb-5 border border-success-default/15 shadow-md shadow-success-default/5">
             <Text className="text-5xl">{isPublished ? '🎉' : '📄'}</Text>
           </View>
 
@@ -159,7 +159,7 @@ export default function ListingSuccessScreen() {
           {/* Named individually, because "something went wrong" leaves a member
               with a listing they cannot see the gaps in. */}
           {incompleteSteps.length > 0 ? (
-            <View className="mt-4 bg-warning-surface border border-warning-default/20 rounded-2xl px-4 py-3 w-full">
+            <View className="mt-4 bg-surface-muted border border-warning-default/20 rounded-2xl px-4 py-3 w-full">
               <Text className="text-xs font-bold text-warning-default uppercase tracking-widest mb-1">
                 Not saved yet
               </Text>

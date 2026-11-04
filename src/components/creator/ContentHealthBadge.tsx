@@ -31,33 +31,33 @@ export const ContentHealthBadge: React.FC<ContentHealthBadgeProps> = ({
         return {
           icon: '🟢',
           label: 'Healthy',
-          bg: 'bg-emerald-50 border-emerald-200',
-          text: 'text-emerald-800',
-          badgeText: 'text-emerald-700 bg-emerald-100',
+          bg: 'bg-surface-muted border-subtle',
+          text: 'text-success-default',
+          badgeText: 'text-success-default bg-surface-muted',
         };
       case 'needs_attention':
         return {
           icon: '🟡',
           label: 'Needs Attention',
-          bg: 'bg-amber-50 border-amber-200',
-          text: 'text-amber-800',
-          badgeText: 'text-amber-700 bg-amber-100',
+          bg: 'bg-surface-muted border-subtle',
+          text: 'text-warning-default',
+          badgeText: 'text-warning-default bg-surface-muted',
         };
       case 'expiring_soon':
         return {
           icon: '🟠',
           label: 'Expiring Soon',
-          bg: 'bg-orange-50 border-orange-200',
-          text: 'text-orange-800',
-          badgeText: 'text-orange-700 bg-orange-100',
+          bg: 'bg-surface-muted border-subtle',
+          text: 'text-warning-default',
+          badgeText: 'text-warning-default bg-surface-muted',
         };
       case 'action_required':
         return {
           icon: '🔴',
           label: 'Action Required',
-          bg: 'bg-rose-50 border-rose-200',
-          text: 'text-rose-800',
-          badgeText: 'text-rose-700 bg-rose-100',
+          bg: 'bg-surface-muted border-subtle',
+          text: 'text-error-default',
+          badgeText: 'text-error-default bg-surface-muted',
         };
     }
   };

@@ -61,11 +61,11 @@ export function ConversationHeader({ conversation, onInfoPress, onMorePress }: P
 
       {/* Avatar + presence */}
       <TouchableOpacity onPress={onInfoPress} activeOpacity={0.8} className="relative mr-3">
-        <View className="w-10 h-10 rounded-full bg-amber-100 border border-amber-200 items-center justify-center overflow-hidden">
+        <View className="w-10 h-10 rounded-full bg-surface-muted border border-subtle items-center justify-center overflow-hidden">
           {other?.avatarUrl ? (
             <Image source={{ uri: other.avatarUrl }} style={{ width: 40, height: 40 }} contentFit="cover" />
           ) : (
-            <Text className="text-sm font-black text-amber-700">{initials}</Text>
+            <Text className="text-sm font-black text-warning-default">{initials}</Text>
           )}
         </View>
         {other && (
@@ -82,8 +82,8 @@ export function ConversationHeader({ conversation, onInfoPress, onMorePress }: P
             {title}
           </Text>
           {other?.trust.isVerified && (
-            <View className="bg-teal-50 border border-teal-200 rounded px-1 py-0.5">
-              <Text className="text-[8px] font-black text-teal-700">✓ VERIFIED</Text>
+            <View className="bg-surface-muted border border-subtle rounded px-1 py-0.5">
+              <Text className="text-[8px] font-black text-success-default">✓ VERIFIED</Text>
             </View>
           )}
         </View>

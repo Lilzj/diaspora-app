@@ -46,7 +46,7 @@ export function ContactChoice({
             accessibilityRole="radio"
             accessibilityState={{ selected: isSel }}
             className={`px-4 py-3.5 rounded-xl border mb-2.5 ${
-              isSel ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
+              isSel ? 'bg-surface-muted border-primary-500' : 'bg-surface-background border-subtle'
             }`}
           >
             <View className="flex-row items-center justify-between">

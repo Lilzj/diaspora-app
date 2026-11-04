@@ -26,7 +26,7 @@ const button = tv({
       primary: 'bg-primary-500 active:bg-primary-600',
       outline: 'bg-transparent border-[1.5px] border-line active:bg-surface-muted',
       ghost: 'bg-transparent active:opacity-70',
-      danger: 'bg-error-default active:opacity-90',
+      danger: 'bg-error-solid active:opacity-90',
       neutral: 'bg-surface-muted active:bg-subtle',
     },
     size: {

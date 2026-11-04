@@ -647,11 +647,11 @@ export default function OrgProfileScreen() {
             {/* `category` is not a field either; the response spells the
               * readable form `organizationTypeName` (and the key
               * `organizationTypeKey`). This chip was blank on every profile. */}
-            <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest bg-primary-50 px-2 py-0.5 rounded">
+            <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest bg-surface-muted px-2 py-0.5 rounded">
               {org.organizationTypeName ?? org.organizationTypeKey}
             </Text>
             {org.isVerified && (
-              <View className="bg-success-surface px-2.5 py-0.5 rounded flex-row items-center border border-[#A3EBDB]">
+              <View className="bg-surface-muted px-2.5 py-0.5 rounded flex-row items-center border border-subtle">
                 <Ionicons name="checkmark-circle" size={10} color="#10B981" className="mr-0.5" />
                 <Text className="text-[8px] font-black text-success-default uppercase">Verified Hub</Text>
               </View>
@@ -799,7 +799,7 @@ export default function OrgProfileScreen() {
               </Text>
             </View>
             {org.verificationBadge && (
-              <Text className="text-[10px] font-black text-success-default bg-success-surface px-2 py-0.5 rounded uppercase">
+              <Text className="text-[10px] font-black text-success-default bg-surface-muted px-2 py-0.5 rounded uppercase">
                 {org.verificationBadge}
               </Text>
             )}
@@ -987,7 +987,7 @@ export default function OrgProfileScreen() {
                 all, and `viewerMembershipStatus` says where the reader stands.
               */}
               {membership.isVisible ? (
-                <View className="bg-primary-50 border border-primary-200 rounded-3xl p-5 mt-2">
+                <View className="bg-surface-muted border border-subtle rounded-3xl p-5 mt-2">
                   <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">
                     {membership.heading}
                   </Text>
@@ -1018,7 +1018,7 @@ export default function OrgProfileScreen() {
                       accessibilityRole="button"
                       accessibilityLabel="See this organisation's membership plans"
                       onPress={() => router.push(`/community-life/membership/${id}` as never)}
-                      className="border border-primary-200 rounded-full py-3 items-center mt-3"
+                      className="border border-subtle rounded-full py-3 items-center mt-3"
                     >
                       <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest">
                         See membership plans
@@ -1034,7 +1034,7 @@ export default function OrgProfileScreen() {
                       disabled={isJoining}
                       onPress={membership.onPress}
                       className={`rounded-full py-3 items-center mt-4 ${
-                        membership.isLeaving ? 'border border-primary-200' : 'bg-primary-500'
+                        membership.isLeaving ? 'border border-subtle' : 'bg-primary-500'
                       }`}
                     >
                       {isJoining ? (

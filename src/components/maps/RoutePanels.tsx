@@ -254,7 +254,7 @@ export function RouteSummaryCard({
         route.transferCount ? `, ${route.transferCount} changes` : ''
       }${route.source === 'simulated' ? '. Estimated route.' : ''}`}
       style={{
-        backgroundColor: isSelected ? tokens.color.primary[50] : tokens.color.surface.card,
+        backgroundColor: isSelected ? tokens.color.neutral[100] : tokens.color.surface.card,
         borderColor: isSelected ? tokens.color.primary[500] : tokens.color.border.default,
       }}
       className="rounded-2xl border p-4 mb-2"

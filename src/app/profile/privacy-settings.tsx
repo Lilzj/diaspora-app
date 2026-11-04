@@ -87,7 +87,7 @@ export default function PrivacySettingsScreen() {
 
       <ScrollEndScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
 
-        <View className="bg-amber-50 border border-amber-200 rounded-3xl p-5 mb-5">
+        <View className="bg-surface-muted border border-subtle rounded-3xl p-5 mb-5">
           <Text className="text-sm font-black text-content-strong mb-2">
             Diaspora has no visibility controls yet
           </Text>

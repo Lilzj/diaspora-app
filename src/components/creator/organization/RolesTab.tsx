@@ -163,7 +163,7 @@ export function RolesTab({ organizationId, capabilities }: RolesTabProps) {
                   </Text>
                   {isMine ? (
                     <View
-                      style={{ backgroundColor: tokens.color.primary[50] }}
+                      style={{ backgroundColor: tokens.color.neutral[100] }}
                       className="rounded-md px-1.5 py-0.5 ml-2"
                     >
                       <Text

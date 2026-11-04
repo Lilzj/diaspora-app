@@ -195,7 +195,7 @@ export default function CommunityLifeScreen() {
           >
             <View className="flex-row items-center justify-between">
               <View
-                style={{ backgroundColor: tokens.color.primary[50] }}
+                style={{ backgroundColor: tokens.color.neutral[100] }}
                 className="w-9 h-9 rounded-xl items-center justify-center"
               >
                 <Ionicons name={destination.icon as never} size={17} color={tokens.color.primary[600]} />
@@ -473,7 +473,7 @@ export default function CommunityLifeScreen() {
                 >
                   <View className="flex-row items-center">
                     <View
-                      style={{ backgroundColor: tokens.color.secondary[50] }}
+                      style={{ backgroundColor: tokens.color.neutral[100] }}
                       className="w-10 h-10 rounded-xl items-center justify-center"
                     >
                       <Ionicons name="business-outline" size={18} color={tokens.color.secondary[500]} />

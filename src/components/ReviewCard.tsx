@@ -13,7 +13,7 @@ export function ReviewCard({ reviewerName, reviewerAvatar, rating, body, date }:
   return (
     <View className="bg-surface-card rounded-xl p-4 mb-3 border border-faint">
       <View className="flex-row items-center mb-3">
-        <View className="w-10 h-10 rounded-full bg-primary-100 items-center justify-center mr-3">
+        <View className="w-10 h-10 rounded-full bg-surface-muted items-center justify-center mr-3">
           {reviewerAvatar ? (
             <Image source={{ uri: reviewerAvatar }} className="w-10 h-10 rounded-full" />
           ) : (

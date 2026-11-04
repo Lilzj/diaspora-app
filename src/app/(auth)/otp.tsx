@@ -282,7 +282,7 @@ export default function OtpScreen() {
           <View className="w-full h-full bg-surface-card/95 items-center justify-center px-6">
             <Animated.View style={{ transform: [{ scale: successScale }] }}>
               <View className="items-center">
-                <View className="w-20 h-20 bg-success-surface border-4 border-success-default rounded-full items-center justify-center mb-5">
+                <View className="w-20 h-20 bg-surface-muted border-4 border-success-default rounded-full items-center justify-center mb-5">
                   <Text className="text-4xl text-success-default font-bold">✓</Text>
                 </View>
                 <Text className="text-2xl font-extrabold text-content-primary tracking-tight text-center">

@@ -431,7 +431,7 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
               accessibilityState={{ checked: isSelected, selected: isSelected }}
               style={{ minHeight: 44 }}
               className={`p-3 rounded-xl border flex-row items-center ${
-                isSelected ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
+                isSelected ? 'bg-surface-muted border-primary-500' : 'bg-surface-background border-subtle'
               }`}
             >
               <View

@@ -255,7 +255,7 @@ export function MembershipTierCard({
               </Text>
               {tier.isRecommended ? (
                 <View
-                  style={{ backgroundColor: tokens.color.primary[50] }}
+                  style={{ backgroundColor: tokens.color.neutral[100] }}
                   className="rounded-full px-2 py-0.5 ml-2"
                 >
                   <Text
@@ -376,7 +376,7 @@ export function SeriesCard({ series, onPress }: { series: EventSeries; onPress: 
         <View className="flex-1 ml-3">
           <View className="flex-row items-center mb-1">
             <View
-              style={{ backgroundColor: tokens.color.secondary[50] }}
+              style={{ backgroundColor: tokens.color.neutral[100] }}
               className="flex-row items-center rounded-full px-2 py-0.5"
             >
               <Ionicons name="repeat" size={10} color={tokens.color.secondary[600]} />
@@ -651,7 +651,7 @@ export function OpportunityCard({
     >
       <View className="flex-row">
         <View
-          style={{ backgroundColor: tokens.color.secondary[50] }}
+          style={{ backgroundColor: tokens.color.neutral[100] }}
           className="w-12 h-12 rounded-xl items-center justify-center"
         >
           <Ionicons name="hand-left-outline" size={20} color={tokens.color.secondary[500]} />

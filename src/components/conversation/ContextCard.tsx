@@ -74,7 +74,7 @@ export function ContextCard({ context }: Props) {
             contentFit="cover"
           />
         ) : (
-          <View className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 items-center justify-center">
+          <View className="w-12 h-12 rounded-xl bg-surface-muted border border-subtle items-center justify-center">
             <Text className="text-2xl">{getContextIcon(context.type)}</Text>
           </View>
         )}
@@ -97,7 +97,7 @@ export function ContextCard({ context }: Props) {
 
         {context.entityPrice && (
           <View className="ml-2">
-            <Text className="text-sm font-black text-amber-600">{context.entityPrice}</Text>
+            <Text className="text-sm font-black text-warning-default">{context.entityPrice}</Text>
           </View>
         )}
 
@@ -132,8 +132,8 @@ export function ContextCard({ context }: Props) {
 
           {/* Status note / insight */}
           {context.currentEntityStatusNote && (
-            <View className={`mx-3 mb-3 px-3 py-2.5 rounded-xl ${isNegativeStatus ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}`}>
-              <Text className={`text-[11px] font-semibold ${isNegativeStatus ? 'text-red-700' : 'text-amber-700'}`}>
+            <View className={`mx-3 mb-3 px-3 py-2.5 rounded-xl ${isNegativeStatus ? 'bg-surface-muted border border-subtle' : 'bg-surface-muted border border-subtle'}`}>
+              <Text className={`text-[11px] font-semibold ${isNegativeStatus ? 'text-error-default' : 'text-warning-default'}`}>
                 💡 {context.currentEntityStatusNote}
               </Text>
             </View>
@@ -145,7 +145,7 @@ export function ContextCard({ context }: Props) {
               onPress={() => router.push(context.deepLink as any)}
               className="mx-3 mb-3 flex-row items-center"
             >
-              <Text className="text-[11px] font-bold text-teal-600">View Original Listing →</Text>
+              <Text className="text-[11px] font-bold text-success-default">View Original Listing →</Text>
             </TouchableOpacity>
           )}
         </View>

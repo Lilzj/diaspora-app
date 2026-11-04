@@ -31,8 +31,8 @@ export default function ConversationRequestsScreen() {
       />
 
       {/* Info banner */}
-      <View className="bg-amber-50 border-b border-amber-100 px-4 py-3">
-        <Text className="text-xs font-semibold text-amber-700">
+      <View className="bg-surface-muted border-b border-subtle px-4 py-3">
+        <Text className="text-xs font-semibold text-warning-default">
           💡 Review requests before accepting. You won't receive messages until you accept.
         </Text>
       </View>

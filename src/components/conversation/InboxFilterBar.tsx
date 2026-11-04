@@ -69,9 +69,9 @@ export function InboxFilterBar({ activeFilter, onFilterChange, unreadCount = 0, 
                 borderRadius: 999,
                 paddingHorizontal: 14,
                 paddingVertical: 7,
-                backgroundColor: isActive ? '#F59300' : '#F3F4F8',
+                backgroundColor: isActive ? '#F59300' : tokens.color.neutral[100],
                 borderWidth: 1,
-                borderColor: isActive ? '#F59300' : '#E5E7EF',
+                borderColor: isActive ? '#F59300' : tokens.color.neutral[200],
               }}
             >
               <Text style={{ fontSize: 12, marginRight: 4, lineHeight: 16 }}>{filter.icon}</Text>
@@ -79,7 +79,7 @@ export function InboxFilterBar({ activeFilter, onFilterChange, unreadCount = 0, 
                 style={{
                   fontSize: 12,
                   fontWeight: '700',
-                  color: isActive ? '#FFFFFF' : '#4B5268',
+                  color: isActive ? '#FFFFFF' : tokens.color.text.secondary,
                   lineHeight: 16,
                 }}
               >

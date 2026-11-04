@@ -607,7 +607,7 @@ export function CountryValueEditor({
             return (
               <View
                 key={code}
-                style={{ backgroundColor: tokens.color.primary[50] }}
+                style={{ backgroundColor: tokens.color.neutral[100] }}
                 className="flex-row items-center rounded-full pl-2.5 pr-1.5 py-1.5 mr-1.5 mb-1.5"
               >
                 <Text className="text-[12px] mr-1">{country?.flag ?? ''}</Text>

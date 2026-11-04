@@ -27,7 +27,7 @@ export function MemberTrustLine({ userId }: { userId: string | null | undefined 
   return (
     <View
       className={`rounded-xl px-3 py-2 mt-3 border ${
-        low ? 'bg-warning-surface border-warning-default' : 'bg-surface-background border-faint'
+        low ? 'bg-surface-muted border-warning-default' : 'bg-surface-background border-faint'
       }`}
       accessible
       accessibilityLabel={`Trust level: ${label}.${since ? ` Member since ${since}.` : ''}`}

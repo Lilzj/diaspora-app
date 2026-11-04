@@ -1047,7 +1047,7 @@ export function LeaderboardRow({
         .join(' ')}
       style={{
         borderBottomColor: tokens.color.border.default,
-        backgroundColor: isViewer ? tokens.color.primary[50] : 'transparent',
+        backgroundColor: isViewer ? tokens.color.neutral[100] : 'transparent',
       }}
       className="flex-row items-center border-b py-3 px-3 rounded-xl"
     >

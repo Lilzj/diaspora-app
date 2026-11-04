@@ -65,7 +65,7 @@ export function MapPreviewCard({ center, pins, radiusKm }: MapPreviewCardProps) 
       }}
     >
       {/* Map Graphic Panel */}
-      <View className="relative bg-sky-50 h-[240px] items-center justify-center">
+      <View className="relative bg-surface-muted h-[240px] items-center justify-center">
         {/* SVG Styled Map Grid */}
         <Svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} style={{ position: 'absolute' }}>
           {/* Radial grid lines for radius indicator */}

@@ -1225,7 +1225,7 @@ export default function CreateHousingScreen() {
       >
         {/* Draft recover alert banner */}
         {draftBannerVisible && currentStep === 0 && (
-          <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
+          <View className="bg-surface-muted border-b border-subtle px-6 py-4 flex-row items-center justify-between">
             <View className="flex-1 mr-4">
               <Text className="text-sm font-bold text-content-strong">✏️ Unfinished Draft</Text>
               <Text className="text-xs text-content-tertiary mt-0.5">
@@ -1430,13 +1430,13 @@ export default function CreateHousingScreen() {
                               accessibilityState={{ selected }}
                               className={`px-4 py-2 rounded-2xl border ${
                                 selected
-                                  ? 'bg-primary-50 border-primary-300'
+                                  ? 'bg-surface-muted border-primary-300'
                                   : 'bg-surface-background border-subtle'
                               }`}
                             >
                               <Text
                                 className={`text-xs font-bold ${
-                                  selected ? 'text-primary-700' : 'text-content-secondary'
+                                  selected ? 'text-primary-600' : 'text-content-secondary'
                                 }`}
                               >
                                 {amenity.name}
@@ -1470,7 +1470,7 @@ export default function CreateHousingScreen() {
                         [opt.value]: !isSel
                       })}
                       className={`px-3 py-2 rounded-2xl flex-row items-center border ${
-                        isSel ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
+                        isSel ? 'bg-surface-muted border-primary-300' : 'bg-surface-background border-subtle'
                       }`}
                     >
                       <Text className={`text-xs font-bold ${isSel ? 'text-primary-600' : 'text-content-secondary'}`}>
@@ -1656,7 +1656,7 @@ export default function CreateHousingScreen() {
                     key={i}
                     onPress={() => perk.setter(!perk.value)}
                     className={`px-4 py-2.5 rounded-2xl flex-row items-center border ${
-                      perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
+                      perk.value ? 'bg-surface-muted border-primary-300' : 'bg-surface-background border-subtle'
                     }`}
                   >
                     <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-content-secondary'}`}>
@@ -1674,7 +1674,7 @@ export default function CreateHousingScreen() {
                     key={opt.key}
                     onPress={() => setLeaseDuration(opt.key)}
                     className={`px-4 py-3 rounded-xl border items-center ${
-                      leaseDuration === opt.key ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
+                      leaseDuration === opt.key ? 'bg-surface-muted border-primary-500' : 'bg-surface-background border-subtle'
                     }`}
                   >
                     <Text className="text-xs font-bold text-content-primary">{opt.label}</Text>
@@ -1700,7 +1700,7 @@ export default function CreateHousingScreen() {
                         }
                       }}
                       className={`px-3 py-2 rounded-xl border ${
-                        isPresetActive ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
+                        isPresetActive ? 'bg-surface-muted border-primary-500' : 'bg-surface-background border-subtle'
                       }`}
                     >
                       <Text className="text-xs font-bold text-content-primary">{opt}</Text>
@@ -1871,7 +1871,7 @@ export default function CreateHousingScreen() {
                 )}
 
                 {aiSuggestions ? (
-                  <Text className="text-xs font-medium text-content-secondary leading-relaxed bg-[#FFF8E1] border border-[#FFE082] p-3 rounded-xl">
+                  <Text className="text-xs font-medium text-content-secondary leading-relaxed bg-surface-muted border border-subtle p-3 rounded-xl">
                     {aiSuggestions}
                   </Text>
                 ) : (
@@ -1889,7 +1889,7 @@ export default function CreateHousingScreen() {
                   <Text className="text-xs font-semibold text-content-muted">Image Cover Placeholder</Text>
                 </View>
                 <View className="p-4">
-                  <View className="bg-primary-50 px-2 py-0.5 rounded border border-primary-100 mb-2 self-start">
+                  <View className="bg-surface-muted px-2 py-0.5 rounded border border-subtle mb-2 self-start">
                     <Text className="text-[9px] font-bold text-primary-600 uppercase">{listingType} · {propertyTypeName ?? 'Property type not chosen'}</Text>
                   </View>
                   <Text className="text-base font-black text-content-primary leading-snug">{title || 'Opportunity Title'}</Text>

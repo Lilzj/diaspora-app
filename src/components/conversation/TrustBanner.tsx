@@ -26,7 +26,7 @@ function StarRating({ rating }: { rating: number }) {
 
 export function TrustBanner({ trust, displayName }: Props) {
   return (
-    <View className="mx-4 mb-3 bg-teal-50 border border-teal-200 rounded-2xl p-4">
+    <View className="mx-4 mb-3 bg-surface-muted border border-subtle rounded-2xl p-4">
       {/* Header Row */}
       <View className="flex-row items-center mb-3">
         {trust.isVerified && (
@@ -35,7 +35,7 @@ export function TrustBanner({ trust, displayName }: Props) {
           </View>
         )}
         {trust.reputationLevel && (
-          <Text className="text-xs text-teal-700 font-semibold">{trust.reputationLevel}</Text>
+          <Text className="text-xs text-success-default font-semibold">{trust.reputationLevel}</Text>
         )}
       </View>
 
@@ -76,7 +76,7 @@ export function TrustBanner({ trust, displayName }: Props) {
       {trust.countryVerifications && trust.countryVerifications.length > 0 && (
         <View className="flex-row flex-wrap mt-2 gap-1">
           {trust.countryVerifications.filter((v) => v.isVerified).map((v) => (
-            <View key={v.countryCode} className="flex-row items-center bg-surface-card border border-teal-100 rounded-full px-2 py-0.5">
+            <View key={v.countryCode} className="flex-row items-center bg-surface-card border border-subtle rounded-full px-2 py-0.5">
               <Text className="text-xs mr-1">{v.flag}</Text>
               <Text className="text-[10px] font-semibold text-content-secondary">{v.countryName}</Text>
             </View>

@@ -38,7 +38,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
         }
       }}
       className={`bg-surface-card border rounded-3xl p-4 mb-3 shadow-sm ${
-        isSelected ? 'border-primary-500 bg-primary-50/10' : 'border-subtle'
+        isSelected ? 'border-primary-500 bg-surface-muted' : 'border-subtle'
       }`}
     >
       <View className="flex-row items-start">

@@ -236,7 +236,7 @@ export default function OrganizationDashboardScreen() {
                     >
                       <View className="flex-row items-center">
                         <View
-                          style={{ backgroundColor: tokens.color.primary[50] }}
+                          style={{ backgroundColor: tokens.color.neutral[100] }}
                           className="w-10 h-10 rounded-xl items-center justify-center"
                         >
                           <Ionicons

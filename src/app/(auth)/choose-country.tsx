@@ -183,7 +183,7 @@ export default function ChooseCountryScreen() {
           <TouchableOpacity
             onPress={() => setSelected(item.code)}
             className={`flex-row items-center py-4 px-4 rounded-xl mb-2 ${
-              selected === item.code ? 'bg-primary-50 border-2 border-primary-500' : 'bg-surface-background'
+              selected === item.code ? 'bg-surface-muted border-2 border-primary-500' : 'bg-surface-background'
             }`}
           >
             <Text className="text-2xl mr-3">{item.flag}</Text>

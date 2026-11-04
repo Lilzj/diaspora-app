@@ -77,7 +77,7 @@ export function PromotionPreview({ target, option, subjectTitle, startsAt }: Pro
       >
         <View
           style={{
-            backgroundColor: tokens.color.primary[50],
+            backgroundColor: tokens.color.neutral[100],
             borderColor: tokens.color.primary[500],
           }}
           className="rounded-lg border p-2.5 mb-2"

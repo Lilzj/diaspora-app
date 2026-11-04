@@ -16,8 +16,8 @@ import { useOfficialNotices } from '@/hooks/country-intelligence';
 import type { OfficialNoticeCardResponse } from '@/types/country-intelligence';
 
 const SEVERITY_TONE: Record<string, string> = {
-  Critical: 'bg-error-surface text-error-default',
-  High: 'bg-warning-surface text-warning-default',
+  Critical: 'bg-surface-muted text-error-default',
+  High: 'bg-surface-muted text-warning-default',
 };
 
 export default function NoticesScreen() {

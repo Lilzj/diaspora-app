@@ -272,7 +272,7 @@ export default function ResidenceScreen() {
               away for six months by saying no.
             */}
             {hinted !== null && (
-              <View className="bg-primary-50 border border-primary-200 rounded-3xl p-5">
+              <View className="bg-surface-muted border border-subtle rounded-3xl p-5">
                 <Text className="text-sm font-extrabold text-content-primary">
                   Living in {allCountries.find((country) => country.code === hinted)?.name ?? hinted} now?
                 </Text>
@@ -390,7 +390,7 @@ export default function ResidenceScreen() {
                           onPress={() => setLeavingCode(residence.countryCode)}
                           className={`px-3 py-2 rounded-xl border ${
                             leavingCode === residence.countryCode
-                              ? 'border-primary-500 bg-primary-50'
+                              ? 'border-primary-500 bg-surface-muted'
                               : 'border-subtle'
                           }`}
                           accessibilityRole="button"
@@ -427,7 +427,7 @@ export default function ResidenceScreen() {
                         }}
                         className={`px-3 py-2 rounded-xl border ${
                           arrivingCode === country.code
-                            ? 'border-primary-500 bg-primary-50'
+                            ? 'border-primary-500 bg-surface-muted'
                             : 'border-subtle'
                         }`}
                         accessibilityRole="button"

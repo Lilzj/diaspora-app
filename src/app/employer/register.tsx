@@ -179,7 +179,7 @@ export default function RegisterEmployerScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="px-5 pt-4">
-          <View className="p-4 rounded-xl bg-info-surface mb-5">
+          <View className="p-4 rounded-xl bg-surface-muted mb-5">
             <Text className="text-xs font-bold text-info-default leading-relaxed">
               You will be this employer&apos;s first owner. The platform has no way to add a second
               person to the team yet, so this account is the only one that will be able to post
@@ -215,7 +215,7 @@ export default function RegisterEmployerScreen() {
 
           {/* No Country field since 14 Oct 2026: the member's residence. */}
           {hasNoResidence ? (
-            <View className="p-4 rounded-xl bg-warning-surface mb-5">
+            <View className="p-4 rounded-xl bg-surface-muted mb-5">
               <Text className="text-xs font-bold text-warning-default leading-relaxed">
                 {EMPLOYER_RESIDENCE_MISSING}
               </Text>

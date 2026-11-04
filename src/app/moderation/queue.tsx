@@ -164,7 +164,7 @@ export default function ModerationQueueScreen() {
         ) : (
           <>
             {deciding.error ? (
-              <View className="bg-error-surface border border-error-default/30 rounded-2xl px-4 py-3 mb-4">
+              <View className="bg-surface-muted border border-error-default/30 rounded-2xl px-4 py-3 mb-4">
                 <Text className="text-xs font-bold text-error-default">{deciding.error}</Text>
               </View>
             ) : null}
@@ -197,7 +197,7 @@ export default function ModerationQueueScreen() {
                       </Text>
                     </View>
 
-                    <View className="bg-error-surface px-2 py-1 rounded-lg">
+                    <View className="bg-surface-muted px-2 py-1 rounded-lg">
                       <Text className="text-[10px] font-black text-error-default">
                         {item.reportCount} {item.reportCount === 1 ? 'report' : 'reports'}
                       </Text>
@@ -235,7 +235,7 @@ export default function ModerationQueueScreen() {
                         onPress={() => void decide(item, action)}
                         className={`flex-1 py-2.5 rounded-xl items-center mr-2 border ${
                           tone === 'danger'
-                            ? 'bg-error-default border-error-default'
+                            ? 'bg-error-solid border-error-solid'
                             : tone === 'primary'
                               ? 'bg-primary-500 border-primary-500'
                               : 'bg-surface-card border-subtle'

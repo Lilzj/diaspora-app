@@ -86,7 +86,7 @@ export default function ProfileScreen() {
               {user?.fullName ?? 'Your profile'}
             </Text>
             {isVerifiedMember ? (
-              <Text className="text-xs bg-[#E6F4EA] text-success-default px-2 py-0.5 rounded font-extrabold">
+              <Text className="text-xs bg-surface-muted text-success-default px-2 py-0.5 rounded font-extrabold">
                 ✓ VERIFIED
               </Text>
             ) : null}
@@ -172,7 +172,7 @@ export default function ProfileScreen() {
               reachable without one. */}
           <TouchableOpacity
             onPress={() => router.push('/wallet')}
-            className="w-full bg-secondary-50 border border-secondary-500/20 rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
+            className="w-full bg-surface-muted border border-secondary-500/20 rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
             accessibilityRole="button"
             accessibilityLabel="Wallet. See your balance, transactions and payments."
           >
@@ -192,7 +192,7 @@ export default function ProfileScreen() {
               scattering promotion, plan and billing rows through the profile. */}
           <TouchableOpacity
             onPress={() => router.push('/monetization')}
-            className="w-full bg-primary-50 border border-primary-500/20 rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
+            className="w-full bg-surface-muted border border-primary-500/20 rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
             accessibilityRole="button"
             accessibilityLabel="Grow. Promotions, plans, advertising and billing for what you sell on Diaspora."
           >
@@ -238,7 +238,7 @@ export default function ProfileScreen() {
               wanted. */}
           <TouchableOpacity
             onPress={() => router.push('/creator')}
-            className="w-full bg-secondary-50 border border-secondary-500/20 rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
+            className="w-full bg-surface-muted border border-secondary-500/20 rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
             accessibilityRole="button"
             accessibilityLabel="Creator Studio. Your standing, everything you have published, your organisations and your creator programme."
           >
@@ -257,7 +257,7 @@ export default function ProfileScreen() {
           {/* Trust & Safety Center Card */}
           <TouchableOpacity
             onPress={() => router.push('/profile/trust-center')}
-            className="w-full bg-success-surface border border-[#CEEAD6] rounded-3xl p-4 flex-row items-center justify-between mb-3"
+            className="w-full bg-surface-muted border border-subtle rounded-3xl p-4 flex-row items-center justify-between mb-3"
           >
             <View className="flex-row items-center">
               <Text className="text-2xl mr-3">🛡️</Text>
@@ -385,7 +385,7 @@ export default function ProfileScreen() {
           {/* Explore Diaspora Hub Card */}
           <TouchableOpacity
             onPress={() => router.push('/explore')}
-            className="w-full bg-info-surface border border-info-default/20 rounded-3xl p-4 flex-row items-center justify-between mb-4"
+            className="w-full bg-surface-muted border border-info-default/20 rounded-3xl p-4 flex-row items-center justify-between mb-4"
           >
             <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">🚀</Text>

@@ -89,11 +89,11 @@ export const ArchiveCard: React.FC<ArchiveCardProps> = ({ item }) => {
         {canPerform('restore', item.contentType) ? (
           <TouchableOpacity
             onPress={handleRestore}
-            className="bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-xl"
+            className="bg-surface-muted border border-subtle px-3.5 py-1.5 rounded-xl"
             accessibilityRole="button"
             accessibilityLabel={`Restore ${item.title}`}
           >
-            <Text className="text-xs font-black text-emerald-700">↺ Restore Content</Text>
+            <Text className="text-xs font-black text-success-default">↺ Restore Content</Text>
           </TouchableOpacity>
         ) : (
           <Text className="text-[10px] font-semibold text-content-faint">
@@ -104,13 +104,13 @@ export const ArchiveCard: React.FC<ArchiveCardProps> = ({ item }) => {
         {canPerform('delete', item.contentType) ? (
           <TouchableOpacity
             onPress={handleDeletePermanent}
-            className="bg-rose-50 border border-rose-200 px-3.5 py-1.5 rounded-xl"
+            className="bg-surface-muted border border-subtle px-3.5 py-1.5 rounded-xl"
             accessibilityRole="button"
             accessibilityLabel={`Delete ${item.title} permanently`}
           >
             {/* "Delete Permanently" came off when nothing was deleted. The route
                 is wired, so the label says what it does again. */}
-            <Text className="text-xs font-black text-rose-700">🗑️ Delete permanently</Text>
+            <Text className="text-xs font-black text-error-default">🗑️ Delete permanently</Text>
           </TouchableOpacity>
         ) : null}
       </View>

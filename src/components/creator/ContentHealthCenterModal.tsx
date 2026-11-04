@@ -109,24 +109,24 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
             {/* Health Status Breakdown */}
             <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3">Status Categories</Text>
             <View className="flex-row flex-wrap gap-2.5 mb-6">
-              <View className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl flex-1 min-w-[45%]">
-                <Text className="text-sm font-black text-emerald-800">🟢 Healthy ({stats.healthy})</Text>
-                <Text className="text-[10px] text-emerald-700 mt-0.5">Active & receiving engagement</Text>
+              <View className="bg-surface-muted border border-subtle p-3 rounded-2xl flex-1 min-w-[45%]">
+                <Text className="text-sm font-black text-success-default">🟢 Healthy ({stats.healthy})</Text>
+                <Text className="text-[10px] text-content-muted mt-0.5">Active & receiving engagement</Text>
               </View>
 
-              <View className="bg-amber-50 border border-amber-200 p-3 rounded-2xl flex-1 min-w-[45%]">
-                <Text className="text-sm font-black text-amber-800">🟡 Needs Attention ({stats.needsAttention})</Text>
-                <Text className="text-[10px] text-amber-700 mt-0.5">No messages in last 10 days</Text>
+              <View className="bg-surface-muted border border-subtle p-3 rounded-2xl flex-1 min-w-[45%]">
+                <Text className="text-sm font-black text-warning-default">🟡 Needs Attention ({stats.needsAttention})</Text>
+                <Text className="text-[10px] text-content-muted mt-0.5">No messages in last 10 days</Text>
               </View>
 
-              <View className="bg-orange-50 border border-orange-200 p-3 rounded-2xl flex-1 min-w-[45%]">
-                <Text className="text-sm font-black text-orange-800">🟠 Expiring Soon ({stats.expiringSoon})</Text>
-                <Text className="text-[10px] text-orange-700 mt-0.5">Event or listing nearing expiry</Text>
+              <View className="bg-surface-muted border border-subtle p-3 rounded-2xl flex-1 min-w-[45%]">
+                <Text className="text-sm font-black text-warning-default">🟠 Expiring Soon ({stats.expiringSoon})</Text>
+                <Text className="text-[10px] text-content-muted mt-0.5">Event or listing nearing expiry</Text>
               </View>
 
-              <View className="bg-rose-50 border border-rose-200 p-3 rounded-2xl flex-1 min-w-[45%]">
-                <Text className="text-sm font-black text-rose-800">🔴 Action Required ({stats.actionRequired})</Text>
-                <Text className="text-[10px] text-rose-700 mt-0.5">User report / status conflict</Text>
+              <View className="bg-surface-muted border border-subtle p-3 rounded-2xl flex-1 min-w-[45%]">
+                <Text className="text-sm font-black text-error-default">🔴 Action Required ({stats.actionRequired})</Text>
+                <Text className="text-[10px] text-content-muted mt-0.5">User report / status conflict</Text>
               </View>
             </View>
 
