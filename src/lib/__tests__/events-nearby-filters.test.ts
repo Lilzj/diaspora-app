@@ -71,4 +71,14 @@ describe('the events screen', () => {
     expect(screen).toContain("'nearest'");
     expect(screen).toContain('eventDistanceLabel(');
   });
+
+  // Seen on the emulator, 4 Nov 2026: with no location, tapping Nearby did
+  // nothing. `TouchableOpacity` takes `accessibilityState.disabled` as its
+  // `disabled`, so the chip marked that way never ran the branch that says why.
+  it('lets Nearby without a location answer a tap, so it can say why', () => {
+    const chip = screen.slice(screen.indexOf('events-scope-'), screen.indexOf('{chip.label}'));
+    expect(chip).toContain('Nearby needs your location');
+    expect(chip).not.toMatch(/accessibilityState=\{\{[^}]*disabled/);
+    expect(chip).not.toMatch(/\bdisabled=\{(?!false\})/);
+  });
 });

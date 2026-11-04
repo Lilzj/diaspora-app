@@ -762,7 +762,10 @@ export default function CommunityLifeScreen() {
                           if (chip.key !== 'nearby' && eventSortBy === 'nearest') setEventSortBy('date');
                         }}
                         accessibilityRole="button"
-                        accessibilityState={{ selected: isSelected, disabled: !chip.available }}
+                        // Not `disabled`: TouchableOpacity takes that as its own
+                        // `disabled`, and the tap that says why would never run.
+                        accessibilityState={{ selected: isSelected }}
+                        accessibilityHint={chip.available ? undefined : 'Needs your location'}
                         className={`px-4 py-2 rounded-full mr-2 border ${
                           isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'
                         }`}
