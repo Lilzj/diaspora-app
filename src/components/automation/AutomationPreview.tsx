@@ -39,7 +39,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { SIMULATION_HEADING } from '@/lib/automation/simulation';
 import type { AutomationPreview, AutomationSimulation } from '@/types/automation';
-import { DependencyList, SimulationMarker, SupportBadge } from './AutomationNotices';
+import { DependencyList, SimulationMarker, SupportBadge, type DependencyListProps } from './AutomationNotices';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // SECTION — the WHEN / IF / THEN blocks
@@ -257,6 +257,8 @@ export function AudienceCard({ audience }: AudienceCardProps) {
 export interface AutomationPreviewCardProps {
   preview: AutomationPreview;
   onNavigate?: (route: string) => void;
+  /** A dependency's in-place action, such as switching presence on. */
+  onAction?: DependencyListProps['onAction'];
   /** Hides the audience block for a self-only automation. */
   showAudience?: boolean;
 }
@@ -264,6 +266,7 @@ export interface AutomationPreviewCardProps {
 export function AutomationPreviewCard({
   preview,
   onNavigate,
+  onAction,
   showAudience = true,
 }: AutomationPreviewCardProps) {
   const { tokens } = useTheme();
@@ -358,7 +361,7 @@ export function AutomationPreviewCard({
           >
             What this needs
           </Text>
-          <DependencyList dependencies={preview.dependencies} onNavigate={onNavigate} />
+          <DependencyList dependencies={preview.dependencies} onNavigate={onNavigate} onAction={onAction} />
         </View>
       ) : null}
     </View>

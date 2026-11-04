@@ -884,6 +884,12 @@ export interface AutomationDependency {
   /** What tapping this does, when there is something to do. */
   actionLabel: string | null;
   actionRoute: string | null;
+  /**
+   * Something the screen does in place rather than a route, when there is no
+   * screen for it: `presence.switchOn` asks for location and switches presence
+   * on (since 4 Nov 2026, when its settings screen went).
+   */
+  actionKey?: 'presence.switchOn' | null;
   gapId: string | null;
   /** Whether this alone prevents activation. A gap does not; a permission does. */
   blocksActivation: boolean;

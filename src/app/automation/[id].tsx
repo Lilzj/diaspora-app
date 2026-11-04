@@ -41,6 +41,7 @@ import {
   useAutomationSimulation,
   usePersonalScope,
 } from '@/hooks/automation';
+import { useSwitchPresenceOn } from '@/hooks/presence';
 import {
   AutomationErrorNotice,
   AutomationPreviewCard,
@@ -420,6 +421,7 @@ export default function AutomationDetailScreen() {
  */
 function PreviewSection({ draft, scope }: { draft: AutomationDraft; scope: AutomationScope }) {
   const preview = useAutomationPreview(draft, scope);
+  const switchPresenceOn = useSwitchPresenceOn();
   const reachesOthers = anyReachesOtherPeople(draft.actions.map((action) => action.key));
 
   return (
@@ -427,6 +429,9 @@ function PreviewSection({ draft, scope }: { draft: AutomationDraft; scope: Autom
       <AutomationPreviewCard
         preview={preview}
         onNavigate={(route) => router.push(route as never)}
+        onAction={(key) => {
+          if (key === 'presence.switchOn') void switchPresenceOn();
+        }}
         showAudience={reachesOthers}
       />
     </View>

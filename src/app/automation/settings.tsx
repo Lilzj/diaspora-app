@@ -187,10 +187,11 @@ export default function AutomationSettingsScreen() {
             {/* ── §15. Location — opt-in, foreground only (21 Oct 2026). ─── */}
             <SectionHeading title="Location" />
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Location while the app is open"
-              onPress={() => router.push('/settings/presence' as never)}
+            {/* A status, not a switch: presence is on while an arrival
+                automation uses it, and goes off with the last one (UAT,
+                3 Nov 2026, item 5, which removed its settings screen). */}
+            <View
+              accessible
               style={{
                 backgroundColor: tokens.color.surface.card,
                 borderColor: tokens.color.surface.border,
@@ -204,12 +205,9 @@ export default function AutomationSettingsScreen() {
                 style={{ color: tokens.color.text.secondary }}
                 className="text-[11px] font-semibold mt-1"
               >
-                “I arrive in an area I chose” needs this. It is off unless you switch it on, is read only while Diaspora is open, is coarse, and keeps no history. Moving country needs nothing: it uses the country you set.
+                Only “I arrive in an area I chose” uses it. Saving one switches it on, and deleting your last one switches it off. It is read only while Diaspora is open, rounded to an area, and no history is kept. Moving country needs nothing: it uses the country you set.
               </Text>
-              <Text style={{ color: tokens.color.primary[600] }} className="text-xs font-black mt-2">
-                Change it →
-              </Text>
-            </Pressable>
+            </View>
 
             {/* ── §57. Which build this is. ──────────────────────────────── */}
             <SectionHeading title="This build" />

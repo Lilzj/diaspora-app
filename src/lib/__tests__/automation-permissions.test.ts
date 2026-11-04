@@ -375,7 +375,9 @@ describe('§15 · location authority is separately granted, and not held', () =>
     const presence = off.find((entry) => entry.label === 'Location while the app is open');
     expect(presence).toBeDefined();
     expect(presence!.state).toBe('missing');
-    expect(presence!.actionRoute).toBe('/settings/presence');
+    // Switched on in place since 4 Nov 2026: the setting has no screen.
+    expect(presence!.actionRoute).toBeNull();
+    expect(presence!.actionKey).toBe('presence.switchOn');
     // The rule still saves: it is ready the moment the setting is on.
     expect(presence!.blocksActivation).toBe(false);
 

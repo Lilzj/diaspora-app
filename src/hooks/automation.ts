@@ -57,7 +57,8 @@ import { useConnectivityStore } from '@/lib/connectivity';
 import { useCommunityContextStore } from '@/store/community-context';
 import { useAutomationScopeStore } from '@/store/automation-scope';
 import { useMyOrganizations } from '@/hooks/community-life';
-import { usePresence } from '@/hooks/presence';
+import { presencePorts, usePresence } from '@/hooks/presence';
+import { releasePresenceIfUnused } from '@/lib/automation/arrival-presence';
 import { acquireIdempotencyKey, releaseIdempotencyKey } from '@/lib/idempotency';
 import { automationKeys, scopeTokenFor } from '@/lib/automation/query-keys';
 import { servedOwnersLookup, servedSupportLookup } from '@/lib/automation/served-support';
@@ -640,7 +641,20 @@ export function useAutomationMutations(scope: AutomationScope) {
       trackAutomationEvent('automation.deleted');
       return result;
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      // Presence is on while an arrival automation uses it, so the last one's
+      // deletion switches it off (UAT, 3 Nov 2026, item 5). A list it cannot
+      // read in full leaves it on.
+      void releasePresenceIfUnused(presencePorts(queryClient), async () => {
+        const page = await automationApi.listAutomations(
+          scope,
+          { ...DEFAULT_AUTOMATION_FILTERS, domain: 'location' },
+          null
+        );
+        return { items: page.items, hasMore: page.nextCursor !== null };
+      });
+    },
   });
 
   return {
