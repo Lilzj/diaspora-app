@@ -56,8 +56,15 @@ export async function updateGrant(grantId: string, request: SaveGrantRequest): P
   return grantOf((await apiClient.put(`${ROOT}/${grantId}`, details)).data);
 }
 
+/** One literal path per action, so the contract check can read every route this calls. */
 export async function setGrantWindow(grantId: string, action: GrantWindowAction): Promise<AdminGrant> {
-  return grantOf((await apiClient.post(`${ROOT}/${grantId}/${action}`)).data);
+  const response =
+    action === 'publish'
+      ? await apiClient.post(`${ROOT}/${grantId}/publish`)
+      : action === 'unpublish'
+        ? await apiClient.post(`${ROOT}/${grantId}/unpublish`)
+        : await apiClient.post(`${ROOT}/${grantId}/close`);
+  return grantOf(response.data);
 }
 
 /** True when the server refused because the caller may not manage grants. */
