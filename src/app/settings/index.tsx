@@ -23,6 +23,7 @@ import { useTheme } from '@/design-system';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { LanguageSheet } from '@/components/settings/LanguageSheet';
 import { mockLanguages } from '@/mocks/data';
+import { useAuthStore } from '@/store/auth';
 
 export default function SettingsScreen() {
   const { tokens, preference, colorScheme } = useTheme();
@@ -31,6 +32,13 @@ export default function SettingsScreen() {
   const [isLanguageOpen, setLanguageOpen] = useState(false);
   const [language, setLanguage] = useState('en');
   const languageName = mockLanguages.find((l) => l.code === language)?.name ?? 'English';
+
+  // The platform's own grants are posted by its administrators (UAT, 3 Nov
+  // 2026, item 7). Shown only where the server granted the permission; the
+  // screen behind it asks the server again.
+  const canManageGrants = useAuthStore(
+    (state) => state.access?.permissions?.includes('creator:programme:manage') ?? false
+  );
 
   const appearanceSummary =
     preference === 'system' ? `System default · ${colorScheme}` : preference === 'dark' ? 'Dark' : 'Light';
@@ -147,6 +155,17 @@ export default function SettingsScreen() {
             onPress={() => router.push('/settings/delete-account')}
           />
         </SettingsGroup>
+
+        {canManageGrants ? (
+          <SettingsGroup title="Platform">
+            <SettingsItem
+              icon="🎁"
+              title="Grants"
+              subtitle="Post, edit and close the grants members can apply to"
+              onPress={() => router.push('/moderation/grants' as never)}
+            />
+          </SettingsGroup>
+        ) : null}
 
         <SettingsGroup title="About">
           <SettingsItem
