@@ -145,6 +145,6 @@ describe('toBadgeItem', () => {
     });
 
     expect(item.title).toBe('Country verified (MU)');
-    expect(item.icon).toBe('🏠');
+    expect(item.icon).toBe('🌍'); // the emoji Trust's own label uses for the type
   });
 });

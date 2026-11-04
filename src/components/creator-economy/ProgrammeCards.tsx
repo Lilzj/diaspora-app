@@ -17,6 +17,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
 import { useTheme } from '@/design-system';
 import { AmountDisplay } from '@/components/financial';
 import {
@@ -25,6 +26,7 @@ import {
   presentGrantApplicationState,
   presentMilestoneState,
 } from '@/lib/creator-economy';
+import { servedIcon } from '@/lib/served-icon';
 import { formatRelativeTime } from '@/utils/format';
 import { CreatorCard, CreatorProgressBar, CreatorStatusChip, useToneColours } from './CreatorPrimitives';
 import type {
@@ -116,7 +118,7 @@ export function MilestoneCard({
           style={{ backgroundColor: tokens.color.surface.elevated }}
           className="w-11 h-11 rounded-2xl items-center justify-center mr-3"
         >
-          <Text className="text-xl">{milestone.icon ?? '🎯'}</Text>
+          <Text className="text-xl">{servedIcon(milestone.icon, '🎯')}</Text>
         </View>
 
         <View className="flex-1">
@@ -238,7 +240,7 @@ export function ChallengeCard({
           style={{ backgroundColor: tokens.color.surface.elevated }}
           className="w-11 h-11 rounded-2xl items-center justify-center mr-3"
         >
-          <Text className="text-xl">{challenge.icon ?? '🏁'}</Text>
+          <Text className="text-xl">{servedIcon(challenge.icon, '🏁')}</Text>
         </View>
 
         <View className="flex-1">

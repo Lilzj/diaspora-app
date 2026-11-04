@@ -18,9 +18,13 @@
 // adds a badge the server did not send.
 //
 // What is left is presentation: grouping by the source the server named, an
-// icon for a Trust award (which carries none on the wire), and wording.
+// icon for a Trust award (its label's own emoji, moved out of the title so it
+// shows once), an emoji for a catalogue icon name (`servedIcon`), and wording.
+// Since 4 Nov 2026 the creator's own read also carries the Trust badges still
+// to earn, each with the server's how-to-earn line as its description.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { isFlagEmoji, servedIcon, splitLeadingEmoji } from '@/lib/served-icon';
 import type { CreatorReputationBadge } from '@/types/creator-economy';
 
 export interface BadgeItem {
@@ -50,17 +54,25 @@ export function badgeSourceLabel(source: string): string {
 }
 
 /**
- * Icons for Trust's award types, which are served without one. Presentation
- * only: an unknown type gets the generic medal, never a guess at its meaning.
+ * Icons for Trust's award types, for a label that carries no emoji of its own.
+ * Presentation only: an unknown type gets the generic medal, never a guess at
+ * its meaning. Keyed by the server's `BadgeType` names, all fourteen.
  */
 const TRUST_BADGE_ICONS: Record<string, string> = {
   PhoneVerified: '📱',
   EmailVerified: '✉️',
-  CountryVerified: '🏠',
-  DiasporaVerified: '🌍',
+  CountryVerified: '🌍',
   GovernmentIdVerified: '🪪',
-  EarlyMember: '🚀',
+  ProfilePhoto: '📷',
+  ProviderVerified: '💼',
+  TopContributor: '🏆',
   VerifiedMember: '✅',
+  TrustedContributor: '🏅',
+  CommunityGuide: '🧭',
+  VerifiedBusiness: '🏢',
+  VerifiedOrganization: '🏛️',
+  EarlyMember: '🌱',
+  Moderator: '⚖️',
 };
 
 function formatEarnedAt(iso: string | null | undefined): string | null {
@@ -80,13 +92,16 @@ export function toBadgeItem(badge: CreatorReputationBadge): BadgeItem {
         } · ${badge.progress.percentage}%`
       : undefined;
 
+  // Trust's labels lead with their emoji, and a country award with its flag
+  // ("🇳🇬 Nigeria Verified"): drawn beside an icon, that showed twice.
+  const { emoji, text } = splitLeadingEmoji(badge.label);
+  const typeIcon = badge.source === 'trust' ? TRUST_BADGE_ICONS[badge.key] : undefined;
+  const flagged = emoji !== null && isFlagEmoji(emoji);
+
   return {
     id: badge.badgeId,
-    icon:
-      badge.icon ??
-      (badge.source === 'trust' ? TRUST_BADGE_ICONS[badge.key] : undefined) ??
-      '🏅',
-    title: badge.countryCode ? `${badge.label} (${badge.countryCode})` : badge.label,
+    icon: servedIcon(badge.icon, emoji ?? typeIcon ?? '🏅'),
+    title: badge.countryCode && !flagged ? `${text} (${badge.countryCode})` : text,
     description: badge.description ?? null,
     isEarned: badge.isEarned,
     statusText: badge.isEarned ? (earnedOn ? `EARNED ${earnedOn}` : 'EARNED') : 'NOT YET',
