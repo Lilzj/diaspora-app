@@ -29,6 +29,13 @@ describe('the Home search bar', () => {
     expect(home).toMatch(/label="Find Services"[^\n]*params: \{ tab: 'Providers' \}/);
   });
 
+  it('says when the place is outside the member country, and opens nothing', () => {
+    expect(home).toMatch(/search\.place\?\.kind === 'outside'/);
+    expect(home).toContain('outsideMessage(');
+    expect(home).toContain('testID="home-search-outside"');
+    expect(home).toMatch(/Search in \$\{homeCountryName\} instead/);
+  });
+
   it('reads the sentence, finds its place, and opens Discover with it', () => {
     expect(home).toContain('resolveSearch(readSearch(');
     expect(home).toContain('sentenceParams(search, String(Date.now()))');

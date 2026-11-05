@@ -49,7 +49,9 @@ function context(overrides: Partial<SearchContext> = {}): SearchContext {
   };
 }
 
-function worldList(towns: Record<string, { name: string; countryCode: string; latitude: number; longitude: number; population: number }>) {
+function worldList(
+  towns: Record<string, { name: string; countryCode: string; latitude: number; longitude: number; population: number; exact?: boolean }>
+) {
   api.onGet('/location/towns/match').reply((config) => {
     const town = towns[String(config.params?.text)];
     return [200, { data: town ? { found: true, exact: true, ...town } : { found: false, exact: false } }];
@@ -123,17 +125,74 @@ describe('resolveSearch: a named town', () => {
   });
 });
 
-describe('resolveSearch: a country, and no place', () => {
-  it('a country is the whole country, without asking the server', async () => {
-    const search = await resolveSearch(readSearch('jobs in Nigeria'), context());
+describe("resolveSearch: only in the country the member is in (owner, 5 Nov 2026)", () => {
+  // "If I am in Canada, all my searches must return results within Canada... a user currently
+  // in Mauritius searching for jobs in Nigeria should not return any result."
 
-    expect(search.place).toEqual({ kind: 'country', countryCode: 'NG', name: 'Nigeria' });
+  it('their own country is the whole country, without asking the server', async () => {
+    const search = await resolveSearch(readSearch('jobs in Mauritius'), context());
+
+    expect(search.place).toEqual({ kind: 'country', countryCode: 'MU', name: 'Mauritius' });
     expect(api.history.get).toHaveLength(0);
   });
 
+  it('another country is outside their location, and nothing is looked up', async () => {
+    const search = await resolveSearch(readSearch('jobs in Nigeria'), context());
+
+    expect(search).toMatchObject({ tab: 'Jobs', words: '' });
+    expect(search.place).toEqual({ kind: 'outside', name: 'Nigeria', countryCode: 'NG', countryName: 'Nigeria' });
+    expect(api.history.get).toHaveLength(0);
+    expect(api.history.post).toHaveLength(0);
+  });
+
   it('knows the short names people use', async () => {
-    expect((await resolveSearch(readSearch('jobs in the UK'), context())).place).toMatchObject({ kind: 'country', countryCode: 'GB' });
-    expect((await resolveSearch(readSearch('housing in USA'), context())).place).toMatchObject({ kind: 'country', countryCode: 'US' });
+    const inBritain = context({ location: { ...MAURITIUS, countryCode: 'GB', countryName: 'United Kingdom' } });
+
+    expect((await resolveSearch(readSearch('jobs in the UK'), inBritain)).place).toMatchObject({ kind: 'country', countryCode: 'GB' });
+    expect((await resolveSearch(readSearch('housing in USA'), context())).place).toMatchObject({
+      kind: 'outside',
+      countryCode: 'US',
+      countryName: 'United States',
+    });
+  });
+
+  it('a town abroad is outside their location', async () => {
+    worldList({ london: { name: 'London', countryCode: 'GB', latitude: 51.5, longitude: -0.13, population: 8_900_000 } });
+
+    const search = await resolveSearch(readSearch('flat in London'), context());
+
+    expect(search.place).toEqual({ kind: 'outside', name: 'London', countryCode: 'GB', countryName: 'United Kingdom' });
+    expect(api.history.post).toHaveLength(0);
+  });
+
+  it('a close spelling abroad is not taken for the place: the words are searched at home', async () => {
+    worldList({ flacq: { name: 'Flack', countryCode: 'US', latitude: 40, longitude: -80, population: 1_200, exact: false } });
+    api.onPost('/location/places/autocomplete').reply(200, { data: { status: 'Success', suggestions: [] } });
+
+    const search = await resolveSearch(readSearch('plumber in Flacq'), context());
+
+    expect(search).toMatchObject({ words: 'plumber flacq', place: { kind: 'not-found', said: 'flacq' } });
+  });
+
+  it('asks Google about the member country only', async () => {
+    worldList({});
+    api.onPost('/location/places/autocomplete').reply(200, { data: { status: 'Success', suggestions: [] } });
+
+    await resolveSearch(readSearch('villa in Trou aux Biches'), context());
+
+    const asked = api.history.post.filter((call) => call.url === '/location/places/autocomplete');
+    expect(asked).toHaveLength(1);
+    expect(JSON.parse(asked[0].data)).toMatchObject({ countryCodes: ['MU'] });
+  });
+
+  it('a member whose country is not known yet is not stopped', async () => {
+    const nowhere = context({ location: { ...MAURITIUS, countryCode: '', countryName: '' } });
+
+    expect((await resolveSearch(readSearch('jobs in Nigeria'), nowhere)).place).toEqual({
+      kind: 'country',
+      countryCode: 'NG',
+      name: 'Nigeria',
+    });
   });
 
   it('a sentence with no place leaves the place to Discover', async () => {

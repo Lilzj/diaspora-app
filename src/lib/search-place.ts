@@ -16,9 +16,21 @@
 // "Near me" is the member's position. When the app only knows their country
 // the phone is asked, because the member just asked for "near me"; when the
 // phone will not say, Discover says so and searches as it would have.
+//
+// ── Only in the country the member is in (owner, 5 Nov 2026) ───────────────
+//
+// "If I am in Canada, all my searches must return results within Canada... a
+// user currently in Mauritius searching for jobs in Nigeria should not return
+// any result." So a place in another country comes back as `outside` and is not
+// searched: another country by its name, or a town abroad spelt as the world
+// list has it. A close spelling abroad is more likely a slip of a town at home,
+// so it is not taken for the place, and Google is asked about the member's own
+// country only. The member's country is the active location's: where they are,
+// or where Travel Mode says they are.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
+import { countryByCode } from './calling-code';
 import { newIdempotencyKey } from './idempotency';
 import { resolveAddress } from './maps/address-search';
 import { searchWords, type PlaceCandidate, type SearchIntent, type SearchTab } from './search-intent';
@@ -37,6 +49,8 @@ export type SentencePlace =
       source: 'world-list' | 'google';
     }
   | { kind: 'country'; countryCode: string; name: string }
+  /** In another country than the member's: not searched, and Home says so. */
+  | { kind: 'outside'; name: string; countryCode: string; countryName: string }
   | { kind: 'near-me'; name: string; countryCode: string; latitude: number; longitude: number; radiusKm: number }
   | { kind: 'near-me-unknown' }
   | { kind: 'not-found'; said: string };
@@ -82,9 +96,30 @@ export async function resolveSearch(intent: SearchIntent, context: SearchContext
 
   for (const candidate of place.candidates) {
     const country = countryNamed(candidate.name);
-    if (country) return placed(searchWords(intent, candidate), { kind: 'country', ...country });
+    if (country) {
+      return placed(
+        searchWords(intent, candidate),
+        isAbroad(country.countryCode, homeCountry)
+          ? { kind: 'outside', name: country.name, countryCode: country.countryCode, countryName: country.name }
+          : { kind: 'country', ...country }
+      );
+    }
 
     const town = await matchTown(candidate.name, homeCountry);
+    if (town && isAbroad(town.countryCode, homeCountry)) {
+      // Spelt as the list has it, it is the town the member meant, and it is not
+      // theirs to search. A close spelling abroad is likelier a slip at home.
+      if (town.exact) {
+        return placed(searchWords(intent, candidate), {
+          kind: 'outside',
+          name: town.name,
+          countryCode: town.countryCode,
+          countryName: countryByCode(town.countryCode)?.name ?? town.countryCode,
+        });
+      }
+      continue;
+    }
+
     if (town) {
       return placed(searchWords(intent, candidate), {
         kind: 'town',
@@ -125,6 +160,8 @@ interface TownMatch {
   latitude?: number | null;
   longitude?: number | null;
   population?: number | null;
+  /** Typed as the list spells it, rather than close to it. */
+  exact?: boolean | null;
 }
 
 async function matchTown(
@@ -156,10 +193,11 @@ async function askGoogle(
   const longest = candidates[0];
   if (!longest) return null;
 
-  // One billing session for the whole lookup, closed by the details call.
+  // One billing session for the whole lookup, closed by the details call. Only
+  // the member's own country: a town abroad is not theirs to search.
   const session = newIdempotencyKey();
 
-  for (const country of homeCountry ? [homeCountry, null] : [null]) {
+  for (const country of homeCountry ? [homeCountry] : [null]) {
     const page = await searchTowns(longest.name, country, session);
 
     for (const town of page.towns) {
@@ -207,6 +245,11 @@ async function placeDetails(
 }
 
 // ── Countries ────────────────────────────────────────────────────────────────
+
+/** In another country than the member's. A member whose country is not known yet is not stopped. */
+function isAbroad(countryCode: string, homeCountry: string): boolean {
+  return !!homeCountry && countryCode.trim().toUpperCase() !== homeCountry;
+}
 
 /** What people call a country, beside the reference list's own name. */
 const COUNTRY_SHORT_NAMES: Readonly<Record<string, string>> = {

@@ -7,7 +7,7 @@
 // a wrong reading and clear it.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { describeSentence, sentenceFromParams, sentenceParams, sentenceScope } from '../search-sentence';
+import { describeSentence, outsideMessage, sentenceFromParams, sentenceParams, sentenceScope } from '../search-sentence';
 import type { SentenceSearch } from '../search-place';
 
 const FLAT_IN_GRAND_BAIE: SentenceSearch = {
@@ -102,6 +102,26 @@ describe('sentenceScope', () => {
     expect(sentenceScope({ ...BRAIDS_NEAR_ME, place: { kind: 'near-me-unknown' } })).toBeNull();
     expect(sentenceScope({ ...BRAIDS_NEAR_ME, place: { kind: 'not-found', said: 'x' } })).toBeNull();
     expect(sentenceScope({ ...BRAIDS_NEAR_ME, place: null })).toBeNull();
+  });
+});
+
+describe('outsideMessage (owner, 5 Nov 2026: search stays in the country the member is in)', () => {
+  it('says where search looks, and where the place is', () => {
+    expect(outsideMessage({ kind: 'outside', name: 'Nigeria', countryCode: 'NG', countryName: 'Nigeria' }, 'Mauritius')).toBe(
+      'You can search only in Mauritius, where you are now. Nigeria is another country.'
+    );
+    expect(outsideMessage({ kind: 'outside', name: 'London', countryCode: 'GB', countryName: 'United Kingdom' }, 'Mauritius')).toBe(
+      'You can search only in Mauritius, where you are now. London is in the United Kingdom.'
+    );
+    expect(outsideMessage({ kind: 'outside', name: 'Lagos', countryCode: 'NG', countryName: 'Nigeria' }, 'United States')).toBe(
+      'You can search only in the United States, where you are now. Lagos is in Nigeria.'
+    );
+  });
+
+  it('a place outside is never searched', () => {
+    expect(
+      sentenceScope({ ...BRAIDS_NEAR_ME, place: { kind: 'outside', name: 'Nigeria', countryCode: 'NG', countryName: 'Nigeria' } })
+    ).toBeNull();
   });
 });
 

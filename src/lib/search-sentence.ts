@@ -190,6 +190,31 @@ export function describeSentence(search: SentenceSearch, homeCountryCode: string
   return parts.join(' · ');
 }
 
+/**
+ * Why a sentence naming a place abroad searched nothing (owner, 5 Nov 2026): search
+ * stays in the country the member is in.
+ */
+export function outsideMessage(
+  place: Extract<SentencePlace, { kind: 'outside' }>,
+  homeCountryName: string
+): string {
+  const where =
+    place.name === place.countryName ? `${place.name} is another country.` : `${place.name} is in ${withArticle(place.countryName)}.`;
+
+  return `You can search only in ${withArticle(homeCountryName)}, where you are now. ${where}`;
+}
+
+/** "the United Kingdom", "the Netherlands", "Nigeria". */
+function withArticle(countryName: string): string {
+  const name = countryName.trim();
+
+  return /^(United |Netherlands$|Philippines$|Gambia$|Bahamas$|Maldives$|Comoros$|Czech Republic$|Dominican Republic$|Central African Republic$)|Islands$/.test(
+    name
+  )
+    ? `the ${name}`
+    : name;
+}
+
 function describePlace(place: SentencePlace | null, homeCountry: string): string | null {
   switch (place?.kind) {
     case 'town': {
@@ -205,6 +230,8 @@ function describePlace(place: SentencePlace | null, homeCountry: string): string
       return `across ${place.name || place.countryCode}`;
     case 'not-found':
       return `no place called “${place.said}” was found`;
+    case 'outside':
+      return `outside your country: ${place.name}`;
     default:
       return null;
   }

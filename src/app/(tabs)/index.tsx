@@ -57,7 +57,8 @@ import type { FeedSection, Recommendation } from '@/types/recommendations';
 import { useThemeTokens } from '@/design-system';
 import { readSearch } from '@/lib/search-intent';
 import { resolveSearch } from '@/lib/search-place';
-import { sentenceParams } from '@/lib/search-sentence';
+import { outsideMessage, sentenceParams } from '@/lib/search-sentence';
+import type { SentenceSearch } from '@/lib/search-place';
 
 // Frontend Phase 13 — Multi-Community Expansion (§16).
 //
@@ -116,6 +117,17 @@ export default function HomeScreen() {
   const [searchText, setSearchText] = useState('');
   const [isReadingSearch, setIsReadingSearch] = useState(false);
 
+  // Search stays in the country the member is in (owner, 5 Nov 2026): a sentence
+  // naming a place abroad ("jobs in Nigeria" from Mauritius) searches nothing, and
+  // the bar says why, with the same search at home one tap away.
+  const homeCountryName = activeLocation.countryName?.trim() || 'your country';
+  const [outsideNotice, setOutsideNotice] = useState<{ message: string; search: SentenceSearch } | null>(null);
+
+  const changeSearchText = useCallback((text: string) => {
+    setSearchText(text);
+    setOutsideNotice(null);
+  }, []);
+
   const submitSearch = useCallback(async () => {
     const said = searchText.trim();
 
@@ -134,11 +146,26 @@ export default function HomeScreen() {
         searchRadius: store.searchRadius,
         detectLocation: store.detectLocation,
       });
+
+      if (search.place?.kind === 'outside') {
+        setOutsideNotice({ message: outsideMessage(search.place, homeCountryName), search });
+        return;
+      }
+
+      setOutsideNotice(null);
       router.push({ pathname: '/(tabs)/discover', params: sentenceParams(search, String(Date.now())) } as never);
     } finally {
       setIsReadingSearch(false);
     }
-  }, [searchText, isReadingSearch, activeLocation, store.searchRadius, store.detectLocation]);
+  }, [searchText, isReadingSearch, activeLocation, store.searchRadius, store.detectLocation, homeCountryName]);
+
+  const searchHereInstead = useCallback(() => {
+    if (!outsideNotice) return;
+
+    const search: SentenceSearch = { ...outsideNotice.search, place: null };
+    setOutsideNotice(null);
+    router.push({ pathname: '/(tabs)/discover', params: sentenceParams(search, String(Date.now())) } as never);
+  }, [outsideNotice]);
 
   const exploreStore = useExploreStore();
   const [showWelcome, setShowWelcome] = useState(false);
@@ -287,7 +314,7 @@ export default function HomeScreen() {
               <TextInput
                 testID="home-search-input"
                 value={searchText}
-                onChangeText={setSearchText}
+                onChangeText={changeSearchText}
                 placeholder={placeholders[placeholderIdx]}
                 placeholderTextColor={tokens.color.text.placeholder}
                 returnKeyType="search"
@@ -312,6 +339,23 @@ export default function HomeScreen() {
               ) : null}
             </View>
           </TourSpotlight>
+
+          {outsideNotice ? (
+            <View
+              testID="home-search-outside"
+              accessibilityLiveRegion="polite"
+              className="mt-3 px-4 py-3 rounded-2xl bg-surface-muted border border-subtle"
+            >
+              <Text className="text-sm font-semibold text-content-strong">{outsideNotice.message}</Text>
+              <TouchableOpacity
+                onPress={searchHereInstead}
+                accessibilityRole="button"
+                className="mt-2 self-start py-1"
+              >
+                <Text className="text-sm font-bold text-primary-600">{`Search in ${homeCountryName} instead`}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </View>
 
         {/* Official notices for the country the member is in (8 Oct 2026).
