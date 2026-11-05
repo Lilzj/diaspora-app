@@ -20,17 +20,20 @@ const mockManage = {
   publish: jest.fn(),
   close: jest.fn(),
   archive: jest.fn(),
+  fillPlace: jest.fn(),
   isWorking: false,
   errorMessage: () => 'This job is already closed.',
 };
 const mockShowAlert = jest.fn();
 const mockApply = jest.fn();
 const mockOpenConversation = jest.fn();
+const mockExpressInterest = jest.fn();
 
 jest.mock('@/hooks/job-detail', () => ({
   useJob: () => mockUseJob(),
   useSimilarJobs: () => [],
   useManageJob: () => mockManage,
+  useExpressInterest: () => ({ express: mockExpressInterest, isSending: false }),
 }));
 
 jest.mock('@/hooks/jobs-hiring', () => ({
@@ -337,6 +340,80 @@ describe('a read that did not arrive', () => {
     renderPage();
 
     expect(screen.getByText('This job is not available')).toBeTruthy();
+  });
+});
+
+// Simple jobs (owner's request, 4 Nov 2026): one-off work answered with
+// "I'm interested", which messages the poster; the poster counts places off.
+describe('a simple job', () => {
+  const simpleJob = (overrides: Partial<JobResponse> = {}) =>
+    walkthroughJob({
+      title: 'Two cleaners needed',
+      postingMode: 'Simple',
+      startsOn: '2026-11-12',
+      lengthAmount: 1,
+      lengthUnit: 'Days',
+      vacancyCount: 2,
+      remainingVacancies: 2,
+      ...overrides,
+    });
+
+  beforeEach(() => {
+    mockExpressInterest.mockReset();
+    mockManage.fillPlace.mockReset();
+    mockShowAlert.mockReset();
+  });
+
+  it(`says when the work is and how many places are left, and offers "I'm interested", not Apply`, () => {
+    givenJob(simpleJob());
+    renderPage();
+
+    expect(screen.getByText('12 Nov · 1 day')).toBeTruthy();
+    expect(screen.getAllByText('2 of 2 places left').length).toBeGreaterThan(0);
+    expect(screen.getByText("I'm interested")).toBeTruthy();
+    expect(screen.queryByText('Apply now')).toBeNull();
+  });
+
+  it('sends the interest when tapped', () => {
+    mockExpressInterest.mockResolvedValue(undefined);
+    givenJob(simpleJob());
+    renderPage();
+
+    fireEvent.press(screen.getByText("I'm interested"));
+
+    expect(mockExpressInterest).toHaveBeenCalledTimes(1);
+  });
+
+  it('after saying it, takes the member back to the conversation', () => {
+    givenJob(simpleJob({ hasApplied: true }));
+    renderPage();
+
+    expect(screen.getByText('You said you are interested')).toBeTruthy();
+    fireEvent.press(screen.getByText('Open messages'));
+    expect(mockOpenConversation).toHaveBeenCalledWith(
+      expect.objectContaining({ contextType: 'JobOpportunity', entityId: JOB })
+    );
+  });
+
+  it('lets the poster count a place off, and says when it is the last', async () => {
+    mockManage.fillPlace.mockResolvedValue(undefined);
+    givenJob(simpleJob({ canManage: true, canApply: false, remainingVacancies: 1 }));
+    renderPage();
+
+    fireEvent.press(screen.getByText('1 place filled'));
+
+    const confirm = lastAlert();
+    expect(confirm.message).toContain('last place');
+    await confirm.press('1 place filled');
+    expect(mockManage.fillPlace).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps Apply for a full posting', () => {
+    givenJob(walkthroughJob());
+    renderPage();
+
+    expect(screen.getByText('Apply now')).toBeTruthy();
+    expect(screen.queryByText("I'm interested")).toBeNull();
   });
 });
 

@@ -127,6 +127,17 @@ export async function archiveJob(jobId: string): Promise<void> {
   await apiClient.post(`/jobs/${encodeURIComponent(jobId)}/archive`);
 }
 
+/**
+ * `POST /jobs/{jobId}/places/fill` (5 Nov 2026). The poster counts one place
+ * off; the last one fills the job. Answers the posting as it now stands.
+ */
+export async function fillJobPlace(jobId: string): Promise<JobResponse> {
+  const response = await apiClient.post<Envelope<JobResponse>>(
+    `/jobs/${encodeURIComponent(jobId)}/places/fill`
+  );
+  return response.data.data;
+}
+
 // ── Editing ──────────────────────────────────────────────────────────────────
 //
 // **Added 14 Oct 2026.** An employer could close or remove a job but not
@@ -790,6 +801,36 @@ export function employerResponsiveness(
   }
 
   return lines;
+}
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * When a simple job's work is: "12 Nov · 1 day", "5 Dec · 4 hours". Null for a
+ * job with no schedule. Read from the date's own digits, so a time zone cannot
+ * move the day.
+ */
+export function describeSchedule(
+  job: Pick<JobResponse, 'startsOn' | 'lengthAmount' | 'lengthUnit'>
+): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(job.startsOn ?? '');
+  if (!match || !job.lengthAmount || !job.lengthUnit) return null;
+
+  const day = Number(match[3]);
+  const month = SHORT_MONTHS[Number(match[2]) - 1];
+  if (!month) return null;
+
+  const word = job.lengthUnit === 'Hours' ? 'hour' : 'day';
+  const length = `${job.lengthAmount} ${word}${job.lengthAmount === 1 ? '' : 's'}`;
+  return `${day} ${month} · ${length}`;
+}
+
+/** "2 of 3 places left", "1 place", "All places filled"; null when the server sent no counts. */
+export function placesLeftLabel(job: { vacancyCount?: number; remainingVacancies?: number }): string | null {
+  if (typeof job.vacancyCount !== 'number' || typeof job.remainingVacancies !== 'number') return null;
+  if (job.remainingVacancies <= 0) return 'All places filled';
+  if (job.vacancyCount === 1) return '1 place';
+  return `${job.remainingVacancies} of ${job.vacancyCount} places left`;
 }
 
 /** The subtitle a conversation about the job carries. Never "· undefined". */

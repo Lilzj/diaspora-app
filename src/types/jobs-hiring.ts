@@ -941,6 +941,15 @@ export interface JobSalaryResponse {
  * identifier field, different salary record, different employer record.
  */
 export interface JobCardResponse {
+  /** "Simple" (short one-off work, "I'm interested") or "Standard". Absent from servers before 5 Nov 2026. */
+  postingMode?: 'Simple' | 'Standard';
+  /** YYYY-MM-DD: the day the work starts, for a job with a schedule. */
+  startsOn?: string | null;
+  lengthAmount?: number | null;
+  lengthUnit?: 'Hours' | 'Days' | null;
+  /** Places advertised and still open: "1 of 2 places left". */
+  vacancyCount?: number;
+  remainingVacancies?: number;
   jobId: string;
   slug: string;
   title: string;
@@ -1121,6 +1130,12 @@ export interface JobGuideReferenceResponse {
  * employer's team — the only owner check there is.
  */
 export interface JobResponse {
+  /** "Simple" (short one-off work, "I'm interested") or "Standard". Absent from servers before 5 Nov 2026. */
+  postingMode?: 'Simple' | 'Standard';
+  /** YYYY-MM-DD: the day the work starts, for a job with a schedule. */
+  startsOn?: string | null;
+  lengthAmount?: number | null;
+  lengthUnit?: 'Hours' | 'Days' | null;
   jobId: string;
   slug: string;
   title: string;
