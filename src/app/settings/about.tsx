@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image } from 'react-native';
+import { View, Text, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -53,6 +53,17 @@ export default function AboutSettingsScreen() {
             title="Community Guidelines"
             subtitle="What is expected of everybody here"
             onPress={() => router.push('/profile/community-guidelines')}
+          />
+          {/* Search reads a town out of a sentence ("flat in Grand Baie") from the
+              GeoNames list of the world's towns, whose licence asks for this credit
+              (5 Nov 2026). */}
+          <SettingsItem
+            icon="🗺️"
+            title="Place names"
+            subtitle="Town names from GeoNames (geonames.org), CC BY 4.0"
+            onPress={() => {
+              Linking.openURL('https://www.geonames.org/').catch(() => undefined);
+            }}
           />
           <SettingsItem
             icon="⚖️"

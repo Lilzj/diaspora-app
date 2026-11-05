@@ -32,7 +32,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-native';
+import { ScrollView, View, Text, TextInput, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { SectionHeader } from '@/components/SectionHeader';
@@ -54,6 +54,10 @@ import { FeatureGate } from '@/components/FeatureGate';
 import { feedbackFor, useHomeFeed, useRecommendationFeedback } from '@/hooks/recommendations';
 import { routeForRecommendation } from '@/lib/recommendations-api';
 import type { FeedSection, Recommendation } from '@/types/recommendations';
+import { useThemeTokens } from '@/design-system';
+import { readSearch } from '@/lib/search-intent';
+import { resolveSearch } from '@/lib/search-place';
+import { sentenceParams } from '@/lib/search-sentence';
 
 // Frontend Phase 13 — Multi-Community Expansion (§16).
 //
@@ -92,15 +96,49 @@ export default function HomeScreen() {
   const communityContext = useCommunityContext();
   const [isCommunitySelectorOpen, setIsCommunitySelectorOpen] = useState(false);
 
-  // Rotating placeholder suggestions
+  // ── Searching in a sentence (owner, 5 Nov 2026) ───────────────────────────
+  //
+  // This bar was a button that opened Discover empty. It now takes a sentence,
+  // "where to braid my hair near me", "3 bedroom flat in Grand Baie", reads it
+  // with plain rules (no AI), finds its place, and opens Discover on the right
+  // tab, already filtered. See `lib/search-intent.ts` and `lib/search-place.ts`.
+  // The examples rotate, and name the member's own town where the app knows it.
+  const tokens = useThemeTokens();
+  const homeTown = activeLocation.cityName?.trim();
   const placeholders = [
-    'Search services...',
-    'Search guides...',
-    'Find jobs...',
-    'Find housing...',
-    'Search businesses...',
+    'Try “hair braiding near me”',
+    homeTown ? `Try “3 bedroom flat in ${homeTown}”` : 'Try “3 bedroom flat near me”',
+    'Try “jobs near me”',
+    'Try “plumber near me”',
+    'Search services, homes, jobs...',
   ];
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [searchText, setSearchText] = useState('');
+  const [isReadingSearch, setIsReadingSearch] = useState(false);
+
+  const submitSearch = useCallback(async () => {
+    const said = searchText.trim();
+
+    if (!said) {
+      router.push('/discover');
+      return;
+    }
+    if (isReadingSearch) return;
+
+    setIsReadingSearch(true);
+    try {
+      // A town is looked up (the world list, then Google) and "near me" may ask
+      // the phone where it is, so this can take a moment; the bar says so.
+      const search = await resolveSearch(readSearch(said), {
+        location: activeLocation,
+        searchRadius: store.searchRadius,
+        detectLocation: store.detectLocation,
+      });
+      router.push({ pathname: '/(tabs)/discover', params: sentenceParams(search, String(Date.now())) } as never);
+    } finally {
+      setIsReadingSearch(false);
+    }
+  }, [searchText, isReadingSearch, activeLocation, store.searchRadius, store.detectLocation]);
 
   const exploreStore = useExploreStore();
   const [showWelcome, setShowWelcome] = useState(false);
@@ -235,10 +273,8 @@ export default function HomeScreen() {
         {/* Styled High-Elevation Search Bar */}
         <View className="px-6 my-4">
           <TourSpotlight spotlightKey="search_button" style={{ width: '100%' }}>
-            <TouchableOpacity
-              onPress={() => router.push('/discover')}
-              activeOpacity={0.9}
-              className="w-full h-14 bg-surface-card rounded-2xl border border-faint flex-row items-center px-4"
+            <View
+              className="w-full h-14 bg-surface-card rounded-2xl border border-faint flex-row items-center pl-4 pr-2"
               style={{
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
@@ -248,10 +284,33 @@ export default function HomeScreen() {
               }}
             >
               <Text className="text-lg mr-3 text-content-faint">🔍</Text>
-              <Text className="text-sm font-semibold text-content-muted">
-                {placeholders[placeholderIdx]}
-              </Text>
-            </TouchableOpacity>
+              <TextInput
+                testID="home-search-input"
+                value={searchText}
+                onChangeText={setSearchText}
+                placeholder={placeholders[placeholderIdx]}
+                placeholderTextColor={tokens.color.text.placeholder}
+                returnKeyType="search"
+                onSubmitEditing={submitSearch}
+                editable={!isReadingSearch}
+                autoCorrect={false}
+                accessibilityLabel="Search services, homes and jobs"
+                accessibilityHint="Type what you need and where, for example jobs near me"
+                className="flex-1 h-full text-sm font-semibold text-content-strong"
+              />
+              {isReadingSearch ? (
+                <ActivityIndicator className="px-3" />
+              ) : searchText.trim() ? (
+                <TouchableOpacity
+                  onPress={submitSearch}
+                  accessibilityRole="button"
+                  accessibilityLabel="Search"
+                  className="h-10 px-4 rounded-xl bg-primary-500 items-center justify-center"
+                >
+                  <Text className="text-sm font-bold text-white">Search</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </TourSpotlight>
         </View>
 
@@ -354,11 +413,11 @@ export default function HomeScreen() {
           contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 20 }}
           className="mb-2"
         >
-          <QuickActionChip label="Find Services" icon="🔍" onPress={() => router.push('/discover')} />
+          <QuickActionChip label="Find Services" icon="🔍" onPress={() => router.push({ pathname: '/(tabs)/discover', params: { tab: 'Providers' } } as never)} />
           <QuickActionChip label="Community Life" icon="🎉" onPress={() => router.push('/community-life')} />
           <QuickActionChip label="Browse Guides" icon="📖" onPress={() => router.push('/knowledge/guides')} />
-          <QuickActionChip label="Find Jobs" icon="💼" onPress={() => router.push('/discover')} />
-          <QuickActionChip label="Find Housing" icon="🏠" onPress={() => router.push('/discover')} />
+          <QuickActionChip label="Find Jobs" icon="💼" onPress={() => router.push({ pathname: '/(tabs)/discover', params: { tab: 'Jobs' } } as never)} />
+          <QuickActionChip label="Find Housing" icon="🏠" onPress={() => router.push({ pathname: '/(tabs)/discover', params: { tab: 'Housing' } } as never)} />
           <QuickActionChip label="Create Post" icon="➕" onPress={() => router.push('/create')} />
         </ScrollView>
 

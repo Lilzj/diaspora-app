@@ -184,6 +184,18 @@ describe('the housing sheet', () => {
   });
 });
 
+describe('the home types a search sentence names (5 Nov 2026)', () => {
+  it('"3-bedroom flat" sends the flat key the route binds, beside the bedrooms', () => {
+    expect(
+      sent(housingSearchParams('', MAURITIUS, { ...NO_HOUSING_FILTERS, bedrooms: 3, homeTypes: ['apartment'] }))
+    ).toEqual({ countryCode: 'MU', minBedrooms: 3, accommodationTypes: ['apartment'] });
+  });
+
+  it('no home type sends none', () => {
+    expect(sent(housingSearchParams('', MAURITIUS, { ...NO_HOUSING_FILTERS, homeTypes: [] }))).toEqual({ countryCode: 'MU' });
+  });
+});
+
 describe('the furnishing chips', () => {
   it('ask the server for exactly what the chip says, so a later page is filtered too', () => {
     // A fully equipped home's card reads "Furnished", so that chip asks for both.
