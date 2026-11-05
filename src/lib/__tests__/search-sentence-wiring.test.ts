@@ -34,6 +34,7 @@ describe('the Home search bar', () => {
     expect(home).toContain('outsideMessage(');
     expect(home).toContain('testID="home-search-outside"');
     expect(home).toMatch(/Search in \$\{homeCountryName\} instead/);
+    expect(home).toContain('searchAtHome(outsideNotice.search,');
   });
 
   it('reads the sentence, finds its place, and opens Discover with it', () => {

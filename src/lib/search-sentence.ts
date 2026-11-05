@@ -204,6 +204,21 @@ export function outsideMessage(
   return `You can search only in ${withArticle(homeCountryName)}, where you are now. ${where}`;
 }
 
+/**
+ * The same search in the member's own country, for "Search in Mauritius instead":
+ * the whole country, so Discover's line says where it looked. Without a known
+ * country, Discover's own place.
+ */
+export function searchAtHome(
+  search: SentenceSearch,
+  home: { countryCode: string | null | undefined; countryName: string | null | undefined }
+): SentenceSearch {
+  const countryCode = (home.countryCode ?? '').trim().toUpperCase();
+  const name = (home.countryName ?? '').trim();
+
+  return { ...search, place: countryCode ? { kind: 'country', countryCode, name: name || countryCode } : null };
+}
+
 /** "the United Kingdom", "the Netherlands", "Nigeria". */
 function withArticle(countryName: string): string {
   const name = countryName.trim();

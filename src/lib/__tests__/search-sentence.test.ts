@@ -7,7 +7,14 @@
 // a wrong reading and clear it.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { describeSentence, outsideMessage, sentenceFromParams, sentenceParams, sentenceScope } from '../search-sentence';
+import {
+  describeSentence,
+  outsideMessage,
+  searchAtHome,
+  sentenceFromParams,
+  sentenceParams,
+  sentenceScope,
+} from '../search-sentence';
 import type { SentenceSearch } from '../search-place';
 
 const FLAT_IN_GRAND_BAIE: SentenceSearch = {
@@ -116,6 +123,21 @@ describe('outsideMessage (owner, 5 Nov 2026: search stays in the country the mem
     expect(outsideMessage({ kind: 'outside', name: 'Lagos', countryCode: 'NG', countryName: 'Nigeria' }, 'United States')).toBe(
       'You can search only in the United States, where you are now. Lagos is in Nigeria.'
     );
+  });
+
+  it('"Search in Mauritius instead" searches the whole home country, and says so', () => {
+    const outside: SentenceSearch = {
+      ...BRAIDS_NEAR_ME,
+      tab: 'Jobs',
+      words: '',
+      place: { kind: 'outside', name: 'Nigeria', countryCode: 'NG', countryName: 'Nigeria' },
+    };
+
+    const atHome = searchAtHome(outside, { countryCode: 'mu', countryName: 'Mauritius' });
+
+    expect(atHome.place).toEqual({ kind: 'country', countryCode: 'MU', name: 'Mauritius' });
+    expect(describeSentence(atHome, 'MU')).toBe('Jobs · across Mauritius');
+    expect(searchAtHome(outside, { countryCode: '', countryName: '' }).place).toBeNull();
   });
 
   it('a place outside is never searched', () => {

@@ -57,7 +57,7 @@ import type { FeedSection, Recommendation } from '@/types/recommendations';
 import { useThemeTokens } from '@/design-system';
 import { readSearch } from '@/lib/search-intent';
 import { resolveSearch } from '@/lib/search-place';
-import { outsideMessage, sentenceParams } from '@/lib/search-sentence';
+import { outsideMessage, searchAtHome, sentenceParams } from '@/lib/search-sentence';
 import type { SentenceSearch } from '@/lib/search-place';
 
 // Frontend Phase 13 — Multi-Community Expansion (§16).
@@ -162,10 +162,13 @@ export default function HomeScreen() {
   const searchHereInstead = useCallback(() => {
     if (!outsideNotice) return;
 
-    const search: SentenceSearch = { ...outsideNotice.search, place: null };
+    const search = searchAtHome(outsideNotice.search, {
+      countryCode: activeLocation.countryCode,
+      countryName: activeLocation.countryName,
+    });
     setOutsideNotice(null);
     router.push({ pathname: '/(tabs)/discover', params: sentenceParams(search, String(Date.now())) } as never);
-  }, [outsideNotice]);
+  }, [outsideNotice, activeLocation.countryCode, activeLocation.countryName]);
 
   const exploreStore = useExploreStore();
   const [showWelcome, setShowWelcome] = useState(false);
