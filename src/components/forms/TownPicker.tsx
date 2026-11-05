@@ -11,6 +11,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { DropdownList } from '@/components/forms/DropdownList';
+
 import { useAuthStore } from '@/store/auth';
 import { resolveTown, searchTowns, type TownChoice } from '@/lib/town-search';
 import { newIdempotencyKey } from '@/lib/idempotency';
@@ -119,30 +121,32 @@ export function TownPicker({
             className="bg-surface-background rounded-xl px-3 py-2.5 text-sm text-content-primary mb-1"
           />
           {isSearching || isResolving ? <ActivityIndicator color="#F59300" style={{ marginVertical: 8 }} /> : null}
-          {results.map((town) => (
-            <TouchableOpacity
-              key={`${town.cityName}-${town.placeId ?? town.areaId ?? ''}`}
-              onPress={() => void choose(town)}
-              disabled={isResolving}
-              accessibilityRole="button"
-              className="px-3 py-3 rounded-xl"
-            >
-              <Text className="text-sm font-semibold text-content-primary">{town.cityName}</Text>
-              {town.context ? <Text className="text-[11px] text-content-muted">{town.context}</Text> : null}
-            </TouchableOpacity>
-          ))}
-          {typed.length >= 2 && !isSearching && !exact ? (
-            <TouchableOpacity
-              onPress={() => void choose({ cityName: typed })}
-              accessibilityRole="button"
-              className="px-3 py-3 rounded-xl"
-            >
-              <Text className="text-sm font-semibold text-primary-600">Use “{typed}”</Text>
-              <Text className="text-[11px] text-content-muted">
-                It will be saved as you typed it.
-              </Text>
-            </TouchableOpacity>
-          ) : null}
+          <DropdownList testID={testID ? `${testID}-list` : undefined}>
+            {results.map((town) => (
+              <TouchableOpacity
+                key={`${town.cityName}-${town.placeId ?? town.areaId ?? ''}`}
+                onPress={() => void choose(town)}
+                disabled={isResolving}
+                accessibilityRole="button"
+                className="px-3 py-3 rounded-xl"
+              >
+                <Text className="text-sm font-semibold text-content-primary">{town.cityName}</Text>
+                {town.context ? <Text className="text-[11px] text-content-muted">{town.context}</Text> : null}
+              </TouchableOpacity>
+            ))}
+            {typed.length >= 2 && !isSearching && !exact ? (
+              <TouchableOpacity
+                onPress={() => void choose({ cityName: typed })}
+                accessibilityRole="button"
+                className="px-3 py-3 rounded-xl"
+              >
+                <Text className="text-sm font-semibold text-primary-600">Use “{typed}”</Text>
+                <Text className="text-[11px] text-content-muted">
+                  It will be saved as you typed it.
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </DropdownList>
           {/* The provider's credit, which its terms require beside its results. */}
           {attribution && results.length > 0 ? (
             <Text className="text-[10px] text-content-faint px-3 pt-1">Powered by {attribution}</Text>
