@@ -14,6 +14,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { DropdownList } from '@/components/forms/DropdownList';
+
 export interface SelectOption {
   key: string;
   label: string;
@@ -122,32 +124,34 @@ export function SearchableSelect(props: SingleProps | MultipleProps) {
                 placeholderTextColor="#9CA3AF"
                 className="bg-surface-background rounded-xl px-3 py-2.5 text-sm text-content-primary mb-1"
               />
-              {visible.map((option) => {
-                const isOn = selected.includes(option.key);
-                return (
-                  <TouchableOpacity
-                    key={option.key}
-                    onPress={() => pick(option.key)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isOn }}
-                    // Marked by its border as well as its text: in dark mode the
-                    // muted and card surfaces are the same colour.
-                    className={`flex-row items-center px-3 py-3 rounded-xl border ${isOn ? 'bg-surface-muted border-primary-500' : 'border-transparent'}`}
-                  >
-                    <View className="flex-1">
-                      <Text className={`text-sm ${isOn ? 'font-black text-primary-600' : 'font-semibold text-content-secondary'}`}>
-                        {option.icon ? `${option.icon} ` : ''}
-                        {option.label}
-                      </Text>
-                      {option.hint ? <Text className="text-[11px] text-content-muted">{option.hint}</Text> : null}
-                    </View>
-                    {isOn ? <Text className="text-primary-600 font-black">✓</Text> : null}
-                  </TouchableOpacity>
-                );
-              })}
-              {visible.length === 0 ? (
-                <Text className="text-xs text-content-muted px-3 py-3">Nothing matches “{term.trim()}”.</Text>
-              ) : null}
+              <DropdownList testID={testID ? `${testID}-list` : undefined}>
+                {visible.map((option) => {
+                  const isOn = selected.includes(option.key);
+                  return (
+                    <TouchableOpacity
+                      key={option.key}
+                      onPress={() => pick(option.key)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isOn }}
+                      // Marked by its border as well as its text: in dark mode the
+                      // muted and card surfaces are the same colour.
+                      className={`flex-row items-center px-3 py-3 rounded-xl border ${isOn ? 'bg-surface-muted border-primary-500' : 'border-transparent'}`}
+                    >
+                      <View className="flex-1">
+                        <Text className={`text-sm ${isOn ? 'font-black text-primary-600' : 'font-semibold text-content-secondary'}`}>
+                          {option.icon ? `${option.icon} ` : ''}
+                          {option.label}
+                        </Text>
+                        {option.hint ? <Text className="text-[11px] text-content-muted">{option.hint}</Text> : null}
+                      </View>
+                      {isOn ? <Text className="text-primary-600 font-black">✓</Text> : null}
+                    </TouchableOpacity>
+                  );
+                })}
+                {visible.length === 0 ? (
+                  <Text className="text-xs text-content-muted px-3 py-3">Nothing matches “{term.trim()}”.</Text>
+                ) : null}
+              </DropdownList>
               {props.multiple ? (
                 <TouchableOpacity onPress={() => setOpen(false)} accessibilityRole="button" className="items-center py-2">
                   <Text className="text-xs font-black text-primary-600">Done</Text>
