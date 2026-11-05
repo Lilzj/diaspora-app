@@ -711,6 +711,7 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['post', '/jobs/{jobId}/apply'],
   ['post', '/jobs/{jobId}/archive'],
   ['post', '/jobs/{jobId}/close'],
+  ['post', '/jobs/{jobId}/places/fill'],
   ['post', '/jobs/{jobId}/publish'],
   ['delete', '/jobs/{jobId}/save'],
   ['put', '/jobs/{jobId}/save'],

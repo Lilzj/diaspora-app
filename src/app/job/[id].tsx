@@ -32,7 +32,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { PromoteEntry } from '@/components/monetization';
 import { useTheme } from '@/design-system';
-import { useJob, useManageJob, useSimilarJobs } from '@/hooks/job-detail';
+import { useExpressInterest, useJob, useManageJob, useSimilarJobs } from '@/hooks/job-detail';
 import { useApplyToJob } from '@/hooks/jobs-hiring';
 import { useRefreshControl } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
@@ -43,6 +43,8 @@ import {
   WORKPLACE_LABELS,
   applicantCountLabel,
   applyStateOf,
+  describeSchedule,
+  placesLeftLabel,
   categoryLabel,
   describeSalary,
   employerKindLabel,
@@ -88,6 +90,8 @@ export default function JobDetailScreen() {
   const { job, isLoading, isNotFound, loadError, refresh } = useJob(id);
   const similarJobs = useSimilarJobs(job);
   const manage = useManageJob(job?.jobId ?? id);
+  // Above the early returns, like every hook here: the order may not change.
+  const interest = useExpressInterest(job);
   const refreshControl = useRefreshControl(refresh);
 
   // Only for the category's name. The catalogue is shared with Post a job, and a
@@ -151,6 +155,21 @@ export default function JobDetailScreen() {
   const category = categoryLabel(job.categoryKey, categories.data ?? []);
   const saved = isSaved(job.jobId);
   const canMessage = !job.canManage && Boolean(job.employer.ownerUserId);
+
+  // A simple job (5 Nov 2026) is answered with "I'm interested", says when the
+  // work is, and counts its places off.
+  const isSimple = job.postingMode === 'Simple';
+  const schedule = describeSchedule(job);
+  const places = placesLeftLabel(job);
+
+  const handleInterest = async () => {
+    try {
+      await interest.express();
+    } catch (cause) {
+      // Nothing is said to have been sent unless it was.
+      showAlert({ type: 'error', title: 'Not sent', message: jobsHiringErrorMessage(cause) });
+    }
+  };
 
   const closingDate = job.closingAt ? new Date(job.closingAt) : null;
   const facts = [
@@ -244,6 +263,29 @@ export default function JobDetailScreen() {
       return;
     }
     showAlert({ type: 'success', ...success });
+  };
+
+  const confirmFillPlace = () => {
+    const left = Math.max(0, job.remainingVacancies - 1);
+    showAlert({
+      type: 'question',
+      title: 'Count one place as filled?',
+      message:
+        left === 0
+          ? 'That is the last place, so the job closes and stops taking interest.'
+          : `${left} ${left === 1 ? 'place stays' : 'places stay'} open after this.`,
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: '1 place filled',
+          onPress: () =>
+            void runManagement(manage.fillPlace, {
+              title: left === 0 ? 'All places filled' : 'Place filled',
+              message: left === 0 ? 'The job is closed.' : `${left} ${left === 1 ? 'place' : 'places'} left.`,
+            }),
+        },
+      ],
+    });
   };
 
   const confirmPublish = () => {
@@ -397,6 +439,20 @@ export default function JobDetailScreen() {
             <Text className="text-lg font-black text-content-primary ml-1.5 flex-1">{describeSalary(job.salary)}</Text>
           </View>
 
+          {schedule ? (
+            <View className="flex-row items-center mt-2">
+              <Ionicons name="calendar-outline" size={16} color={tokens.color.text.secondary} />
+              <Text className="text-sm font-semibold text-content-secondary ml-1.5 flex-1">{schedule}</Text>
+            </View>
+          ) : null}
+
+          {isSimple && places ? (
+            <View className="flex-row items-center mt-2">
+              <Ionicons name="people-outline" size={16} color={tokens.color.text.secondary} />
+              <Text className="text-sm font-semibold text-content-secondary ml-1.5 flex-1">{places}</Text>
+            </View>
+          ) : null}
+
           <Text className="text-xs font-semibold text-content-muted mt-3">{facts.join(' · ')}</Text>
         </View>
 
@@ -441,6 +497,9 @@ export default function JobDetailScreen() {
               ) : null}
               {actions.canPublish ? (
                 <Button label="Publish" isLoading={manage.isWorking} onPress={confirmPublish} />
+              ) : null}
+              {isSimple && job.remainingVacancies > 0 && actions.closeOutcomes.length > 0 ? (
+                <Button label="1 place filled" isLoading={manage.isWorking} onPress={confirmFillPlace} />
               ) : null}
               {actions.closeOutcomes.length > 0 ? (
                 <Button label="Close to applications" variant="outline" disabled={manage.isWorking} onPress={confirmClose} />
@@ -550,8 +609,45 @@ export default function JobDetailScreen() {
           </Section>
         ) : null}
 
+        {/* A simple job: "I'm interested", which messages the poster. No CV, no profile. */}
+        {isSimple && applyState.kind !== 'manage' ? (
+          <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
+            {applyState.kind === 'applied' ? (
+              <>
+                <Text className="text-base font-bold text-content-primary">You said you are interested</Text>
+                <Text className="text-sm text-content-muted mt-1 leading-relaxed">
+                  {job.employer.displayName} has your message. Carry on in your messages to arrange the work.
+                </Text>
+                {canMessage ? (
+                  <Button label="Open messages" icon="chatbubble-outline" className="mt-3" onPress={() => void handleMessage()} />
+                ) : null}
+              </>
+            ) : applyState.kind === 'open' ? (
+              <>
+                {places ? <Text className="text-sm text-content-muted">{places}</Text> : null}
+                <Button
+                  label="I'm interested"
+                  className="mt-3"
+                  isLoading={interest.isSending}
+                  loadingLabel="Sending…"
+                  onPress={() => void handleInterest()}
+                  testID="job-interested"
+                />
+                <Text className="text-xs text-content-muted mt-2 leading-relaxed">
+                  Sends {job.employer.displayName} a message in Diaspora. You need no CV or work profile.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text className="text-base font-bold text-content-primary">Not taking interest</Text>
+                <Text className="text-sm text-content-muted mt-1 leading-relaxed">{applyState.reason}</Text>
+              </>
+            )}
+          </View>
+        ) : null}
+
         {/* Applying — or why not. The employer's team sees none of it. */}
-        {applyState.kind !== 'manage' ? (
+        {!isSimple && applyState.kind !== 'manage' ? (
           <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
             {applyState.kind === 'applied' ? (
               <>

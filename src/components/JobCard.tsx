@@ -6,7 +6,7 @@ import type { JobOpportunity } from '@/types/job';
 import type { JobSalaryResponse, JobType } from '@/types/jobs-hiring';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
 import { placeOf } from '@/lib/listing-place';
-import { JOB_TYPE_LABELS, describeSalary } from '@/lib/job-detail-api';
+import { JOB_TYPE_LABELS, describeSalary, describeSchedule, placesLeftLabel } from '@/lib/job-detail-api';
 import { currencySymbol as symbolFor } from '@/lib/money';
 
 interface JobCardProps {
@@ -123,7 +123,20 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
   // The poster manages their job; a member who applied follows it (16 Oct 2026).
   // `GET /jobs` says which per viewer (`canManage`, `hasApplied`).
   const viewerState = job as { canManage?: boolean | null; hasApplied?: boolean | null };
-  const actionLabel = viewerState.canManage ? 'Manage' : viewerState.hasApplied ? 'Applied' : 'Apply';
+  // A simple job (5 Nov 2026) is answered with "I'm interested" on its page.
+  const isSimple = anyJob.postingMode === 'Simple';
+  const simpleLine = isSimple
+    ? [describeSchedule(anyJob as never), placesLeftLabel(anyJob)].filter(Boolean).join(' · ')
+    : '';
+  const actionLabel = viewerState.canManage
+    ? 'Manage'
+    : viewerState.hasApplied
+      ? isSimple
+        ? 'Interested'
+        : 'Applied'
+      : isSimple
+        ? "I'm interested"
+        : 'Apply';
 
   const handleQuickApply = (e: any) => {
     e.stopPropagation();
@@ -327,6 +340,9 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
         <Text className="text-sm text-content-muted font-semibold mt-1.5">
           📍 {placeLabel} {formattedDistance ? `· ${formattedDistance}` : ''}
         </Text>
+        {simpleLine ? (
+          <Text className="text-sm text-content-muted font-semibold mt-1">🗓 {simpleLine}</Text>
+        ) : null}
       </View>
 
       {/* Perks flags */}
@@ -370,7 +386,9 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
             onPress={handleQuickApply}
             className="bg-primary-500 px-4 py-2.5 rounded-xl justify-center items-center active:bg-primary-600"
             accessibilityRole="button"
-            accessibilityLabel={viewerState.canManage ? `Manage ${title}` : `Apply for ${title}`}
+            accessibilityLabel={
+              viewerState.canManage ? `Manage ${title}` : isSimple ? `Say you are interested in ${title}` : `Apply for ${title}`
+            }
             accessibilityHint={
               viewerState.canManage ? 'Opens your posting and its applicants' : 'Opens the job posting, where you can send your application'
             }

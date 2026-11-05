@@ -180,22 +180,9 @@ class ConversationHubService {
       }
 
       // 2. Call API to find-or-create
-      const context: Omit<ConversationContextSnapshot, 'snapshotAt'> = {
-        type: params.contextType,
-        entityId: params.entityId,
-        entityTitle: params.entityTitle,
-        entitySubtitle: params.entitySubtitle,
-        entityImageUrl: params.entityImageUrl,
-        entityPrice: params.entityPrice,
-        entityStatus: params.entityStatus,
-        deepLink: params.deepLink,
-        campaignSource: params.campaignSource,
-        appVersion: '1.0.0',
-      };
-
       const res = await apiClient.post('/conversations', {
         recipientId: params.recipientId,
-        context,
+        context: contextOf(params),
       });
 
       const conversation: Conversation = res.data.data;
@@ -238,6 +225,36 @@ class ConversationHubService {
         throw err;
       }
     }
+  }
+
+  /**
+   * Finds or creates the conversation, sends `text` in it, then opens it: "I'm
+   * interested" on a simple job (5 Nov 2026), where the message is the point.
+   * The server keeps a first message only when it creates the conversation, so
+   * it goes as an ordinary message whether the conversation is new or not. A
+   * refusal to start one throws, for the caller to say; a send that fails is
+   * marked failed in the conversation, where the member can try it again.
+   */
+  async openWithMessage(params: OpenConversationParams, text: string): Promise<void> {
+    const store = useConversationStore.getState();
+    let conversationId = this.findConversation(
+      params.contextType,
+      params.entityId,
+      params.recipientId
+    )?.conversationId;
+
+    if (!conversationId) {
+      const res = await apiClient.post('/conversations', {
+        recipientId: params.recipientId,
+        context: contextOf(params),
+      });
+      const conversation: Conversation = res.data.data;
+      store.addOrUpdateConversation(conversation);
+      conversationId = conversation.conversationId;
+    }
+
+    await this.sendMessage(conversationId, text);
+    router.push(`/conversation/${conversationId}`);
   }
 
   // ---------------------------------------------------------------------------
@@ -563,4 +580,20 @@ export const ConversationHub = new ConversationHubService();
 // React hook for convenience
 export function useConversationHub() {
   return ConversationHub;
+}
+
+/** The listing a conversation is about, as `POST /conversations` takes it. */
+function contextOf(params: OpenConversationParams): Omit<ConversationContextSnapshot, 'snapshotAt'> {
+  return {
+    type: params.contextType,
+    entityId: params.entityId,
+    entityTitle: params.entityTitle,
+    entitySubtitle: params.entitySubtitle,
+    entityImageUrl: params.entityImageUrl,
+    entityPrice: params.entityPrice,
+    entityStatus: params.entityStatus,
+    deepLink: params.deepLink,
+    campaignSource: params.campaignSource,
+    appVersion: '1.0.0',
+  };
 }

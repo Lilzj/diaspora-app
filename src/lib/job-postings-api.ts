@@ -79,6 +79,12 @@ export interface CreateJobPostingRequest {
   workplaceType?: WorkplaceType | null;
   offersVisaSponsorship?: boolean;
   offersRelocationAssistance?: boolean;
+  /** "Simple" for short one-off work answered with "I'm interested" (4 Nov 2026). */
+  postingMode?: 'Simple' | 'Standard' | null;
+  /** YYYY-MM-DD: the day the work starts. Sent with a length, or not at all. */
+  startsOn?: string | null;
+  lengthAmount?: number | null;
+  lengthUnit?: 'Hours' | 'Days' | null;
 }
 
 /** The pay a member states on the form. Sent through the whole-document edit. */
@@ -174,6 +180,10 @@ export async function createJobPosting(
     workplaceType: request.workplaceType ?? null,
     offersVisaSponsorship: request.offersVisaSponsorship ?? false,
     offersRelocationAssistance: request.offersRelocationAssistance ?? false,
+    postingMode: request.postingMode ?? null,
+    startsOn: request.startsOn ?? null,
+    lengthAmount: request.lengthAmount ?? null,
+    lengthUnit: request.lengthUnit ?? null,
   });
   return response.data.data;
 }
@@ -213,6 +223,10 @@ export async function setJobTerms(
       vacancyCount: input.vacancyCount ?? 1,
       requiresResume: false,
       baseRevision: job.revision,
+      // Absent leaves the schedule as it is (the server reads all three as one).
+      startsOn: input.startsOn ?? null,
+      lengthAmount: input.lengthAmount ?? null,
+      lengthUnit: input.lengthUnit ?? null,
     }
   );
   return response.data.data;

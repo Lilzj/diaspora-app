@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   archiveJob,
+  fillJobPlace,
   closeJob,
   fetchJob,
   fetchSimilarJobs,
@@ -17,6 +18,7 @@ import {
   type CloseOutcome,
 } from '@/lib/job-detail-api';
 import { publishJobPosting } from '@/lib/job-postings-api';
+import { expressInterest } from '@/lib/job-interest';
 import { jobsHiringErrorMessage, jobsHiringKeys } from '@/lib/jobs-hiring-api';
 import type { JobCardResponse, JobResponse } from '@/types/jobs-hiring';
 
@@ -73,6 +75,8 @@ export interface UseManageJobResult {
   publish: () => Promise<void>;
   close: (outcome: CloseOutcome) => Promise<void>;
   archive: () => Promise<void>;
+  /** Count one place off a simple job; the last one fills it. */
+  fillPlace: () => Promise<void>;
   isWorking: boolean;
   /** A sentence for a refused change. */
   errorMessage: (cause: unknown) => string;
@@ -114,6 +118,18 @@ export function useManageJob(jobId: string | null | undefined): UseManageJobResu
     retry: false,
   });
 
+  // A simple job's poster counts places off as people are taken (5 Nov 2026).
+  const fillPlaceMutation = useMutation({
+    mutationFn: () => fillJobPlace(jobId as string),
+    onSuccess: (job) => {
+      client.setQueryData(jobsHiringKeys.job(job.jobId), (previous: JobResponse | null | undefined) =>
+        previous ? { ...job, hasApplied: previous.hasApplied, isSaved: previous.isSaved } : job
+      );
+      return settle();
+    },
+    retry: false,
+  });
+
   const guard = <T,>(run: () => Promise<T>): Promise<T> =>
     jobId ? run() : Promise.reject(new Error('Cannot manage a job without its identifier.'));
 
@@ -121,7 +137,33 @@ export function useManageJob(jobId: string | null | undefined): UseManageJobResu
     publish: () => guard(async () => void (await publishMutation.mutateAsync())),
     close: (outcome) => guard(async () => void (await closeMutation.mutateAsync(outcome))),
     archive: () => guard(() => archiveMutation.mutateAsync()),
-    isWorking: publishMutation.isPending || closeMutation.isPending || archiveMutation.isPending,
+    fillPlace: () => guard(async () => void (await fillPlaceMutation.mutateAsync())),
+    isWorking:
+      publishMutation.isPending ||
+      closeMutation.isPending ||
+      archiveMutation.isPending ||
+      fillPlaceMutation.isPending,
     errorMessage: jobManagementErrorMessage,
+  };
+}
+
+/**
+ * "I'm interested" on a simple job (5 Nov 2026): records the interest on the
+ * job, messages the poster and opens the conversation. The job is read again
+ * afterwards, so the screen says the member already said it.
+ */
+export function useExpressInterest(job: JobResponse | null | undefined) {
+  const client = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: () => expressInterest(job as JobResponse),
+    onSettled: () => client.invalidateQueries({ queryKey: jobsHiringKeys.all }),
+    retry: false,
+  });
+
+  return {
+    express: () =>
+      job ? mutation.mutateAsync() : Promise.reject(new Error('Cannot answer a job that has not loaded.')),
+    isSending: mutation.isPending,
   };
 }

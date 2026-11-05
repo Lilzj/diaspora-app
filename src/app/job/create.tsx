@@ -29,6 +29,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/components/Button';
 import { WizardFooter } from '@/components/forms/WizardFooter';
+import { Chips, SectionLabel } from '@/components/jobs/JobFormParts';
 import { EmptyState } from '@/components/EmptyState';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
@@ -55,6 +56,16 @@ import type { ExperienceLevel, JobType, SalaryPeriod, WorkplaceType } from '@/ty
 import { backOr } from '@/lib/navigation';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { currencyForResidence } from '@/lib/member-currency';
+import { SimpleJobForm } from '@/components/jobs/SimpleJobForm';
+import {
+  emptySimpleJobForm,
+  localDateString,
+  postSimpleJob,
+  simpleJobFormProblem,
+  simpleJobRequirements,
+  simpleToFullForm,
+  type SimpleJobForm as SimpleJobFormValues,
+} from '@/lib/simple-job-posting';
 
 const STEPS = ['The role', 'Details and pay', 'Where the work is', 'Review and publish'] as const;
 
@@ -106,6 +117,7 @@ export default function CreateJobScreen() {
   const client = useQueryClient();
 
   const residenceCountry = useAuthStore((state) => state.user?.residenceCountry);
+  const memberName = useAuthStore((state) => state.user?.fullName);
 
   // Whether this member may post, as the Jobs service itself says: the
   // `jobs.post` feature on their access decision, which it grants to verified
@@ -151,6 +163,14 @@ export default function CreateJobScreen() {
     offersVisaSponsorship: false,
   });
 
+  // Simple first (owner's request, 4 Nov 2026): most posts are a day's work,
+  // and the full form is one tap away under "More options".
+  const [mode, setMode] = useState<'simple' | 'full'>('simple');
+  const today = useMemo(() => localDateString(), []);
+  const [simple, setSimple] = useState<SimpleJobFormValues>(() =>
+    emptySimpleJobForm(residenceCountry ?? '', currencyForCountry(residenceCountry), today)
+  );
+
   // The country is never asked for (14 Oct 2026): a job is posted in the
   // member's country of residence, and so is its pay. The session restores
   // asynchronously, so the country can arrive after the first render.
@@ -163,6 +183,11 @@ export default function CreateJobScreen() {
             countryCode: residenceCountry ?? '',
             payCurrency: currencyForCountry(residenceCountry),
           }
+    );
+    setSimple((current) =>
+      current.countryCode === (residenceCountry ?? '')
+        ? current
+        : { ...current, countryCode: residenceCountry ?? '', payCurrency: currencyForCountry(residenceCountry) }
     );
   }, [residenceCountry]);
 
@@ -209,6 +234,73 @@ export default function CreateJobScreen() {
     stillNeeded.length > 0
       ? null
       : jobPostingFormProblem(form, isLastStep ? 'all' : (step as 0 | 1 | 2));
+
+  const simpleStillNeeded = simpleJobRequirements(simple)
+    .filter((requirement) => !requirement.ok)
+    .map((requirement) => requirement.label);
+  const simpleProblem = simpleStillNeeded.length > 0 ? null : simpleJobFormProblem(simple, today);
+
+  /** "More options": the full form, carrying what was typed. */
+  const openFullForm = () => {
+    setForm((current) => ({ ...current, ...simpleToFullForm(simple) }));
+    setStep(0);
+    setMode('full');
+  };
+
+  const postSimple = async () => {
+    const problem = simpleJobFormProblem(simple, today);
+    if (problem) {
+      showAlert({ type: 'error', title: 'Not yet', message: problem });
+      return;
+    }
+
+    setIsPublishing(true);
+    try {
+      const outcome = await postSimpleJob(simple, { displayName: memberName?.trim() || 'Diaspora member' });
+      void client.invalidateQueries({ queryKey: ['jobs-hiring'] });
+
+      if (outcome.kind === 'published') {
+        showAlert({
+          type: 'success',
+          title: 'Job posted',
+          message: `"${outcome.job.title}" is live. When someone taps "I'm interested", it comes to your messages.`,
+          buttons: [
+            { text: 'Done', style: 'cancel', onPress: () => backOr() },
+            { text: 'View job', onPress: () => router.replace(`/job/${outcome.job.jobId}`) },
+          ],
+        });
+        return;
+      }
+
+      // The draft exists. Saying "failed" here is how a member posts it twice.
+      const draftId = outcome.job.jobId;
+      showAlert({
+        type: 'error',
+        title: 'Saved, but not posted',
+        message: `Your job was saved as a draft and is not visible yet. ${jobPostingErrorMessage(outcome.cause)}`,
+        buttons: [
+          { text: 'Later', style: 'cancel', onPress: () => backOr() },
+          {
+            text: 'Post again',
+            onPress: async () => {
+              try {
+                await publishJobPosting(draftId);
+                void client.invalidateQueries({ queryKey: ['jobs-hiring'] });
+                router.replace(`/job/${draftId}`);
+              } catch (cause) {
+                showAlert({ type: 'error', title: 'Still not posted', message: jobPostingErrorMessage(cause) });
+              }
+            },
+          },
+        ],
+      });
+    } catch (cause) {
+      // Nothing was created.
+      showAlert({ type: 'error', title: 'Not posted', message: jobPostingErrorMessage(cause) });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   const next = () => {
     setStep((current) => Math.min(current + 1, STEPS.length - 1));
@@ -322,6 +414,29 @@ export default function CreateJobScreen() {
     );
   }
 
+  // A simple post needs no employer first: one is made in the member's name.
+  if (mode === 'simple') {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Post a job" />
+        <SimpleJobForm
+          form={simple}
+          onChange={(next) => setSimple((current) => ({ ...current, ...next }))}
+          categoryOptions={categoryOptions}
+          categoriesLoading={categories.isLoading}
+          today={today}
+          stillNeeded={simpleStillNeeded}
+          problem={simpleProblem}
+          isPosting={isPublishing}
+          onPost={postSimple}
+          onMoreOptions={openFullForm}
+          bottomInset={bottomInset}
+          residenceCountry={residenceCountry}
+        />
+      </SafeAreaView>
+    );
+  }
+
   if (employer.data?.kind !== 'one') {
     return (
       <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -337,6 +452,7 @@ export default function CreateJobScreen() {
                 onPress={() => router.push({ pathname: '/employer/register', params: { next: '/job/create' } })}
               />
               <Button label="Try again" variant="outline" onPress={() => void employer.refetch()} />
+              <Button label="Post a simple job instead" variant="outline" onPress={() => setMode('simple')} />
             </View>
           }
         />
@@ -366,6 +482,16 @@ export default function CreateJobScreen() {
       </View>
 
       <ScreenHeader title={STEPS[step]} />
+      {step === 0 ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => setMode('simple')}
+          className="self-start px-5 pt-2"
+          testID="job-back-to-simple"
+        >
+          <Text className="text-xs font-bold text-primary-600">← Back to the simple form</Text>
+        </TouchableOpacity>
+      ) : null}
 
       <KeyboardAvoidingView behavior="padding" className="flex-1">
         <ScrollView className="flex-1 px-5 pt-2" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -566,42 +692,4 @@ export function describePay(form: Pick<JobPostingForm, 'payMinimum' | 'payMaximu
     currency: form.payCurrency,
     period: form.payPeriod,
   });
-}
-
-function SectionLabel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <Text className={`text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3 ${className}`}>
-      {children}
-    </Text>
-  );
-}
-
-function Chips<T extends string>({
-  options,
-  selected,
-  onSelect,
-}: {
-  options: { value: T; label: string }[];
-  selected: T;
-  onSelect: (value: T) => void;
-}) {
-  return (
-    <View className="flex-row flex-wrap gap-2">
-      {options.map((option) => (
-        <TouchableOpacity
-          key={option.value}
-          accessibilityRole="button"
-          accessibilityState={{ selected: selected === option.value }}
-          onPress={() => onSelect(option.value)}
-          className={`px-3.5 py-2 rounded-full border ${
-            selected === option.value ? 'bg-primary-500 border-primary-500' : 'bg-surface-background border-subtle'
-          }`}
-        >
-          <Text className={`text-xs font-bold ${selected === option.value ? 'text-white' : 'text-content-secondary'}`}>
-            {option.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
 }
