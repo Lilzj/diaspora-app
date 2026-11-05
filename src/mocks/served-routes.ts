@@ -820,6 +820,7 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['post', '/location/places/details'],
   ['get', '/location/reverse-geocode'],
   ['get', '/location/search'],
+  ['get', '/location/towns/match'],
   ['get', '/location/users/{userId}/countries'],
   ['get', '/location/within-bounds'],
   ['post', '/location/within-polygon'],

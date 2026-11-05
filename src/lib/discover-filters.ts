@@ -95,6 +95,12 @@ export interface HousingSheetFilters {
   parking: boolean;
   verifiedHost: boolean;
   lifestyle: Readonly<Record<string, boolean>>;
+  /**
+   * Accommodation type keys ("apartment", "house"), named by a search sentence
+   * ("3-bedroom flat in Grand Baie", 5 Nov 2026). The route binds them as
+   * `accommodationTypes`; the sheet has no control for them yet.
+   */
+  homeTypes?: readonly string[];
 }
 
 /**
@@ -291,6 +297,7 @@ export function housingFilterParams(
     ...rentRangeParams(filters.rentMin, filters.rentMax, scope),
     minBedrooms: filters.bedrooms || undefined,
     minBathrooms: filters.bathrooms || undefined,
+    accommodationTypes: filters.homeTypes?.length ? [...filters.homeTypes] : undefined,
     furnishedStatuses: furnishingStatuses(filters.furnished),
     utilitiesIncluded: filters.billsIncluded || undefined,
     internetIncluded: filters.internetIncluded || undefined,

@@ -49,9 +49,14 @@ describe('an empty state does not trail off', () => {
     // A member with a city sees the city; one with only a country sees the
     // country; one with neither gets the shorter sentence rather than a blank.
     // Since 15 Sep 2026 the city is the one the search actually used: a
-    // country-wide search names the country even when a town is known.
+    // country-wide search names the country even when a town is known. Since
+    // 5 Nov 2026 the country is the one a search sentence named ("jobs in
+    // Nigeria"), else the member's, and still nothing when neither is known.
     expect(DISCOVER).toMatch(
-      /scope\.kind === 'country'\s*\?\s*activeLocation\.countryName\?\.trim\(\)\s*\|\|\s*''\s*:\s*scope\.cityName\s*\|\|\s*activeLocation\.countryName\?\.trim\(\)\s*\|\|\s*''/
+      /scopeCountryName =\s*sentence\?\.place\?\.kind === 'country' \? sentence\.place\.name : activeLocation\.countryName\?\.trim\(\)\s*\|\|\s*''/
+    );
+    expect(DISCOVER).toMatch(
+      /emptyStatePlace = scope\.kind === 'country' \? scopeCountryName : scope\.cityName \|\| scopeCountryName;/
     );
   });
 
