@@ -344,6 +344,11 @@ describe('the employer’s team reading their own job', () => {
     expect(screen.getByText('Diaspora staff')).toBeTruthy();
     expect(screen.getByText('About the employer')).toBeTruthy();
     expect(screen.getByLabelText('Save this job')).toBeTruthy();
+    // No takedown from the app: one tap removed a member's job with no report,
+    // no reason and no word to the employer (6 Nov 2026).
+    expect(screen.queryByText('Close to applications')).toBeNull();
+    expect(screen.queryByText('Remove from Diaspora')).toBeNull();
+    expect(screen.getByText(/handled in the staff console/)).toBeTruthy();
     staffView.unmount();
 
     givenJob(walkthroughJob());
