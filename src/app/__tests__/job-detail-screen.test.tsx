@@ -395,6 +395,16 @@ describe('a simple job', () => {
     mockShowAlert.mockReset();
   });
 
+  // 6 Nov 2026: a one-day job on 7 Nov, closing at the midnight that ends it,
+  // said "Closes 8 Nov 2026". Closes or Closed, by the real clock.
+  it('says the last day of the work as its closing day', () => {
+    givenJob(simpleJob({ startsOn: '2026-11-07', closingAt: new Date(2026, 10, 8).toISOString() }));
+    renderPage();
+
+    expect(screen.getByText(/Clos(es|ed) 7 Nov 2026/)).toBeTruthy();
+    expect(screen.queryByText(/8 Nov 2026/)).toBeNull();
+  });
+
   it(`says when the work is and how many places are left, and offers "I'm interested", not Apply`, () => {
     givenJob(simpleJob());
     renderPage();

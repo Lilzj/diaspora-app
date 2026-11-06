@@ -50,6 +50,7 @@ import {
   placesLeftLabel,
   categoryLabel,
   describeSalary,
+  closingLabel,
   employerKindLabel,
   employerResponsiveness,
   formatJobDate,
@@ -181,14 +182,12 @@ export default function JobDetailScreen() {
     }
   };
 
-  const closingDate = job.closingAt ? new Date(job.closingAt) : null;
   const facts = [
     // A simple job says its places on their own line just above.
     isSimple && places ? '' : openingsLabel(job),
     job.publishedAt ? `Posted ${formatJobDate(job.publishedAt)}` : '',
-    closingDate && !Number.isNaN(closingDate.getTime())
-      ? `${closingDate.getTime() > Date.now() ? 'Closes' : 'Closed'} ${formatJobDate(job.closingAt)}`
-      : '',
+    // The last day it takes interest, not the date of the midnight it closes at.
+    closingLabel(job.closingAt),
   ].filter(Boolean);
 
   const handleSaveToggle = () => {
