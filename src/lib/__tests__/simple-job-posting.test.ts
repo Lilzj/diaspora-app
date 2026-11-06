@@ -6,6 +6,7 @@
 import {
   emptySimpleJobForm,
   postSimpleJob,
+  simpleJobClosingAt,
   simpleJobDescription,
   simpleJobFormProblem,
   simpleJobRequirements,
@@ -91,8 +92,25 @@ describe('the simple form', () => {
   });
 
   it('writes the job in a sentence when the poster wrote no details', () => {
-    expect(simpleJobDescription(cleaners())).toMatch(/^2 people needed in Port Louis\. .+\. 1 day, starting 2026-11-12\.$/);
+    // "12 Nov", as the page says it. It read "starting 2026-11-12" until 6 Nov 2026.
+    expect(simpleJobDescription(cleaners())).toMatch(/^2 people needed in Port Louis\. .+\. 1 day, starting 12 Nov\.$/);
     expect(simpleJobDescription(cleaners({ details: 'Bring gloves.' }))).toBe('Bring gloves.');
+  });
+
+  // Left to the server it was midnight UTC: "Closes 7 Nov" on a 6 Nov job in
+  // Mauritius, and 19:00 on the day in Toronto.
+  it('stops taking interest at midnight on the poster’s own clock, at the end of the last day', () => {
+    const localMidnight = (y: number, m: number, d: number) => new Date(y, m - 1, d).toISOString();
+
+    expect(toSimplePostInput(cleaners()).closingAt).toBe(localMidnight(2026, 11, 13));
+    expect(simpleJobClosingAt({ startsOn: '2026-11-12', lengthAmount: '3', lengthUnit: 'Days' })).toBe(
+      localMidnight(2026, 11, 15)
+    );
+    // Counted in hours: the work ends with its start day, as on the server.
+    expect(simpleJobClosingAt({ startsOn: '2026-12-31', lengthAmount: '4', lengthUnit: 'Hours' })).toBe(
+      localMidnight(2027, 1, 1)
+    );
+    expect(simpleJobClosingAt({ startsOn: '', lengthAmount: '1', lengthUnit: 'Days' })).toBeNull();
   });
 
   it('carries what was typed into the full form', () => {

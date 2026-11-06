@@ -172,8 +172,22 @@ export interface RealtimeCountPayload {
   at: string;
 }
 
+/**
+ * A conversation this member is in was just started: `ConversationCreatedPayload`
+ * in `Realtime/ConversationRealtimePayloads.cs`, sent to each participant.
+ */
+export interface ConversationCreatedEvent {
+  conversationId: string;
+  contextType: string;
+  entityId: string;
+  initiatorUserId: string;
+  state: string;
+  createdAt: string;
+}
+
 type NotificationHandler = (notification: RealtimeNotificationPayload) => void;
 type CountHandler = (count: RealtimeCountPayload) => void;
+type ConversationCreatedHandler = (event: ConversationCreatedEvent) => void;
 type ConnectionStateHandler = (state: ConnectionState) => void;
 type RealtimeCapabilityHandler = (capabilities: RealtimeCapabilities) => void;
 
@@ -308,6 +322,7 @@ export class DiasporaRealtimeClient {
   private notificationHandlers = new Set<NotificationHandler>();
   private inboxCountHandlers = new Set<CountHandler>();
   private conversationUnreadHandlers = new Set<CountHandler>();
+  private conversationCreatedHandlers = new Set<ConversationCreatedHandler>();
   private connectionStateHandlers = new Set<ConnectionStateHandler>();
   private capabilityHandlers = new Set<RealtimeCapabilityHandler>();
 
@@ -479,6 +494,12 @@ export class DiasporaRealtimeClient {
   onConversationUnread(handler: CountHandler): () => void {
     this.conversationUnreadHandlers.add(handler);
     return () => this.conversationUnreadHandlers.delete(handler);
+  }
+
+  /** Someone started a conversation with this member, or they started one elsewhere. */
+  onConversationCreated(handler: ConversationCreatedHandler): () => void {
+    this.conversationCreatedHandlers.add(handler);
+    return () => this.conversationCreatedHandlers.delete(handler);
   }
 
   /**
@@ -750,6 +771,17 @@ export class DiasporaRealtimeClient {
     connection.on('ConversationUnreadChanged', (payload: RealtimeCountPayload) => {
       if (!payload || typeof payload.total !== 'number') return;
       this.conversationUnreadHandlers.forEach((handler) => handler(payload));
+    });
+
+    // ── A new conversation (6 Nov 2026) ──────────────────────────────────────
+    //
+    // Dropped with "No client method with the name 'conversationcreated'". The
+    // first message of a new conversation still arrived, but the inbox only
+    // updates conversations it already holds, so an open Messages list did not
+    // show the new one until it was reloaded.
+    connection.on('ConversationCreated', (payload: ConversationCreatedEvent) => {
+      if (!payload || typeof payload.conversationId !== 'string') return;
+      this.conversationCreatedHandlers.forEach((handler) => handler(payload));
     });
   }
 

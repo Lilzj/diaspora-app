@@ -110,6 +110,8 @@ export interface JobPostingResponse {
 export interface PostJobInput extends Omit<CreateJobPostingRequest, 'employerId'> {
   pay?: JobPay | null;
   vacancyCount?: number | null;
+  /** ISO instant, sent with publish. Absent lets the server choose (a simple job: the end of its work, in UTC). */
+  closingAt?: string | null;
 }
 
 /**
@@ -233,10 +235,13 @@ export async function setJobTerms(
 }
 
 /** `POST /jobs/{jobId}/publish` — visible, and open to applications now. */
-export async function publishJobPosting(jobId: string): Promise<JobPostingResponse> {
+export async function publishJobPosting(
+  jobId: string,
+  closingAt?: string | null
+): Promise<JobPostingResponse> {
   const response = await apiClient.post<Envelope<JobPostingResponse>>(
     `/jobs/${encodeURIComponent(jobId)}/publish`,
-    { openImmediately: true }
+    closingAt ? { openImmediately: true, closingAt } : { openImmediately: true }
   );
   return response.data.data;
 }
@@ -257,7 +262,7 @@ export async function postJob(employerId: string, input: PostJobInput): Promise<
     if (input.pay || (input.vacancyCount ?? 1) !== 1) {
       job = await setJobTerms(job, input);
     }
-    const published = await publishJobPosting(job.jobId);
+    const published = await publishJobPosting(job.jobId, input.closingAt);
     return { kind: 'published', job: { ...job, ...published } };
   } catch (cause) {
     return { kind: 'draft', job, cause };

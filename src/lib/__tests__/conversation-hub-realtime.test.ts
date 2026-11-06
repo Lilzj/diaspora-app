@@ -20,6 +20,7 @@ type Handler<T> = (event: T) => void;
 const handlers: {
   read?: Handler<ReadReceiptEvent>;
   typing?: Handler<TypingEvent>;
+  created?: Handler<{ conversationId: string }>;
 } = {};
 
 jest.mock('@/lib/realtime', () => ({
@@ -37,6 +38,10 @@ jest.mock('@/lib/realtime', () => ({
       return () => {};
     },
     onDelivery: () => () => {},
+    onConversationCreated: (handler: Handler<{ conversationId: string }>) => {
+      handlers.created = handler;
+      return () => {};
+    },
     disconnect: jest.fn(),
   }),
 }));
@@ -129,5 +134,27 @@ describe('typing', () => {
   it('names the other person from the conversation, since the signal carries no name', () => {
     handlers.typing?.(signal(DAVID));
     expect(label()).toBe('David Mensah is typing...');
+  });
+});
+
+// 6 Nov 2026: the frame was dropped, and an open inbox never showed a
+// conversation started with the member — "I'm interested" on a job, say.
+describe('a new conversation', () => {
+  it('reads the inbox again when the conversation is not in it', () => {
+    const loadConversations = jest.fn(async () => {});
+    useConversationStore.setState({ loadConversations });
+
+    handlers.created?.({ conversationId: '01a0a1b2-0000-7000-8000-00000000c002' });
+
+    expect(loadConversations).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the inbox alone when it already has the conversation', () => {
+    const loadConversations = jest.fn(async () => {});
+    useConversationStore.setState({ loadConversations });
+
+    handlers.created?.({ conversationId: CONVERSATION });
+
+    expect(loadConversations).not.toHaveBeenCalled();
   });
 });

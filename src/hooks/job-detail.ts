@@ -14,6 +14,7 @@ import {
   closeJob,
   fetchJob,
   fetchSimilarJobs,
+  isOnEmployerTeam,
   jobManagementErrorMessage,
   type CloseOutcome,
 } from '@/lib/job-detail-api';
@@ -64,7 +65,8 @@ export function useSimilarJobs(job: JobResponse | null): JobCardResponse[] {
   const query = useQuery({
     queryKey: [...jobsHiringKeys.job(job?.jobId ?? ''), 'similar'],
     queryFn: () => fetchSimilarJobs(job as JobResponse),
-    enabled: Boolean(job) && job?.canManage === false,
+    // Not for the employer's own team. Staff see the page as a member does.
+    enabled: Boolean(job) && !isOnEmployerTeam(job as JobResponse),
     staleTime: 5 * 60 * 1000,
     retry: false,
   });

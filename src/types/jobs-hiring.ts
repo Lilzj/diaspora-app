@@ -1126,8 +1126,8 @@ export interface JobGuideReferenceResponse {
  *
  * The viewer-relative fields at the bottom are the server's answers, not rules
  * for the client to re-derive: `canApply` already accounts for the status, the
- * closing date and the vacancies, and `canManage` is membership of the
- * employer's team — the only owner check there is.
+ * closing date and the vacancies. `canManage` is "may manage it", which staff
+ * may for every job; `isOnEmployerTeam` is "it is theirs", the owner check.
  */
 export interface JobResponse {
   /** "Simple" (short one-off work, "I'm interested") or "Standard". Absent from servers before 5 Nov 2026. */
@@ -1175,8 +1175,17 @@ export interface JobResponse {
   hasApplied?: boolean | null;
   isSaved?: boolean | null;
   canApply: boolean;
-  /** Whether this viewer belongs to the employer's team. */
+  /**
+   * Whether this viewer may manage the job: the employer's team, **or platform
+   * staff on any job**. Not the owner check — see `isOnEmployerTeam`.
+   */
   canManage: boolean;
+  /**
+   * Whether this viewer belongs to the employer's team. Absent from servers
+   * before 6 Nov 2026, which sent only `canManage`; read it through
+   * `isOnEmployerTeam()` in `lib/job-detail-api.ts`.
+   */
+  isOnEmployerTeam?: boolean;
 }
 
 /**
