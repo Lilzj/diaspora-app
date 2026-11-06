@@ -385,18 +385,22 @@ export default function JobDetailScreen() {
         title="Job"
         rightAction={
           <View className="flex-row items-center">
-            <TouchableOpacity
-              onPress={handleSaveToggle}
-              className="w-11 h-11 items-center justify-center"
-              accessibilityRole="button"
-              accessibilityLabel={saved ? 'Remove from saved' : 'Save this job'}
-            >
-              <Ionicons
-                name={saved ? 'heart' : 'heart-outline'}
-                size={22}
-                color={saved ? tokens.color.error.default : tokens.color.text.primary}
-              />
-            </TouchableOpacity>
+            {/* Saving is a job seeker's bookmark. The team keeps its own jobs
+                under My jobs. */}
+            {!onTeam ? (
+              <TouchableOpacity
+                onPress={handleSaveToggle}
+                className="w-11 h-11 items-center justify-center"
+                accessibilityRole="button"
+                accessibilityLabel={saved ? 'Remove from saved' : 'Save this job'}
+              >
+                <Ionicons
+                  name={saved ? 'heart' : 'heart-outline'}
+                  size={22}
+                  color={saved ? tokens.color.error.default : tokens.color.text.primary}
+                />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               onPress={handleShare}
               className="w-11 h-11 items-center justify-center"
@@ -585,45 +589,51 @@ export default function JobDetailScreen() {
           </Section>
         ) : null}
 
-        <Section title="About the employer">
-          <Text className="text-base font-bold text-content-primary">{job.employer.displayName}</Text>
-          <Text className="text-xs text-content-muted mt-0.5">{employerKindLabel(job.employer)}</Text>
-          {job.employer.verificationBadge ? (
-            <Text className="text-xs font-bold text-info-default mt-1">{job.employer.verificationBadge}</Text>
-          ) : null}
-          {job.employer.tagline ? (
-            <Text className="text-sm text-content-secondary mt-2 leading-relaxed">{job.employer.tagline}</Text>
-          ) : null}
-          {job.employer.isIntermediary ? (
-            <Text className="text-sm text-content-secondary mt-2 leading-relaxed">
-              This is a recruiter or agency, so you would be dealing with them rather than the employer directly.
-            </Text>
-          ) : null}
-          {responsiveness.length > 0 ? (
-            responsiveness.map((line) => (
-              <Text key={line} className="text-sm text-content-secondary mt-2">
-                {line}
+        {/* A job seeker's look at who is hiring (6 Nov 2026: Zoe was shown her
+            own reply speed, as "this employer", on her own job). The team's
+            way to its own profile is the employer's name at the top. Staff
+            still see it: they read the job as a member does. */}
+        {!onTeam ? (
+          <Section title="About the employer">
+            <Text className="text-base font-bold text-content-primary">{job.employer.displayName}</Text>
+            <Text className="text-xs text-content-muted mt-0.5">{employerKindLabel(job.employer)}</Text>
+            {job.employer.verificationBadge ? (
+              <Text className="text-xs font-bold text-info-default mt-1">{job.employer.verificationBadge}</Text>
+            ) : null}
+            {job.employer.tagline ? (
+              <Text className="text-sm text-content-secondary mt-2 leading-relaxed">{job.employer.tagline}</Text>
+            ) : null}
+            {job.employer.isIntermediary ? (
+              <Text className="text-sm text-content-secondary mt-2 leading-relaxed">
+                This is a recruiter or agency, so you would be dealing with them rather than the employer directly.
               </Text>
-            ))
-          ) : (
-            <Text className="text-xs text-content-faint mt-2 leading-relaxed">
-              Not enough applications yet to show how quickly this employer replies.
-            </Text>
-          )}
-          <TouchableOpacity onPress={openEmployer} className="mt-3" accessibilityRole="link">
-            <Text className="text-sm font-bold text-primary-500">See their profile and open jobs ›</Text>
-          </TouchableOpacity>
-          {website && /^https?:\/\//i.test(website) ? (
-            <TouchableOpacity
-              onPress={() => void Linking.openURL(website)}
-              className="mt-3"
-              accessibilityRole="link"
-              accessibilityLabel={`Open ${job.employer.displayName}'s website`}
-            >
-              <Text className="text-sm font-bold text-primary-500">Visit their website ›</Text>
+            ) : null}
+            {responsiveness.length > 0 ? (
+              responsiveness.map((line) => (
+                <Text key={line} className="text-sm text-content-secondary mt-2">
+                  {line}
+                </Text>
+              ))
+            ) : (
+              <Text className="text-xs text-content-faint mt-2 leading-relaxed">
+                Not enough applications yet to show how quickly this employer replies.
+              </Text>
+            )}
+            <TouchableOpacity onPress={openEmployer} className="mt-3" accessibilityRole="link">
+              <Text className="text-sm font-bold text-primary-500">See their profile and open jobs ›</Text>
             </TouchableOpacity>
-          ) : null}
-        </Section>
+            {website && /^https?:\/\//i.test(website) ? (
+              <TouchableOpacity
+                onPress={() => void Linking.openURL(website)}
+                className="mt-3"
+                accessibilityRole="link"
+                accessibilityLabel={`Open ${job.employer.displayName}'s website`}
+              >
+                <Text className="text-sm font-bold text-primary-500">Visit their website ›</Text>
+              </TouchableOpacity>
+            ) : null}
+          </Section>
+        ) : null}
 
         {guides.length > 0 ? (
           <Section title="Guides for this job">

@@ -321,6 +321,37 @@ describe('the employer’s team reading their own job', () => {
     expect(screen.queryByText('Close to applications')).toBeNull();
     expect(screen.getByText('Remove from Diaspora')).toBeTruthy();
   });
+
+  // 6 Nov 2026: Zoe, on her own job, was told how quickly "this employer"
+  // replies and offered to save it.
+  it('shows the team neither a seeker’s look at its own employer nor a way to save its own job', () => {
+    givenJob(walkthroughJob({ canManage: true, isOnEmployerTeam: true }));
+    renderPage();
+
+    expect(screen.queryByText('About the employer')).toBeNull();
+    expect(screen.queryByText('See their profile and open jobs ›')).toBeNull();
+    expect(screen.queryByText('Not enough applications yet to show how quickly this employer replies.')).toBeNull();
+    expect(screen.queryByLabelText('Save this job')).toBeNull();
+    // The way to its own profile stays, at the top.
+    expect(screen.getByLabelText("Walkthrough Test Employer. Opens the employer's profile.")).toBeTruthy();
+    expect(screen.getByLabelText('Share this job')).toBeTruthy();
+  });
+
+  it('still shows staff, and members, who is hiring and a way to save the job', () => {
+    givenJob(walkthroughJob({ canManage: true, isOnEmployerTeam: false }));
+    const staffView = renderPage();
+
+    expect(screen.getByText('Diaspora staff')).toBeTruthy();
+    expect(screen.getByText('About the employer')).toBeTruthy();
+    expect(screen.getByLabelText('Save this job')).toBeTruthy();
+    staffView.unmount();
+
+    givenJob(walkthroughJob());
+    renderPage();
+
+    expect(screen.getByText('About the employer')).toBeTruthy();
+    expect(screen.getByLabelText('Save this job')).toBeTruthy();
+  });
 });
 
 describe('a read that did not arrive', () => {
