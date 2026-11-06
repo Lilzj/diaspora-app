@@ -11,10 +11,13 @@
 //
 //   * **A candidate** — who is hiring, where, for what pay, whether it is still
 //     open, and one clear way to apply, or the reason they cannot.
-//   * **The employer's team** — that the job is theirs (`canManage`, the
+//   * **The employer's team** — that the job is theirs (`isOnEmployerTeam`, the
 //     server's answer, not a comparison of identifiers), how it is doing, and a
 //     way to publish, close or remove it. Until this page, a job could not be
 //     closed from the app at all.
+//   * **Diaspora staff** — the job as a member sees it, and a way to close or
+//     remove it. `canManage` is true for staff on every job, which is why it is
+//     not the owner check (6 Nov 2026).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
@@ -50,6 +53,7 @@ import {
   employerKindLabel,
   employerResponsiveness,
   formatJobDate,
+  isOnEmployerTeam,
   jobConversationSubtitle,
   jobPlaceLabel,
   jobStanding,
@@ -154,13 +158,19 @@ export default function JobDetailScreen() {
   const place = jobPlaceLabel(job.location);
   const category = categoryLabel(job.categoryKey, categories.data ?? []);
   const saved = isSaved(job.jobId);
-  const canMessage = !job.canManage && Boolean(job.employer.ownerUserId);
+  // Whose job it is, and who may manage it, are two answers (6 Nov 2026). Staff
+  // may close or remove any job, but it is still somebody else's: they see the
+  // job as a member does, and can say they are interested like anyone.
+  const onTeam = isOnEmployerTeam(job);
+  const staffOnly = job.canManage && !onTeam;
+  const canMessage = !onTeam && Boolean(job.employer.ownerUserId);
 
   // A simple job (5 Nov 2026) is answered with "I'm interested", says when the
   // work is, and counts its places off.
   const isSimple = job.postingMode === 'Simple';
   const schedule = describeSchedule(job);
   const places = placesLeftLabel(job);
+  const arrangement = workArrangementFacts(job);
 
   const handleInterest = async () => {
     try {
@@ -173,7 +183,8 @@ export default function JobDetailScreen() {
 
   const closingDate = job.closingAt ? new Date(job.closingAt) : null;
   const facts = [
-    openingsLabel(job),
+    // A simple job says its places on their own line just above.
+    isSimple && places ? '' : openingsLabel(job),
     job.publishedAt ? `Posted ${formatJobDate(job.publishedAt)}` : '',
     closingDate && !Number.isNaN(closingDate.getTime())
       ? `${closingDate.getTime() > Date.now() ? 'Closes' : 'Closed'} ${formatJobDate(job.closingAt)}`
@@ -320,7 +331,8 @@ export default function JobDetailScreen() {
     const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
       { text: 'Keep it open', style: 'cancel' },
     ];
-    if (actions.closeOutcomes.includes('filled')) {
+    // Only the employer knows whether somebody was hired; staff only take a job down.
+    if (onTeam && actions.closeOutcomes.includes('filled')) {
       buttons.push({ text: 'Someone was hired', onPress: () => close('filled') });
     }
     if (actions.closeOutcomes.includes('withdrawn')) {
@@ -340,8 +352,9 @@ export default function JobDetailScreen() {
     showAlert({
       type: 'warning',
       title: 'Remove this job from Diaspora?',
-      message:
-        'It comes off every public part of Diaspora. Your team can still open this page. You cannot undo this from the app.',
+      message: `It comes off every public part of Diaspora. ${
+        onTeam ? 'Your team' : `${job.employer.displayName}'s team`
+      } can still open this page. You cannot undo this from the app.`,
       buttons: [
         { text: 'Keep it', style: 'cancel' },
         {
@@ -372,18 +385,22 @@ export default function JobDetailScreen() {
         title="Job"
         rightAction={
           <View className="flex-row items-center">
-            <TouchableOpacity
-              onPress={handleSaveToggle}
-              className="w-11 h-11 items-center justify-center"
-              accessibilityRole="button"
-              accessibilityLabel={saved ? 'Remove from saved' : 'Save this job'}
-            >
-              <Ionicons
-                name={saved ? 'heart' : 'heart-outline'}
-                size={22}
-                color={saved ? tokens.color.error.default : tokens.color.text.primary}
-              />
-            </TouchableOpacity>
+            {/* Saving is a job seeker's bookmark. The team keeps its own jobs
+                under My jobs. */}
+            {!onTeam ? (
+              <TouchableOpacity
+                onPress={handleSaveToggle}
+                className="w-11 h-11 items-center justify-center"
+                accessibilityRole="button"
+                accessibilityLabel={saved ? 'Remove from saved' : 'Save this job'}
+              >
+                <Ionicons
+                  name={saved ? 'heart' : 'heart-outline'}
+                  size={22}
+                  color={saved ? tokens.color.error.default : tokens.color.text.primary}
+                />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               onPress={handleShare}
               className="w-11 h-11 items-center justify-center"
@@ -464,8 +481,8 @@ export default function JobDetailScreen() {
           </View>
         ) : null}
 
-        {/* The owner's view. `canManage` is the server's answer. */}
-        {job.canManage ? (
+        {/* The owner's view: the employer's team, the server's answer. */}
+        {onTeam ? (
           <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
             <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">Your job</Text>
             <Text className="text-sm text-content-secondary mt-1">You manage this job for {job.employer.displayName}.</Text>
@@ -511,7 +528,26 @@ export default function JobDetailScreen() {
           </View>
         ) : null}
 
-        {job.canManage && PROMOTABLE.has(job.status) ? (
+        {/* Staff on somebody else's job: moderation only. Applicants, editing,
+            places and promotion are the employer's. */}
+        {staffOnly && (actions.closeOutcomes.length > 0 || actions.canArchive) ? (
+          <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
+            <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">Diaspora staff</Text>
+            <Text className="text-sm text-content-secondary mt-1">
+              This job is {job.employer.displayName}&apos;s. As staff you can close it or take it off Diaspora.
+            </Text>
+            <View className="gap-2 mt-4">
+              {actions.closeOutcomes.length > 0 ? (
+                <Button label="Close to applications" variant="outline" disabled={manage.isWorking} onPress={confirmClose} />
+              ) : null}
+              {actions.canArchive ? (
+                <Button label="Remove from Diaspora" variant="ghost" disabled={manage.isWorking} onPress={confirmArchive} />
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
+        {onTeam && PROMOTABLE.has(job.status) ? (
           <View className="mx-4 mt-3">
             <PromoteEntry target="job" subjectId={job.jobId} title={job.title} isOwner />
           </View>
@@ -540,54 +576,64 @@ export default function JobDetailScreen() {
           </Section>
         ) : null}
 
-        <Section title="How the work is arranged">
-          {workArrangementFacts(job).map((fact) => (
-            <View key={fact.label} className="flex-row py-1.5">
-              <Text className="w-36 text-sm text-content-muted">{fact.label}</Text>
-              <Text className="flex-1 text-sm font-semibold text-content-primary">{fact.value}</Text>
-            </View>
-          ))}
-        </Section>
+        {/* On a simple job "Where" is all the poster said, and the top of the
+            page already says it. */}
+        {!isSimple || arrangement.some((fact) => fact.label !== 'Where') ? (
+          <Section title="How the work is arranged">
+            {arrangement.map((fact) => (
+              <View key={fact.label} className="flex-row py-1.5">
+                <Text className="w-36 text-sm text-content-muted">{fact.label}</Text>
+                <Text className="flex-1 text-sm font-semibold text-content-primary">{fact.value}</Text>
+              </View>
+            ))}
+          </Section>
+        ) : null}
 
-        <Section title="About the employer">
-          <Text className="text-base font-bold text-content-primary">{job.employer.displayName}</Text>
-          <Text className="text-xs text-content-muted mt-0.5">{employerKindLabel(job.employer)}</Text>
-          {job.employer.verificationBadge ? (
-            <Text className="text-xs font-bold text-info-default mt-1">{job.employer.verificationBadge}</Text>
-          ) : null}
-          {job.employer.tagline ? (
-            <Text className="text-sm text-content-secondary mt-2 leading-relaxed">{job.employer.tagline}</Text>
-          ) : null}
-          {job.employer.isIntermediary ? (
-            <Text className="text-sm text-content-secondary mt-2 leading-relaxed">
-              This is a recruiter or agency, so you would be dealing with them rather than the employer directly.
-            </Text>
-          ) : null}
-          {responsiveness.length > 0 ? (
-            responsiveness.map((line) => (
-              <Text key={line} className="text-sm text-content-secondary mt-2">
-                {line}
+        {/* A job seeker's look at who is hiring (6 Nov 2026: Zoe was shown her
+            own reply speed, as "this employer", on her own job). The team's
+            way to its own profile is the employer's name at the top. Staff
+            still see it: they read the job as a member does. */}
+        {!onTeam ? (
+          <Section title="About the employer">
+            <Text className="text-base font-bold text-content-primary">{job.employer.displayName}</Text>
+            <Text className="text-xs text-content-muted mt-0.5">{employerKindLabel(job.employer)}</Text>
+            {job.employer.verificationBadge ? (
+              <Text className="text-xs font-bold text-info-default mt-1">{job.employer.verificationBadge}</Text>
+            ) : null}
+            {job.employer.tagline ? (
+              <Text className="text-sm text-content-secondary mt-2 leading-relaxed">{job.employer.tagline}</Text>
+            ) : null}
+            {job.employer.isIntermediary ? (
+              <Text className="text-sm text-content-secondary mt-2 leading-relaxed">
+                This is a recruiter or agency, so you would be dealing with them rather than the employer directly.
               </Text>
-            ))
-          ) : (
-            <Text className="text-xs text-content-faint mt-2 leading-relaxed">
-              Not enough applications yet to show how quickly this employer replies.
-            </Text>
-          )}
-          <TouchableOpacity onPress={openEmployer} className="mt-3" accessibilityRole="link">
-            <Text className="text-sm font-bold text-primary-500">See their profile and open jobs ›</Text>
-          </TouchableOpacity>
-          {website && /^https?:\/\//i.test(website) ? (
-            <TouchableOpacity
-              onPress={() => void Linking.openURL(website)}
-              className="mt-3"
-              accessibilityRole="link"
-              accessibilityLabel={`Open ${job.employer.displayName}'s website`}
-            >
-              <Text className="text-sm font-bold text-primary-500">Visit their website ›</Text>
+            ) : null}
+            {responsiveness.length > 0 ? (
+              responsiveness.map((line) => (
+                <Text key={line} className="text-sm text-content-secondary mt-2">
+                  {line}
+                </Text>
+              ))
+            ) : (
+              <Text className="text-xs text-content-faint mt-2 leading-relaxed">
+                Not enough applications yet to show how quickly this employer replies.
+              </Text>
+            )}
+            <TouchableOpacity onPress={openEmployer} className="mt-3" accessibilityRole="link">
+              <Text className="text-sm font-bold text-primary-500">See their profile and open jobs ›</Text>
             </TouchableOpacity>
-          ) : null}
-        </Section>
+            {website && /^https?:\/\//i.test(website) ? (
+              <TouchableOpacity
+                onPress={() => void Linking.openURL(website)}
+                className="mt-3"
+                accessibilityRole="link"
+                accessibilityLabel={`Open ${job.employer.displayName}'s website`}
+              >
+                <Text className="text-sm font-bold text-primary-500">Visit their website ›</Text>
+              </TouchableOpacity>
+            ) : null}
+          </Section>
+        ) : null}
 
         {guides.length > 0 ? (
           <Section title="Guides for this job">

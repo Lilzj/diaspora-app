@@ -111,7 +111,18 @@ class ConversationHubService {
       );
     });
 
-    this.unsubscribers = [unsub1, unsub2, unsub3, unsub4, unsub5];
+    // A conversation the inbox has never seen. `receiveMessage` updates only the
+    // conversations already loaded, so the new one needs the list read again:
+    // the server's row carries the other person, the context and the first
+    // message, which the event does not.
+    const unsub6 = client.onConversationCreated((event) => {
+      const known = useConversationStore
+        .getState()
+        .conversations.some((c) => c.conversationId === event.conversationId);
+      if (!known) void useConversationStore.getState().loadConversations();
+    });
+
+    this.unsubscribers = [unsub1, unsub2, unsub3, unsub4, unsub5, unsub6];
     this.initialized = true;
   }
 

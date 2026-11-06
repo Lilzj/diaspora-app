@@ -10,7 +10,7 @@
 // application form. "More options" opens the full form with what was typed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { formatPay } from '@/lib/job-detail-api';
+import { formatPay, formatWorkDay } from '@/lib/job-detail-api';
 import {
   postJob,
   resolvePostingEmployer,
@@ -156,8 +156,29 @@ export function simpleJobDescription(form: SimpleJobForm): string {
   return [
     `${people} ${people === 1 ? 'person' : 'people'} needed in ${form.cityName.trim()}.`,
     `${pay}.`,
-    `${describeLength(length, form.lengthUnit)}, starting ${form.startsOn}.`,
+    // "6 Nov", as the page and the card say it — not the form's 2026-11-06.
+    `${describeLength(length, form.lengthUnit)}, starting ${formatWorkDay(form.startsOn) ?? form.startsOn}.`,
   ].join(' ');
+}
+
+/**
+ * When a simple job stops taking interest: midnight at the end of its last day,
+ * **on the poster's own clock** (6 Nov 2026).
+ *
+ * Left to the server it was midnight UTC — 04:00 the next morning in Mauritius,
+ * which put "Closes 7 Nov" on a job for 6 Nov, and 19:00 on the day in Toronto.
+ * The poster is nearly always where the work is, so their phone's day is the
+ * job's day. A job counted in hours ends with its start day, as on the server.
+ * Null when the form holds no readable date.
+ */
+export function simpleJobClosingAt(form: Pick<SimpleJobForm, 'startsOn' | 'lengthAmount' | 'lengthUnit'>): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(form.startsOn);
+  if (!match) return null;
+
+  const days = form.lengthUnit === 'Days' ? (wholeNumber(form.lengthAmount) ?? 1) : 1;
+  // The local-time constructor, so the phone's zone and its daylight saving apply.
+  const end = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + days);
+  return Number.isNaN(end.getTime()) ? null : end.toISOString();
 }
 
 /** The posting the server is sent: a Temporary, entry-level, on-site Simple job. */
@@ -183,6 +204,7 @@ export function toSimplePostInput(form: SimpleJobForm): PostJobInput {
     startsOn: form.startsOn,
     lengthAmount: wholeNumber(form.lengthAmount) ?? 1,
     lengthUnit: form.lengthUnit,
+    closingAt: simpleJobClosingAt(form),
   };
 }
 

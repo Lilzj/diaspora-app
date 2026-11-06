@@ -169,6 +169,19 @@ describe('postJob', () => {
     expect(JSON.parse(api.history.post[1].data)).toEqual({ openImmediately: true });
   });
 
+  it('sends a closing time with publish when the form chose one, and never to create', async () => {
+    api.onPost('/jobs/').reply(201, envelope(draft()));
+    api.onPost(`/jobs/${JOB}/publish`).reply(200, envelope(draft({ status: 'Open' })));
+
+    await postJob(EMPLOYER, input({ closingAt: '2026-11-06T20:00:00.000Z' }));
+
+    expect(JSON.parse(api.history.post[1].data)).toEqual({
+      openImmediately: true,
+      closingAt: '2026-11-06T20:00:00.000Z',
+    });
+    expect(JSON.parse(api.history.post[0].data)).not.toHaveProperty('closingAt');
+  });
+
   it('skips the edit when there is nothing the create request could not carry', async () => {
     api.onPost('/jobs/').reply(201, envelope(draft()));
     api.onPost(`/jobs/${JOB}/publish`).reply(200, envelope(draft({ status: 'Open' })));

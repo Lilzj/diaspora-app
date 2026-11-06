@@ -555,10 +555,16 @@ export interface JobFact {
  * How the work is arranged — the questions a candidate applying across a border
  * asks first. Every line is the employer's own statement, and a sponsorship the
  * posting does not offer is said, not left out.
+ *
+ * **Except on a simple job (6 Nov 2026).** Its form asks none of these, and the
+ * app files it as entry level without asking, so "Visa sponsorship: Not offered"
+ * and "Experience: Entry level" would be words the poster never said. A simple
+ * job shows a sponsorship only when one was added later through Edit.
  */
 export function workArrangementFacts(
-  job: Pick<JobResponse, 'workArrangement' | 'experienceLevel' | 'educationLevel' | 'requiresResume'>
+  job: Pick<JobResponse, 'workArrangement' | 'experienceLevel' | 'educationLevel' | 'requiresResume' | 'postingMode'>
 ): JobFact[] {
+  const isSimple = job.postingMode === 'Simple';
   const work = job.workArrangement;
   const facts: JobFact[] = [];
 
@@ -575,9 +581,15 @@ export function workArrangementFacts(
   const policy = work.remotePolicy?.trim();
   if (policy) facts.push({ label: 'Remote policy', value: policy });
 
-  facts.push({ label: 'Visa sponsorship', value: work.offersVisaSponsorship ? 'Offered' : 'Not offered' });
-  facts.push({ label: 'Relocation help', value: work.offersRelocationAssistance ? 'Offered' : 'Not offered' });
-  facts.push({ label: 'Experience', value: EXPERIENCE_LABELS[job.experienceLevel] ?? job.experienceLevel });
+  if (!isSimple || work.offersVisaSponsorship) {
+    facts.push({ label: 'Visa sponsorship', value: work.offersVisaSponsorship ? 'Offered' : 'Not offered' });
+  }
+  if (!isSimple || work.offersRelocationAssistance) {
+    facts.push({ label: 'Relocation help', value: work.offersRelocationAssistance ? 'Offered' : 'Not offered' });
+  }
+  if (!isSimple) {
+    facts.push({ label: 'Experience', value: EXPERIENCE_LABELS[job.experienceLevel] ?? job.experienceLevel });
+  }
 
   const education = EDUCATION_LABELS[job.educationLevel];
   if (education) facts.push({ label: 'Education', value: education });
@@ -631,7 +643,7 @@ export interface JobStanding {
 export function jobStanding(
   job: Pick<
     JobResponse,
-    'status' | 'canApply' | 'canManage' | 'closingAt' | 'remainingVacancies' | 'closureReason'
+    'status' | 'canApply' | 'canManage' | 'isOnEmployerTeam' | 'closingAt' | 'remainingVacancies' | 'closureReason'
   >,
   now: Date = new Date()
 ): JobStanding {
@@ -648,7 +660,7 @@ export function jobStanding(
       return {
         label: 'Removed',
         tone: 'private',
-        explanation: job.canManage
+        explanation: isOnEmployerTeam(job)
           ? 'This job has been removed from Diaspora. Only your team can open this page.'
           : 'This job has been removed from Diaspora.',
       };
@@ -693,6 +705,18 @@ export function jobStanding(
   };
 }
 
+/**
+ * Whether the job is the reader's own: they are on the employer's team.
+ *
+ * Not `canManage`, which the server also sets for staff on every job. Reading it
+ * as ownership told an Admin "You manage this job for Zoe" and hid "I'm
+ * interested" on a stranger's job, while the card offered it (6 Nov 2026). A
+ * server from before then sends only `canManage`, which is the old reading.
+ */
+export function isOnEmployerTeam(job: Pick<JobResponse, 'canManage' | 'isOnEmployerTeam'>): boolean {
+  return typeof job.isOnEmployerTeam === 'boolean' ? job.isOnEmployerTeam : job.canManage;
+}
+
 /** What the bottom of the page offers the reader. */
 export type ApplyState =
   /** The reader works for the employer. They manage the job; they cannot apply to it. */
@@ -705,11 +729,19 @@ export type ApplyState =
 export function applyStateOf(
   job: Pick<
     JobResponse,
-    'status' | 'canApply' | 'canManage' | 'hasApplied' | 'closingAt' | 'remainingVacancies' | 'closureReason'
+    | 'status'
+    | 'canApply'
+    | 'canManage'
+    | 'isOnEmployerTeam'
+    | 'hasApplied'
+    | 'closingAt'
+    | 'remainingVacancies'
+    | 'closureReason'
   >,
   now: Date = new Date()
 ): ApplyState {
-  if (job.canManage) return { kind: 'manage' };
+  // Staff who are not on the team apply like anyone else; the server lets them.
+  if (isOnEmployerTeam(job)) return { kind: 'manage' };
   if (job.hasApplied === true) return { kind: 'applied' };
   if (job.canApply) return { kind: 'open' };
   return {
@@ -813,16 +845,24 @@ const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
 export function describeSchedule(
   job: Pick<JobResponse, 'startsOn' | 'lengthAmount' | 'lengthUnit'>
 ): string | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(job.startsOn ?? '');
-  if (!match || !job.lengthAmount || !job.lengthUnit) return null;
-
-  const day = Number(match[3]);
-  const month = SHORT_MONTHS[Number(match[2]) - 1];
-  if (!month) return null;
+  const day = formatWorkDay(job.startsOn);
+  if (!day || !job.lengthAmount || !job.lengthUnit) return null;
 
   const word = job.lengthUnit === 'Hours' ? 'hour' : 'day';
   const length = `${job.lengthAmount} ${word}${job.lengthAmount === 1 ? '' : 's'}`;
-  return `${day} ${month} · ${length}`;
+  return `${day} · ${length}`;
+}
+
+/**
+ * A YYYY-MM-DD work day as "6 Nov". Null for anything else. Read from the
+ * date's own digits, so a time zone cannot move the day.
+ */
+export function formatWorkDay(value: string | null | undefined): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '');
+  if (!match) return null;
+
+  const month = SHORT_MONTHS[Number(match[2]) - 1];
+  return month ? `${Number(match[3])} ${month}` : null;
 }
 
 /** "2 of 3 places left", "1 place", "All places filled"; null when the server sent no counts. */

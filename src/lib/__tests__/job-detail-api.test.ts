@@ -26,6 +26,7 @@ import {
   formatJobDate,
   formatPay,
   groupDigits,
+  isOnEmployerTeam,
   jobConversationSubtitle,
   jobManagementErrorMessage,
   jobPlaceLabel,
@@ -289,6 +290,21 @@ describe('what the page prints', () => {
     expect(hybrid).toContainEqual({ label: 'CV', value: 'Required to apply' });
   });
 
+  // The simple form asks none of these, and files the job as entry level itself.
+  it('says nothing on a simple job that its poster was never asked', () => {
+    const labels = workArrangementFacts(walkthroughJob({ postingMode: 'Simple' })).map((fact) => fact.label);
+    expect(labels).toEqual(['Where']);
+
+    const sponsored = workArrangementFacts(
+      walkthroughJob({
+        postingMode: 'Simple',
+        workArrangement: { workplaceType: 'OnSite', isRemote: false, offersVisaSponsorship: true, offersRelocationAssistance: false, onSiteDaysPerWeek: null, remotePolicy: null },
+      })
+    );
+    expect(sponsored).toContainEqual({ label: 'Visa sponsorship', value: 'Offered' });
+    expect(sponsored.find((fact) => fact.label === 'Relocation help')).toBeUndefined();
+  });
+
   it('prints an employer’s record only when there is one — null is not zero', () => {
     expect(employerResponsiveness(walkthroughJob().employer)).toEqual([]);
     expect(employerResponsiveness({ averageResponseHours: 41.5, ghostingRate: 0.18 })).toEqual([
@@ -335,7 +351,21 @@ describe('where a job stands', () => {
 
 describe('what the reader may do', () => {
   it('lets the employer’s team manage, never apply', () => {
+    expect(applyStateOf(walkthroughJob({ canManage: true, isOnEmployerTeam: true }))).toEqual({ kind: 'manage' });
+    // A server from before 6 Nov 2026 sends only `canManage`: the old reading.
     expect(applyStateOf(walkthroughJob({ canManage: true }))).toEqual({ kind: 'manage' });
+  });
+
+  // An Admin's card offered "I'm interested" and the page hid it (6 Nov 2026).
+  it('lets staff on somebody else’s job apply like anyone, though they may manage it', () => {
+    const asStaff = walkthroughJob({ canManage: true, isOnEmployerTeam: false });
+
+    expect(isOnEmployerTeam(asStaff)).toBe(false);
+    expect(applyStateOf(asStaff)).toEqual({ kind: 'open' });
+    expect(ownerActionsFor(asStaff).canArchive).toBe(true);
+    expect(jobStanding({ ...asStaff, status: 'Archived', canApply: false }).explanation).toBe(
+      'This job has been removed from Diaspora.'
+    );
   });
 
   it('shows an application already made — including one since withdrawn', () => {
