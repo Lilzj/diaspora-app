@@ -1176,10 +1176,17 @@ export interface JobResponse {
   isSaved?: boolean | null;
   canApply: boolean;
   /**
-   * Whether this viewer may manage the job: the employer's team, **or platform
-   * staff on any job**. Not the owner check — see `isOnEmployerTeam`.
+   * Whether this viewer may manage the job through the owner's routes. Since
+   * 7 Nov 2026 only the employer's team; servers before then also said yes to
+   * platform staff on any job. Not the owner check — see `isOnEmployerTeam`.
    */
   canManage: boolean;
+  /**
+   * Whether this viewer is platform staff, who act on the job only through
+   * moderation. Absent from servers before 7 Nov 2026; read it through
+   * `isStaffViewer()` in `lib/job-detail-api.ts`.
+   */
+  canModerate?: boolean;
   /**
    * Whether this viewer belongs to the employer's team. Absent from servers
    * before 6 Nov 2026, which sent only `canManage`; read it through

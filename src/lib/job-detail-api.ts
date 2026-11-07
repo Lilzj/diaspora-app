@@ -747,6 +747,21 @@ export function isOnEmployerTeam(job: Pick<JobResponse, 'canManage' | 'isOnEmplo
   return typeof job.isOnEmployerTeam === 'boolean' ? job.isOnEmployerTeam : job.canManage;
 }
 
+/**
+ * Whether the reader is Diaspora staff looking at somebody else's job.
+ *
+ * Since 7 Nov 2026 the server says so in `canModerate`, and `canManage` is the
+ * team's alone. A server from before then sends no `canModerate`, and its
+ * `canManage` was true for staff on every job, so staff there are "may manage,
+ * not on the team".
+ */
+export function isStaffViewer(
+  job: Pick<JobResponse, 'canManage' | 'isOnEmployerTeam' | 'canModerate'>
+): boolean {
+  if (isOnEmployerTeam(job)) return false;
+  return typeof job.canModerate === 'boolean' ? job.canModerate : job.canManage;
+}
+
 /** What the bottom of the page offers the reader. */
 export type ApplyState =
   /** The reader works for the employer. They manage the job; they cannot apply to it. */

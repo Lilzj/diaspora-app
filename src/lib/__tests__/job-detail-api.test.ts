@@ -28,6 +28,7 @@ import {
   formatPay,
   groupDigits,
   isOnEmployerTeam,
+  isStaffViewer,
   jobConversationSubtitle,
   jobManagementErrorMessage,
   jobPlaceLabel,
@@ -422,5 +423,21 @@ describe('what the owner may do', () => {
 
   it('offers nothing to anyone outside the team', () => {
     expect(ownerActionsFor({ status: 'Open', canManage: false })).toEqual({ canPublish: false, closeOutcomes: [], canArchive: false });
+  });
+});
+
+describe('isStaffViewer', () => {
+  it('reads canModerate from a server that sends it', () => {
+    expect(isStaffViewer({ canManage: false, isOnEmployerTeam: false, canModerate: true })).toBe(true);
+    expect(isStaffViewer({ canManage: false, isOnEmployerTeam: false, canModerate: false })).toBe(false);
+  });
+
+  it('falls back to "may manage, not on the team" on a server from before 7 Nov 2026', () => {
+    expect(isStaffViewer({ canManage: true, isOnEmployerTeam: false })).toBe(true);
+    expect(isStaffViewer({ canManage: false, isOnEmployerTeam: false })).toBe(false);
+  });
+
+  it("is never true for the employer's own team, even when they are also staff", () => {
+    expect(isStaffViewer({ canManage: true, isOnEmployerTeam: true, canModerate: true })).toBe(false);
   });
 });

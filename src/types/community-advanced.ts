@@ -469,7 +469,11 @@ export interface CreateEventSeriesRequest {
 // DONATIONS & FUNDRAISING — §12–§17
 // ═════════════════════════════════════════════════════════════════════════════
 
-/** §16's campaign lifecycle. Twelve states, all reachable in the UI. */
+/**
+ * §16's campaign lifecycle, plus `Suspended` (7 Nov 2026): Diaspora staff took
+ * the campaign down through moderation, with a reason the organiser reads in
+ * `reviewNote`. Only the people who run it can see it, and only staff lift it.
+ */
 export type CampaignStatus =
   | 'Draft'
   | 'PendingReview'
@@ -482,7 +486,8 @@ export type CampaignStatus =
   | 'Completed'
   | 'Refunding'
   | 'Cancelled'
-  | 'Closed';
+  | 'Closed'
+  | 'Suspended';
 
 export type CampaignCategory =
   | 'Medical'
