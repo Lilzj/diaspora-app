@@ -44,11 +44,13 @@
 // ── What it will do ──────────────────────────────────────────────────────────
 //
 // `POST /community/moderation/decisions`, with a real action from the module's
-// camelCase vocabulary. Every button below sends one.
+// camelCase vocabulary, and the moderator's reason with it. Every button below
+// opens a confirmation that will not send without one (6 Nov 2026: one tap
+// removed a member's content with no reason, because the server asks for none).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
@@ -75,11 +77,38 @@ const REMOVED_TITLE = '(removed)';
  * a warning needs somebody to warn and the queue carries no author name, and a
  * restore needs a removed item to restore, which this queue does not list.
  */
-const ACTIONS: { action: ModerationAction; label: string; tone: 'danger' | 'muted' | 'primary' }[] = [
-  { action: 'remove', label: 'Remove', tone: 'danger' },
-  { action: 'hide', label: 'Hide', tone: 'muted' },
-  { action: 'dismiss', label: 'Dismiss reports', tone: 'primary' },
+const ACTIONS: {
+  action: ModerationAction;
+  label: string;
+  tone: 'danger' | 'muted' | 'primary';
+  question: string;
+  placeholder: string;
+}[] = [
+  {
+    action: 'remove',
+    label: 'Remove',
+    tone: 'danger',
+    question: 'Remove this content?',
+    placeholder: 'What breaks the guidelines, and how you checked',
+  },
+  {
+    action: 'hide',
+    label: 'Hide',
+    tone: 'muted',
+    question: 'Hide this content?',
+    placeholder: 'What breaks the guidelines, and how you checked',
+  },
+  {
+    action: 'dismiss',
+    label: 'Dismiss reports',
+    tone: 'primary',
+    question: 'Dismiss these reports?',
+    placeholder: 'Why the reports do not hold up',
+  },
 ];
+
+/** A reason shorter than this says nothing a reviewer or the author could use. */
+const DECISION_REASON_MIN_LENGTH = 10;
 
 export default function ModerationQueueScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
@@ -90,9 +119,12 @@ export default function ModerationQueueScreen() {
   const deciding = useModerationDecision();
 
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  // The decision being confirmed, and its reason. One card at a time.
+  const [pending, setPending] = useState<{ key: string; action: ModerationAction } | null>(null);
+  const [reason, setReason] = useState('');
 
   const decide = useCallback(
-    async (item: ModerationQueueItemResponse, action: ModerationAction) => {
+    async (item: ModerationQueueItemResponse, action: ModerationAction, why: string) => {
       const key = `${item.contentType}|${item.contentId}`;
       setBusyKey(key);
       try {
@@ -100,7 +132,10 @@ export default function ModerationQueueScreen() {
           contentType: item.contentType,
           contentId: item.contentId,
           action,
+          reason: why.trim(),
         });
+        setPending(null);
+        setReason('');
         showAlert({
           type: 'success',
           title: 'Decision recorded',
@@ -223,6 +258,19 @@ export default function ModerationQueueScreen() {
                     {relativeTime(item.lastReportedAt)}
                   </Text>
 
+                  {pending?.key === key ? (
+                    <DecisionConfirmation
+                      choice={ACTIONS.find((entry) => entry.action === pending.action) ?? ACTIONS[0]}
+                      reason={reason}
+                      onChangeReason={setReason}
+                      isBusy={isBusy}
+                      onCancel={() => {
+                        setPending(null);
+                        setReason('');
+                      }}
+                      onConfirm={() => void decide(item, pending.action, reason)}
+                    />
+                  ) : (
                   <View className="flex-row">
                     {ACTIONS.map(({ action, label, tone }) => (
                       <TouchableOpacity
@@ -232,7 +280,10 @@ export default function ModerationQueueScreen() {
                         accessibilityLabel={`${label} this content`}
                         accessibilityState={{ disabled: isBusy || deciding.isPending }}
                         disabled={isBusy || deciding.isPending}
-                        onPress={() => void decide(item, action)}
+                        onPress={() => {
+                          setPending({ key, action });
+                          setReason('');
+                        }}
                         className={`flex-1 py-2.5 rounded-xl items-center mr-2 border ${
                           tone === 'danger'
                             ? 'bg-error-solid border-error-solid'
@@ -255,6 +306,7 @@ export default function ModerationQueueScreen() {
                       </TouchableOpacity>
                     ))}
                   </View>
+                  )}
                 </View>
               );
             })}
@@ -273,6 +325,93 @@ export default function ModerationQueueScreen() {
         <View className="h-8" />
       </ScrollEndScrollView>
     </SafeAreaView>
+  );
+}
+
+/**
+ * The step between a tap and a decision: what is about to happen, and why.
+ *
+ * The confirm button stays disabled until the reason says something, so no
+ * decision on a member's content leaves this screen without one.
+ */
+function DecisionConfirmation({
+  choice,
+  reason,
+  onChangeReason,
+  isBusy,
+  onCancel,
+  onConfirm,
+}: {
+  choice: (typeof ACTIONS)[number];
+  reason: string;
+  onChangeReason: (value: string) => void;
+  isBusy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const hasReason = reason.trim().length >= DECISION_REASON_MIN_LENGTH;
+
+  return (
+    <View className="bg-surface-muted border border-subtle rounded-xl p-3">
+      <Text className="text-sm font-black text-content-primary">{choice.question}</Text>
+      <Text className="text-xs font-semibold text-content-muted mt-1 mb-2">
+        Your reason is recorded with the decision.
+      </Text>
+      <TextInput
+        value={reason}
+        onChangeText={onChangeReason}
+        placeholder={choice.placeholder}
+        accessibilityLabel="Reason for this decision"
+        multiline
+        className="bg-surface-card border border-subtle rounded-xl p-3 text-xs font-semibold text-content-primary min-h-[64px]"
+      />
+      {!hasReason ? (
+        <Text className="text-[10px] font-semibold text-content-faint mt-1">
+          At least {DECISION_REASON_MIN_LENGTH} characters.
+        </Text>
+      ) : null}
+      <View className="flex-row mt-3">
+        <TouchableOpacity
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel="Cancel this decision"
+          onPress={onCancel}
+          disabled={isBusy}
+          className="flex-1 py-2.5 rounded-xl items-center mr-2 border bg-surface-card border-subtle"
+        >
+          <Text className="text-xs font-black text-content-secondary">Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={`Confirm: ${choice.label}`}
+          accessibilityState={{ disabled: !hasReason || isBusy }}
+          onPress={onConfirm}
+          disabled={!hasReason || isBusy}
+          className={`flex-1 py-2.5 rounded-xl items-center border ${
+            !hasReason
+              ? 'bg-surface-card border-subtle'
+              : choice.tone === 'danger'
+                ? 'bg-error-solid border-error-solid'
+                : choice.tone === 'primary'
+                  ? 'bg-primary-500 border-primary-500'
+                  : 'bg-surface-card border-line'
+          }`}
+        >
+          {isBusy ? (
+            <ActivityIndicator size="small" color="#6B7280" />
+          ) : (
+            <Text
+              className={`text-xs font-black ${
+                !hasReason ? 'text-content-faint' : choice.tone === 'muted' ? 'text-content-primary' : 'text-white'
+              }`}
+            >
+              {choice.label}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 

@@ -18,6 +18,7 @@ import {
   archiveJob,
   categoryLabel,
   closeJob,
+  closingLabel,
   describeSalary,
   employerKindLabel,
   employerResponsiveness,
@@ -31,6 +32,7 @@ import {
   jobManagementErrorMessage,
   jobPlaceLabel,
   jobStanding,
+  lastOpenDay,
   openingsLabel,
   ownerActionsFor,
   workArrangementFacts,
@@ -270,6 +272,30 @@ describe('what the page prints', () => {
     expect(formatJobDate('2026-09-14T12:00:00.000Z')).toBe('14 Sep 2026');
     expect(formatJobDate(null)).toBe('');
     expect(formatJobDate('not a date')).toBe('');
+  });
+
+  // 6 Nov 2026, on production: a one-day simple job on 7 Nov closes at 00:00
+  // on the 8th, and the page said "Closes 8 Nov 2026". Built with local-time
+  // constructors, so this holds in whatever zone the tests run in.
+  it('says the last day a job takes interest, not the date of the midnight it closes at', () => {
+    const endOf7Nov = new Date(2026, 10, 8).toISOString();
+    const evening6Nov = new Date(2026, 10, 6, 22, 44);
+
+    expect(lastOpenDay(endOf7Nov)).toEqual(new Date(2026, 10, 7));
+    expect(closingLabel(endOf7Nov, evening6Nov)).toBe('Closes 7 Nov 2026');
+    expect(closingLabel(endOf7Nov, new Date(2026, 10, 8, 9))).toBe('Closed 7 Nov 2026');
+  });
+
+  it('keeps the day of any other closing time, and says nothing without one', () => {
+    const afternoon = new Date(2026, 10, 20, 14, 32).toISOString();
+    const justAfterMidnight = new Date(2026, 10, 8, 0, 0, 1).toISOString();
+
+    expect(lastOpenDay(afternoon)).toEqual(new Date(2026, 10, 20));
+    expect(lastOpenDay(justAfterMidnight)).toEqual(new Date(2026, 10, 8));
+    expect(lastOpenDay(null)).toBeNull();
+    expect(lastOpenDay('not a date')).toBeNull();
+    expect(closingLabel(null)).toBe('');
+    expect(closingLabel('not a date')).toBe('');
   });
 
   it('says a sponsorship is not offered rather than leaving it out', () => {

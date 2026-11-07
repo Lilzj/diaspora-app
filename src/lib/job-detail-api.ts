@@ -615,6 +615,36 @@ export function formatJobDate(value: string | null | undefined): string {
   return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+/**
+ * The last day a job takes interest, as that day's local midnight. Null for a
+ * missing or unreadable closing time.
+ *
+ * A job that closes at exactly midnight is open all of the day before: a
+ * simple job working on 7 Nov closes at 00:00 on the 8th. Printing that
+ * instant's own date said "Closes 8 Nov" on a one-day job on the 7th (6 Nov
+ * 2026, on production). Any other closing time falls on a day the job is open
+ * for part of, so that day is the last one.
+ */
+export function lastOpenDay(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const closing = new Date(value);
+  if (Number.isNaN(closing.getTime())) return null;
+  const atMidnight =
+    closing.getHours() === 0 &&
+    closing.getMinutes() === 0 &&
+    closing.getSeconds() === 0 &&
+    closing.getMilliseconds() === 0;
+  return new Date(closing.getFullYear(), closing.getMonth(), closing.getDate() - (atMidnight ? 1 : 0));
+}
+
+/** "Closes 7 Nov 2026" while it is open, "Closed 7 Nov 2026" after. Empty without a closing time. */
+export function closingLabel(value: string | null | undefined, now: Date = new Date()): string {
+  const last = lastOpenDay(value);
+  if (!last || !value) return '';
+  const word = new Date(value).getTime() > now.getTime() ? 'Closes' : 'Closed';
+  return `${word} ${last.getDate()} ${MONTHS[last.getMonth()]} ${last.getFullYear()}`;
+}
+
 /** "No applications yet", "1 person has applied", "12 people have applied". */
 export function applicantCountLabel(count: number): string {
   if (count <= 0) return 'No applications yet';

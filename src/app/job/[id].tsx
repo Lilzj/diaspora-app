@@ -15,9 +15,11 @@
 //     server's answer, not a comparison of identifiers), how it is doing, and a
 //     way to publish, close or remove it. Until this page, a job could not be
 //     closed from the app at all.
-//   * **Diaspora staff** — the job as a member sees it, and a way to close or
-//     remove it. `canManage` is true for staff on every job, which is why it is
-//     not the owner check (6 Nov 2026).
+//   * **Diaspora staff** — the job as a member sees it, and no way to close or
+//     remove it here. `canManage` is true for staff on every job, which is why it
+//     is not the owner check. A staff takedown belongs in the console, on the
+//     reports, with a reason (6 Nov 2026: one tap took a member's job down with
+//     no report, no reason and no word to the employer).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
@@ -50,6 +52,7 @@ import {
   placesLeftLabel,
   categoryLabel,
   describeSalary,
+  closingLabel,
   employerKindLabel,
   employerResponsiveness,
   formatJobDate,
@@ -159,8 +162,8 @@ export default function JobDetailScreen() {
   const category = categoryLabel(job.categoryKey, categories.data ?? []);
   const saved = isSaved(job.jobId);
   // Whose job it is, and who may manage it, are two answers (6 Nov 2026). Staff
-  // may close or remove any job, but it is still somebody else's: they see the
-  // job as a member does, and can say they are interested like anyone.
+  // see somebody else's job as a member does, and can say they are interested
+  // like anyone. They act on it from the console, never from here.
   const onTeam = isOnEmployerTeam(job);
   const staffOnly = job.canManage && !onTeam;
   const canMessage = !onTeam && Boolean(job.employer.ownerUserId);
@@ -181,14 +184,12 @@ export default function JobDetailScreen() {
     }
   };
 
-  const closingDate = job.closingAt ? new Date(job.closingAt) : null;
   const facts = [
     // A simple job says its places on their own line just above.
     isSimple && places ? '' : openingsLabel(job),
     job.publishedAt ? `Posted ${formatJobDate(job.publishedAt)}` : '',
-    closingDate && !Number.isNaN(closingDate.getTime())
-      ? `${closingDate.getTime() > Date.now() ? 'Closes' : 'Closed'} ${formatJobDate(job.closingAt)}`
-      : '',
+    // The last day it takes interest, not the date of the midnight it closes at.
+    closingLabel(job.closingAt),
   ].filter(Boolean);
 
   const handleSaveToggle = () => {
@@ -352,9 +353,7 @@ export default function JobDetailScreen() {
     showAlert({
       type: 'warning',
       title: 'Remove this job from Diaspora?',
-      message: `It comes off every public part of Diaspora. ${
-        onTeam ? 'Your team' : `${job.employer.displayName}'s team`
-      } can still open this page. You cannot undo this from the app.`,
+      message: 'It comes off every public part of Diaspora. Your team can still open this page. You cannot undo this from the app.',
       buttons: [
         { text: 'Keep it', style: 'cancel' },
         {
@@ -528,22 +527,15 @@ export default function JobDetailScreen() {
           </View>
         ) : null}
 
-        {/* Staff on somebody else's job: moderation only. Applicants, editing,
-            places and promotion are the employer's. */}
-        {staffOnly && (actions.closeOutcomes.length > 0 || actions.canArchive) ? (
+        {/* Staff on somebody else's job: no buttons. Acting on a member's job
+            needs the reports behind it and a reason, which the console asks for. */}
+        {staffOnly ? (
           <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
             <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">Diaspora staff</Text>
-            <Text className="text-sm text-content-secondary mt-1">
-              This job is {job.employer.displayName}&apos;s. As staff you can close it or take it off Diaspora.
+            <Text className="text-sm text-content-secondary mt-1 leading-relaxed">
+              This job is {job.employer.displayName}&apos;s. Reports about it are handled in the staff console,
+              where the reports are shown and a reason is required.
             </Text>
-            <View className="gap-2 mt-4">
-              {actions.closeOutcomes.length > 0 ? (
-                <Button label="Close to applications" variant="outline" disabled={manage.isWorking} onPress={confirmClose} />
-              ) : null}
-              {actions.canArchive ? (
-                <Button label="Remove from Diaspora" variant="ghost" disabled={manage.isWorking} onPress={confirmArchive} />
-              ) : null}
-            </View>
           </View>
         ) : null}
 

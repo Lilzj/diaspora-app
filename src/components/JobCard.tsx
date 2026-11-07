@@ -6,7 +6,7 @@ import type { JobOpportunity } from '@/types/job';
 import type { JobSalaryResponse, JobType } from '@/types/jobs-hiring';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
 import { placeOf } from '@/lib/listing-place';
-import { JOB_TYPE_LABELS, describeSalary, describeSchedule, placesLeftLabel } from '@/lib/job-detail-api';
+import { JOB_TYPE_LABELS, describeSalary, describeSchedule, lastOpenDay, placesLeftLabel } from '@/lib/job-detail-api';
 import { currencySymbol as symbolFor } from '@/lib/money';
 
 interface JobCardProps {
@@ -161,10 +161,17 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
     const expiry = new Date(expiresAt).getTime();
     if (!Number.isFinite(expiry)) return '';
 
-    const diff = expiry - Date.now();
-    if (diff <= 0) return 'Expired';
+    const now = new Date();
+    if (expiry <= now.getTime()) return 'Expired';
 
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    // Calendar days to the last day it takes interest, as the job page counts
+    // them. Rounding the hours up said "Expires in 2 days" on the evening
+    // before a one-day job that closes at the end of tomorrow (6 Nov 2026).
+    const last = lastOpenDay(expiresAt);
+    if (!last) return '';
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const days = Math.round((last.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (days <= 0) return 'Expires today';
     if (days === 1) return 'Expires tomorrow';
     return `Expires in ${days} days`;
   };

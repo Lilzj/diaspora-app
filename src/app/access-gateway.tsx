@@ -5,7 +5,7 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useMyVerifications, useSubmitAppeal } from '@/hooks/trust';
-import { APPEAL_REASON_MIN_LENGTH } from '@/lib/trust-api';
+import { APPEAL_REASON_MIN_LENGTH, isAppealAlreadyOpenError, trustErrorMessage } from '@/lib/trust-api';
 import { Button } from '@/components/Button';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Avatar } from '@/components/Avatar';
@@ -44,6 +44,7 @@ export default function AccessGatewayScreen() {
   const [showAppealForm, setShowAppealForm] = useState(false);
   const [appealExplanation, setAppealExplanation] = useState('');
   const [uploadedAppealDoc, setUploadedAppealDoc] = useState<string | null>(null);
+  const [suspensionAppealSent, setSuspensionAppealSent] = useState(false);
 
   useEffect(() => {
     // 1. Check routing redirects for direct flow states
@@ -130,29 +131,50 @@ export default function AccessGatewayScreen() {
     }
   };
 
-  // Mock reviewer tools (to easily let tester simulate approve/reject/suspend)
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-
   /**
-   * Moves the **local account state** so a tester can walk each screen.
+   * An appeal against the suspension itself (6 Nov 2026).
    *
-   * It used to also write a verification outcome into `store/trust.ts` —
-   * `updateDiasporaVerificationStatus('Approved')` — which is a trust decision,
-   * and a trust decision is the server's. Trust records one, reports it to
-   * Identity over `POST /api/v1/trust/decisions`, and Identity moves the
-   * member; nothing on the device is entitled to shortcut that.
-   *
-   * What is left changes which of this screen's branches renders and nothing
-   * else. The verification shown alongside still comes from the server, so
-   * "Approved" here does not make an unverified member look verified.
+   * The suspended state used to send its appeal through `handleAppealSubmit`,
+   * which files a **Verification** appeal and needs a verification decision to
+   * name, so a suspended member was told "Nothing to appeal yet". A suspension
+   * appeal names the member's own account, as a points-hold appeal does, and
+   * stays on this screen: moving to `AppealPending` would show the
+   * verification-appeal page about documents they never sent.
    */
-  const simulateStatusChange = (status: 'Approved' | 'Rejected' | 'Suspended') => {
-    if (status === 'Approved') {
-      setAccountState('FullCommunityAccess');
-    } else if (status === 'Rejected') {
-      setAccountState('VerificationRejected');
-    } else if (status === 'Suspended') {
-      setAccountState('Suspended');
+  const handleSuspensionAppealSubmit = async () => {
+    if (appealExplanation.trim().length < APPEAL_REASON_MIN_LENGTH) {
+      showToast({
+        type: 'error',
+        title: 'Tell us a little more',
+        message: `Please explain your appeal in at least ${APPEAL_REASON_MIN_LENGTH} characters.`,
+      });
+      return;
+    }
+    if (!user?.userId) return;
+
+    try {
+      await submitAppeal({
+        type: 'Suspension',
+        targetId: user.userId,
+        reason: appealExplanation.trim(),
+        additionalDocuments: [],
+        correctionRequest: false,
+      });
+      setSuspensionAppealSent(true);
+      setShowAppealForm(false);
+      setAppealExplanation('');
+      showAlert({
+        type: 'success',
+        title: 'Appeal sent',
+        message: 'A person on the Diaspora team will review it.',
+      });
+    } catch (cause) {
+      if (isAppealAlreadyOpenError(cause)) {
+        setSuspensionAppealSent(true);
+        setShowAppealForm(false);
+        return;
+      }
+      showToast({ type: 'error', title: 'Not sent', message: trustErrorMessage(cause) });
     }
   };
 
@@ -345,8 +367,11 @@ export default function AccessGatewayScreen() {
             <View className="bg-surface-muted border border-error-default/20 rounded-3xl p-5 mb-6">
               <Text className="text-xs font-black text-error-default uppercase tracking-wider mb-2">Moderation Reject Details</Text>
               <Text className="text-xs text-content-secondary leading-relaxed font-semibold">
+                {/* The reviewer's own words, or nothing invented in their place
+                    (6 Nov 2026: this fell back to a made-up finding about the
+                    member's document). */}
                 {diasporaVerification?.rejectionReasonDetails ??
-                  'The uploaded immigration document could not be authenticated. Check image clarity and expiry details.'}
+                  "We could not load the reviewer's explanation. Try again in a moment."}
               </Text>
             </View>
 
@@ -463,103 +488,74 @@ export default function AccessGatewayScreen() {
               </View>
               <Text className="text-xl font-black text-content-primary text-center tracking-tight">Account Suspended</Text>
               <Text className="text-xs text-content-muted text-center mt-2 px-4 leading-relaxed">
-                Your account was suspended for violations of Diaspora's Community Guidelines.
+                Your Diaspora account is suspended.
               </Text>
             </View>
 
+            {/* Only what is true (6 Nov 2026). This box listed two fixed "Policy
+                Violations" (document counterfeiting, misrepresenting residence)
+                to every suspended member, whatever they were suspended for. The
+                server does not send the reason to the app, so the screen says
+                that rather than inventing one. It also does not repeat an end
+                date: nothing lifts a suspension on its date yet. */}
             <View className="bg-surface-muted border border-subtle rounded-3xl p-5 mb-8">
-              <Text className="text-xs font-extrabold text-error-default uppercase tracking-wider mb-2">Policy Violations</Text>
+              <Text className="text-xs font-extrabold text-content-tertiary uppercase tracking-wider mb-2">Why</Text>
               <Text className="text-xs text-content-secondary leading-relaxed">
-                • Suspected document counterfeiting or reuse of image hashes.
-              </Text>
-              <Text className="text-xs text-content-secondary leading-relaxed mt-1">
-                • Misrepresenting geolocation residence boundaries to bypass eligibility rules.
+                The reason for this suspension is not shown in the app yet. If you think it is a mistake, appeal below
+                and a person on the Diaspora team will review it.
               </Text>
             </View>
 
             <View className="space-y-3 mb-8">
-              {!showAppealForm ? (
-                <Button label="Submit Suspension Appeal" variant="primary" onPress={() => setShowAppealForm(true)} />
+              {suspensionAppealSent ? (
+                <View className="bg-surface-background border border-subtle rounded-3xl p-5">
+                  <Text className="text-xs font-bold text-warning-default">Appeal sent</Text>
+                  <Text className="text-[11px] text-content-muted mt-1 leading-relaxed">
+                    Your appeal is with the Diaspora team. A person will review it.
+                  </Text>
+                </View>
+              ) : !showAppealForm ? (
+                <Button label="Appeal this suspension" variant="primary" onPress={() => setShowAppealForm(true)} />
               ) : (
                 <View className="bg-surface-card border border-subtle rounded-3xl p-5 mt-4">
-                  <Text className="text-sm font-bold text-content-strong mb-3">Submit Suspension Appeal</Text>
-                  
-                  <Text className="text-xs text-content-faint font-extrabold uppercase mb-2">Provide Justification</Text>
+                  <Text className="text-sm font-bold text-content-strong mb-3">Appeal this suspension</Text>
+
+                  <Text className="text-xs text-content-faint font-extrabold uppercase mb-2">Why it is a mistake</Text>
                   <TextInput
                     value={appealExplanation}
                     onChangeText={setAppealExplanation}
-                    placeholder="Provide a detailed explanation of your residency boundaries..."
+                    placeholder="Tell us why you think this suspension is a mistake"
                     multiline
                     numberOfLines={4}
                     className="bg-surface-background border border-subtle rounded-2xl p-4 text-xs font-bold text-content-strong mb-4 min-h-[80px]"
                   />
 
                   <View className="flex-row gap-2">
-                    <TouchableOpacity 
-                      onPress={() => setShowAppealForm(false)} 
+                    <TouchableOpacity
+                      onPress={() => setShowAppealForm(false)}
                       className="flex-1 bg-surface-muted py-3 rounded-2xl items-center border border-subtle"
                     >
                       <Text className="text-xs font-bold text-content-tertiary">Cancel</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                      onPress={handleAppealSubmit} 
+                    <TouchableOpacity
+                      onPress={() => void handleSuspensionAppealSubmit()}
+                      disabled={isSubmittingAppeal}
+                      accessibilityState={{ disabled: isSubmittingAppeal }}
                       className="flex-1 bg-primary-500 py-3 rounded-2xl items-center"
                     >
-                      <Text className="text-xs font-black text-white">Send Appeal</Text>
+                      <Text className="text-xs font-black text-white">{isSubmittingAppeal ? 'Sending…' : 'Send appeal'}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
-              <Button
-                label="Contact Safety Team"
-                variant="ghost"
-                onPress={() =>
-                  showAlert({
-                    type: 'info',
-                    title: 'Contact Support',
-                    message: 'Email safety@diasporaplatform.com for support.',
-                  })
-                }
-              />
             </View>
           </View>
         )}
 
-        {/* Mock Admins Simulation Tools (Floating review drawer) */}
-        <View className="mt-8 pt-6 border-t border-faint mb-12">
-          <TouchableOpacity 
-            onPress={() => setShowAdminPanel(!showAdminPanel)} 
-            className="bg-surface-muted py-3 rounded-2xl items-center border border-subtle"
-          >
-            <Text className="text-xs font-extrabold text-content-tertiary">⚙️ Review Simulation Controls ({showAdminPanel ? 'Hide' : 'Show'})</Text>
-          </TouchableOpacity>
-
-          {showAdminPanel && (
-            <View className="bg-surface-background rounded-2xl p-4 mt-3 border border-subtle space-y-2">
-              <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest text-center mb-2">Simulate Compliance Decisions</Text>
-              <View className="flex-row gap-2">
-                <TouchableOpacity 
-                  onPress={() => simulateStatusChange('Approved')}
-                  className="flex-1 bg-emerald-500 py-2 rounded-xl items-center"
-                >
-                  <Text className="text-[10px] font-black text-white">Approve</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => simulateStatusChange('Rejected')}
-                  className="flex-1 bg-amber-500 py-2 rounded-xl items-center"
-                >
-                  <Text className="text-[10px] font-black text-white">Reject Details</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => simulateStatusChange('Suspended')}
-                  className="flex-1 bg-red-500 py-2 rounded-xl items-center"
-                >
-                  <Text className="text-[10px] font-black text-white">Suspend Account</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </View>
+        {/* The "Review Simulation Controls" panel that stood here showed every
+            member on this screen buttons to flip their own displayed state to
+            approved, rejected or suspended (removed 6 Nov 2026). */}
+        <View className="mb-12" />
 
       </KeyboardAwareScrollView>
     </SafeAreaView>
