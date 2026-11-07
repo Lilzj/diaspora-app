@@ -23,6 +23,19 @@ jest.mock('@/providers/notification-provider', () => ({
   useNotification: () => ({ showAlert: jest.fn(), showToast: jest.fn() }),
 }));
 
+let mockWallet: { walletId: string } | null = { walletId: 'wallet-1' };
+
+jest.mock('@/hooks/financial', () => ({
+  usePrimaryWallet: () => ({
+    wallet: mockWallet,
+    wallets: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: jest.fn(),
+  }),
+}));
+
 // eslint-disable-next-line import/first
 import AppealsScreen from '../profile/appeals';
 
@@ -44,6 +57,7 @@ function renderScreen() {
 }
 
 beforeEach(() => {
+  mockWallet = { walletId: 'wallet-1' };
   mockSubmit.mockReset().mockResolvedValue(undefined);
   (useLocalSearchParams as jest.Mock).mockReturnValue({});
   useAuthStore.setState({ isAuthenticated: true, user: { userId: 'member-1' } as never });
@@ -90,5 +104,48 @@ describe('opened plainly', () => {
 
     expect(screen.queryByTestId('appeal-reference')).toBeNull();
     expect(mockSubmit).toHaveBeenCalledWith({ type: 'RewardHold', targetId: 'member-1', reason: REASON });
+  });
+});
+
+// A frozen wallet (7 Nov 2026). Its notice says "appeal from Profile, Appeals",
+// and the member never sees their wallet's id, so the form names it for them.
+describe('appealing a wallet freeze', () => {
+  it('files it against the member’s own wallet, with no reference to type', () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByText('File New Appeal'));
+    fireEvent.press(screen.getByText('Wallet Frozen'));
+
+    expect(screen.queryByTestId('appeal-reference')).toBeNull();
+    expect(screen.getByText('We will review the freeze on your wallet.')).toBeTruthy();
+
+    fireEvent.changeText(screen.getByTestId('appeal-reason'), REASON);
+    fireEvent.press(screen.getByText('Submit Appeal'));
+
+    expect(mockSubmit).toHaveBeenCalledWith({ type: 'Money', targetId: 'wallet-1', reason: REASON });
+  });
+
+  it('uses the wallet the wallet screen named', () => {
+    (useLocalSearchParams as jest.Mock).mockReturnValue({ type: 'Money', targetId: 'wallet-9' });
+    renderScreen();
+
+    expect(screen.queryByTestId('appeal-reference')).toBeNull();
+    fireEvent.changeText(screen.getByTestId('appeal-reason'), REASON);
+    fireEvent.press(screen.getByText('Submit Appeal'));
+
+    expect(mockSubmit).toHaveBeenCalledWith({ type: 'Money', targetId: 'wallet-9', reason: REASON });
+  });
+
+  it('cannot be sent by a member with no wallet', () => {
+    mockWallet = null;
+    renderScreen();
+
+    fireEvent.press(screen.getByText('File New Appeal'));
+    fireEvent.press(screen.getByText('Wallet Frozen'));
+    fireEvent.changeText(screen.getByTestId('appeal-reason'), REASON);
+    fireEvent.press(screen.getByText('Submit Appeal'));
+
+    expect(screen.getByText('You have no wallet to appeal about yet.')).toBeTruthy();
+    expect(mockSubmit).not.toHaveBeenCalled();
   });
 });

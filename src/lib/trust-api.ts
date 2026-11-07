@@ -346,6 +346,7 @@ export const APPEAL_TYPE_VALUES: readonly AppealType[] = [
   'Suspension',
   'Publishing',
   'RewardHold',
+  'Money',
 ] as const;
 
 // ── Media references ─────────────────────────────────────────────────────────

@@ -30,6 +30,7 @@ import { useMyAppeals, useSubmitAppeal } from '@/hooks/trust';
 import { APPEAL_REASON_MIN_LENGTH, appealTrackerIndex } from '@/lib/trust-api';
 import { appealPrefill } from '@/lib/reward-hold';
 import { useAuthStore } from '@/store/auth';
+import { usePrimaryWallet } from '@/hooks/financial';
 import type { AppealStatus, AppealType } from '@/types/trust';
 import { useNotification } from '@/providers/notification-provider';
 
@@ -64,7 +65,17 @@ export default function AppealsScreen() {
   // A points hold is the member's own: it is appealed under their id, so there
   // is no reference to type.
   const isHoldReview = appealType === 'RewardHold';
-  const effectiveTarget = isHoldReview ? (memberId ?? '') : targetId;
+  // A frozen wallet is the member's own too (7 Nov 2026). The freeze notice
+  // says "appeal from Profile, Appeals", and a member never sees their wallet's
+  // id, so the form names the wallet itself unless the wallet screen already did.
+  const { wallet } = usePrimaryWallet();
+  const isWalletReview = appealType === 'Money';
+  const namedWallet = prefill?.type === 'Money' && prefill.targetId ? prefill.targetId : null;
+  const effectiveTarget = isHoldReview
+    ? (memberId ?? '')
+    : isWalletReview
+      ? (namedWallet ?? wallet?.walletId ?? '')
+      : targetId;
 
   /**
    * What the form will not be sent without, by the name above the field.
@@ -205,6 +216,7 @@ export default function AppealsScreen() {
                 { id: 'Suspension' as const, label: 'Suspension' },
                 { id: 'Publishing' as const, label: 'Publishing Restrict' },
                 { id: 'RewardHold' as const, label: 'Points Hold' },
+                { id: 'Money' as const, label: 'Wallet Frozen' },
               ].map((opt) => (
                 <TouchableOpacity
                   key={opt.id}
@@ -219,6 +231,12 @@ export default function AppealsScreen() {
             {isHoldReview ? (
               <Text className="text-xs text-content-muted font-semibold mb-4">
                 We will review the hold on your own points.
+              </Text>
+            ) : isWalletReview ? (
+              <Text className="text-xs text-content-muted font-semibold mb-4">
+                {effectiveTarget
+                  ? 'We will review the freeze on your wallet.'
+                  : 'You have no wallet to appeal about yet.'}
               </Text>
             ) : (
               <>

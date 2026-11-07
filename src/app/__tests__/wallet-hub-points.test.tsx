@@ -12,9 +12,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ThemeProvider } from '@/design-system';
+import { money } from '@/mocks/financial-data';
 import { useAuthStore } from '@/store/auth';
 
 const mockRewardBalance = jest.fn();
+const mockWallet = jest.fn();
 
 jest.mock('@/hooks/financial', () => {
   const actual = jest.requireActual('@/hooks/financial');
@@ -22,7 +24,7 @@ jest.mock('@/hooks/financial', () => {
 
   return {
     ...actual,
-    usePrimaryWallet: () => ({ ...idle, wallet: null }),
+    usePrimaryWallet: () => ({ ...idle, wallet: mockWallet() ?? null }),
     useTransactions: () => ({ ...idle, data: [] }),
     useMySubscription: () => ({ ...idle, data: null }),
     // A deployment that offers no way in and no way out, as production does for
@@ -100,5 +102,51 @@ describe('points on the wallet hub', () => {
 
     fireEvent.press(screen.getByLabelText('Rewards'));
     expect(router.push).toHaveBeenCalledWith('/wallet/rewards');
+  });
+});
+
+// A freeze can be appealed from the wallet itself (7 Nov 2026); a closure cannot.
+describe('a frozen wallet', () => {
+  function walletIn(status: string) {
+    return {
+      walletId: 'wallet-7',
+      accountId: 'account-7',
+      walletType: 'Primary',
+      ownerType: 'Personal',
+      status,
+      currency: 'GBP',
+      available: money(1000),
+      pending: money(0),
+      reserved: money(0),
+      lifetimeCredits: money(1000),
+      lifetimeDebits: money(0),
+      entryCount: 1,
+      lastEntryAt: '2026-11-07T10:00:00Z',
+      statusReason: 'Two deposits were reversed by the card issuer.',
+    };
+  }
+
+  afterEach(() => mockWallet.mockReset());
+
+  it('offers an appeal that names the wallet', () => {
+    mockWallet.mockReturnValue(walletIn('Frozen'));
+    mockRewardBalance.mockReturnValue(undefined);
+
+    renderHub();
+
+    fireEvent.press(screen.getByLabelText('Appeal the freeze on your wallet'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/profile/appeals',
+      params: { type: 'Money', targetId: 'wallet-7' },
+    });
+  });
+
+  it('a closed wallet offers no appeal', () => {
+    mockWallet.mockReturnValue(walletIn('Closed'));
+    mockRewardBalance.mockReturnValue(undefined);
+
+    renderHub();
+
+    expect(screen.queryByLabelText('Appeal the freeze on your wallet')).toBeNull();
   });
 });
