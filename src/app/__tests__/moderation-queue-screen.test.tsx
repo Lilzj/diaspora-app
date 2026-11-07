@@ -1,18 +1,16 @@
 /**
- * The platform moderation queue asks why before it acts, 6 Nov 2026.
+ * The platform moderation queue in the app shows what is waiting and decides nothing (7 Nov 2026).
  *
- * Remove, Hide and Dismiss each sent a decision on one tap, with no
- * confirmation and no reason: `POST /community/moderation/decisions` takes both
- * the report and the reason as optional, so nothing stopped a moderator taking
- * down a member's content without saying why.
+ * On 6 Nov it sent a decision on one tap with no reason; stage 1 put a confirmation and a required
+ * reason in front of it. Since stage 5, staff decide reported content only on its Trust case in the
+ * staff console, where a reason code and a note are required, a removal needs a second member of
+ * staff, and the owner is told. Community's decision route this screen posted to is gone.
  */
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
 import type { ModerationQueueItemResponse } from '@/types/community-social';
-
-const mockDecide = jest.fn();
 
 const ITEM: ModerationQueueItemResponse = {
   contentType: 'post',
@@ -36,12 +34,8 @@ jest.mock('@/hooks/community-social', () => ({
     isEmpty: false,
     refresh: jest.fn(),
   }),
-  useModerationDecision: () => ({ decide: mockDecide, isPending: false, error: null }),
 }));
 
-jest.mock('@/providers/notification-provider', () => ({
-  useNotification: () => ({ showAlert: jest.fn(), showToast: jest.fn() }),
-}));
 jest.mock('@/components/layout/bottom-inset', () => ({ useBottomInset: () => 0 }));
 
 // eslint-disable-next-line import/first
@@ -62,51 +56,18 @@ function renderQueue() {
   );
 }
 
-beforeEach(() => {
-  jest.clearAllMocks();
-  mockDecide.mockResolvedValue({ decisionId: 'decision-1' });
-});
-
-it('sends nothing on a tap, and nothing without a reason', () => {
+it('shows what is waiting, with its reports', () => {
   renderQueue();
 
-  fireEvent.press(screen.getByRole('button', { name: 'Remove this content' }));
-  expect(mockDecide).not.toHaveBeenCalled();
-  expect(screen.getByText('Remove this content?')).toBeTruthy();
-
-  const confirm = screen.getByRole('button', { name: 'Confirm: Remove' });
-  expect(confirm.props.accessibilityState).toEqual(expect.objectContaining({ disabled: true }));
-
-  fireEvent.changeText(screen.getByLabelText('Reason for this decision'), 'spam');
-  fireEvent.press(screen.getByRole('button', { name: 'Confirm: Remove' }));
-  expect(mockDecide).not.toHaveBeenCalled();
+  expect(screen.getByText('Cheap visas, message me')).toBeTruthy();
+  expect(screen.getByText('3 reports')).toBeTruthy();
 });
 
-it('sends the decision with the moderator’s reason once there is one', async () => {
+it('offers no decision, and says where decisions are made', () => {
   renderQueue();
 
-  fireEvent.press(screen.getByRole('button', { name: 'Hide this content' }));
-  fireEvent.changeText(
-    screen.getByLabelText('Reason for this decision'),
-    '  Sells visa appointments for cash; three members reported it.  '
-  );
-  fireEvent.press(screen.getByRole('button', { name: 'Confirm: Hide' }));
-
-  await waitFor(() => expect(mockDecide).toHaveBeenCalledTimes(1));
-  expect(mockDecide).toHaveBeenCalledWith({
-    contentType: 'post',
-    contentId: ITEM.contentId,
-    action: 'hide',
-    reason: 'Sells visa appointments for cash; three members reported it.',
-  });
-});
-
-it('lets the moderator back out without deciding anything', () => {
-  renderQueue();
-
-  fireEvent.press(screen.getByRole('button', { name: 'Dismiss reports this content' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Cancel this decision' }));
-
-  expect(mockDecide).not.toHaveBeenCalled();
-  expect(screen.getByRole('button', { name: 'Remove this content' })).toBeTruthy();
+  expect(screen.queryByLabelText('Remove this content')).toBeNull();
+  expect(screen.queryByLabelText('Hide this content')).toBeNull();
+  expect(screen.queryByLabelText('Dismiss reports this content')).toBeNull();
+  expect(screen.getByText(/Decide this in the staff console, on its case/)).toBeTruthy();
 });

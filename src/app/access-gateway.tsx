@@ -16,6 +16,8 @@ import { useThemeTokens } from '@/design-system';
 export default function AccessGatewayScreen() {
   const tokens = useThemeTokens();
   const { user, signOut, setAccountState, setExploringLimited } = useAuthStore();
+  // Why the account is suspended, and until when, from the server's access decision (7 Nov 2026).
+  const access = useAuthStore((state) => state.access);
   const { showToast, showAlert } = useNotification();
 
   // ── Where this screen's verification comes from, after Wave D-4 ───────────
@@ -492,17 +494,37 @@ export default function AccessGatewayScreen() {
               </Text>
             </View>
 
-            {/* Only what is true (6 Nov 2026). This box listed two fixed "Policy
-                Violations" (document counterfeiting, misrepresenting residence)
-                to every suspended member, whatever they were suspended for. The
-                server does not send the reason to the app, so the screen says
-                that rather than inventing one. It also does not repeat an end
-                date: nothing lifts a suspension on its date yet. */}
+            {/* Only what is true. On 6 Nov this box listed two fixed "Policy
+                Violations" to every suspended member; then it said the reason was
+                not shown yet. Since 7 Nov the server sends the reason, what the
+                staff member wrote, and the end date (a dated suspension now ends
+                on its own), and this box shows exactly those. */}
             <View className="bg-surface-muted border border-subtle rounded-3xl p-5 mb-8">
               <Text className="text-xs font-extrabold text-content-tertiary uppercase tracking-wider mb-2">Why</Text>
-              <Text className="text-xs text-content-secondary leading-relaxed">
-                The reason for this suspension is not shown in the app yet. If you think it is a mistake, appeal below
-                and a person on the Diaspora team will review it.
+              {access?.reasonLabel ? (
+                <Text className="text-xs text-content-primary leading-relaxed">
+                  Diaspora staff found your account was involved in {access.reasonLabel}.
+                </Text>
+              ) : null}
+              {access?.note ? (
+                <Text className="text-xs text-content-secondary leading-relaxed mt-2">
+                  Their note: {access.note}
+                </Text>
+              ) : null}
+              {!access?.reasonLabel && !access?.note ? (
+                <Text className="text-xs text-content-secondary leading-relaxed">
+                  The reason could not be loaded just now.
+                </Text>
+              ) : null}
+              <Text className="text-xs text-content-secondary leading-relaxed mt-2">
+                {access?.restrictedUntil
+                  ? `It ends on ${new Date(access.restrictedUntil).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}.`
+                  : 'It has no end date.'}{' '}
+                If you think it is a mistake, appeal below and a person on the Diaspora team will review it.
               </Text>
             </View>
 

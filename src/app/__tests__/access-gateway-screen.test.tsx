@@ -50,9 +50,10 @@ const METRICS = {
 const MEMBER = '01a05770-33f2-7600-8000-0000000000da';
 const REASON = 'I posted nothing that breaks the rules. Please look again at my account.';
 
-function renderAs(accountState: 'Suspended' | 'VerificationRejected') {
+function renderAs(accountState: 'Suspended' | 'VerificationRejected', access: Record<string, unknown> | null = null) {
   useAuthStore.setState({
     user: { userId: MEMBER, fullName: 'David Mensah', role: 'Member', accountState },
+    access,
   } as never);
   return render(
     <SafeAreaProvider initialMetrics={METRICS}>
@@ -77,7 +78,20 @@ describe('a suspended member', () => {
     expect(screen.queryByText(/residence boundaries/i)).toBeNull();
     expect(screen.queryByText(/Simulation/i)).toBeNull();
     expect(screen.queryByText(/Suspend Account/)).toBeNull();
-    expect(screen.getByText(/not shown in the app yet/)).toBeTruthy();
+    expect(screen.getByText(/The reason could not be loaded just now/)).toBeTruthy();
+  });
+
+  it('reads the reason, the note and the end date the server sent (7 Nov 2026)', () => {
+    renderAs('Suspended', {
+      reasonCode: 'FraudOrScam',
+      reasonLabel: 'a fraud or scam',
+      note: 'Three fake landlord adverts asking for deposits.',
+      restrictedUntil: '2026-12-07T12:00:00.000Z',
+    });
+
+    expect(screen.getByText('Diaspora staff found your account was involved in a fraud or scam.')).toBeTruthy();
+    expect(screen.getByText('Their note: Three fake landlord adverts asking for deposits.')).toBeTruthy();
+    expect(screen.getByText(/It ends on 7 December 2026\./)).toBeTruthy();
   });
 
   it('appeals the suspension itself, under their own account', async () => {

@@ -633,6 +633,40 @@ export async function fetchMyAppeals(
   return readPage<WireAppeal>(response.data);
 }
 
+// ── A moderation decision about the member's own content (7 Nov 2026) ─────────
+
+/**
+ * A decision Diaspora staff made about something the member published, as they read it:
+ * what happened, why, the note, and what they can do. Never the moderator, never the reporters.
+ */
+export interface MyModerationCase {
+  caseId: string;
+  contentType: string;
+  contentId: string;
+  title: string | null;
+  /** HidePendingReview, Remove, Restore or NoAction; null while nobody has decided. */
+  outcome: string | null;
+  reasonCode: string | null;
+  reasonLabel: string | null;
+  note: string | null;
+  decidedAt: string | null;
+  hiddenAutomatically: boolean;
+  removalPending: boolean;
+  appealDeadline: string | null;
+  canRequestReview: boolean;
+  reviewRequestedAt: string | null;
+}
+
+/** `GET /trust/moderation/cases/{caseId}/mine` — 200. 404 for somebody else's case. */
+export function fetchMyModerationCase(caseId: string): Promise<MyModerationCase> {
+  return get<MyModerationCase>(`${ROOT}/moderation/cases/${segment(caseId)}/mine`);
+}
+
+/** `POST /trust/moderation/cases/{caseId}/review-request` — the owner fixed it and asks for a look. */
+export async function requestModerationReview(caseId: string): Promise<void> {
+  await apiClient.post(`${ROOT}/moderation/cases/${segment(caseId)}/review-request`);
+}
+
 /** `GET /trust/appeals/{appealId}` — 200. 404 for somebody else's appeal. */
 export function fetchAppeal(appealId: string): Promise<WireAppealDetail> {
   return get<WireAppealDetail>(`${ROOT}/appeals/${segment(appealId)}`);

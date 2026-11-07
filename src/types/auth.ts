@@ -197,7 +197,14 @@ export interface AccessDecision {
   grantedFeatures: string[];
   blockedFeatures: string[];
   permissions: string[];
+  /** When a suspension ends, if it was given an end. */
   restrictedUntil?: string | null;
+  /** Why a suspended or closed member is suspended or closed (7 Nov 2026). Absent from older servers. */
+  reasonCode?: string | null;
+  /** The reason as the member reads it: "a fraud or scam". */
+  reasonLabel?: string | null;
+  /** What the staff member wrote. */
+  note?: string | null;
 }
 
 /** `AuthenticationResponse`. Returned by verify-phone, otp/sign-in, login and refresh. */
