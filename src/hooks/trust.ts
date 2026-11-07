@@ -43,6 +43,7 @@ import {
   fetchFeatureRequirements,
   fetchModerationQueue,
   fetchMyAppeals,
+  fetchMyModerationCase,
   fetchMyBadges,
   fetchMyReputation,
   fetchMyReputationEvents,
@@ -58,6 +59,7 @@ import {
   recordModerationDecision,
   reviewAppeal,
   reviewVerification,
+  requestModerationReview,
   submitAppeal,
   submitCountryVerification,
   submitDiasporaVerification,
@@ -575,6 +577,36 @@ export function useMyAppeals(
     isEmpty: query.isSuccess && appeals.length === 0,
     error: messageFor(query),
     refresh: () => void query.refetch(),
+  };
+}
+
+/** A moderation decision about the member's own content, and asking for it to be reviewed. */
+export function useMyModerationCase(caseId: string | null | undefined) {
+  const client = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['trust', 'moderation-case', caseId ?? ''] as const,
+    queryFn: () => fetchMyModerationCase(caseId as string),
+    enabled: Boolean(caseId),
+    retry: shouldRetry,
+  });
+
+  const review = useMutation({
+    mutationFn: () => requestModerationReview(caseId as string),
+    retry: false,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['trust', 'moderation-case', caseId ?? ''] });
+    },
+  });
+
+  return {
+    decision: query.data ?? null,
+    isLoading: query.isLoading,
+    error: messageFor(query),
+    refresh: () => void query.refetch(),
+    requestReview: () => review.mutateAsync(),
+    isRequestingReview: review.isPending,
+    reviewError: messageFor(review),
   };
 }
 

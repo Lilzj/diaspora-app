@@ -243,6 +243,23 @@ export default function WalletScreen() {
               status={presentWalletStatus(wallet.status)}
               detail={wallet.statusReason}
             />
+            {/* A freeze can be appealed (7 Nov 2026); its notice says so. A
+                closed wallet cannot be reopened, so it offers nothing. */}
+            {wallet.status === 'Frozen' ? (
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: '/profile/appeals',
+                    params: { type: 'Money', targetId: wallet.walletId },
+                  })
+                }
+                accessibilityRole="button"
+                accessibilityLabel="Appeal the freeze on your wallet"
+                className="mt-2 self-start px-4 py-2 rounded-xl border border-subtle bg-surface-card"
+              >
+                <Text className="text-xs font-bold text-content-primary">Appeal this freeze</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         ) : null}
 

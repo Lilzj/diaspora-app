@@ -2854,6 +2854,7 @@ interface RecurringDonationWire {
 const CAMPAIGN_STATUSES = [
   'Draft', 'PendingReview', 'Rejected', 'Published', 'Active', 'Paused',
   'GoalReached', 'DeadlineReached', 'Completed', 'Refunding', 'Cancelled', 'Closed',
+  'Suspended',
 ] as const satisfies readonly CampaignStatus[];
 
 const CAMPAIGN_CATEGORIES = [

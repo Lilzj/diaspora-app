@@ -43,14 +43,14 @@
 //
 // ── What it will do ──────────────────────────────────────────────────────────
 //
-// `POST /community/moderation/decisions`, with a real action from the module's
-// camelCase vocabulary, and the moderator's reason with it. Every button below
-// opens a confirmation that will not send without one (6 Nov 2026: one tap
-// removed a member's content with no reason, because the server asks for none).
+// Nothing, since 7 Nov 2026. Staff decide reported content only on its Trust case
+// in the staff console, where a reason code and a note are required, a removal
+// needs a second member of staff, and the owner is told. Community's decision
+// route this screen used to post to is gone. This screen shows what is waiting.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
@@ -58,99 +58,20 @@ import { router } from 'expo-router';
 import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import { humanise, relativeTime } from '@/components/community-social';
-import { useModerationDecision, useModerationQueue } from '@/hooks/community-social';
-import { useNotification } from '@/providers/notification-provider';
+import { useModerationQueue } from '@/hooks/community-social';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import type {
-  ModerationAction,
-  ModerationQueueItemResponse,
-} from '@/types/community-social';
 import { backOr } from '@/lib/navigation';
 
 /** The literal the server sends for content that has already gone. */
 const REMOVED_TITLE = '(removed)';
 
-/**
- * The three decisions this screen offers, in the module's camelCase vocabulary.
- *
- * `warn`, `escalate` and `restore` are on the contract and are not offered here:
- * a warning needs somebody to warn and the queue carries no author name, and a
- * restore needs a removed item to restore, which this queue does not list.
- */
-const ACTIONS: {
-  action: ModerationAction;
-  label: string;
-  tone: 'danger' | 'muted' | 'primary';
-  question: string;
-  placeholder: string;
-}[] = [
-  {
-    action: 'remove',
-    label: 'Remove',
-    tone: 'danger',
-    question: 'Remove this content?',
-    placeholder: 'What breaks the guidelines, and how you checked',
-  },
-  {
-    action: 'hide',
-    label: 'Hide',
-    tone: 'muted',
-    question: 'Hide this content?',
-    placeholder: 'What breaks the guidelines, and how you checked',
-  },
-  {
-    action: 'dismiss',
-    label: 'Dismiss reports',
-    tone: 'primary',
-    question: 'Dismiss these reports?',
-    placeholder: 'Why the reports do not hold up',
-  },
-];
 
-/** A reason shorter than this says nothing a reviewer or the author could use. */
-const DECISION_REASON_MIN_LENGTH = 10;
 
 export default function ModerationQueueScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
 
-  const { showAlert } = useNotification();
   const queue = useModerationQueue();
-  const deciding = useModerationDecision();
-
-  const [busyKey, setBusyKey] = useState<string | null>(null);
-  // The decision being confirmed, and its reason. One card at a time.
-  const [pending, setPending] = useState<{ key: string; action: ModerationAction } | null>(null);
-  const [reason, setReason] = useState('');
-
-  const decide = useCallback(
-    async (item: ModerationQueueItemResponse, action: ModerationAction, why: string) => {
-      const key = `${item.contentType}|${item.contentId}`;
-      setBusyKey(key);
-      try {
-        await deciding.decide({
-          contentType: item.contentType,
-          contentId: item.contentId,
-          action,
-          reason: why.trim(),
-        });
-        setPending(null);
-        setReason('');
-        showAlert({
-          type: 'success',
-          title: 'Decision recorded',
-          message: `Marked as ${humanise(action).toLowerCase()}.`,
-        });
-      } catch {
-        // `deciding.error` carries the server's own sentence and is rendered
-        // above the list.
-      } finally {
-        setBusyKey(null);
-      }
-    },
-    [deciding, showAlert]
-  );
-
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
@@ -198,16 +119,9 @@ export default function ModerationQueueScreen() {
           />
         ) : (
           <>
-            {deciding.error ? (
-              <View className="bg-surface-muted border border-error-default/30 rounded-2xl px-4 py-3 mb-4">
-                <Text className="text-xs font-bold text-error-default">{deciding.error}</Text>
-              </View>
-            ) : null}
-
             {queue.items.map((item) => {
               const key = `${item.contentType}|${item.contentId}`;
               const isGone = item.title === REMOVED_TITLE;
-              const isBusy = busyKey === key;
 
               return (
                 <View
@@ -258,55 +172,14 @@ export default function ModerationQueueScreen() {
                     {relativeTime(item.lastReportedAt)}
                   </Text>
 
-                  {pending?.key === key ? (
-                    <DecisionConfirmation
-                      choice={ACTIONS.find((entry) => entry.action === pending.action) ?? ACTIONS[0]}
-                      reason={reason}
-                      onChangeReason={setReason}
-                      isBusy={isBusy}
-                      onCancel={() => {
-                        setPending(null);
-                        setReason('');
-                      }}
-                      onConfirm={() => void decide(item, pending.action, reason)}
-                    />
-                  ) : (
-                  <View className="flex-row">
-                    {ACTIONS.map(({ action, label, tone }) => (
-                      <TouchableOpacity
-                        key={action}
-                        accessible
-                        accessibilityRole="button"
-                        accessibilityLabel={`${label} this content`}
-                        accessibilityState={{ disabled: isBusy || deciding.isPending }}
-                        disabled={isBusy || deciding.isPending}
-                        onPress={() => {
-                          setPending({ key, action });
-                          setReason('');
-                        }}
-                        className={`flex-1 py-2.5 rounded-xl items-center mr-2 border ${
-                          tone === 'danger'
-                            ? 'bg-error-solid border-error-solid'
-                            : tone === 'primary'
-                              ? 'bg-primary-500 border-primary-500'
-                              : 'bg-surface-card border-subtle'
-                        }`}
-                      >
-                        {isBusy ? (
-                          <ActivityIndicator size="small" color="#6B7280" />
-                        ) : (
-                          <Text
-                            className={`text-xs font-black ${
-                              tone === 'muted' ? 'text-content-secondary' : 'text-white'
-                            }`}
-                          >
-                            {label}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  )}
+                  {/* Decisions are made on the content's case in the staff console
+                      (7 Nov 2026): a reason code and a note the owner reads are
+                      required there, a removal needs a second member of staff, and
+                      the owner is told. This screen only shows what is waiting. */}
+                  <Text className="text-[11px] font-semibold text-content-secondary leading-relaxed">
+                    Decide this in the staff console, on its case, where the reason and a
+                    second check are required and the owner is told.
+                  </Text>
                 </View>
               );
             })}
@@ -325,93 +198,6 @@ export default function ModerationQueueScreen() {
         <View className="h-8" />
       </ScrollEndScrollView>
     </SafeAreaView>
-  );
-}
-
-/**
- * The step between a tap and a decision: what is about to happen, and why.
- *
- * The confirm button stays disabled until the reason says something, so no
- * decision on a member's content leaves this screen without one.
- */
-function DecisionConfirmation({
-  choice,
-  reason,
-  onChangeReason,
-  isBusy,
-  onCancel,
-  onConfirm,
-}: {
-  choice: (typeof ACTIONS)[number];
-  reason: string;
-  onChangeReason: (value: string) => void;
-  isBusy: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const hasReason = reason.trim().length >= DECISION_REASON_MIN_LENGTH;
-
-  return (
-    <View className="bg-surface-muted border border-subtle rounded-xl p-3">
-      <Text className="text-sm font-black text-content-primary">{choice.question}</Text>
-      <Text className="text-xs font-semibold text-content-muted mt-1 mb-2">
-        Your reason is recorded with the decision.
-      </Text>
-      <TextInput
-        value={reason}
-        onChangeText={onChangeReason}
-        placeholder={choice.placeholder}
-        accessibilityLabel="Reason for this decision"
-        multiline
-        className="bg-surface-card border border-subtle rounded-xl p-3 text-xs font-semibold text-content-primary min-h-[64px]"
-      />
-      {!hasReason ? (
-        <Text className="text-[10px] font-semibold text-content-faint mt-1">
-          At least {DECISION_REASON_MIN_LENGTH} characters.
-        </Text>
-      ) : null}
-      <View className="flex-row mt-3">
-        <TouchableOpacity
-          accessible
-          accessibilityRole="button"
-          accessibilityLabel="Cancel this decision"
-          onPress={onCancel}
-          disabled={isBusy}
-          className="flex-1 py-2.5 rounded-xl items-center mr-2 border bg-surface-card border-subtle"
-        >
-          <Text className="text-xs font-black text-content-secondary">Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          accessible
-          accessibilityRole="button"
-          accessibilityLabel={`Confirm: ${choice.label}`}
-          accessibilityState={{ disabled: !hasReason || isBusy }}
-          onPress={onConfirm}
-          disabled={!hasReason || isBusy}
-          className={`flex-1 py-2.5 rounded-xl items-center border ${
-            !hasReason
-              ? 'bg-surface-card border-subtle'
-              : choice.tone === 'danger'
-                ? 'bg-error-solid border-error-solid'
-                : choice.tone === 'primary'
-                  ? 'bg-primary-500 border-primary-500'
-                  : 'bg-surface-card border-line'
-          }`}
-        >
-          {isBusy ? (
-            <ActivityIndicator size="small" color="#6B7280" />
-          ) : (
-            <Text
-              className={`text-xs font-black ${
-                !hasReason ? 'text-content-faint' : choice.tone === 'muted' ? 'text-content-primary' : 'text-white'
-              }`}
-            >
-              {choice.label}
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
   );
 }
 

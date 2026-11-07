@@ -1493,7 +1493,7 @@ export function setupTrustMocks(mock: MockAdapter): void {
     // than refusing. `lib/trust-api.ts` refuses it before it gets here; the
     // handler still models the server's behaviour for anything that bypasses
     // the client.
-    const known = ['Verification', 'Content', 'Suspension', 'Publishing'];
+    const known = ['Verification', 'Content', 'Suspension', 'Publishing', 'RewardHold', 'Money'];
     const effectiveType = known.find((item) => item.toLowerCase() === type.toLowerCase()) ?? 'Verification';
 
     if (effectiveType === 'Verification') {

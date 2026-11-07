@@ -276,10 +276,12 @@ export interface AuditLogEvent {
 }
 
 /**
- * What a member is appealing. `AppealType` in `TrustEnums.cs:299`.
+ * What a member is appealing. `AppealType` in `TrustEnums.cs`.
  * `RewardHold` is a hold on the member's own points (RWD-14, CS-4a).
+ * `Money` is a decision about the member's money (7 Nov 2026): its target is
+ * their wallet, when it was frozen, or a refund request staff turned down.
  */
-export type AppealType = 'Verification' | 'Content' | 'Suspension' | 'Publishing' | 'RewardHold';
+export type AppealType = 'Verification' | 'Content' | 'Suspension' | 'Publishing' | 'RewardHold' | 'Money';
 
 /**
  * Where an appeal sits. `AppealStatus` in `TrustEnums.cs:317`.
