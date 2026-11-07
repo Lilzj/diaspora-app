@@ -357,6 +357,18 @@ describe('the employer’s team reading their own job', () => {
     expect(screen.getByText('About the employer')).toBeTruthy();
     expect(screen.getByLabelText('Save this job')).toBeTruthy();
   });
+
+  it('knows staff from canModerate on a server that no longer lets them manage the job', () => {
+    // Since 7 Nov 2026 the server answers staff with canManage false, because
+    // the owner's routes refuse them, and canModerate true.
+    givenJob(walkthroughJob({ canManage: false, isOnEmployerTeam: false, canModerate: true }));
+    renderPage();
+
+    expect(screen.getByText('Diaspora staff')).toBeTruthy();
+    expect(screen.queryByText('Close to applications')).toBeNull();
+    expect(screen.queryByText('Remove from Diaspora')).toBeNull();
+    expect(screen.queryByText(/Report this job/i)).toBeNull();
+  });
 });
 
 describe('a read that did not arrive', () => {
@@ -478,7 +490,11 @@ describe('the page source', () => {
   });
 
   it('decides ownership by the server’s answer, and reads through the adapter', () => {
-    expect(source).toContain('job.canManage');
+    // The server's flags, read through the adapter's helpers (canManage,
+    // isOnEmployerTeam and, since 7 Nov 2026, canModerate).
+    expect(source).toContain('isOnEmployerTeam(job)');
+    expect(source).toContain('isStaffViewer(job)');
+    expect(source).toContain('ownerActionsFor(job)');
     expect(source).not.toMatch(/apiClient/);
     expect(source).not.toMatch(/userId\s*===|===\s*user\?\.userId/);
   });

@@ -63,7 +63,7 @@ const MEMBERSHIP_STATES: MembershipStatus[] = [
 
 const CAMPAIGN_STATES: CampaignStatus[] = [
   'Draft', 'PendingReview', 'Rejected', 'Published', 'Active', 'Paused', 'GoalReached',
-  'DeadlineReached', 'Completed', 'Refunding', 'Cancelled', 'Closed',
+  'DeadlineReached', 'Completed', 'Refunding', 'Cancelled', 'Closed', 'Suspended',
 ];
 
 const SERIES_STATES: EventSeriesStatus[] = ['Draft', 'Published', 'Paused', 'Completed', 'Cancelled'];
@@ -190,6 +190,11 @@ describe('campaign transitions', () => {
 
   it('lets a rejected campaign be fixed and resubmitted', () => {
     expect(canTransitionCampaign('Rejected', 'PendingReview')).toBe(true);
+    // A staff suspension (7 Nov 2026) is lifted only by staff: the organiser
+    // is offered no way out of it, and certainly not "Submit" as a draft.
+    expect(canTransitionCampaign('Suspended', 'PendingReview')).toBe(false);
+    expect(canTransitionCampaign('Suspended', 'Active')).toBe(false);
+    expect(describeCampaign('Suspended').label).toBe('Suspended by Diaspora');
     expect(canTransitionCampaign('Rejected', 'Draft')).toBe(true);
   });
 

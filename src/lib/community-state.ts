@@ -637,6 +637,17 @@ const CAMPAIGN_STATES: Record<CampaignStatus, StateDescriptor> = {
     isPending: false,
     isTerminal: true,
   },
+  // Staff took it down through moderation (7 Nov 2026). Not a draft: shown as
+  // one, the organiser was offered "Submit", which the server refuses.
+  Suspended: {
+    label: 'Suspended by Diaspora',
+    tone: 'negative',
+    icon: 'shield-outline',
+    detail:
+      'Diaspora staff suspended this campaign. It is hidden and is not taking donations. The reason is below.',
+    isPending: false,
+    isTerminal: false,
+  },
 };
 
 export function describeCampaign(status: CampaignStatus): StateDescriptor {
@@ -663,7 +674,8 @@ export function isOrganiserOnlyCampaignState(status: CampaignStatus): boolean {
     status === 'Draft' ||
     status === 'PendingReview' ||
     status === 'Rejected' ||
-    status === 'Published'
+    status === 'Published' ||
+    status === 'Suspended'
   );
 }
 
@@ -680,6 +692,8 @@ const CAMPAIGN_TRANSITIONS: Record<CampaignStatus, CampaignStatus[]> = {
   Refunding: ['Closed'],
   Cancelled: [],
   Closed: [],
+  // Only staff lift a suspension; it comes back paused for the organiser.
+  Suspended: [],
 };
 
 export function canTransitionCampaign(from: CampaignStatus, to: CampaignStatus): boolean {

@@ -16,10 +16,11 @@
 //     way to publish, close or remove it. Until this page, a job could not be
 //     closed from the app at all.
 //   * **Diaspora staff** — the job as a member sees it, and no way to close or
-//     remove it here. `canManage` is true for staff on every job, which is why it
-//     is not the owner check. A staff takedown belongs in the console, on the
-//     reports, with a reason (6 Nov 2026: one tap took a member's job down with
-//     no report, no reason and no word to the employer).
+//     remove it here. The server says who they are in `canModerate` (read through
+//     `isStaffViewer`); since 7 Nov 2026 it refuses them on the owner's routes. A
+//     staff takedown belongs in the console, on the reports, with a reason
+//     (6 Nov 2026: one tap took a member's job down with no report, no reason and
+//     no word to the employer).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
@@ -57,6 +58,7 @@ import {
   employerResponsiveness,
   formatJobDate,
   isOnEmployerTeam,
+  isStaffViewer,
   jobConversationSubtitle,
   jobPlaceLabel,
   jobStanding,
@@ -165,7 +167,7 @@ export default function JobDetailScreen() {
   // see somebody else's job as a member does, and can say they are interested
   // like anyone. They act on it from the console, never from here.
   const onTeam = isOnEmployerTeam(job);
-  const staffOnly = job.canManage && !onTeam;
+  const staffOnly = isStaffViewer(job);
   const canMessage = !onTeam && Boolean(job.employer.ownerUserId);
 
   // A simple job (5 Nov 2026) is answered with "I'm interested", says when the
@@ -733,8 +735,9 @@ export default function JobDetailScreen() {
         ) : null}
 
         {/* Not for the employer: nobody reports their own job (13 Oct 2026). They
-            already have Close and Remove above. */}
-        {!job.canManage ? (
+            already have Close and Remove above. Not for staff either: they work
+            reports in the console. */}
+        {!onTeam && !staffOnly ? (
           <TouchableOpacity
             onPress={() => setReportModalVisible(true)}
             className="items-center py-6"
