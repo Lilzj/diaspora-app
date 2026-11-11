@@ -88,6 +88,8 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['delete', '/auth/sessions'],
   ['get', '/auth/sessions'],
   ['delete', '/auth/sessions/{sessionId}'],
+  ['post', '/auth/step-up'],
+  ['post', '/auth/step-up/verify'],
   ['post', '/auth/verify-phone'],
   ['get', '/automations'],
   ['post', '/automations'],

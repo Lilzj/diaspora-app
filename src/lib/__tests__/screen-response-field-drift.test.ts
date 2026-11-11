@@ -36,25 +36,19 @@
 // Node's globals are declared locally rather than by adding `"node"` to the
 // project's `types` — that change is global and surfaces pre-existing errors in
 // other suites. Matches `backend-row-property-drift.test.ts`.
+import { backendSourceRoot } from './support/backend-checkout';
+
 declare const __dirname: string;
 
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
 const existsSync: (path: string) => boolean = require('fs').existsSync;
 const join: (...parts: string[]) => string = require('path').join;
 
-/** Identical resolution to the three sibling cross-repo checks. */
-function resolveBackendSourceRoot(): string | null {
-  const configured = process.env.DIASPORA_BACKEND_PATH;
-  const candidate =
-    configured !== undefined && configured !== ''
-      ? configured
-      : join(__dirname, '..', '..', '..', '..', 'diaspora-backend');
-
-  const sourceRoot = join(candidate, 'src');
-  return existsSync(sourceRoot) ? sourceRoot : null;
-}
-
-const BACKEND_SOURCE_ROOT = resolveBackendSourceRoot();
+// The backend checkout is located by `support/backend-checkout`, which is
+// also where the rule lives: not configured and absent is a skip, configured
+// and absent is a failure. Eleven suites resolved this separately until
+// 11 November 2026; FBL-001 is what that cost.
+const BACKEND_SOURCE_ROOT = backendSourceRoot();
 const CLIENT_ROOT = join(__dirname, '..', '..');
 
 interface Pairing {

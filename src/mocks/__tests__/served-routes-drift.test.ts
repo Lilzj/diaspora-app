@@ -8,6 +8,7 @@
 // contract drift tests (`DIASPORA_BACKEND_PATH` overrides the location).
 
 import { SERVED_ROUTES } from '../served-routes';
+import { backendContractFile } from '../../lib/__tests__/support/backend-checkout';
 
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
 const existsSync: (path: string) => boolean = require('fs').existsSync;
@@ -16,17 +17,11 @@ const { servedRoutes } = require('../../../scripts/generate-served-routes') as {
   servedRoutes: (contract: unknown) => [string, string][];
 };
 
-function contractFile(): string | null {
-  const configured = process.env.DIASPORA_BACKEND_PATH;
-  const root =
-    configured !== undefined && configured !== ''
-      ? configured
-      : join(process.cwd(), '..', 'diaspora-backend');
-  const file = join(root, 'contracts', 'Diaspora.Api.json');
-  return existsSync(file) ? file : null;
-}
-
-const CONTRACT = contractFile();
+// The backend checkout is located by `support/backend-checkout`, which is
+// also where the rule lives: not configured and absent is a skip, configured
+// and absent is a failure. Eleven suites resolved this separately until
+// 11 November 2026; FBL-001 is what that cost.
+const CONTRACT = backendContractFile();
 const describeWhenBackendPresent = CONTRACT ? describe : describe.skip;
 
 describeWhenBackendPresent('the served-route list matches the backend contract', () => {

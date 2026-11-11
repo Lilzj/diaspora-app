@@ -37,24 +37,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { CAMPAIGN_OBJECTIVES } from '@/types/monetization-gaps';
+import { backendSourceRoot } from './support/backend-checkout';
 
 declare const __dirname: string;
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
 const existsSync: (path: string) => boolean = require('fs').existsSync;
 const join: (...parts: string[]) => string = require('path').join;
 
-function resolveBackendSourceRoot(): string | null {
-  const configured = process.env.DIASPORA_BACKEND_PATH;
-  const candidate =
-    configured !== undefined && configured !== ''
-      ? configured
-      : join(__dirname, '..', '..', '..', '..', 'diaspora-backend');
-
-  const sourceRoot = join(candidate, 'src');
-  return existsSync(sourceRoot) ? sourceRoot : null;
-}
-
-const BACKEND_SOURCE_ROOT = resolveBackendSourceRoot();
+// The backend checkout is located by `support/backend-checkout`, which is
+// also where the rule lives: not configured and absent is a skip, configured
+// and absent is a failure. Eleven suites resolved this separately until
+// 11 November 2026; FBL-001 is what that cost.
+const BACKEND_SOURCE_ROOT = backendSourceRoot();
 
 /** The published contract, one directory up from `src/`. */
 const CONTRACT_FILE = BACKEND_SOURCE_ROOT
