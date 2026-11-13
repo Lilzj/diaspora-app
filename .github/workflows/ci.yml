@@ -30,6 +30,25 @@ jobs:
 
       - run: npm ci
 
+      # FSEC-001: this repository had no dependency audit of any kind, while the
+      # backend fails its build on any moderate-or-worse advisory and reports
+      # zero vulnerable packages. The difference between the two repositories
+      # was exactly one CI step, and it is this one.
+      #
+      # Not `npm audit --audit-level=high --omit=dev`, which the finding
+      # recommended: measured on 13 November 2026 it exits 1, because the build
+      # tooling arrives through `react-native` and `expo`, which are runtime
+      # dependencies, so `--omit=dev` does not describe what ships. The script
+      # explains the rest; the short version is that every advisory is either
+      # fixed or written down in dependency-audit-baseline.json, and the build
+      # fails when that set changes in either direction.
+      #
+      # Before the typecheck, mirroring the backend's scan-before-build order:
+      # a dependency advisory is a property of the commit, not of the code that
+      # happens to compile on top of it.
+      - name: Dependency audit
+        run: node scripts/dependency-audit.js
+
       # Separate steps so a type error is reported as a type error rather than
       # buried in a test run that could not compile.
       - name: Typecheck

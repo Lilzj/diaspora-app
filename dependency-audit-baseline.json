@@ -1,0 +1,545 @@
+{
+  "generated": "2026-11-13",
+  "accepted": [
+    {
+      "id": "GHSA-27p8-2357-5qqv",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: DocType `name` Injection Bypasses requireWellFormed",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-2883-xcg3-v3hh",
+      "package": "js-yaml",
+      "severity": "high",
+      "title": "js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources",
+      "reachedVia": "expo, @react-native/jest-preset",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-2vgq-wchc-25w7",
+      "package": "node-forge",
+      "severity": "low",
+      "title": "Forge: Incomplete PKCS#7 padding validation in AES/DES CBC and ECB decryption",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-3g3m-2fjr-6pw4",
+      "package": "glob",
+      "severity": "moderate",
+      "title": "Glob: AbortSignal cancellation bypass allows post-timeout filesystem traversal",
+      "reachedVia": "expo, expo-sharing, jest, @react-native/jest-preset",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-3px3-54cx-rmw9",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: Creation-time XML Name/QName validation is bypassable via an embedded line terminator, allowing injection on the default serialization path",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-4487-j8r4-4g2f",
+      "package": "node-forge",
+      "severity": "low",
+      "title": "Forge: verifyCertificateChain() removes trusted CA certificates with the same subject from the CA store",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-4642-5mcj-2rqw",
+      "package": "node-forge",
+      "severity": "low",
+      "title": "Forge: ASN.1 OID first arc truncation in asn1.oidToDer",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-4w3w-2rp5-g8jm",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: Attribute name injection via setAttribute() bypasses requireWellFormed",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-525v-9gp9-w22h",
+      "package": "node-forge",
+      "severity": "moderate",
+      "title": "Forge: TLS client crash when the server sends no certificate",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-5cwg-6vw7-rj6p",
+      "package": "node-forge",
+      "severity": "moderate",
+      "title": "Forge: AES-GCM authentication bypass via unvalidated tagLength option",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-5p2g-fcmc-qvqq",
+      "package": "image-size",
+      "severity": "high",
+      "title": "image-size: JXL and HEIF parsers allow denial of service through infinite loops",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-5p4m-2wfm-xmqj",
+      "package": "js-yaml",
+      "severity": "high",
+      "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
+      "reachedVia": "expo, @react-native/jest-preset",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-5x38-2vff-x55p",
+      "package": "node-forge",
+      "severity": "high",
+      "title": "Forge: X.509 basicConstraints bypass in verifyCertificateChain() via deprecated extension OIDs 2.5.29.10 and 2.5.29.13",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-6889-vf6x-f3g5",
+      "package": "node-forge",
+      "severity": "low",
+      "title": "Forge: Ed25519 signature verification accepts small-order public keys",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-68fv-2mgg-jv7q",
+      "package": "source-map-js",
+      "severity": "high",
+      "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+      "reachedVia": "tailwindcss",
+      "accepted": "Tailwind build chain (tailwindcss > postcss). NativeWind compiles styles at build time; not imported by app code and not in the bundle.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-6cv4-p8m7-4r25",
+      "package": "node-forge",
+      "severity": "moderate",
+      "title": "Forge: ReDoS in forge.http response header and cookie trimming",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-6gmq-8vp8-gcm6",
+      "package": "@xmldom/xmldom",
+      "severity": "moderate",
+      "title": "xmldom: XML fragment injection via invalid EntityReference.nodeName during requireWellFormed serialization",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-6h8r-xr42-gp59",
+      "package": "@xmldom/xmldom",
+      "severity": "moderate",
+      "title": "xmldom: Parser silently accepts a not-well-formed end tag whose name is followed by a line break and trailing content",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-6j4f-fj2g-mc7p",
+      "package": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+      "reachedVia": "expo, jest, @react-native/jest-preset",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-6mj3-qw4j-hgrw",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: HTML raw-text closing-tag case mismatch causes output amplification",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-6qrw-m8cv-hcxf",
+      "package": "node-forge",
+      "severity": "high",
+      "title": "Forge: RSA PKCS#1 v1.5 signature forgery via non-canonical DigestInfo encoding",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-6wvx-3r32-xmcg",
+      "package": "node-forge",
+      "severity": "moderate",
+      "title": "Forge: Prototype Pollution in forge.http cookie handling via a malicious Set-Cookie",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-73wf-gq98-2v4g",
+      "package": "browserslist",
+      "severity": "high",
+      "title": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+      "reachedVia": "expo, babel-preset-expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-7wch-p9px-956x",
+      "package": "node-forge",
+      "severity": "high",
+      "title": "Forge: Regular expression denial of service in PEM decoding (pem.decode)",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-8344-3jmq-59r6",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: Quadratic-time attribute deduplication",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-86w9-cpqp-85rv",
+      "package": "node-forge",
+      "severity": "high",
+      "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-8hrf-8g6f-7xwp",
+      "package": "node-forge",
+      "severity": "high",
+      "title": "Forge: Denial of service in TLS record processing via a record interleaved with a fragmented handshake message",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-93r5-fhx6-vmg9",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: Quadratic-time parsing via the malformed-input recovery path — `parseElementStartPart` re-scan and `normalize()` adjacent-text merge",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-965w-775f-mr7g",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: Quadratic-memory consumption",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-9wg5-mj3p-v49q",
+      "package": "node-forge",
+      "severity": "low",
+      "title": "Forge: Certificate signature verified with the issuer's RSA signature scheme",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-c7q8-3ch8-vqpv",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: Processing Instruction Target Injection Bypasses requireWellFormed",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-c83g-rgw3-j3cx",
+      "package": "browserslist",
+      "severity": "high",
+      "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+      "reachedVia": "expo, babel-preset-expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-fxqj-rqcc-2cmp",
+      "package": "postcss",
+      "severity": "moderate",
+      "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+      "reachedVia": "tailwindcss, expo",
+      "accepted": "Tailwind build chain (tailwindcss > postcss). NativeWind compiles styles at build time; not imported by app code and not in the bundle.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-g3hv-75wg-m249",
+      "package": "minimatch",
+      "severity": "moderate",
+      "title": "minimatch has potential denial of service via globparts amplification",
+      "reachedVia": "expo, expo-sharing, jest, @react-native/jest-preset",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-g53g-w8rj-fmg7",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom PI grammar regex ReDoS: quadratic backtracking on unterminated processing instructions",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-gcqx-w48m-w2h4",
+      "package": "deepmerge",
+      "severity": "low",
+      "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+      "reachedVia": "expo, jest",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-h46v-rmh6-fq4f",
+      "package": "node-forge",
+      "severity": "moderate",
+      "title": "Forge: X.509 pathLenConstraint not enforced by verifyCertificateChain() for CA certificates without keyUsage",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-h6cr-wjv9-3cpp",
+      "package": "node-forge",
+      "severity": "low",
+      "title": "Forge: Denial of Service via infinite loop in BigInteger.modInverse() with negative input (incomplete fix of CVE-2026-33891)",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-hqq3-7jhf-c5jx",
+      "package": "node-forge",
+      "severity": "high",
+      "title": "Forge: Denial of service in TLS record processing via call stack exhaustion",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-j8rw-jp99-435v",
+      "package": "node-forge",
+      "severity": "moderate",
+      "title": "Forge: TLS client crash on a handshake record received without a session",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-jc66-7q78-782g",
+      "package": "node-forge",
+      "severity": "high",
+      "title": "Forge: PKCS#12 MAC forgery and constant-key PBE via zero iteration count",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-mh99-v99m-4gvg",
+      "package": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+      "reachedVia": "expo, jest, @react-native/jest-preset",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-mrhx-c7xc-m3w5",
+      "package": "zod",
+      "severity": "high",
+      "title": "Zod can exhaust memory while validating oversized constrained collections",
+      "reachedVia": "expo > @expo/cli",
+      "accepted": "The Expo CLI keeps its own zod (expo > @expo/cli, 3.25.76). The application zod is 4.6.7 and clean as of this commit; this copy runs at build time only.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-pqg4-j6r4-53mv",
+      "package": "shell-quote",
+      "severity": "critical",
+      "title": "shell-quote: `quote()` command injection via a line terminator in a token after a `{ comment }` token",
+      "reachedVia": "react-native > react-devtools-core",
+      "accepted": "Build and development tooling: react-native > react-devtools-core, the DevTools shell the Metro dev server starts. Not imported by app code, so not in the bundle. The exposure is the build machine, which is where the signing key lives. Cleared by the React Native version that comes with the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-q2hr-2g5m-vwhr",
+      "package": "brace-expansion",
+      "severity": "moderate",
+      "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+      "reachedVia": "expo, jest, @react-native/jest-preset",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-qhr7-859c-m2p7",
+      "package": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+      "reachedVia": "expo, jest, @react-native/jest-preset",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-qr28-fpjm-wq7f",
+      "package": "decode-uri-component",
+      "severity": "high",
+      "title": "decode-uri-component vulnerable to denial of service via quadratic replacement of percent-encoded runs",
+      "reachedVia": "expo-router > query-string",
+      "accepted": "Ships in the app. expo-router parses deep links through query-string, and app.json registers three autoVerify App Link prefixes, so this reads attacker-supplied input. The patched releases (decode-uri-component 0.5.1, query-string above 9.4.1) are ESM-only and cannot be require()d by query-string@7 under expo-router@57 — checked, not assumed — so the fix is expo-router@58, a major that moves the Expo SDK. FSEC-001 remediation item 4.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-r28c-9q8g-f849",
+      "package": "postcss",
+      "severity": "high",
+      "title": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+      "reachedVia": "tailwindcss, expo",
+      "accepted": "Tailwind build chain (tailwindcss > postcss). NativeWind compiles styles at build time; not imported by app code and not in the bundle.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-rgw5-rvv9-x895",
+      "package": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+      "reachedVia": "expo, jest, @react-native/jest-preset",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-rhr8-3pm8-cq29",
+      "package": "node-forge",
+      "severity": "high",
+      "title": "Forge: ASN.1 resource exhaustion via BIT STRING decoding in asn1.fromDer",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-rj75-hqrm-r3gf",
+      "package": "postcss-selector-parser",
+      "severity": "moderate",
+      "title": "PostCSS: Quadratic complexity in flat selector parsing allows CPU exhaustion",
+      "reachedVia": "tailwindcss",
+      "accepted": "Tailwind build chain (tailwindcss > postcss). NativeWind compiles styles at build time; not imported by app code and not in the bundle.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-vc2v-76pw-4v95",
+      "package": "compression",
+      "severity": "high",
+      "title": "compression vulnerable to Denial of Service via memory leak on premature response close",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-vcc3-ghjq-m6fr",
+      "package": "decode-uri-component",
+      "severity": "moderate",
+      "title": "decode-uri-component: Denial of service via exponential decoding of malformed percent-encoded input",
+      "reachedVia": "expo-router > query-string",
+      "accepted": "Ships in the app. expo-router parses deep links through query-string, and app.json registers three autoVerify App Link prefixes, so this reads attacker-supplied input. The patched releases (decode-uri-component 0.5.1, query-string above 9.4.1) are ESM-only and cannot be require()d by query-string@7 under expo-router@57 — checked, not assumed — so the fix is expo-router@58, a major that moves the Expo SDK. FSEC-001 remediation item 4.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-vr34-hp96-76pp",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: requireWellFormed DocType publicId/systemId validation is bypassable via an embedded line terminator",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-w2rr-34g9-rvrj",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: Element name injection via createElement() bypasses requireWellFormed",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-w3rx-r6r6-pgpr",
+      "package": "image-size",
+      "severity": "high",
+      "title": "image-size: ICNS parser allows denial of service through an infinite loop",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-w4xr-hqv8-ch44",
+      "package": "node-forge",
+      "severity": "moderate",
+      "title": "Forge: TLS client crash on an unsupported ServerHello compression method",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-w5hq-g745-h8pq",
+      "package": "uuid",
+      "severity": "moderate",
+      "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-w5vr-8v7q-w6rv",
+      "package": "baseline-browser-mapping",
+      "severity": "moderate",
+      "title": "baseline-browser-mapping process termination on invalid input causes denial of service",
+      "reachedVia": "expo",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-x4fp-j954-r2f4",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "title": "xmldom: End-tag Whitespace-Trim Regex ReDoS — quadratic backtracking in the 0.8.x end-tag parser",
+      "reachedVia": "expo-sharing",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "tracked": "FSEC-001"
+    }
+  ]
+}
