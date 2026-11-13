@@ -48,6 +48,8 @@
 // test. `require` is deliberately NOT re-declared: Jest's ambient typing already
 // provides it, and shadowing it with a narrower signature breaks every other
 // `require` in the file.
+import { backendSourceRoot } from './support/backend-checkout';
+
 declare const __dirname: string;
 
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
@@ -62,41 +64,11 @@ interface DirectoryEntry {
   isDirectory(): boolean;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Locating the backend
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Where `diaspora-backend` lives.
- *
- * `DIASPORA_BACKEND_PATH` when it is set, so CI can check the two repositories
- * out wherever it likes; the sibling directory otherwise, because that is how
- * everyone working on both at once has them laid out. Returns `null` when the
- * chosen location holds no checkout, which is a skip and not a failure — see the
- * header.
- *
- * An explicitly-set variable is **authoritative and does not fall back**. A path
- * that was named and does not resolve is a misconfigured job, and quietly
- * checking a different directory than the one the operator named is how a green
- * tick ends up describing the wrong backend — which is this file's own failure
- * mode, one level up.
- */
-function resolveBackendSourceRoot(): string | null {
-  const configured = process.env.DIASPORA_BACKEND_PATH;
-  // `__dirname` is `<repo>/src/lib/__tests__`.
-  const candidate =
-    configured !== undefined && configured !== ''
-      ? configured
-      : join(__dirname, '..', '..', '..', '..', 'diaspora-backend');
-
-  // `src/` rather than the repo root: a bare directory of the right name is not
-  // a checkout, and parsing an empty tree would produce "the backend serves no
-  // routes", which is the false-negative this whole file exists to prevent.
-  const sourceRoot = join(candidate, 'src');
-  return existsSync(sourceRoot) ? sourceRoot : null;
-}
-
-const BACKEND_SOURCE_ROOT = resolveBackendSourceRoot();
+// The backend checkout is located by `support/backend-checkout`, which is
+// also where the rule lives: not configured and absent is a skip, configured
+// and absent is a failure. Eleven suites resolved this separately until
+// 11 November 2026; FBL-001 is what that cost.
+const BACKEND_SOURCE_ROOT = backendSourceRoot();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reading the backend's route inventory

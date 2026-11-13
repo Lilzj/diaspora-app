@@ -94,6 +94,8 @@
 // test. `require` is deliberately NOT re-declared: Jest's ambient typing already
 // provides it, and shadowing it with a narrower signature breaks every other
 // `require` in the file.
+import { backendRepositoryRoot } from './support/backend-checkout';
+
 declare const __dirname: string;
 
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
@@ -108,40 +110,11 @@ interface DirectoryEntry {
   isDirectory(): boolean;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Locating the backend and its published contract
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Where `diaspora-backend` lives.
- *
- * Resolution is deliberately identical to `backend-gap-register-drift.test.ts`
- * and `backend-request-binding-drift.test.ts`: `DIASPORA_BACKEND_PATH` when it is
- * set, the sibling directory otherwise. Three cross-repo checks that disagreed
- * about which checkout they read would produce three answers about one question.
- *
- * An explicitly-set variable is **authoritative and does not fall back**. A path
- * that was named and does not resolve is a misconfigured job, and quietly
- * reading a different directory than the one the operator named is how a green
- * tick ends up describing the wrong backend.
- *
- * Returns the repository *root* rather than `src/` — unlike its siblings this
- * file reads a build artefact next to `src/`, not the sources inside it — but it
- * still uses `src/` as the marker for "this is a checkout", because a bare
- * directory of the right name is not one.
- */
-function resolveBackendRepositoryRoot(): string | null {
-  const configured = process.env.DIASPORA_BACKEND_PATH;
-  // `__dirname` is `<repo>/src/lib/__tests__`.
-  const candidate =
-    configured !== undefined && configured !== ''
-      ? configured
-      : join(__dirname, '..', '..', '..', '..', 'diaspora-backend');
-
-  return existsSync(join(candidate, 'src')) ? candidate : null;
-}
-
-const BACKEND_REPOSITORY_ROOT = resolveBackendRepositoryRoot();
+// The backend checkout is located by `support/backend-checkout`, which is
+// also where the rule lives: not configured and absent is a skip, configured
+// and absent is a failure. Eleven suites resolved this separately until
+// 11 November 2026; FBL-001 is what that cost.
+const BACKEND_REPOSITORY_ROOT = backendRepositoryRoot();
 
 /**
  * The emitted document.

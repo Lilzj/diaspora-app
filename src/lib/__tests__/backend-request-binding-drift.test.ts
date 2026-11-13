@@ -100,6 +100,7 @@ import * as notifications from '@/lib/notifications-api';
 import * as providers from '@/lib/providers-api';
 import * as providerRegistration from '@/lib/provider-registration-api';
 import * as recommendations from '@/lib/recommendations-api';
+import { backendSourceRoot } from './support/backend-checkout';
 
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
 const readdirSync: (path: string, options: { withFileTypes: true }) => DirectoryEntry[] =
@@ -113,32 +114,11 @@ interface DirectoryEntry {
   isDirectory(): boolean;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Locating the backend
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Where `diaspora-backend` lives. Identical resolution to
- * `backend-gap-register-drift.test.ts`, and deliberately so: two cross-repo
- * checks that disagree about which checkout they read would produce two
- * different truths from one CI run.
- *
- * An explicitly-set `DIASPORA_BACKEND_PATH` is authoritative and does **not**
- * fall back. Quietly reading a different directory than the one the operator
- * named is how a green tick ends up describing the wrong backend.
- */
-function resolveBackendSourceRoot(): string | null {
-  const configured = process.env.DIASPORA_BACKEND_PATH;
-  const candidate =
-    configured !== undefined && configured !== ''
-      ? configured
-      : join(__dirname, '..', '..', '..', '..', 'diaspora-backend');
-
-  const sourceRoot = join(candidate, 'src');
-  return existsSync(sourceRoot) ? sourceRoot : null;
-}
-
-const BACKEND_SOURCE_ROOT = resolveBackendSourceRoot();
+// The backend checkout is located by `support/backend-checkout`, which is
+// also where the rule lives: not configured and absent is a skip, configured
+// and absent is a failure. Eleven suites resolved this separately until
+// 11 November 2026; FBL-001 is what that cost.
+const BACKEND_SOURCE_ROOT = backendSourceRoot();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // A very small C# reader

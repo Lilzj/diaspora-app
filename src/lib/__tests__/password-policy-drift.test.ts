@@ -34,6 +34,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { MIN_PASSWORD_LENGTH, PASSWORD_RULES } from '../password-policy';
+import { backendSourceRoot } from './support/backend-checkout';
 
 // Required locally with narrow signatures, exactly as the sibling drift checks
 // do. Adding `"node"` to `types` in `tsconfig.json` would compile these imports
@@ -45,18 +46,11 @@ const readFileSync: (path: string, encoding: string) => string = require('fs').r
 const existsSync: (path: string) => boolean = require('fs').existsSync;
 const join: (...parts: string[]) => string = require('path').join;
 
-function resolveBackendSourceRoot(): string | null {
-  const configured = process.env.DIASPORA_BACKEND_PATH;
-  const candidate =
-    configured !== undefined && configured !== ''
-      ? configured
-      : join(__dirname, '..', '..', '..', '..', 'diaspora-backend');
-
-  const sourceRoot = join(candidate, 'src');
-  return existsSync(sourceRoot) ? sourceRoot : null;
-}
-
-const BACKEND_SOURCE_ROOT = resolveBackendSourceRoot();
+// The backend checkout is located by `support/backend-checkout`, which is
+// also where the rule lives: not configured and absent is a skip, configured
+// and absent is a failure. Eleven suites resolved this separately until
+// 11 November 2026; FBL-001 is what that cost.
+const BACKEND_SOURCE_ROOT = backendSourceRoot();
 
 const OPTIONS_FILE = BACKEND_SOURCE_ROOT
   ? join(

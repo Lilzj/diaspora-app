@@ -87,6 +87,8 @@
 // other suites. Same technique as `backend-gap-register-drift.test.ts`, which is
 // also where the `require` decision is explained: Jest's ambient typing already
 // provides it and shadowing it breaks every other `require` in the file.
+import { backendSourceRoot } from './support/backend-checkout';
+
 declare const __dirname: string;
 
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
@@ -101,32 +103,11 @@ interface DirectoryEntry {
   isDirectory(): boolean;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Locating the two repositories
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Where `diaspora-backend` lives.
- *
- * `DIASPORA_BACKEND_PATH` when set — authoritative, and does **not** fall back,
- * because quietly checking a different directory than the one the operator named
- * is how a green tick ends up describing the wrong backend. The sibling
- * directory otherwise, which is how everyone working on both at once has them
- * laid out.
- */
-function resolveBackendSourceRoot(): string | null {
-  const configured = process.env.DIASPORA_BACKEND_PATH;
-  // `__dirname` is `<repo>/src/lib/__tests__`.
-  const candidate =
-    configured !== undefined && configured !== ''
-      ? configured
-      : join(__dirname, '..', '..', '..', '..', 'diaspora-backend');
-
-  const sourceRoot = join(candidate, 'src');
-  return existsSync(sourceRoot) ? sourceRoot : null;
-}
-
-const BACKEND_SOURCE_ROOT = resolveBackendSourceRoot();
+// The backend checkout is located by `support/backend-checkout`, which is
+// also where the rule lives: not configured and absent is a skip, configured
+// and absent is a failure. Eleven suites resolved this separately until
+// 11 November 2026; FBL-001 is what that cost.
+const BACKEND_SOURCE_ROOT = backendSourceRoot();
 const CLIENT_ROOT = join(__dirname, '..', '..');
 
 // ─────────────────────────────────────────────────────────────────────────────

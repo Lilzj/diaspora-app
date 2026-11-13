@@ -38,6 +38,75 @@ jobs:
       - name: Unit tests
         run: npm test -- --ci --silent
 
+  # ── What the two repositories say about each other ────────────────────────
+  #
+  # Eleven suites read the backend checkout: the emitted OpenAPI contract, and
+  # the C# sources for enums, options and rule classes the client mirrors. They
+  # find it through `DIASPORA_BACKEND_PATH`, and nothing in this workflow set it
+  # until 11 November 2026 — so all eleven skipped on every pull request and
+  # every push, quietly, inside a green unit job. That is FBL-001, and the gap
+  # it left open is the one the job below this was already built to close: a
+  # defect that lives between the two repositories while both suites are green.
+  #
+  # A job of its own rather than folded into `static-and-unit`, for the reason
+  # that job's neighbour already states: a skipped job is honest and visible in
+  # the checks list, where eleven skipped `describe`s inside a passing job are
+  # neither. It skips where the backend is unreachable — a fork cannot check out
+  # a private repository — and `support/backend-checkout.ts` *fails* rather than
+  # skips when the path is named and wrong, so a broken checkout cannot repeat
+  # the finding in a new costume.
+  contract-drift:
+    name: Contract drift against the backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    if: vars.BACKEND_REPOSITORY != ''
+
+    env:
+      DRIFT_SUITES: '(advertising-enum-drift|backend-gap-register-drift|backend-openapi-contract-drift|backend-request-binding-drift|backend-row-property-drift|creator-earning-drift|password-policy-drift|reputation-rules-drift|screen-response-field-drift|withdrawal-status|served-routes-drift)'
+
+    steps:
+      - name: Check out the client
+        uses: actions/checkout@v4
+
+      # `path: backend`, not `../diaspora-backend`: actions/checkout refuses any
+      # path outside $GITHUB_WORKSPACE. The job below does it the same way.
+      - name: Check out the backend
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.BACKEND_REPOSITORY }}
+          token: ${{ secrets.BACKEND_TOKEN }}
+          path: backend
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Counted before they are run, and this is not belt-and-braces. `jest`
+      # exits **0** on an unrecognised CLI option: `--testPathPatterns` instead
+      # of `--testPathPattern` prints "Unrecognized option" and returns success.
+      # A typo in the pattern below would therefore be a green job that ran
+      # nothing at all — FBL-001 again, from a different direction. `|| true`
+      # because `grep -c` exits non-zero on zero matches and this shell is -e.
+      - name: All eleven suites are still here
+        run: |
+          found=$(npx jest --listTests --testPathPattern "$DRIFT_SUITES" | grep -c 'test\.ts' || true)
+          echo "matched $found suites"
+          if [ "$found" -ne 11 ]; then
+            echo "::error::Expected 11 contract-drift suites, matched $found. A suite was"
+            echo "::error::renamed, deleted, or DRIFT_SUITES no longer names it. Running"
+            echo "::error::fewer than eleven is the finding this job exists to close."
+            exit 1
+          fi
+
+      - name: Contract and drift suites
+        env:
+          DIASPORA_BACKEND_PATH: ${{ github.workspace }}/backend
+        run: npm test -- --ci --silent --testPathPattern "$DRIFT_SUITES"
+
   # ── What can only be proved against the real backend ──────────────────────
   #
   # The gap this repository has always had, stated in its own notes: the two
