@@ -687,10 +687,31 @@ export default function ConversationScreen() {
       <AttachmentPicker
         visible={attachmentPickerVisible}
         onClose={() => setAttachmentPickerVisible(false)}
-        onImageSelected={(uri) => {
+        onImageSelected={() => {
           setAttachmentPickerVisible(false);
-          // In production: upload and send as image message
-          showAlert({ type: 'success', title: 'Image Selected', message: 'Image will be sent in the full release.' });
+          /* FBL-007. This read `type: 'success'`, "Image Selected", "Image will
+           * be sent in the full release." The member had just granted camera or
+           * photo-library access and taken or chosen a picture; the handler
+           * discarded it and showed them green. A success alert announced an
+           * action that did not happen, which is the one thing the audit's
+           * unimplemented-functionality taxonomy treats as a defect regardless
+           * of intent.
+           *
+           * "in the full release" was false twice. The picture was not going to
+           * be sent later, and the capability it blamed as missing is not
+           * missing from the server: `SendMessageRequest.attachment` carries
+           * `mediaAssetId`, thumbnail, mime type, size, dimensions and caption,
+           * and the deployment serves GET /conversations/{id}/media. What is
+           * absent is this client's upload-then-send wiring, which is a feature
+           * and not a sentence — so until it exists the member is told plainly,
+           * the way this screen's own document and location branches already do.
+           *
+           * The rule that keeps it plain is in capability-claims.test.ts. */
+          showAlert({
+            type: 'info',
+            title: 'Not sent',
+            message: 'Photos cannot be sent in a message yet. Nothing was added to this conversation.',
+          });
         }}
       />
 
