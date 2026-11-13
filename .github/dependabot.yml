@@ -1,0 +1,69 @@
+# Dependabot — FSEC-001 remediation item 3.
+#
+# The finding's root cause was not a bad decision about dependencies; it was the
+# absence of any decision. 35 advisories had accumulated, 1 critical and 17
+# high, and "nothing in this repository's process would notice the 36th".
+# `scripts/dependency-audit.js` is what notices one that arrives. This file is
+# what makes them arrive less often, by opening the upgrade before the advisory
+# does.
+#
+# ── What this file does and does not cover ──────────────────────────────────
+#
+# Version updates only. Dependabot *security* updates — the ones raised against
+# an advisory rather than a release — are a repository setting, not a key in
+# this file: Settings → Code security → Dependabot alerts, and Dependabot
+# security updates. Both are off until somebody turns them on, and this file
+# cannot do it. Weekly version updates will still carry most fixes, because a
+# patched release is a release.
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+
+    # Enough for the long tail to flow without burying a Monday in review.
+    # It does not apply to security updates, which are unlimited by design.
+    open-pull-requests-limit: 10
+
+    groups:
+      # One pull request for the whole Expo surface, which is the only way this
+      # can be reviewed at all.
+      #
+      # 17 of this project's 44 dependencies are pinned to the Expo 57 line, and
+      # `expo-router@58` names six more `@expo/*` packages as peers at `^58`.
+      # An SDK move is therefore a single change spread across a third of the
+      # manifest: split into seventeen pull requests it is seventeen red builds,
+      # and grouped it is one planned window. That is the shape FSEC-001
+      # remediation item 4 asks for, and the reason the `expo-router@58`
+      # advisories are still in dependency-audit-baseline.json rather than
+      # fixed — the deep-link `query-string` → `decode-uri-component` chain,
+      # which `app.json`'s three autoVerify App Link prefixes expose to
+      # attacker-supplied input.
+      #
+      # `react` and `react-native` sit in this group rather than flowing on
+      # their own because the SDK pins both to exact versions (`react: 19.2.3`,
+      # `react-native: 0.86.0`). A lone bump of either is a build that cannot
+      # pass, so it is not worth opening.
+      expo-sdk:
+        patterns:
+          - expo
+          - expo-*
+          - '@expo/*'
+          - react
+          - react-dom
+          - react-native
+        update-types:
+          - major
+          - minor
+          - patch
+
+    # Everything else flows one pull request at a time, deliberately: a lone
+    # package's upgrade can be judged on its own changelog and merged the same
+    # day, which is what should have been happening to `axios` and `zod` long
+    # before an audit found them.
+    labels:
+      - dependencies
