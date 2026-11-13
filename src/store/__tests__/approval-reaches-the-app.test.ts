@@ -55,6 +55,7 @@ function waitingMember() {
       nationality: 'NG',
       residenceCountry: 'MU',
       accountState: 'DiasporaVerificationPending',
+      isPhoneVerified: true,
     },
   });
 }

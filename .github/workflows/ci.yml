@@ -82,7 +82,7 @@ jobs:
     if: vars.BACKEND_REPOSITORY != ''
 
     env:
-      DRIFT_SUITES: '(advertising-enum-drift|backend-gap-register-drift|backend-openapi-contract-drift|backend-request-binding-drift|backend-row-property-drift|creator-earning-drift|password-policy-drift|reputation-rules-drift|screen-response-field-drift|withdrawal-status|served-routes-drift)'
+      DRIFT_SUITES: '(advertising-enum-drift|backend-gap-register-drift|backend-openapi-contract-drift|backend-request-binding-drift|backend-row-property-drift|creator-earning-drift|password-policy-drift|reputation-rules-drift|screen-response-field-drift|step-up-claims-drift|withdrawal-status|served-routes-drift)'
 
     steps:
       - name: Check out the client
@@ -110,14 +110,17 @@ jobs:
       # A typo in the pattern below would therefore be a green job that ran
       # nothing at all — FBL-001 again, from a different direction. `|| true`
       # because `grep -c` exits non-zero on zero matches and this shell is -e.
-      - name: All eleven suites are still here
+      # Twelve since 13 November 2026: step-up-claims-drift joined when FSEC-002
+      # replaced a false security claim with a true one, and the true one needs
+      # the server to keep being true.
+      - name: All twelve suites are still here
         run: |
           found=$(npx jest --listTests --testPathPattern "$DRIFT_SUITES" | grep -c 'test\.ts' || true)
           echo "matched $found suites"
-          if [ "$found" -ne 11 ]; then
-            echo "::error::Expected 11 contract-drift suites, matched $found. A suite was"
+          if [ "$found" -ne 12 ]; then
+            echo "::error::Expected 12 contract-drift suites, matched $found. A suite was"
             echo "::error::renamed, deleted, or DRIFT_SUITES no longer names it. Running"
-            echo "::error::fewer than eleven is the finding this job exists to close."
+            echo "::error::fewer than twelve is the finding this job exists to close."
             exit 1
           fi
 
