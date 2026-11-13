@@ -33,6 +33,7 @@ import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { fetchSessions, revokeOtherSessions, revokeSession } from '@/lib/auth-api';
+import { useAuthStore } from '@/store/auth';
 import type { AuthSession } from '@/types/auth';
 
 /** "2 hours ago" from an ISO timestamp, without pulling in a date library. */
@@ -56,6 +57,12 @@ export default function AccountSecurityScreen() {
   const bottomInset = useBottomInset();
 
   const { showAlert } = useNotification();
+
+  // Defaulting to false rather than true: with no member loaded the screen must
+  // not assert that a control is in place. "Not verified" on a signed-out race
+  // is a prompt; "✓ Configured" would be the FSEC-002 defect again.
+  const isPhoneVerified = useAuthStore((state) => state.user?.isPhoneVerified ?? false);
+
   const [devices, setDevices] = useState<AuthSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -236,15 +243,48 @@ export default function AccountSecurityScreen() {
             <Text className="text-content-faint text-lg">›</Text>
           </TouchableOpacity>
 
+          {/* FSEC-002. This row made two false statements at once.
+             *
+             * "SMS multi-factor login checks" — sign-in has no second factor.
+             * `LoginCommandHandler` verifies the password, applies lockout
+             * bookkeeping and issues a token pair; there is no challenge and no
+             * partially-authenticated response. A member reading this concluded
+             * two factors protected an account that holds a balance.
+             *
+             * "✓ Configured" — a hardcoded string. `AccessState
+             * .PhoneVerificationPending` *allows authentication*, so the screen
+             * said the phone was configured to the very members it was then
+             * linking to /verification/phone to go and configure it.
+             *
+             * What the phone does do, since BSEC-007 landed: it receives the
+             * step-up code that confirms a withdrawal and any change to where
+             * the money goes. That is a real second factor on the operations
+             * that move money, and it is what this copy now describes. If
+             * login MFA is built later, this row should say so then — and the
+             * state should still come from the server, as it now does. */}
           <TouchableOpacity
+            testID="phone-verification"
             onPress={() => router.push('/verification/phone')}
             className="flex-row justify-between items-center py-3 border-b border-faint"
           >
             <View className="flex-1 mr-4">
               <Text className="text-xs font-extrabold text-content-strong">Phone Verification (SMS OTP)</Text>
-              <Text className="text-[10px] text-content-muted mt-0.5">Link a phone number for SMS multi-factor login checks</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">
+                {isPhoneVerified
+                  ? 'Receives the codes that confirm withdrawals and changes to where your money goes'
+                  : 'Verify your phone to receive the codes that confirm withdrawals and payout changes'}
+              </Text>
             </View>
-            <Text className="text-xs font-bold text-success-default uppercase">✓ Configured</Text>
+            <Text
+              testID="phone-verification-state"
+              className={
+                isPhoneVerified
+                  ? 'text-xs font-bold text-success-default uppercase'
+                  : 'text-xs font-bold text-warning-default uppercase'
+              }
+            >
+              {isPhoneVerified ? '✓ Configured' : 'Not verified'}
+            </Text>
           </TouchableOpacity>
 
           <View className="flex-row justify-between items-center py-3 border-b border-faint opacity-55">

@@ -90,6 +90,14 @@ export interface User {
   /** The profile photo's address, from `/auth/me`. */
   avatarUrl?: string;
   accountState: AccountState;
+  /**
+   * Whether the member has actually verified their phone (`UserProfileResponse.isPhoneVerified`).
+   *
+   * Carried because `AccessState.PhoneVerificationPending` **allows authentication** — a member can
+   * be signed in and reading the account-security screen with no verified phone — and that screen
+   * used to assert "✓ Configured" as a hardcoded string (FSEC-002).
+   */
+  isPhoneVerified: boolean;
 }
 
 interface CachedIdentity {
@@ -194,6 +202,10 @@ function mapUser(profile: UserProfile, access: AccessDecision | null): User {
     // never matched the `DiasporaVerified` the gate looks for. See
     // lib/access-state.ts.
     accountState: toAccountState(access?.accessState ?? profile.accessState),
+    // Read from the profile rather than inferred from `accessState`: a member
+    // can leave PhoneVerificationPending by other routes, and the account
+    // security screen states this as fact to the member.
+    isPhoneVerified: profile.isPhoneVerified,
   };
 }
 
