@@ -527,7 +527,12 @@ export default function CreatorVerificationScreen() {
               accessibilityLabel="Check whether you can apply now"
               onPress={() => {
                 if (unmet.length > 0) {
-                  showAlert({ type: 'success', title: 'Not yet', message: `You still have ${unmet.length} requirement${unmet.length === 1 ? '' : 's'} to complete.` });
+                  // `info`, not `success`: the member asked whether they can
+                  // apply and the answer is no. Styling that green tells them
+                  // in colour the opposite of what it tells them in words.
+                  // Found by capability-claims.test.ts, which rejects a success
+                  // alert whose own copy says the thing has not happened.
+                  showAlert({ type: 'info', title: 'Not yet', message: `You still have ${unmet.length} requirement${unmet.length === 1 ? '' : 's'} to complete.` });
                   return;
                 }
                 start();
