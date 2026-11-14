@@ -70,16 +70,29 @@ jobs:
   # A job of its own rather than folded into `static-and-unit`, for the reason
   # that job's neighbour already states: a skipped job is honest and visible in
   # the checks list, where eleven skipped `describe`s inside a passing job are
-  # neither. It skips where the backend is unreachable — a fork cannot check out
-  # a private repository — and `support/backend-checkout.ts` *fails* rather than
-  # skips when the path is named and wrong, so a broken checkout cannot repeat
-  # the finding in a new costume.
+  # neither.
+  #
+  # This job was gated on `vars.BACKEND_REPOSITORY` so that it could no-op where
+  # the backend was unreachable, and that gate rested on a premise nobody
+  # checked: that `Lilzj/diaspora-backend` is private, and so needs a token a
+  # fork could never be given. **It is public.** Measured 14 November 2026 two
+  # ways — an anonymous `git ls-remote` with the credential helper disabled, and
+  # an unauthenticated fetch of the upload-pack advertisement — both of which
+  # returned master's SHA. A public repository is readable with the workflow's
+  # own `GITHUB_TOKEN`, which `actions/checkout` already uses by default and
+  # which even a fork's read-only token can clone with.
+  #
+  # So there was never anything to configure, and the gate's only effect was to
+  # make this job skip on every run from the day it was written. Ungated now,
+  # with the repository named here rather than in a variable, so that the check
+  # is a property of this workflow and not of a setting someone has to remember.
+  # If the checkout fails the job *fails*, and `support/backend-checkout.ts`
+  # likewise *fails* rather than skips when the path is named and wrong, so a
+  # broken checkout cannot repeat the finding in a new costume.
   contract-drift:
     name: Contract drift against the backend
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
-    if: vars.BACKEND_REPOSITORY != ''
 
     env:
       DRIFT_SUITES: '(advertising-enum-drift|backend-gap-register-drift|backend-openapi-contract-drift|backend-request-binding-drift|backend-row-property-drift|creator-earning-drift|password-policy-drift|reputation-rules-drift|screen-response-field-drift|step-up-claims-drift|withdrawal-status|served-routes-drift)'
@@ -90,11 +103,24 @@ jobs:
 
       # `path: backend`, not `../diaspora-backend`: actions/checkout refuses any
       # path outside $GITHUB_WORKSPACE. The job below does it the same way.
+      #
+      # `secrets.BACKEND_TOKEN || github.token`: an unset secret is the empty
+      # string in a GitHub expression, so with nothing configured this resolves
+      # to the workflow's own token, which can clone a public repository — and
+      # so can a fork's read-only one. Demanding a secret that never needed to
+      # exist is what kept this job switched off for three days.
+      #
+      # The fallback is not decoration. Omitting `token:` would make this job
+      # depend on the backend staying public, silently, with nothing in the file
+      # saying so. With the fallback, making the backend private again is
+      # survivable — add the secret and the job carries on — and if it goes
+      # private with no secret the checkout *fails* rather than skipping, which
+      # `cross-repository-verified` below reports as a failure.
       - name: Check out the backend
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.BACKEND_REPOSITORY }}
-          token: ${{ secrets.BACKEND_TOKEN }}
+          repository: Lilzj/diaspora-backend
+          token: ${{ secrets.BACKEND_TOKEN || github.token }}
           path: backend
 
       - uses: actions/setup-node@v4
@@ -129,6 +155,71 @@ jobs:
           DIASPORA_BACKEND_PATH: ${{ github.workspace }}/backend
         run: npm test -- --ci --silent --testPathPattern "$DRIFT_SUITES"
 
+  # ── The check that the check ran ──────────────────────────────────────────
+  #
+  # FBL-001's remediation item 2: "make the skip a failure under CI". The job
+  # above is gated on `vars.BACKEND_REPOSITORY != ''`, and an unsatisfied gate
+  # produces a *skipped* job — which GitHub counts toward the green tick.
+  #
+  # Measured on 14 November 2026, merging PR #38: the merge box read **"All
+  # checks have passed — 2 skipped, 1 successful checks"**, with the tick drawn
+  # and the merge button enabled. The two skips were the two jobs here. Nothing
+  # in `ci.yml` is wrong for that to happen; the wording is GitHub's, and the
+  # only way to see it is to expand a list the merge flow never makes you open.
+  #
+  # So the sharper reading of FBL-001 is not "the suites skip" but **"a skip is
+  # indistinguishable from a pass"**. Moving eleven skipped `describe`s into a
+  # skipped job made the gap visible to a reader; it did not make it visible to
+  # the merge button. A job that *fails* is the only shape GitHub cannot round
+  # up, and this is that job.
+  #
+  # Deliberately ungated — that is the entire point.
+  #
+  # It carried one exemption until 14 November 2026, for forks, on the premise
+  # that a fork cannot check out a private backend. The backend is public, so a
+  # fork's read-only `GITHUB_TOKEN` clones it like any other and the exemption
+  # was a hole held open for a case that cannot arise. **An exemption whose
+  # reason is false is the same species of defect as the skip it was written to
+  # catch**, and this one would have let any fork pull request merge with the
+  # cross-repository check quietly absent. `!cancelled()` rather than `always()`
+  # so a cancelled run does not report a false failure.
+  cross-repository-verified:
+    name: Cross-repository verification actually ran
+    runs-on: ubuntu-latest
+    needs: [contract-drift]
+
+    if: ${{ !cancelled() }}
+
+    steps:
+      - name: The contract-drift job reports success
+        env:
+          RESULT: ${{ needs.contract-drift.result }}
+        run: |
+          echo "contract-drift reported: $RESULT"
+
+          case "$RESULT" in
+            success)
+              echo "The twelve cross-repository suites ran against a backend checkout."
+              ;;
+            skipped)
+              echo "::error::Cross-repository verification did not run, so the platform's"
+              echo "::error::only automated check that client and server agree has not"
+              echo "::error::passed — it was never asked."
+              echo "::error::"
+              echo "::error::contract-drift takes no configuration and carries no condition,"
+              echo "::error::so for it to skip, someone has added an 'if:' to that job or"
+              echo "::error::dropped it from this job's 'needs:'. Put it back rather than"
+              echo "::error::relaxing this check: a skipped job counts toward GitHub's"
+              echo "::error::\"All checks have passed\", which is the whole of FBL-001."
+              exit 1
+              ;;
+            *)
+              echo "::error::The contract-drift job reported '$RESULT' rather than success."
+              echo "::error::The twelve cross-repository suites did not pass."
+              exit 1
+              ;;
+          esac
+
   # ── What can only be proved against the real backend ──────────────────────
   #
   # The gap this repository has always had, stated in its own notes: the two
@@ -145,11 +236,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
-    # Skipped rather than failed where the backend is not reachable: the repo is
-    # not public and a fork has no way to check it out. A skipped job is honest;
-    # a job that passes because it did nothing is the failure mode this whole
-    # programme exists to prevent.
-    if: vars.BACKEND_REPOSITORY != ''
+    # The one job here that is genuinely opt-in, and for a reason that is about
+    # cost rather than reachability: it builds the API, migrates PostgreSQL and
+    # runs the whole sweep. Forty-five minutes on every pull request is the
+    # repository owner's call, not this file's.
+    #
+    # It used to be gated on `vars.BACKEND_REPOSITORY`, under the comment "the
+    # repo is not public and a fork has no way to check it out". That was false
+    # — see `contract-drift` above — and sharing a gate with a job that needs
+    # none would have made setting that variable a forty-five minute surprise.
+    # Named for what it actually controls instead: set `RUNTIME_INTEGRATION` to
+    # `on` to run it. Nothing else in this workflow reads it.
+    if: vars.RUNTIME_INTEGRATION == 'on'
 
     services:
       postgres:
@@ -169,11 +267,12 @@ jobs:
       - name: Check out the client
         uses: actions/checkout@v4
 
+      # Same reasoning as `contract-drift` above.
       - name: Check out the backend
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.BACKEND_REPOSITORY }}
-          token: ${{ secrets.BACKEND_TOKEN }}
+          repository: Lilzj/diaspora-backend
+          token: ${{ secrets.BACKEND_TOKEN || github.token }}
           path: backend
 
       - uses: actions/setup-node@v4
