@@ -129,6 +129,67 @@ jobs:
           DIASPORA_BACKEND_PATH: ${{ github.workspace }}/backend
         run: npm test -- --ci --silent --testPathPattern "$DRIFT_SUITES"
 
+  # ── The check that the check ran ──────────────────────────────────────────
+  #
+  # FBL-001's remediation item 2: "make the skip a failure under CI". The job
+  # above is gated on `vars.BACKEND_REPOSITORY != ''`, and an unsatisfied gate
+  # produces a *skipped* job — which GitHub counts toward the green tick.
+  #
+  # Measured on 14 November 2026, merging PR #38: the merge box read **"All
+  # checks have passed — 2 skipped, 1 successful checks"**, with the tick drawn
+  # and the merge button enabled. The two skips were the two jobs here. Nothing
+  # in `ci.yml` is wrong for that to happen; the wording is GitHub's, and the
+  # only way to see it is to expand a list the merge flow never makes you open.
+  #
+  # So the sharper reading of FBL-001 is not "the suites skip" but **"a skip is
+  # indistinguishable from a pass"**. Moving eleven skipped `describe`s into a
+  # skipped job made the gap visible to a reader; it did not make it visible to
+  # the merge button. A job that *fails* is the only shape GitHub cannot round
+  # up, and this is that job.
+  #
+  # Deliberately NOT gated on the variable — that is the entire point. The one
+  # exemption is a fork, where checking out a private repository is impossible
+  # rather than merely unconfigured. `!cancelled()` rather than `always()` so a
+  # cancelled run does not report a false failure.
+  cross-repository-verified:
+    name: Cross-repository verification actually ran
+    runs-on: ubuntu-latest
+    needs: [contract-drift]
+
+    if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
+
+    steps:
+      - name: The contract-drift job reports success
+        env:
+          RESULT: ${{ needs.contract-drift.result }}
+        run: |
+          echo "contract-drift reported: $RESULT"
+
+          case "$RESULT" in
+            success)
+              echo "The twelve cross-repository suites ran against a backend checkout."
+              ;;
+            skipped)
+              echo "::error::Cross-repository verification did not run, so the platform's"
+              echo "::error::only automated check that client and server agree has not"
+              echo "::error::passed — it was never asked. The contract-drift job is gated on"
+              echo "::error::vars.BACKEND_REPOSITORY, which is empty or unset."
+              echo "::error::"
+              echo "::error::Set, on this repository:"
+              echo "::error::  variable BACKEND_REPOSITORY = owner/name of the backend repo"
+              echo "::error::  secret   BACKEND_TOKEN      = a token that can read it"
+              echo "::error::"
+              echo "::error::This job fails rather than skipping because a skipped job counts"
+              echo "::error::toward GitHub's \"All checks have passed\" — which is FBL-001."
+              exit 1
+              ;;
+            *)
+              echo "::error::The contract-drift job reported '$RESULT' rather than success."
+              echo "::error::The twelve cross-repository suites did not pass."
+              exit 1
+              ;;
+          esac
+
   # ── What can only be proved against the real backend ──────────────────────
   #
   # The gap this repository has always had, stated in its own notes: the two
