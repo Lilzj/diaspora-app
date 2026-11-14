@@ -140,12 +140,33 @@ function compare(
   if (typeof sourceValue === 'string' && sourceValue.length > 0) out.carried += 1;
 }
 
+/**
+ * Compare content, not the line endings the checkout happened to produce.
+ *
+ * git stores these files with LF and checks them out with CRLF on Windows
+ * (`core.autocrlf` is true there, and this repository has no `.gitattributes`),
+ * so a byte comparison asserts the platform as much as the file. Measured on
+ * 14 November 2026: on a fresh Windows checkout all eleven twins failed here
+ * while CI stayed green, each by exactly 26 lines — the generated banner, which
+ * is a template literal and therefore LF, against a body copied from a source
+ * file the checkout had rewritten to CRLF.
+ *
+ * What this suite claims is that the twin is current. A line ending is not part
+ * of that claim, and every real difference survives this normalisation.
+ */
+function sameExceptLineEndings(text: string): string {
+  return text.replace(/\r\n/g, '\n');
+}
+
 describe('the generated twins are current', () => {
   for (const { source, twin } of generator.registers()) {
     it(`${twin} matches what the generator produces from ${source}`, () => {
       // Run `node scripts/generate-production-registers.js` when this fails.
       const committed = readFileSync(join(ROOT, twin), 'utf8');
-      expect(committed).toBe(generator.twinFor(source));
+
+      expect(sameExceptLineEndings(committed)).toBe(
+        sameExceptLineEndings(generator.twinFor(source))
+      );
     });
   }
 });

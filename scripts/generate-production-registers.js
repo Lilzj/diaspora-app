@@ -351,11 +351,23 @@ function registers() {
     }));
 }
 
-/** What the twin of `sourcePath` should contain. */
+/**
+ * What the twin of `sourcePath` should contain, with LF endings on every
+ * platform.
+ *
+ * The body is copied out of the source file, which git checks out with CRLF on
+ * Windows — `core.autocrlf` is true there and this repository has no
+ * `.gitattributes` — while `BANNER` is a template literal and is always LF.
+ * Unnormalised, this function emitted 26 LF lines and roughly 1,450 CRLF ones:
+ * whatever the checkout happened to do rather than a decision. git stores these
+ * blobs with LF, so LF is what lands in the repository either way.
+ */
 function twinFor(sourcePath) {
   const source = fs.readFileSync(path.join(ROOT, sourcePath), 'utf8');
   const fileName = path.basename(sourcePath);
-  return BANNER(fileName) + blankOrphanedConstants(blankFields(source, fileName));
+  const twin = BANNER(fileName) + blankOrphanedConstants(blankFields(source, fileName));
+
+  return twin.replace(/\r\n/g, '\n');
 }
 
 function main() {
