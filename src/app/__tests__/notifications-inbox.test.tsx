@@ -9,6 +9,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
 import type { NotificationResponse } from '@/types/notification';
@@ -87,13 +88,21 @@ function renderScreen() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
 
   return render(
-    <QueryClientProvider client={client}>
-      <SafeAreaProvider initialMetrics={METRICS}>
-        <ThemeProvider>
-          <NotificationsScreen />
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </QueryClientProvider>
+    // `GestureHandlerRootView` is what the app's own provider stack puts
+    // outermost (`app-provider.tsx`), and this harness never had it. From
+    // gesture-handler 3 a `GestureDetector` refuses to render outside one, and
+    // the inbox has contained one since `NotificationItem` moved to
+    // `ReanimatedSwipeable` — so this is the harness catching up with the real
+    // tree, not an accommodation made for the test.
+    <GestureHandlerRootView>
+      <QueryClientProvider client={client}>
+        <SafeAreaProvider initialMetrics={METRICS}>
+          <ThemeProvider>
+            <NotificationsScreen />
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 
