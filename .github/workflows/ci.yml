@@ -130,18 +130,34 @@ jobs:
 
       - run: npm ci
 
-      # Counted before they are run, and this is not belt-and-braces. `jest`
-      # exits **0** on an unrecognised CLI option: `--testPathPatterns` instead
-      # of `--testPathPattern` prints "Unrecognized option" and returns success.
-      # A typo in the pattern below would therefore be a green job that ran
-      # nothing at all — FBL-001 again, from a different direction. `|| true`
-      # because `grep -c` exits non-zero on zero matches and this shell is -e.
+      # Counted before they are run, and this is not belt-and-braces. A pattern
+      # that is valid regex but names too few suites — one renamed, one deleted,
+      # a typo that still compiles — makes jest exit **0** having run fewer tests
+      # than this job claims to run. Nothing else in the pipeline notices, and a
+      # green tick over a shrinking suite set is FBL-001 again, from a different
+      # direction. Only counting catches that. `|| true` because `grep -c` exits
+      # non-zero on zero matches and this shell is -e.
+      #
+      # Corrected 15 November 2026. This comment used to say jest "returns
+      # success" on an unrecognised option. It does not: measured against both
+      # 29.7.0 and 30.5.2, an unknown flag exits **1** with "Unrecognized CLI
+      # Parameter". What hides that here is the pipeline — `jest | grep -c`
+      # takes grep's status, not jest's — so the count is still what catches a
+      # bad flag *in this step*, just not for the reason first written down.
+      #
+      # The pattern is passed **positionally** rather than through a flag because
+      # the flag was renamed: `--testPathPattern` (Jest 29) became
+      # `--testPathPatterns` (Jest 30), and each spelling is an error on the
+      # other major version. Measured on both: the positional form selects the
+      # same twelve suites on 29.7.0 and on 30.5.2, so this job survives the
+      # jest upgrade in Dependabot #31 without a flag day.
+      #
       # Twelve since 13 November 2026: step-up-claims-drift joined when FSEC-002
       # replaced a false security claim with a true one, and the true one needs
       # the server to keep being true.
       - name: All twelve suites are still here
         run: |
-          found=$(npx jest --listTests --testPathPattern "$DRIFT_SUITES" | grep -c 'test\.ts' || true)
+          found=$(npx jest --listTests "$DRIFT_SUITES" | grep -c 'test\.ts' || true)
           echo "matched $found suites"
           if [ "$found" -ne 12 ]; then
             echo "::error::Expected 12 contract-drift suites, matched $found. A suite was"
@@ -153,7 +169,7 @@ jobs:
       - name: Contract and drift suites
         env:
           DIASPORA_BACKEND_PATH: ${{ github.workspace }}/backend
-        run: npm test -- --ci --silent --testPathPattern "$DRIFT_SUITES"
+        run: npm test -- --ci --silent "$DRIFT_SUITES"
 
   # ── The check that the check ran ──────────────────────────────────────────
   #
