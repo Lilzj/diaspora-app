@@ -32,24 +32,24 @@ const readFileSync: (path: string, encoding: string) => string = require('fs').r
 const join: (...parts: string[]) => string = require('path').join;
 
 describe('the simulation switch', () => {
-  const originalDev = (global as { __DEV__?: boolean }).__DEV__;
+  const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
   const originalEnv = process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
 
   afterEach(() => {
-    (global as { __DEV__?: boolean }).__DEV__ = originalDev;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
     process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = originalEnv;
     jest.resetModules();
   });
 
   it('is on under Metro', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = true;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     jest.resetModules();
     const { areMapsGapsEnabled } = require('@/config/maps-gaps');
     expect(areMapsGapsEnabled()).toBe(true);
   });
 
   it('is off in a release build with no opt-in', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
     jest.resetModules();
     const { areMapsGapsEnabled } = require('@/config/maps-gaps');
@@ -57,7 +57,7 @@ describe('the simulation switch', () => {
   });
 
   it('is on in a release build that explicitly opted in', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = '1';
     jest.resetModules();
     const { areMapsGapsEnabled } = require('@/config/maps-gaps');
@@ -67,7 +67,7 @@ describe('the simulation switch', () => {
   it('requires exactly "1", not merely a truthy value', () => {
     // An accidentally-empty assignment is `''` and a mistyped `false` is the
     // string `"false"` — both truthy in the wrong hands.
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
     for (const value of ['', 'false', 'true', '0', 'yes']) {
       process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = value;
@@ -80,7 +80,7 @@ describe('the simulation switch', () => {
   it('shares one switch with Phases 5, 6, 7 and 12', () => {
     // Five different answers to "may this build simulate?" would be five things
     // to get wrong.
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = '1';
     jest.resetModules();
 
@@ -94,15 +94,15 @@ describe('the simulation switch', () => {
 });
 
 describe('the API layer refuses before it requests', () => {
-  const originalDev = (global as { __DEV__?: boolean }).__DEV__;
+  const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 
   afterEach(() => {
-    (global as { __DEV__?: boolean }).__DEV__ = originalDev;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
     jest.resetModules();
   });
 
   it('rejects every simulated read in a production build', async () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
     jest.resetModules();
 
@@ -154,15 +154,15 @@ describe('the API layer refuses before it requests', () => {
 });
 
 describe('the mock registrar', () => {
-  const originalDev = (global as { __DEV__?: boolean }).__DEV__;
+  const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 
   afterEach(() => {
-    (global as { __DEV__?: boolean }).__DEV__ = originalDev;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
     jest.resetModules();
   });
 
   it('registers nothing in a production build', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
     jest.resetModules();
 
@@ -181,7 +181,7 @@ describe('the mock registrar', () => {
   });
 
   it('registers the simulated routes in a development build', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = true;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     jest.resetModules();
 
     const { setupMapsGapMocks } = require('@/mocks/handlers/maps-gaps');

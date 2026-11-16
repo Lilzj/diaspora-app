@@ -129,19 +129,19 @@ describe('the URL space', () => {
 });
 
 describe('the switch', () => {
-  const originalDev = global.__DEV__;
+  const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 
   afterEach(() => {
-    global.__DEV__ = originalDev;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
   });
 
   it('is on in a development build', () => {
-    global.__DEV__ = true;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     expect(areCommunityGapsEnabled()).toBe(true);
   });
 
   it('is off in a release build', () => {
-    global.__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     expect(areCommunityGapsEnabled()).toBe(false);
   });
 
@@ -155,7 +155,7 @@ describe('the switch', () => {
    * release binary reached a simulated membership approval.
    */
   it('refuses every adapter call in a release build', async () => {
-    global.__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
     // Registration is the platform RSVP since 20 Oct 2026: real, not refused.
     const REAL = new Set(['registerForEvent', 'cancelRegistration', 'fetchMyRegistrations']);

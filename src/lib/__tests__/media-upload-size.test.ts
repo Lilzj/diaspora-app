@@ -57,14 +57,14 @@ let sent: { uri: string; name: string; mimeType: string } | null = null;
 /** The pixel dimensions the image on disk actually has, per test. */
 let source = { width: 4032, height: 3024 };
 
-const WAS_DEV = (global as { __DEV__?: boolean }).__DEV__;
-const OriginalXhr = (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
-const OriginalFormData = (global as unknown as { FormData: unknown }).FormData;
+const WAS_DEV = (globalThis as { __DEV__?: boolean }).__DEV__;
+const OriginalXhr = (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
+const OriginalFormData = (globalThis as unknown as { FormData: unknown }).FormData;
 
 afterEach(() => {
-  (global as { __DEV__?: boolean }).__DEV__ = WAS_DEV;
-  (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = OriginalXhr;
-  (global as unknown as { FormData: unknown }).FormData = OriginalFormData;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = WAS_DEV;
+  (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = OriginalXhr;
+  (globalThis as unknown as { FormData: unknown }).FormData = OriginalFormData;
 });
 
 beforeEach(() => {
@@ -72,7 +72,7 @@ beforeEach(() => {
   // splits on `areSimulatedFeaturesEnabled()`, and under jest that is true. The
   // first version of this file went through axios and died on a FormData axios
   // cannot serialise, which is the trap `media-upload.test.ts` documents.
-  (global as { __DEV__?: boolean }).__DEV__ = false;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = false;
   sent = null;
   source = { width: 4032, height: 3024 };
   jest.clearAllMocks();
@@ -92,7 +92,7 @@ beforeEach(() => {
     }
   }
 
-  (global as unknown as { FormData: unknown }).FormData = RecordingFormData;
+  (globalThis as unknown as { FormData: unknown }).FormData = RecordingFormData;
 
   mockResize.mockReturnValue(undefined);
   mockSaveAsync.mockResolvedValue({ uri: 'file:///tmp/shrunk.jpg' });
@@ -130,7 +130,7 @@ beforeEach(() => {
     }
   }
 
-  (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = RecordingXhr;
+  (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = RecordingXhr;
 });
 
 const photo: LocalFile = {

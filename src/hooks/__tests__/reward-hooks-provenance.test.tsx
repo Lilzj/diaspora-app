@@ -22,7 +22,7 @@ import { useConversions } from '../financial-gaps';
 
 let mock: MockAdapter;
 let client: QueryClient;
-const wasDev = (global as { __DEV__?: boolean }).__DEV__;
+const wasDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 const wasPreview = process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -30,7 +30,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 beforeEach(() => {
-  (global as { __DEV__?: boolean }).__DEV__ = false;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = false;
   delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
 
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
@@ -43,7 +43,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  (global as { __DEV__?: boolean }).__DEV__ = wasDev;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = wasDev;
   if (wasPreview === undefined) delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
   else process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = wasPreview;
 

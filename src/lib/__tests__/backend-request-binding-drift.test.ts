@@ -1625,8 +1625,8 @@ describeWithBackend('the media upload keeps its multipart body', () => {
     // be, for the reason above. `__DEV__` is forced off so `uploadDirect` takes
     // the branch a signed release takes.
     const sent: { headers: Record<string, string>; body: unknown }[] = [];
-    const originalXhr = (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
-    const wasDev = (global as { __DEV__?: boolean }).__DEV__;
+    const originalXhr = (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
+    const wasDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 
     class FakeXhr {
       status = 201;
@@ -1651,8 +1651,8 @@ describeWithBackend('the media upload keeps its multipart body', () => {
       }
     }
 
-    (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = FakeXhr;
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = FakeXhr;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
     try {
       await media.uploadDirect(
@@ -1660,8 +1660,8 @@ describeWithBackend('the media upload keeps its multipart body', () => {
         { kind: 'image' },
       );
     } finally {
-      (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = originalXhr;
-      (global as { __DEV__?: boolean }).__DEV__ = wasDev;
+      (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = originalXhr;
+      (globalThis as { __DEV__?: boolean }).__DEV__ = wasDev;
     }
 
     expect(sent).toHaveLength(1);

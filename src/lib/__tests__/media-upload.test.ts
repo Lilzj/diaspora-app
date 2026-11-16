@@ -50,7 +50,7 @@ interface FakeXhr {
 
 let xhrs: FakeXhr[] = [];
 let respondWith: { status: number; body: unknown } = { status: 201, body: null };
-const OriginalXhr = (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
+const OriginalXhr = (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
 
 function installFakeXhr() {
   xhrs = [];
@@ -102,10 +102,10 @@ function installFakeXhr() {
     }
   }
 
-  (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = Fake;
+  (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = Fake;
 }
 
-const WAS_DEV = (global as { __DEV__?: boolean }).__DEV__;
+const WAS_DEV = (globalThis as { __DEV__?: boolean }).__DEV__;
 
 beforeEach(() => {
   api = new MockAdapter(apiClient);
@@ -116,7 +116,7 @@ beforeEach(() => {
   // answers before any body is serialised. Everything below is about the
   // transport a *signed release* uses, so the switch has to be off — with it
   // on these tests would pass against a transport no member ever runs.
-  (global as { __DEV__?: boolean }).__DEV__ = false;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
   // The upload no longer passes through `apiClient`'s request interceptor, so
   // it has to attach the bearer itself. Registering a bridge here is what makes
@@ -130,8 +130,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = OriginalXhr;
-  (global as { __DEV__?: boolean }).__DEV__ = WAS_DEV;
+  (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = OriginalXhr;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = WAS_DEV;
   registerAuthBridge(null);
 });
 

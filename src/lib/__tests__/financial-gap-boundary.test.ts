@@ -179,17 +179,17 @@ describe('development build', () => {
 });
 
 describe('release build', () => {
-  const wasDev = global.__DEV__;
+  const wasDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 
   beforeEach(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (global as any).__DEV__ = false;
+    (globalThis as any).__DEV__ = false;
     jest.resetModules();
   });
 
   afterEach(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (global as any).__DEV__ = wasDev;
+    (globalThis as any).__DEV__ = wasDev;
     jest.resetModules();
   });
 

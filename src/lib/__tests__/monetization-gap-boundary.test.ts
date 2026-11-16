@@ -104,15 +104,15 @@ describe('the URL space cannot collide', () => {
 });
 
 describe('a release build ships no simulation', () => {
-  const wasDev = global.__DEV__;
+  const wasDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 
   afterEach(() => {
-    global.__DEV__ = wasDev;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = wasDev;
     jest.resetModules();
   });
 
   it('registers nothing at all', () => {
-    global.__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     jest.resetModules();
 
     // Re-required after the flag change: the guard reads `__DEV__` at call time,
@@ -128,7 +128,7 @@ describe('a release build ships no simulation', () => {
   });
 
   it('refuses every gap call before a request is made', async () => {
-    global.__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     jest.resetModules();
 
     const api = require('../monetization-gap-api') as typeof import('../monetization-gap-api');
@@ -145,7 +145,7 @@ describe('a release build ships no simulation', () => {
   });
 
   it('refuses a gap *mutation* too, so nothing can be created in production', async () => {
-    global.__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     jest.resetModules();
 
     const api = require('../monetization-gap-api') as typeof import('../monetization-gap-api');
@@ -178,7 +178,7 @@ describe('a release build ships no simulation', () => {
   });
 
   it('gives the refusal a code a support engineer can search for', async () => {
-    global.__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     jest.resetModules();
 
     const api = require('../monetization-gap-api') as typeof import('../monetization-gap-api');
