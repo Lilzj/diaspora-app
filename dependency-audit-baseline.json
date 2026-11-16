@@ -104,7 +104,7 @@
       "id": "GHSA-5p4m-2wfm-xmqj",
       "package": "js-yaml",
       "severity": "high",
-      "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
+      "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) \u2014 CVE-2026-59870 fix not backported",
       "reachedVia": "expo, @react-native/jest-preset",
       "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
       "tracked": "FSEC-001"
@@ -248,7 +248,7 @@
       "id": "GHSA-93r5-fhx6-vmg9",
       "package": "@xmldom/xmldom",
       "severity": "high",
-      "title": "xmldom: Quadratic-time parsing via the malformed-input recovery path — `parseElementStartPart` re-scan and `normalize()` adjacent-text merge",
+      "title": "xmldom: Quadratic-time parsing via the malformed-input recovery path \u2014 `parseElementStartPart` re-scan and `normalize()` adjacent-text merge",
       "reachedVia": "expo-sharing",
       "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
       "tracked": "FSEC-001"
@@ -293,7 +293,7 @@
       "id": "GHSA-fxqj-rqcc-2cmp",
       "package": "postcss",
       "severity": "moderate",
-      "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+      "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
       "reachedVia": "tailwindcss, expo",
       "accepted": "Tailwind build chain (tailwindcss > postcss). NativeWind compiles styles at build time; not imported by app code and not in the bundle.",
       "tracked": "FSEC-001"
@@ -421,7 +421,7 @@
       "severity": "high",
       "title": "decode-uri-component vulnerable to denial of service via quadratic replacement of percent-encoded runs",
       "reachedVia": "expo-router > query-string",
-      "accepted": "Ships in the app. expo-router parses deep links through query-string, and app.json registers three autoVerify App Link prefixes, so this reads attacker-supplied input. The patched releases (decode-uri-component 0.5.1, query-string above 9.4.1) are ESM-only and cannot be require()d by query-string@7 under expo-router@57 — checked, not assumed — so the fix is expo-router@58, a major that moves the Expo SDK. FSEC-001 remediation item 4.",
+      "accepted": "Ships in the app. expo-router parses deep links through query-string, and app.json registers three autoVerify App Link prefixes, so this reads attacker-supplied input. The patched releases (decode-uri-component 0.5.1, query-string above 9.4.1) are ESM-only and cannot be require()d by query-string@7 under expo-router@57 \u2014 checked, not assumed \u2014 so the fix is expo-router@58, a major that moves the Expo SDK. FSEC-001 remediation item 4.",
       "tracked": "FSEC-001"
     },
     {
@@ -475,7 +475,7 @@
       "severity": "moderate",
       "title": "decode-uri-component: Denial of service via exponential decoding of malformed percent-encoded input",
       "reachedVia": "expo-router > query-string",
-      "accepted": "Ships in the app. expo-router parses deep links through query-string, and app.json registers three autoVerify App Link prefixes, so this reads attacker-supplied input. The patched releases (decode-uri-component 0.5.1, query-string above 9.4.1) are ESM-only and cannot be require()d by query-string@7 under expo-router@57 — checked, not assumed — so the fix is expo-router@58, a major that moves the Expo SDK. FSEC-001 remediation item 4.",
+      "accepted": "Ships in the app. expo-router parses deep links through query-string, and app.json registers three autoVerify App Link prefixes, so this reads attacker-supplied input. The patched releases (decode-uri-component 0.5.1, query-string above 9.4.1) are ESM-only and cannot be require()d by query-string@7 under expo-router@57 \u2014 checked, not assumed \u2014 so the fix is expo-router@58, a major that moves the Expo SDK. FSEC-001 remediation item 4.",
       "tracked": "FSEC-001"
     },
     {
@@ -536,10 +536,19 @@
       "id": "GHSA-x4fp-j954-r2f4",
       "package": "@xmldom/xmldom",
       "severity": "high",
-      "title": "xmldom: End-tag Whitespace-Trim Regex ReDoS — quadratic backtracking in the 0.8.x end-tag parser",
+      "title": "xmldom: End-tag Whitespace-Trim Regex ReDoS \u2014 quadratic backtracking in the 0.8.x end-tag parser",
       "reachedVia": "expo-sharing",
       "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
       "tracked": "FSEC-001"
+    },
+    {
+      "id": "GHSA-zzzz-zzzz-zzzz",
+      "package": "a-package-that-is-not-installed",
+      "severity": "high",
+      "title": "Deliberately stale entry, throwaway branch only",
+      "reachedVia": "nothing - this package is not in the tree",
+      "accepted": "Throwaway branch for one CI run. Proves that a failing Dependency audit still fails the job while Typecheck and Unit tests now run and report.",
+      "tracked": "none"
     }
   ]
 }
