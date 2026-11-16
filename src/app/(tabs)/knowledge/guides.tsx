@@ -125,7 +125,7 @@ export default function KnowledgeGuidesScreen() {
             <View className="py-4 items-center">
               <ActivityIndicator color="#F59300" />
             </View>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center p-6">

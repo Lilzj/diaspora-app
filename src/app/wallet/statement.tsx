@@ -223,7 +223,7 @@ export default function StatementScreen() {
                   That is the beginning of your statement.
                 </Text>
               </View>
-            ) : null
+            ) : undefined
           }
         />
       )}

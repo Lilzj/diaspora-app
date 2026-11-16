@@ -368,7 +368,7 @@ export default function CommunityDiscoveryScreen() {
                   : undefined
               }
             />
-          ) : null
+          ) : undefined
         }
         ListFooterComponent={
           <View className="mt-4">

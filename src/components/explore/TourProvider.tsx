@@ -38,7 +38,7 @@ export const TourSpotlight: React.FC<{
   children: React.ReactElement;
   style?: any;
 }> = ({ spotlightKey, children, style }) => {
-  const viewRef = useRef<View>(null);
+  const viewRef = useRef<React.ComponentRef<typeof View>>(null);
   const registerElementLayout = useExploreStore((state) => state.registerElementLayout);
   const activeTour = useExploreStore((state) => state.activeTour);
 
@@ -92,7 +92,7 @@ const TourOverlay: React.FC = () => {
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+    const subscription = Dimensions.addEventListener('change', ({ window }: { window: ReturnType<typeof Dimensions.get> }) => {
       setDimensions(window);
     });
 

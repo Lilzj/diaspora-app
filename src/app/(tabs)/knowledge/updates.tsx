@@ -175,7 +175,7 @@ export default function KnowledgeUpdatesScreen() {
               <View className="py-4 items-center">
                 <ActivityIndicator size="small" color="#6B7280" />
               </View>
-            ) : null
+            ) : undefined
           }
         />
       )}

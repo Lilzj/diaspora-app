@@ -123,7 +123,7 @@ export default function GuideReaderScreen() {
   const recordView = useRecordGuideView();
   const recordShare = useRecordGuideShare();
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [tocOpen, setTocOpen] = useState(false);
   const [showResumeBanner, setShowResumeBanner] = useState(false);
