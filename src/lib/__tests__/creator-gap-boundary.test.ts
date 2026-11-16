@@ -101,19 +101,19 @@ describe('the URL space cannot collide', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('a release build ships no simulated creator capability', () => {
-  const originalDev = (global as { __DEV__?: boolean }).__DEV__;
+  const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 
   afterEach(() => {
-    (global as { __DEV__?: boolean }).__DEV__ = originalDev;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
   });
 
   it('reports gap features as unavailable when __DEV__ is false', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     expect(areCreatorGapsEnabled()).toBe(false);
   });
 
   it('registers no handler at all in a release build', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
     const mock = new MockAdapter(apiClient) as InspectableMock;
     const teardown = setupCreatorEconomyMocks(mock);
@@ -125,7 +125,7 @@ describe('a release build ships no simulated creator capability', () => {
   });
 
   it('refuses in the API layer before a request is made', async () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
     // No mock adapter is installed. If the guard did not fire, this would
     // attempt a real network call — which is precisely the failure being
@@ -142,7 +142,7 @@ describe('a release build ships no simulated creator capability', () => {
   });
 
   it('refuses with a member-safe message rather than a stack trace', async () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
     await expect(gapApi.fetchCreatorProfile()).rejects.toMatchObject({
       kind: 'unavailable',
@@ -153,7 +153,7 @@ describe('a release build ships no simulated creator capability', () => {
   });
 
   it('never claims a write succeeded when the build cannot reach the adapter', async () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
     // The dangerous failure mode: an acknowledgement that resolves and lets a
     // screen show points that were never awarded.

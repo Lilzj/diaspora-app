@@ -21,8 +21,8 @@ import { act, renderHook } from '@testing-library/react-native';
 import { useMediaUpload } from '../media';
 import type { LocalFile } from '@/types/media';
 
-const WAS_DEV = (global as { __DEV__?: boolean }).__DEV__;
-const OriginalXhr = (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
+const WAS_DEV = (globalThis as { __DEV__?: boolean }).__DEV__;
+const OriginalXhr = (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
 
 /** What the transport does to this attempt. One member per branch it can take. */
 type Outcome =
@@ -36,7 +36,7 @@ beforeEach(() => {
   // `__DEV__` is true under jest, and `uploadDirect` sends a dev build through
   // the mock adapter. Without this the tests below would never reach the
   // transport whose failures they are about.
-  (global as { __DEV__?: boolean }).__DEV__ = false;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = false;
   outcome = { fire: 'error' };
 
   class FailingXhr {
@@ -74,12 +74,12 @@ beforeEach(() => {
     }
   }
 
-  (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = FailingXhr;
+  (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = FailingXhr;
 });
 
 afterEach(() => {
-  (global as { __DEV__?: boolean }).__DEV__ = WAS_DEV;
-  (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = OriginalXhr;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = WAS_DEV;
+  (globalThis as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = OriginalXhr;
 });
 
 const PHOTO: LocalFile = {

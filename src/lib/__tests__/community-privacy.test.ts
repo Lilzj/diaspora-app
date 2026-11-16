@@ -391,10 +391,10 @@ describe('persistence writes the selection and not the membership (§45)', () =>
 });
 
 describe('the dev-id guard (§65)', () => {
-  const originalDev = (global as { __DEV__?: boolean }).__DEV__;
+  const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 
   afterEach(() => {
-    (global as { __DEV__?: boolean }).__DEV__ = originalDev;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
     jest.resetModules();
   });
 
@@ -427,7 +427,7 @@ describe('the dev-id guard (§65)', () => {
       recentCommunityIds: ['dev-community-nigerian'],
     });
 
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
     jest.resetModules();
 
@@ -459,7 +459,7 @@ describe('the dev-id guard (§65)', () => {
       },
     ]);
 
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
     jest.resetModules();
 

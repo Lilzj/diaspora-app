@@ -23,7 +23,7 @@ import { areCreatorGapsEnabled } from '@/config/creator-gaps';
 import { areMonetizationGapsEnabled } from '@/config/monetization-gaps';
 import { areGapFeaturesEnabled } from '@/config/financial-gaps';
 
-const originalDev = global.__DEV__;
+const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 const originalFlag = process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
 
 function setFlag(value: string | undefined) {
@@ -35,13 +35,13 @@ function setFlag(value: string | undefined) {
 }
 
 afterEach(() => {
-  global.__DEV__ = originalDev;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
   setFlag(originalFlag);
 });
 
 describe('the development path', () => {
   it('is on under Metro and in a debug binary, with no flag set', () => {
-    global.__DEV__ = true;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     setFlag(undefined);
     expect(areSimulatedFeaturesEnabled()).toBe(true);
   });
@@ -49,13 +49,13 @@ describe('the development path', () => {
   it('short-circuits, so development does not depend on an env var', () => {
     // If the `__DEV__` check did not short-circuit, an explicitly-disabled flag
     // would break every developer's app.
-    global.__DEV__ = true;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     setFlag('0');
     expect(areSimulatedFeaturesEnabled()).toBe(true);
   });
 
   it('is not reported as a preview build', () => {
-    global.__DEV__ = true;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     setFlag('1');
     // A developer running Metro does not need telling. Somebody handed an APK
     // does — that is the whole distinction this function exists for.
@@ -65,7 +65,7 @@ describe('the development path', () => {
 
 describe('a release build with no opt-in — the default', () => {
   beforeEach(() => {
-    global.__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
   });
 
   it('is off when the flag is absent', () => {
@@ -85,7 +85,7 @@ describe('a release build with no opt-in — the default', () => {
 
 describe('a release build that explicitly opted in', () => {
   beforeEach(() => {
-    global.__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     setFlag('1');
   });
 
@@ -109,7 +109,7 @@ describe('a release build that explicitly opted in', () => {
 
 describe('what must NOT turn it on', () => {
   beforeEach(() => {
-    global.__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
   });
 
   /**

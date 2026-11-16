@@ -142,14 +142,14 @@ describe('the layers on offer', () => {
   });
 
   it('is on in every build — the heat flag no longer follows the simulation switch', () => {
-    const originalDev = (global as { __DEV__?: boolean }).__DEV__;
+    const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
     const originalPreview = process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
     try {
-      (global as { __DEV__?: boolean }).__DEV__ = false;
+      (globalThis as { __DEV__?: boolean }).__DEV__ = false;
       delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
       expect(getMapFeatureFlags().heatMapsEnabled).toBe(true);
     } finally {
-      (global as { __DEV__?: boolean }).__DEV__ = originalDev;
+      (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
       if (originalPreview !== undefined) process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = originalPreview;
     }
   });

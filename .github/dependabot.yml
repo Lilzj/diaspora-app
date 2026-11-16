@@ -156,41 +156,32 @@ updates:
         update-types:
           - version-update:semver-major
 
-      # typescript majors are deferred for the same reason and with the same
-      # undo, but the remaining work is far smaller than that sentence
-      # suggests, so this entry carries its own measurement. 7.x is the Go
-      # rewrite (`microsoft/typescript-go`), and #56 (6.0.3 -> 7.0.2) was
-      # closed on 16 Nov 2026 because it was red.
+      # typescript is deliberately NOT in this list, and was for one day.
+      # #56 (6.0.3 -> 7.0.2) was closed on 16 Nov 2026 because it could not
+      # pass; the entry is gone because that reason is.
       #
-      # It was red for two reasons, and this commit removes the first.
-      # `tsconfig.json` carried `baseUrl`, which 7 removes outright (TS5102),
-      # and a non-relative `paths` entry that only `baseUrl` made legal
-      # (TS5090). Measured against 7.0.2 on 16 Nov 2026, the old config gave
-      # exactly those two errors and nothing else, because 7 stops at a fatal
-      # configuration error - so the real work below was not visible until
-      # the configuration was fixed.
+      # 7.x is the Go rewrite (`microsoft/typescript-go`). #56 failed on two
+      # configuration errors - TS5102 for `baseUrl`, which 7 removes, and
+      # TS5090 for the non-relative `paths` entry that only `baseUrl` made
+      # legal - and because 7 stops at a fatal configuration error, nothing
+      # else was visible behind them. Removing `baseUrl` exposed 93 errors
+      # that were all one error: TS2304, "Cannot find name 'global'", across
+      # 14 test files. The sweep to `globalThis` that cleared them landed
+      # with this comment. Measured 16 Nov 2026: 7.0.2 reports 0 errors.
       #
-      # What remains is 93 errors that are all one error: TS2304, "Cannot
-      # find name 'global'", across 14 test files - 73 `(global as ...)`
-      # casts and 20 `global.__DEV__` reads. `@types/node` is installed, but
-      # only transitively via `@react-native/jest-preset` ->
-      # `jest-environment-node`, and `types: ["jest"]` does not reach it
-      # under 7.
+      # Two things worth knowing before the bump is merged.
       #
-      # Do not answer that by adding `"node"` to `types`. Three of those very
-      # files already record why: it surfaces pre-existing errors in roughly
-      # twenty assertions across the Phase 5, 7 and 12 suites, and this
-      # project's rule is that a suite declares the Node globals it needs
-      # locally rather than changing the typecheck configuration for every
-      # other phase. `globalThis` is the smaller answer still, needing
-      # neither a types package nor a local declaration.
+      # `tsc` runs in exactly one place here - the `typecheck` script. Babel
+      # transpiles for both Metro and Jest, so TypeScript is never in a build
+      # or a test, and a 7.x difference can only make the typecheck job wrong
+      # in one direction or the other. That is a narrow blast radius.
       #
-      # So this defers an afternoon, not a rewrite. Do that sweep and delete
-      # this entry - it returns on its own otherwise, since on 16 Nov 2026
-      # the dist-tags already carried 7.1.0-beta and a 7.1.0-dev line
-      # alongside 7.0.2.
-      - dependency-name: typescript
-        update-types:
-          - version-update:semver-major
+      # 7.0.2 ships no `tsserver`. 6.0.3 ships `tsc` and `tsserver`; 7.0.2
+      # ships `tsc` alone. Nothing in this repository pins
+      # `typescript.tsdk`, so no editor opts into the workspace version by
+      # default, but anyone who has chosen "Use Workspace Version" in their
+      # own editor loses language-server support the day it merges. It is a
+      # developer-machine cost, invisible to CI, and the one thing a green
+      # typecheck does not cover.
     labels:
       - dependencies

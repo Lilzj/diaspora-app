@@ -47,24 +47,24 @@ function source(relative: string): string {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('the simulation switch', () => {
-  const originalDev = (global as { __DEV__?: boolean }).__DEV__;
+  const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
   const originalEnv = process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
 
   afterEach(() => {
-    (global as { __DEV__?: boolean }).__DEV__ = originalDev;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
     process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = originalEnv;
     jest.resetModules();
   });
 
   it('is on under Metro', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = true;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     jest.resetModules();
     const { areMultiCommunityGapsEnabled } = require('@/config/multi-community-gaps');
     expect(areMultiCommunityGapsEnabled()).toBe(true);
   });
 
   it('is off in a release build with no opt-in', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
     jest.resetModules();
     const { areMultiCommunityGapsEnabled } = require('@/config/multi-community-gaps');
@@ -72,7 +72,7 @@ describe('the simulation switch', () => {
   });
 
   it('is on in a release build that explicitly opted in', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = '1';
     jest.resetModules();
     const { areMultiCommunityGapsEnabled } = require('@/config/multi-community-gaps');
@@ -80,7 +80,7 @@ describe('the simulation switch', () => {
   });
 
   it('demands exactly "1" — not a truthy accident', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
     for (const value of ['', '0', 'true', 'false', 'yes']) {
       process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = value;
@@ -103,17 +103,17 @@ describe('the simulation switch', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('every adapter function refuses in a release build', () => {
-  const originalDev = (global as { __DEV__?: boolean }).__DEV__;
+  const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
   const originalEnv = process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
 
   beforeEach(() => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
     jest.resetModules();
   });
 
   afterEach(() => {
-    (global as { __DEV__?: boolean }).__DEV__ = originalDev;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
     process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = originalEnv;
     jest.resetModules();
   });
@@ -175,17 +175,17 @@ describe('every adapter function refuses in a release build', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('the handler registers nothing in a release build', () => {
-  const originalDev = (global as { __DEV__?: boolean }).__DEV__;
+  const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
   const originalEnv = process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
 
   afterEach(() => {
-    (global as { __DEV__?: boolean }).__DEV__ = originalDev;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
     process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = originalEnv;
     jest.resetModules();
   });
 
   it('adds no routes at all when the switch is off', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
     jest.resetModules();
 
@@ -208,7 +208,7 @@ describe('the handler registers nothing in a release build', () => {
   });
 
   it('registers routes when the switch is on', () => {
-    (global as { __DEV__?: boolean }).__DEV__ = true;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     jest.resetModules();
 
     const { setupCommunityDirectoryMocks } = require('@/mocks/handlers/community-directory');
