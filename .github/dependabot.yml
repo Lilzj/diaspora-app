@@ -48,6 +48,31 @@ updates:
       # their own because the SDK pins both to exact versions (`react: 19.2.3`,
       # `react-native: 0.86.0`). A lone bump of either is a build that cannot
       # pass, so it is not worth opening.
+      #
+      # The same argument reaches eleven more packages, and that is why they
+      # are listed below. Each carries an SDK 57 pin in
+      # `node_modules/expo/bundledNativeModules.json` while matching none of
+      # the patterns above, so each used to flow as a pull request of its own.
+      # #36 (`react-native-gesture-handler` 2.32.0 -> 3.5.0) is how that was
+      # noticed, and it was the sixth instance rather than the first: measured
+      # on 16 Nov 2026, five of the eleven were already installed past their
+      # pin - `@react-native-async-storage/async-storage` at 3.1.1 against a
+      # pin of 2.2.0, a whole major, together with `@shopify/flash-list`,
+      # `react-native-maps`, `react-native-reanimated` and
+      # `react-native-worklets`. Two of those five had merged the day before.
+      # Nothing here showed any of them misbehaving; the point is that leaving
+      # the SDK's tested matrix was never a decision anyone made, and this
+      # project's CI - typecheck and Jest, with no native build and no
+      # `expo-doctor` step - cannot be the thing that notices.
+      #
+      # Listed one by one rather than matched by `react-native-*`, because the
+      # set is whatever that file pins and it is not a naming convention in
+      # either direction: it includes `jest-expo` and `@shopify/flash-list`,
+      # and it excludes `react-native-worklets-core` and
+      # `@react-native/jest-preset`, both of which this manifest carries today
+      # and neither of which belongs in an SDK window. Re-derive the list when
+      # the SDK moves, by comparing package.json against
+      # bundledNativeModules.json.
       expo-sdk:
         patterns:
           - expo
@@ -56,6 +81,17 @@ updates:
           - react
           - react-dom
           - react-native
+          - '@react-native-async-storage/async-storage'
+          - '@shopify/flash-list'
+          - jest-expo
+          - react-native-gesture-handler
+          - react-native-maps
+          - react-native-reanimated
+          - react-native-safe-area-context
+          - react-native-screens
+          - react-native-svg
+          - react-native-web
+          - react-native-worklets
         update-types:
           - major
           - minor
