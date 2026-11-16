@@ -128,15 +128,6 @@
       "tracked": "FSEC-001"
     },
     {
-      "id": "GHSA-gcqx-w48m-w2h4",
-      "package": "deepmerge",
-      "severity": "low",
-      "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
-      "reachedVia": "expo, jest",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
-      "tracked": "FSEC-001"
-    },
-    {
       "id": "GHSA-pqg4-j6r4-53mv",
       "package": "shell-quote",
       "severity": "critical",
