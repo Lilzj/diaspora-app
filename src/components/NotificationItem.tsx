@@ -1,6 +1,38 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+/**
+ * `ReanimatedSwipeable`, not `Swipeable`.
+ *
+ * Until 16 Nov 2026 this imported `react-native-gesture-handler/Swipeable` —
+ * the class component built on React Native's `Animated`. **Version 3 removed
+ * it.** 3.5.0 publishes no `Swipeable` entry point and its root `index.d.ts`
+ * exports nothing of that name, so the old import becomes
+ * `TS2307: Cannot find module` the moment the major lands, and there is no
+ * equivalent to rename it to.
+ *
+ * `ReanimatedSwipeable` is published by **both** 2.32.0 and 3.5.0 at this same
+ * subpath, which is the only reason this change can sit on `master` ahead of
+ * the bump instead of riding on the Dependabot branch. The props used below —
+ * `ref`, `renderRightActions`, `friction`, `rightThreshold`, `children` — are
+ * declared identically in both. The ones 3.x renamed
+ * (`dragOffsetFromLeftEdge` → `dragOffsetFromLeft`,
+ * `simultaneousWithExternalGesture` → `simultaneousWith`) are not used here.
+ *
+ * What does differ from the removed component is the callback contract:
+ * `renderRightActions` is handed Reanimated `SharedValue`s rather than
+ * `Animated.AnimatedInterpolation`s, and the ref is a `SwipeableMethods`
+ * object rather than a class instance. React Native's `Animated` is still
+ * imported above, because the unrelated "peek" animation below uses it.
+ */
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Reanimated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { relativeTime } from '@/components/community-social';
 
@@ -34,6 +66,47 @@ const categoryIcons: Record<string, string> = {
   Promotion: '🎁',
 };
 
+/**
+ * The right-hand action, as a component rather than inline JSX.
+ *
+ * `renderRightActions` is a render *callback*, run by the swipeable only when
+ * there is something to reveal, so a hook called inside it would be a
+ * conditional hook. `useAnimatedStyle` has to sit at the top of a component of
+ * its own, and that is the only reason this is split out.
+ *
+ * The curve is the one it replaces — scale 0 at rest, 1 by 80px of drag,
+ * clamped — but it is computed on the UI thread, because `translation` is a
+ * `SharedValue` and a `SharedValue` has no `.interpolate`.
+ */
+function DeleteAction({
+  translation,
+  onPress,
+}: {
+  translation: SharedValue<number>;
+  onPress: () => void;
+}) {
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: interpolate(translation.value, [-80, 0], [1, 0], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      className="bg-red-500 justify-center items-center w-20 h-full flex-row"
+    >
+      <Reanimated.View style={[{ alignItems: 'center' }, iconStyle]}>
+        <Ionicons name="trash-outline" size={18} color="#FFF" />
+        <Text className="text-[9px] font-black text-white mt-1 uppercase tracking-wider">
+          Delete
+        </Text>
+      </Reanimated.View>
+    </TouchableOpacity>
+  );
+}
+
 export function NotificationItem({
   title,
   body,
@@ -45,7 +118,7 @@ export function NotificationItem({
   shouldPeek = false,
 }: NotificationItemProps) {
   const peekAnim = useRef(new Animated.Value(0)).current;
-  const swipeableRef = useRef<Swipeable>(null);
+  const swipeableRef = useRef<SwipeableMethods>(null);
 
   useEffect(() => {
     if (shouldPeek) {
@@ -68,31 +141,17 @@ export function NotificationItem({
   }, [shouldPeek]);
 
   const renderRightActions = (
-    _progress: Animated.AnimatedInterpolation<number>,
-    dragX: Animated.AnimatedInterpolation<number>
-  ) => {
-    const scale = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <TouchableOpacity
-        onPress={() => {
-          swipeableRef.current?.close();
-          if (onDelete) onDelete();
-        }}
-        activeOpacity={0.8}
-        className="bg-red-500 justify-center items-center w-20 h-full flex-row"
-      >
-        <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
-          <Ionicons name="trash-outline" size={18} color="#FFF" />
-          <Text className="text-[9px] font-black text-white mt-1 uppercase tracking-wider">Delete</Text>
-        </Animated.View>
-      </TouchableOpacity>
-    );
-  };
+    _progress: SharedValue<number>,
+    translation: SharedValue<number>
+  ) => (
+    <DeleteAction
+      translation={translation}
+      onPress={() => {
+        swipeableRef.current?.close();
+        if (onDelete) onDelete();
+      }}
+    />
+  );
 
   const itemContent = (
     <Animated.View style={{ transform: [{ translateX: peekAnim }] }}>
@@ -133,14 +192,14 @@ export function NotificationItem({
 
   if (onDelete) {
     return (
-      <Swipeable
+      <ReanimatedSwipeable
         ref={swipeableRef}
         renderRightActions={renderRightActions}
         friction={2}
         rightThreshold={30}
       >
         {itemContent}
-      </Swipeable>
+      </ReanimatedSwipeable>
     );
   }
 
