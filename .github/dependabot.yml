@@ -125,5 +125,35 @@ updates:
     # package's upgrade can be judged on its own changelog and merged the same
     # day, which is what should have been happening to `axios` and `zod` long
     # before an audit found them.
+
+    # tailwindcss is the one exception to the paragraph above, and only for
+    # majors. 4.x is a rewrite rather than an upgrade: the engine changed and
+    # configuration moved out of `tailwind.config.js`, which this project
+    # still has, and into CSS. #47 (3.4.19 -> 4.3.5) failed `Typecheck and
+    # unit tests` on exactly that and was closed on 16 Nov 2026 - and closing
+    # a Dependabot pull request declines only that release, so 4.3.6 would
+    # open a fresh one that fails the same way, weekly, until somebody does
+    # the migration.
+    #
+    # Worth recording that `nativewind` declares a peer range of
+    # tailwindcss >3.3.0, which 4.3.5 satisfies. A permissive peer range is
+    # not a compatibility statement and would never have warned here; CI was
+    # the only thing that caught it.
+    #
+    # Minors and patches still flow normally. Delete this block when the v4
+    # migration is actually planned: it is a deferral, not a verdict on v4.
+    #
+    # Check this before switching Dependabot *security* updates on. The
+    # options reference says options marked with an icon also change how
+    # Dependabot creates pull requests for security updates, and says
+    # separately that update-types under `allow` affects version updates
+    # only. Whether `ignore` falls in the first category could not be read
+    # off the rendered page on 16 Nov 2026, so confirm it rather than assume
+    # a tailwindcss advisory would still reach you. Nothing is exposed
+    # today: security updates are a repository setting and it is still off.
+    ignore:
+      - dependency-name: tailwindcss
+        update-types:
+          - version-update:semver-major
     labels:
       - dependencies
