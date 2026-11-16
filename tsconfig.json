@@ -1,12 +1,27 @@
 {
+  // There is deliberately no `baseUrl`. TypeScript 7 removes the option, and
+  // #56 (6.0.3 -> 7.0.2) failed on exactly that: TS5102 for `baseUrl` itself,
+  // and TS5090 for the non-relative `src/*` that `baseUrl` used to anchor.
+  //
+  // `@/*` resolves identically without it. TypeScript reads a relative `paths`
+  // entry against this file's own directory when `baseUrl` is absent, and
+  // Expo's Metro resolver does the same - it falls back to the directory of
+  // the config that declared `paths` (`pathsBasePath` in
+  // `createTypescriptResolver.js`), so the mapping is still
+  // `path.join(projectRoot, "./src/*")`, which is `path.join(projectRoot,
+  // "src/*")`. 1024 files import through `@/` and Jest resolves the alias
+  // through its own `moduleNameMapper`, so the test suite cannot see a
+  // difference either way - this was read out of the resolver rather than
+  // inferred from a green build.
+  //
+  // `ignoreDeprecations: "6.0"` was silencing the `baseUrl` deprecation and
+  // nothing else, so it went with it.
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "types": ["jest"],
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   }
 }
