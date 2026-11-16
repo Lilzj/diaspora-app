@@ -183,5 +183,43 @@ updates:
       # own editor loses language-server support the day it merges. It is a
       # developer-machine cost, invisible to CI, and the one thing a green
       # typecheck does not cover.
+
+      # @testing-library/react-native majors are deferred, and this one is
+      # deferred on its size rather than on a principle. 14.0.0 made the core
+      # API async - render(), renderHook(), fireEvent() and act() all return
+      # promises - and removed the UNSAFE_* queries.
+      #
+      # Measured 16 Nov 2026 against master at Expo SDK 58, so against the
+      # React 19.3.1 and React Native 0.88.1 that 14.1.0 explicitly added
+      # support for. The versions are not the problem:
+      #
+      #     tsc --noEmit   207 errors (195 TS2339, 12 TS7006)
+      #     jest           1053 tests failed, 97 of 397 suites
+      #
+      # For scale, the SDK 58 upgrade itself - 30 packages, React Native
+      # among them - was 49 type errors and no failing tests.
+      #
+      # #34 could never have passed, and not because it was red. 14.x swaps
+      # its peer dependency: `react-test-renderer` out, `test-renderer
+      # ^1.0.0` in. Dependabot bumps one package; it does not exchange two.
+      # Whoever takes the migration adds `test-renderer` (the 1.3.x line, for
+      # React 19.3), drops `react-test-renderer`, and removes it from the
+      # expo-sdk group patterns above, where it was added on the same day
+      # this was deferred.
+      #
+      # The async half has a codemod, `npx codemod@latest
+      # rntl-v14-async-functions`. The other half does not. v14 exposes host
+      # elements only, throws on text rendered outside a <Text>, and matches
+      # getByRole names more strictly, so a share of those 1053 failures are
+      # assertions that have to be read rather than rewritten. That is the
+      # actual reason this is planned work rather than an afternoon: the fast
+      # way through is to weaken what 97 suites check, and nothing in CI
+      # would notice that happening.
+      #
+      # Minors and patches still flow. Delete this block when the migration
+      # is scheduled.
+      - dependency-name: '@testing-library/react-native'
+        update-types:
+          - version-update:semver-major
     labels:
       - dependencies
