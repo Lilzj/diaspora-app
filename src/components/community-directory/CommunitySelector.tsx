@@ -453,7 +453,7 @@ export function CommunitySelectorSheet({
               />
             )}
             ListEmptyComponent={
-              directory.isLoading ? null : (
+              directory.isLoading ? undefined : (
                 <View className="py-8 items-center px-6">
                   <Ionicons
                     name="people-outline"
@@ -495,7 +495,7 @@ export function CommunitySelectorSheet({
                     Done ({selected.size})
                   </Text>
                 </TouchableOpacity>
-              ) : null
+              ) : undefined
             }
           />
         </SafeAreaView>

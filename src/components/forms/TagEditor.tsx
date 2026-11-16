@@ -14,7 +14,7 @@ interface TagEditorProps {
   maxLength?: number;
   testID?: string;
   /** The text box, so a screen can focus it (the creator profile's Edit profile buttons). */
-  inputRef?: React.Ref<TextInput>;
+  inputRef?: React.Ref<React.ComponentRef<typeof TextInput>>;
 }
 
 /**

@@ -137,7 +137,7 @@ export interface CreatorScreenProps {
   /** Set false where the screen supplies its own list. */
   scrollable?: boolean;
   /** The body's scroll view, for screens that move the member to a field. */
-  scrollRef?: React.Ref<ScrollView>;
+  scrollRef?: React.Ref<React.ComponentRef<typeof ScrollView>>;
   /** Raise the shared navigation bar at the end of the content. */
   scrollEndNavigation?: boolean;
   children: React.ReactNode;

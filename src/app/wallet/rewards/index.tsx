@@ -382,7 +382,7 @@ export default function RewardsScreen() {
             <View className="py-6 items-center">
               <ActivityIndicator size="small" color={tokens.color.primary[500]} />
             </View>
-          ) : null
+          ) : undefined
         }
       />
     </SafeAreaView>

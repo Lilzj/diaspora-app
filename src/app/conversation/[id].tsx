@@ -621,7 +621,7 @@ export default function ConversationScreen() {
                     <TrustBanner trust={other.trust} displayName={other.displayName} />
                   )}
                 </View>
-              ) : null
+              ) : undefined
             }
             ListFooterComponent={
               typingLabel ? <TypingIndicator label={typingLabel} /> : <View className="h-4" />

@@ -204,7 +204,7 @@ export default function NotificationsScreen() {
               <View className="py-4">
                 <ActivityIndicator />
               </View>
-            ) : hasMore ? null : null
+            ) : undefined
           }
           renderItem={({ item, index }) => (
             <NotificationItem

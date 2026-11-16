@@ -170,7 +170,7 @@ export default function PaymentHistoryScreen() {
                   Showing your {TAKE} most recent payments.
                 </Text>
               </View>
-            ) : null
+            ) : undefined
           }
         />
       )}

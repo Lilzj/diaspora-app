@@ -33,7 +33,7 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
   const skipTour = useExploreStore((state) => state.skipTour);
   const pauseTour = useExploreStore((state) => state.pauseTour);
 
-  const containerRef = useRef<View>(null);
+  const containerRef = useRef<React.ComponentRef<typeof View>>(null);
 
   // Announcement description for screen readers
   const announcementText = `Step ${stepNumber} of ${totalSteps}. ${step.title}. ${step.description}`;

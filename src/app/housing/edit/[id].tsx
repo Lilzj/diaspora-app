@@ -106,7 +106,7 @@ const problemDetail = (cause: unknown): string => {
 export default function EditHousingListingScreen() {
   const { id, focus } = useLocalSearchParams<{ id: string; focus?: string }>();
   const listingId = String(id ?? '');
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const scrolledToPhotos = useRef(false);
   const queryClient = useQueryClient();
   const { showAlert, showToast } = useNotification();
