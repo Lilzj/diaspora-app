@@ -7,7 +7,7 @@
       "severity": "high",
       "title": "xmldom: DocType `name` Injection Bypasses requireWellFormed",
       "reachedVia": "expo-sharing",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -16,7 +16,7 @@
       "severity": "high",
       "title": "js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources",
       "reachedVia": "expo, @react-native/jest-preset",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -25,7 +25,7 @@
       "severity": "moderate",
       "title": "Glob: AbortSignal cancellation bypass allows post-timeout filesystem traversal",
       "reachedVia": "expo, expo-sharing, jest, @react-native/jest-preset",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -34,7 +34,7 @@
       "severity": "high",
       "title": "xmldom: Attribute name injection via setAttribute() bypasses requireWellFormed",
       "reachedVia": "expo-sharing",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -43,7 +43,7 @@
       "severity": "moderate",
       "title": "xmldom: XML fragment injection via invalid EntityReference.nodeName during requireWellFormed serialization",
       "reachedVia": "expo-sharing",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -52,7 +52,7 @@
       "severity": "moderate",
       "title": "xmldom: Parser silently accepts a not-well-formed end tag whose name is followed by a line break and trailing content",
       "reachedVia": "expo-sharing",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -61,7 +61,7 @@
       "severity": "high",
       "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
       "reachedVia": "expo, jest, @react-native/jest-preset",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -70,7 +70,7 @@
       "severity": "high",
       "title": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
       "reachedVia": "expo, babel-preset-expo",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -79,7 +79,7 @@
       "severity": "high",
       "title": "xmldom: Quadratic-time attribute deduplication",
       "reachedVia": "expo-sharing",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -88,7 +88,7 @@
       "severity": "high",
       "title": "xmldom: Quadratic-time parsing via the malformed-input recovery path — `parseElementStartPart` re-scan and `normalize()` adjacent-text merge",
       "reachedVia": "expo-sharing",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -97,7 +97,7 @@
       "severity": "high",
       "title": "xmldom: Quadratic-memory consumption",
       "reachedVia": "expo-sharing",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -106,7 +106,7 @@
       "severity": "high",
       "title": "xmldom: Processing Instruction Target Injection Bypasses requireWellFormed",
       "reachedVia": "expo-sharing",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -115,7 +115,7 @@
       "severity": "high",
       "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
       "reachedVia": "expo, babel-preset-expo",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -124,7 +124,7 @@
       "severity": "moderate",
       "title": "minimatch has potential denial of service via globparts amplification",
       "reachedVia": "expo, expo-sharing, jest, @react-native/jest-preset",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -133,7 +133,7 @@
       "severity": "low",
       "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
       "reachedVia": "expo, jest",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -142,7 +142,7 @@
       "severity": "critical",
       "title": "shell-quote: `quote()` command injection via a line terminator in a token after a `{ comment }` token",
       "reachedVia": "react-native > react-devtools-core",
-      "accepted": "Build and development tooling: react-native > react-devtools-core, the DevTools shell the Metro dev server starts. Not imported by app code, so not in the bundle. The exposure is the build machine, which is where the signing key lives. Cleared by the React Native version that comes with the Expo SDK upgrade.",
+      "accepted": "Build and development tooling: react-native > react-devtools-core, the DevTools shell the Metro dev server starts. Not imported by app code, so not in the bundle. The exposure is the build machine, which is where the signing key lives. Still carried after React Native 0.88.1, which arrived with the Expo SDK 58 upgrade of 16 November 2026: that upgrade cleared 38 advisories, not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -151,7 +151,7 @@
       "severity": "moderate",
       "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
       "reachedVia": "expo, jest, @react-native/jest-preset",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -160,7 +160,7 @@
       "severity": "high",
       "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
       "reachedVia": "expo, jest, @react-native/jest-preset",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -178,7 +178,7 @@
       "severity": "high",
       "title": "xmldom: Element name injection via createElement() bypasses requireWellFormed",
       "reachedVia": "expo-sharing",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -187,7 +187,7 @@
       "severity": "moderate",
       "title": "baseline-browser-mapping process termination on invalid input causes denial of service",
       "reachedVia": "expo",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     },
     {
@@ -196,7 +196,7 @@
       "severity": "high",
       "title": "xmldom: End-tag Whitespace-Trim Regex ReDoS — quadratic backtracking in the 0.8.x end-tag parser",
       "reachedVia": "expo-sharing",
-      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Cleared by the Expo SDK upgrade.",
+      "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
       "tracked": "FSEC-001"
     }
   ]
