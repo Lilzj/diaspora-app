@@ -57,9 +57,10 @@ jobs:
       # not wanted is the side effect, which cost a day on 16 Nov 2026. The
       # Expo SDK 58 pull request (#54) showed a red `Typecheck and unit tests`
       # that died in 24s, and it was read as "SDK 58 breaks the build" by
-      # everyone who saw it, including me. It was the audit: SDK 58 clears 17
-      # of the 60 baselined advisories, so the gate asked for the baseline to
-      # be regenerated. Typecheck and Unit tests had reported 0s. Nobody knew
+      # everyone who saw it, including me. It was the audit: SDK 58 clears 38
+      # of the 60 baselined advisories - 22 high, 10 moderate, 6 low, and it
+      # introduces none - so the gate asked for the baseline to be
+      # regenerated. Typecheck and Unit tests had reported 0s. Nobody knew
       # whether SDK 58 compiled, because the check named after compiling had
       # never run it.
       #
