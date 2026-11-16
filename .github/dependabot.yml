@@ -66,13 +66,33 @@ updates:
       # `expo-doctor` step - cannot be the thing that notices.
       #
       # Listed one by one rather than matched by `react-native-*`, because the
-      # set is whatever that file pins and it is not a naming convention in
-      # either direction: it includes `jest-expo` and `@shopify/flash-list`,
-      # and it excludes `react-native-worklets-core` and
-      # `@react-native/jest-preset`, both of which this manifest carries today
-      # and neither of which belongs in an SDK window. Re-derive the list when
-      # the SDK moves, by comparing package.json against
-      # bundledNativeModules.json.
+      # set is not a naming convention in either direction: it includes
+      # `jest-expo` and `@shopify/flash-list`, which no `react-native-*`
+      # pattern reaches, and it excludes `react-native-worklets-core`, an
+      # independently versioned third-party library at 1.6.3 that tracks no
+      # SDK line at all.
+      #
+      # The boundary was drawn wrong on the first pass, and the next Dependabot
+      # run said so within minutes. That pass derived the list from
+      # bundledNativeModules.json, which lists native modules - so it missed
+      # the build and test tooling the SDK versions in lockstep regardless, and
+      # the run promptly opened three lone pull requests for exactly that:
+      # react-test-renderer 19.2.3 -> 19.3.1 against a react pinned at 19.2.3,
+      # `@react-native/jest-preset` 0.86.2 -> 0.88.1 against a react-native
+      # pinned at 0.86.0, and `babel-preset-expo` 57.0.2 -> 58.0.25 against
+      # expo at ~57.0.4, which is an SDK major. The first pass had even cited
+      # `@react-native/jest-preset` here as something to keep out, which was
+      # wrong: the `@react-native/*` packages ship in lockstep with
+      # react-native.
+      #
+      # `@types/react` is grouped for a narrower reason. Its `~19.2.2` range
+      # already resolves inside react's minor line, so the only pull request it
+      # can ever receive is the one that gets ahead of react.
+      #
+      # So the test is not whether bundledNativeModules.json pins it, but
+      # whether the SDK versions it in lockstep - a strict superset. Re-derive
+      # by checking every dependency against the three anchors: expo, react
+      # and react-native.
       expo-sdk:
         patterns:
           - expo
@@ -82,7 +102,10 @@ updates:
           - react-dom
           - react-native
           - '@react-native-async-storage/async-storage'
+          - '@react-native/jest-preset'
           - '@shopify/flash-list'
+          - '@types/react'
+          - babel-preset-expo
           - jest-expo
           - react-native-gesture-handler
           - react-native-maps
@@ -92,6 +115,7 @@ updates:
           - react-native-svg
           - react-native-web
           - react-native-worklets
+          - react-test-renderer
         update-types:
           - major
           - minor
@@ -101,5 +125,35 @@ updates:
     # package's upgrade can be judged on its own changelog and merged the same
     # day, which is what should have been happening to `axios` and `zod` long
     # before an audit found them.
+
+    # tailwindcss is the one exception to the paragraph above, and only for
+    # majors. 4.x is a rewrite rather than an upgrade: the engine changed and
+    # configuration moved out of `tailwind.config.js`, which this project
+    # still has, and into CSS. #47 (3.4.19 -> 4.3.5) failed `Typecheck and
+    # unit tests` on exactly that and was closed on 16 Nov 2026 - and closing
+    # a Dependabot pull request declines only that release, so 4.3.6 would
+    # open a fresh one that fails the same way, weekly, until somebody does
+    # the migration.
+    #
+    # Worth recording that `nativewind` declares a peer range of
+    # tailwindcss >3.3.0, which 4.3.5 satisfies. A permissive peer range is
+    # not a compatibility statement and would never have warned here; CI was
+    # the only thing that caught it.
+    #
+    # Minors and patches still flow normally. Delete this block when the v4
+    # migration is actually planned: it is a deferral, not a verdict on v4.
+    #
+    # Check this before switching Dependabot *security* updates on. The
+    # options reference says options marked with an icon also change how
+    # Dependabot creates pull requests for security updates, and says
+    # separately that update-types under `allow` affects version updates
+    # only. Whether `ignore` falls in the first category could not be read
+    # off the rendered page on 16 Nov 2026, so confirm it rather than assume
+    # a tailwindcss advisory would still reach you. Nothing is exposed
+    # today: security updates are a repository setting and it is still off.
+    ignore:
+      - dependency-name: tailwindcss
+        update-types:
+          - version-update:semver-major
     labels:
       - dependencies
