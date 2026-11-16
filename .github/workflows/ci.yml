@@ -51,10 +51,30 @@ jobs:
 
       # Separate steps so a type error is reported as a type error rather than
       # buried in a test run that could not compile.
+      #
+      # `!cancelled()` so that a failing audit cannot erase these two results.
+      # The scan-before-build order above is deliberate and is kept; what is
+      # not wanted is the side effect, which cost a day on 16 Nov 2026. The
+      # Expo SDK 58 pull request (#54) showed a red `Typecheck and unit tests`
+      # that died in 24s, and it was read as "SDK 58 breaks the build" by
+      # everyone who saw it, including me. It was the audit: SDK 58 clears 17
+      # of the 60 baselined advisories, so the gate asked for the baseline to
+      # be regenerated. Typecheck and Unit tests had reported 0s. Nobody knew
+      # whether SDK 58 compiled, because the check named after compiling had
+      # never run it.
+      #
+      # These conditions do not weaken the gate. A failed step still fails the
+      # job whatever runs after it, so the audit still blocks the merge; the
+      # job simply reports everything it learned rather than stopping at the
+      # first thing that went wrong. Verified on a throwaway branch with a
+      # deliberately stale baseline before this landed, because a mistake here
+      # would open a security gate silently.
       - name: Typecheck
+        if: ${{ !cancelled() }}
         run: npm run typecheck
 
       - name: Unit tests
+        if: ${{ !cancelled() }}
         run: npm test -- --ci --silent
 
   # ── What the two repositories say about each other ────────────────────────
