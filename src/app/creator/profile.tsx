@@ -76,15 +76,15 @@ export default function CreatorProfileScreen() {
   const [expertise, setExpertise] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
   const { selectable: guideCategories } = useGuideCategories();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   // The fields the completeness requirements name, measured against the scroll
   // content when an Edit profile button is pressed (Android UAT, 3 Nov 2026).
   // `onLayout` gave each anchor's y within its own section, so every button
   // scrolled to about the same place near the top and opened nothing.
-  const fieldAnchors = useRef<Partial<Record<ProfileField, View | null>>>({});
-  const bioInput = useRef<TextInput>(null);
-  const expertiseInput = useRef<TextInput>(null);
-  const languagesInput = useRef<TextInput>(null);
+  const fieldAnchors = useRef<Partial<Record<ProfileField, React.ComponentRef<typeof View> | null>>>({});
+  const bioInput = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const expertiseInput = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const languagesInput = useRef<React.ComponentRef<typeof TextInput>>(null);
   const [areasOpenRequest, setAreasOpenRequest] = useState(0);
   const [isBadgesOpen, setBadgesOpen] = useState(false);
   const [isDirty, setDirty] = useState(false);
@@ -201,7 +201,7 @@ export default function CreatorProfileScreen() {
     const field = profileFieldFor(requirement.key);
     if (!field) return;
 
-    const scroll = scrollRef.current as (ScrollView & { getInnerViewRef?: () => unknown }) | null;
+    const scroll = scrollRef.current as (React.ComponentRef<typeof ScrollView> & { getInnerViewRef?: () => unknown }) | null;
     const content = scroll?.getInnerViewRef?.();
     const anchor = fieldAnchors.current[field];
     if (scroll && content && anchor) {

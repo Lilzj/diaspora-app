@@ -165,7 +165,7 @@ export default function TransactionHistoryScreen() {
               onPress={() => router.push(`/wallet/transactions/${item.transactionId}`)}
             />
           )}
-          ListFooterComponent={atPageLimit ? <PageLimitFooter /> : null}
+          ListFooterComponent={atPageLimit ? <PageLimitFooter /> : undefined}
         />
       )}
     </SafeAreaView>

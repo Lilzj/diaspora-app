@@ -96,7 +96,7 @@ export default function OtpScreen() {
   );
   const [secondsLeft, setSecondsLeft] = useState(() => Number(resendAvailableInSeconds) || 60);
 
-  const inputs = useRef<(TextInput | null)[]>([]);
+  const inputs = useRef<(React.ComponentRef<typeof TextInput> | null)[]>([]);
   const adoptSession = useAuthStore((s) => s.adoptSession);
 
   const successScale = useRef(new Animated.Value(0.3)).current;

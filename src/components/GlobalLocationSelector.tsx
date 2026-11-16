@@ -316,7 +316,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                 ListFooterComponent={
                   attribution && searchResults.length > 0 ? (
                     <Text className="text-[10px] text-content-faint px-2 pt-2">Powered by {attribution}</Text>
-                  ) : null
+                  ) : undefined
                 }
                 renderItem={({ item }) => (
                   <TouchableOpacity

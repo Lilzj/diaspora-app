@@ -186,7 +186,7 @@ interface ScrollEndScrollViewProps extends ScrollViewProps {
  * the content, and permanently reserves room for it so the last item is never
  * trapped behind the bar.
  */
-export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollViewProps>(
+export const ScrollEndScrollView = React.forwardRef<React.ComponentRef<typeof ScrollView>, ScrollEndScrollViewProps>(
   (
     {
       children,

@@ -64,7 +64,7 @@ describe('the fields can be opened from outside', () => {
   });
 
   it('hands its text box to the caller, so it can be focused', () => {
-    const ref = React.createRef<TextInput>();
+    const ref = React.createRef<React.ComponentRef<typeof TextInput>>();
     render(<TagEditor label="Expertise" values={[]} onChange={jest.fn()} placeholder="e.g. Work permits" max={12} inputRef={ref} />);
 
     expect(ref.current).not.toBeNull();

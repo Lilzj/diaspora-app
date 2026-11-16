@@ -258,7 +258,7 @@ export interface ScreenScrollViewProps extends ScrollViewProps {
  * Lists keep their own component and take `useBottomInset()` directly —
  * wrapping `FlashList` would cost its recycling.
  */
-export const ScreenScrollView = React.forwardRef<ScrollView, ScreenScrollViewProps>(
+export const ScreenScrollView = React.forwardRef<React.ComponentRef<typeof ScrollView>, ScreenScrollViewProps>(
   ({ children, chrome = 'none', footerHeight = 0, gutter, contentContainerStyle, ...props }, ref) => {
     const bottomInset = useBottomInset({ chrome, footerHeight, gutter });
 

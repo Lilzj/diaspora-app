@@ -265,7 +265,7 @@ export default function MessagesScreen() {
           }
           contentContainerStyle={{ paddingBottom: bottomInset }}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={null}
+          ItemSeparatorComponent={undefined}
         />
       )}
     </SafeAreaView>

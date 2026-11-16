@@ -77,7 +77,10 @@ export default function TabLayout() {
                     size={dest.iconSize}
                     // `color` is the active/inactive tint resolved by the
                     // navigator, so the icon follows the same tokens.
-                    color={focused ? nav.activeIcon : color}
+                    // React Native 0.88 types this `color` as its own internal
+                    // ColorValue, which @expo/vector-icons does not accept. The
+                    // navigator resolves it from the theme and passes a string.
+                    color={focused ? nav.activeIcon : (color as string)}
                   />
                 );
 
