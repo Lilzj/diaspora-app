@@ -46,7 +46,6 @@ describe('tier projection', () => {
     ['VerificationUnderReview', AccessTier.PendingVerification],
     ['RequiresMoreInformation', AccessTier.PendingVerification],
     ['DiasporaVerified', AccessTier.Verified],
-    ['FullCommunityAccess', AccessTier.Verified],
   ])('projects %s onto %s', (state, tier) => {
     expect(toAccessTier(state)).toBe(tier);
   });
@@ -73,7 +72,6 @@ describe('everything that moves money is Verified', () => {
 
   it.each(WRITE_PERMISSIONS)('%s is granted at Verified', (permission) => {
     expect(holdsPermission(permission, 'DiasporaVerified', true)).toBe(true);
-    expect(holdsPermission(permission, 'FullCommunityAccess', true)).toBe(true);
   });
 
   it.each(WRITE_PERMISSIONS)('%s is refused while restricted, even when verified', (permission) => {

@@ -29,7 +29,6 @@ import type { OrganizationCapabilities } from '@/types/community-advanced';
 
 /** The real `AccountState` members, mapped to the tiers they project onto. */
 const VERIFIED: AccountState = 'DiasporaVerified';
-const FULL: AccountState = 'FullCommunityAccess';
 const LIMITED: AccountState = 'LimitedAccess';
 const RESTRICTED: AccountState = 'Restricted';
 const SUSPENDED: AccountState = 'Suspended';
@@ -57,7 +56,10 @@ describe('the platform ladder', () => {
   });
 
   it('lets a verified member do everything', () => {
-    for (const state of [VERIFIED, FULL]) {
+    // One state, written as a list: `FullCommunityAccess` was the second entry
+    // and nothing could ever produce it (FSOLID-007). If the ladder grows
+    // another granting state, it goes here.
+    for (const state of [VERIFIED]) {
       const access = resolveCommunityAccess(state, true);
       expect(access.canDonate).toBe(true);
       expect(access.canPayMembership).toBe(true);

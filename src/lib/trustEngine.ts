@@ -1,6 +1,7 @@
 import { useTrustStore } from '@/store/trust';
 import { useAuthStore } from '@/store/auth';
 import { useReputationStore } from '@/store/reputation';
+import { grantsCommunityAccess } from '@/lib/access-state';
 import type { FeatureUnlockRequirement } from '@/types/trust';
 
 /**
@@ -133,7 +134,7 @@ export const TrustEngine = {
 
     // Central check: Account must be verified for community actions
     const accountState = authStore.user?.accountState || 'LimitedAccess';
-    if (accountState !== 'DiasporaVerified' && accountState !== 'FullCommunityAccess') {
+    if (!grantsCommunityAccess(accountState)) {
       return {
         allowed: false,
         code: 'DENIED',

@@ -114,7 +114,6 @@ export default function TrustCenterScreen() {
   const getAccountStateColor = (state: string) => {
     switch (state) {
       case 'DiasporaVerified':
-      case 'FullCommunityAccess':
         return 'text-emerald-500 bg-emerald-55 border-emerald-250';
       case 'LimitedAccess':
         return 'text-content-muted bg-surface-background border-subtle';
@@ -134,7 +133,6 @@ export default function TrustCenterScreen() {
   const getAccountStateLabel = (state: string) => {
     switch (state) {
       case 'DiasporaVerified': return 'Verified';
-      case 'FullCommunityAccess': return 'Full Access';
       case 'LimitedAccess': return 'Limited Access';
       case 'DiasporaVerificationPending': return 'Pending';
       case 'VerificationUnderReview': return 'Under Review';

@@ -68,7 +68,7 @@ function renderScreen() {
 beforeEach(() => {
   useAuthStore.setState({
     isAuthenticated: true,
-    user: { userId: 'member', accountState: 'FullCommunityAccess' } as never,
+    user: { userId: 'member', accountState: 'DiasporaVerified' } as never,
   });
 });
 

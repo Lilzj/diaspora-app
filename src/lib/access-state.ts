@@ -9,8 +9,7 @@ import type { AccountState } from '@/types/trust';
  * used to bridge them with `as AccountState` — a cast, which asserts a claim
  * rather than checking one. The backend's `"Verified"` was therefore stored as
  * though it were a valid `AccountState`, TypeScript could not object, and
- * `FeatureGate` — which opens only for `'DiasporaVerified'` or
- * `'FullCommunityAccess'` — never matched.
+ * `FeatureGate` — which opened only for `'DiasporaVerified'` — never matched.
  *
  * **The gate never opened, for any member, however verified.** Everything it
  * wraps was permanently locked: the home feed, Discover, Create, Knowledge,
@@ -34,14 +33,23 @@ import type { AccountState } from '@/types/trust';
  * * **`Locked` and `Disabled` → `Restricted`.** The client union has no member
  *   for either. `Restricted` is the nearest thing it has that denies access, and
  *   collapsing them is safe in the direction that matters: it never grants.
- * * **`FullCommunityAccess` is unreachable.** Nothing in the backend maps to it.
- *   It is left in the union rather than removed because other screens branch on
- *   it, and deleting a member of a shared union is a wider change than this
- *   defect warrants — but nothing will ever produce it.
  *
  * An unrecognised value falls back to `LimitedAccess`: the least-privileged
  * state. A new backend state must not silently grant anything, and this is the
  * direction to be wrong in.
+ *
+ * ── Every place the two vocabularies meet is in this file ────────────────────
+ *
+ * That was the point of the module and it was not true until 18 Nov 2026.
+ * `auth-destination.ts` held a second, independent bridge — a set of states
+ * that send a member to the gateway, compared against the **server's** raw
+ * `accessState` and written in the **client's** words. Three of its eight
+ * entries matched by coincidence of spelling and five could never match at all.
+ * It now calls {@link toAccountState} like everything else, and
+ * {@link GATED_ACCOUNT_STATES} below is the list it consults.
+ *
+ * A second bridge is how the original defect returns, so if a third is ever
+ * needed, it belongs here.
  */
 const ACCESS_STATE_TO_ACCOUNT_STATE: Readonly<Record<string, AccountState>> = {
   RegistrationStarted: 'RegistrationStarted',
@@ -95,5 +103,32 @@ export function isAwaitingDecision(state: AccountState | null | undefined): bool
 
 /** Whether a state grants the contributor surface `FeatureGate` protects. */
 export function grantsCommunityAccess(state: AccountState): boolean {
-  return state === 'DiasporaVerified' || state === 'FullCommunityAccess';
+  return state === 'DiasporaVerified';
+}
+
+/**
+ * Whether a member in this **server** access state must be sent to the gateway
+ * rather than to the tabs.
+ *
+ * ── Why this is one line and not a list ─────────────────────────────────────
+ *
+ * It was a list: a `Set<string>` in `auth-destination.ts` holding eight states,
+ * compared against the server's raw `accessState` and written in this client's
+ * words. Three entries matched by coincidence of spelling. Five could not match
+ * anything the server can send, and five states the server does send matched
+ * nothing — so a member in `VerificationPending`, `Locked` or `Disabled` was
+ * routed to the tabs, and only the root layout's own redirect pulled them back.
+ *
+ * A second list of which states are gated is a second answer to a question that
+ * already has one: the gateway exists for exactly the members the feature gate
+ * refuses. Deriving it from {@link grantsCommunityAccess} means there is nothing
+ * to keep in step.
+ *
+ * Unknown states become {@link DEFAULT_ACCOUNT_STATE} and are therefore gated.
+ * A server that grows a state sends members to the gateway rather than into the
+ * tabs, which is the direction to be wrong in — the same reasoning as the
+ * mapping's own fallback, now applied to routing as well.
+ */
+export function requiresAccessGateway(accessState: string | null | undefined): boolean {
+  return !grantsCommunityAccess(toAccountState(accessState));
 }

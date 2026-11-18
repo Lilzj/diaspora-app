@@ -15,10 +15,10 @@ export default function ProfileScreen() {
   /**
    * Whether the platform actually considers this member verified.
    *
-   * `grantsCommunityAccess` is the predicate the rest of the app already uses —
-   * `DiasporaVerified` or `FullCommunityAccess` — so the badge cannot disagree
-   * with what `FeatureGate` opens. Writing a fresh comparison here is how two
-   * screens end up with two definitions of the same word.
+   * `grantsCommunityAccess` is the predicate the rest of the app already uses,
+   * so the badge cannot disagree with what `FeatureGate` opens. Writing a fresh
+   * comparison here is how two screens end up with two definitions of the same
+   * word.
    *
    * The badge above was hardcoded, so it appeared for everybody, including
    * members the platform had not verified at all.

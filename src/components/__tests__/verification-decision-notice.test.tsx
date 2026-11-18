@@ -73,10 +73,16 @@ describe('VerificationDecisionNotice', () => {
     jest.useRealTimers();
   });
 
-  it('says nothing to a member who was already verified', () => {
+  it('says nothing to a member who was not waiting on a decision', () => {
+    // The second state here was `FullCommunityAccess`, which nothing could
+    // produce (FSOLID-007), so this read as "one verified state to another".
+    // The claim it was making is unchanged and now uses a transition that can
+    // actually happen: the alert follows a *decision*, so a member who was
+    // already verified hears nothing when their state changes for some other
+    // reason.
     setState('DiasporaVerified');
     render(<VerificationDecisionNotice />);
-    setState('FullCommunityAccess');
+    setState('Suspended');
 
     expect(mockShowAlert).not.toHaveBeenCalled();
   });
