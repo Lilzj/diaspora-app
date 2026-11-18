@@ -41,8 +41,19 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
   onOpenInsights,
   onOpenComments,
 }) => {
-  if (!item) return null;
-
+  // ── Hooks first, then the guard (FSEC-007, 18 Nov 2026) ──────────────────
+  //
+  // `if (!item) return null` used to sit above these three, which is a
+  // rules-of-hooks violation and a live one: React identifies hook state by
+  // call order, so a render with `item` null called zero hooks and the next
+  // with an item called three. The parent passes a selection that becomes null
+  // when the sheet closes, on the same mounted instance -- so the component
+  // threw "Rendered more hooks than during the previous render" and took the
+  // creator workspace with it.
+  //
+  // Nothing here needs `item`, so the guard simply moves below. Found by
+  // `react-hooks/rules-of-hooks` on the first run of the linter this project
+  // did not have.
   const insets = useSafeAreaInsets();
   const { showAlert, showToast } = useNotification();
   // `renewListing` is deliberately not taken from the store any more — see
@@ -50,6 +61,8 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
   // still reference it; this menu no longer pretends it does anything.
   const { updateItemStatus, archiveItem, deleteItem, loadContent } =
     useContentManagementStore();
+
+  if (!item) return null;
 
   /**
    * Status changes, and the half of them that is real.

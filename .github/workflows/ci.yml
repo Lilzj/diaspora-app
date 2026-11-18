@@ -78,6 +78,104 @@ jobs:
         if: ${{ !cancelled() }}
         run: npm test -- --ci --silent
 
+      # ── FARCH-001: the three questions the tooling could not answer ───────
+      #
+      # The architecture report listed three and could answer none of them:
+      # are there circular imports, are the hook dependency arrays correct,
+      # and what is in the production bundle. All three were absent tooling
+      # rather than absent analysis, which is why they are one change.
+      #
+      # Cycles first, because it is the only one that could reveal a live
+      # defect and it did: `components/analytics/index.ts` and
+      # `SubjectDashboard.tsx` imported each other, and the cycle resolved
+      # safely only because of the order of the exports in the barrel. Metro
+      # hands one module a partially-initialised copy of the other, so the
+      # failure mode is `undefined is not a function` on a cold bundle — a
+      # launch, not a reload. It takes eighteen seconds to answer and the
+      # answer is now zero.
+      - name: Circular imports
+        if: ${{ !cancelled() }}
+        run: npm run lint:cycles
+
+      # ── FSEC-007 / FSOLID-006: static analysis beyond tsc ─────────────────
+      #
+      # `tsc --noEmit` was the only thing reading 400,000 lines of TypeScript.
+      # It is a good first line and this project uses it well, and it cannot
+      # see a stale closure over auth state or an unawaited `signOut()`.
+      #
+      # `react-hooks/exhaustive-deps` and `@typescript-eslint/no-floating-promises`
+      # are errors; the rest are warnings so the baseline was adoptable on the
+      # day it landed. The 477 existing errors are in `eslint-suppressions.json`,
+      # which is ESLint's own bulk-suppression mechanism and a ratchet in both
+      # directions: a new violation fails the build, and a suppression for a
+      # violation that no longer exists *also* fails it, with the message
+      # "there are suppressions left that do not occur anymore". The file can
+      # only shrink, and `npm run lint:prune` is how it does.
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: npm run lint
+
+  # ── What is actually in the shipped bundle (FARCH-001) ────────────────────
+  #
+  # Its own job because an export takes minutes and the three steps above take
+  # seconds; a slow step at the end of a fast job is a slow job, and the signal
+  # people stop waiting for is the signal they stop reading.
+  #
+  # Reported rather than budgeted. FARCH-001 asks for the size to be recorded
+  # per build and says a budget can follow once a baseline exists, which is the
+  # right order: a threshold picked before anybody has seen the number is a
+  # threshold picked to pass.
+  #
+  # What it *does* assert is FSEC-003 and FSEC-004's closure, which is not a
+  # question of size. Those two removed ~940 KB of engineering prose and the
+  # mock tree from the module graph by resolving them away at build time, and
+  # until this job existed the evidence was an import graph rather than an
+  # artefact. `production-bundle-shape.test.ts` checks the register; this
+  # checks the output.
+  bundle-shape:
+    name: What ships
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Export the production bundle
+        run: npx expo export --platform android --clear --output-dir dist-ci
+
+      - name: Record the size
+        run: |
+          set -euo pipefail
+          echo "## Bundle" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          du -sh dist-ci | sed 's/^/total  /' >> "$GITHUB_STEP_SUMMARY"
+          find dist-ci -name '*.hbc' -o -name '*.js' | head -20 | xargs -r du -h             | sort -rh >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      # Node, not grep, and the script says why at length: UTF-16LE of ASCII
+      # text is every other byte NUL, and command substitution in a POSIX shell
+      # drops NUL bytes — so the obvious two-line `iconv | grep` collapses back
+      # to an ASCII search and reports every UTF-16 string absent. Measured
+      # before this script existed. It also carries a canary, because a search
+      # that finds nothing cannot be told from one that cannot find anything.
+      - name: The development-only modules are absent
+        run: node scripts/assert-bundle-shape.js dist-ci
+
+      - name: Keep the export
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-bundle
+          path: dist-ci
+          retention-days: 7
+
   # ── What the two repositories say about each other ────────────────────────
   #
   # Eleven suites read the backend checkout: the emitted OpenAPI contract, and
