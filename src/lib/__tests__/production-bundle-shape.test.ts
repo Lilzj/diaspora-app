@@ -73,6 +73,7 @@ const readdirSync: (
 ) => { name: string; isDirectory(): boolean }[] = require('fs').readdirSync;
 const join: (...parts: string[]) => string = require('path').join;
 const resolvePath: (...parts: string[]) => string = require('path').resolve;
+const pathSeparator: string = require('path').sep;
 
 const ROOT = join(__dirname, '..', '..', '..');
 const SRC = join(ROOT, 'src');
@@ -249,17 +250,23 @@ describe('what production code may reach inside src/mocks', () => {
   // non-test code imports directly, with the reason it is allowed to ship. A
   // new import that is not on this list fails, which is the point: the next
   // fixture to reach a screen should have to argue for itself.
+  //
+  // ── Three entries came off this list on 18 Nov 2026 (FBL-002 / FSOLID-008) ──
+  //
+  // `countries`, `data` and `explore-data` were here with reasons that argued
+  // against their own presence — "reference data that thirteen screens need,
+  // misfiled under src/mocks by history rather than by nature". They are now
+  // filed by nature: `@/lib/reference/countries`, `@/lib/reference/languages`,
+  // `@/lib/reference/provider-categories` and `@/lib/content/tutorials`.
+  //
+  // What that bought is below. **Every remaining entry is on the dev-only
+  // register**, so every production reach into `src/mocks` is a module Metro
+  // resolves away in a release build — which is what FSEC-004 set out to do and
+  // could not finish while eighteen files depended on the behaviour of three
+  // modules that could never be stubbed. `scripts/production-stubs.js` states
+  // that rule itself: a stub returning an empty list to the registration
+  // eligibility funnel is a fabricated-content defect, and the worse problem.
   const ALLOWED: Record<string, string> = {
-    countries:
-      'The ISO country list with flags and calling codes. Reference data that ' +
-      'thirteen screens need, misfiled under src/mocks by history rather than ' +
-      'by nature. Nothing about it is simulated.',
-    data:
-      'The language and category lists. Reference data, same as countries.',
-    'explore-data':
-      'mockTutorials, read by the search screen. Fixture content on a ' +
-      'production surface — tracked separately; it is a disclosure question, ' +
-      'not a bundle-shape one.',
     'automation-gap-data':
       'Reached only by store/auth.ts, guarded, and resolved to a stub in a ' +
       'production bundle. On the dev-only register.',
@@ -288,6 +295,27 @@ describe('what production code may reach inside src/mocks', () => {
       unexpected: [],
       where: [],
     });
+  });
+
+  it('allows only modules the dev-only register resolves away', () => {
+    // The tie that was missing. The list above is hand-written and the register
+    // is hand-written, and until the reference data moved out they could not
+    // agree — three entries here had no entry there, by necessity. Now they
+    // can, so a reach that is allowed but not swapped is a module that ships.
+    const registered = new Set(
+      register.DEV_ONLY_MODULES.map((entry) =>
+        entry.module
+          .replace(/\.tsx?$/, '')
+          .replace(/^src\/mocks\/?/, '')
+          // `src/mocks/index.ts` is reached as `@/mocks`, which this list
+          // spells as the empty string.
+          .replace(/^index$/, '')
+      )
+    );
+
+    for (const name of Object.keys(ALLOWED)) {
+      expect({ name, swapped: registered.has(name) }).toEqual({ name, swapped: true });
+    }
   });
 
   it('has not left an entry on the list that nothing reaches any more', () => {

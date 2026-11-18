@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, BackHandler, Platform } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
-import { allCountries } from '@/mocks/countries';
+import { allCountries } from '@/lib/reference/countries';
 import { detectCountry, setSimulatedCountry } from '@/lib/location/detect-country';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 

@@ -44,7 +44,7 @@ import {
   SUPPORTING_NOTES_MAX_LENGTH,
 } from '@/lib/trust-api';
 import type { WireVerificationDocumentType } from '@/types/trust';
-import { allCountries } from '@/mocks/countries';
+import { allCountries } from '@/lib/reference/countries';
 import { useNotification } from '@/providers/notification-provider';
 import { backOr } from '@/lib/navigation';
 

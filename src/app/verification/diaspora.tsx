@@ -13,7 +13,7 @@ import type { VerificationStatus } from '@/types/trust';
 import { mediaDocumentReference, SUPPORTING_NOTES_MAX_LENGTH } from '@/lib/trust-api';
 import type { WireVerificationDocumentType } from '@/types/trust';
 import { useNotification } from '@/providers/notification-provider';
-import { allCountries } from '@/mocks/countries';
+import { allCountries } from '@/lib/reference/countries';
 import { formatDocumentType } from '@/utils/format';
 import { useThemeTokens } from '@/design-system';
 import { backOr } from '@/lib/navigation';

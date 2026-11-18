@@ -1,5 +1,6 @@
 import type MockAdapter from 'axios-mock-adapter';
-import { mockTutorials, mockReleaseAnnouncements } from '../explore-data';
+import { mockReleaseAnnouncements } from '../explore-data';
+import { bundledTutorials } from '@/lib/content/tutorials';
 import { platformProblem } from '../platform-problem';
 
 export function setupExploreMocks(mock: MockAdapter) {
@@ -7,7 +8,7 @@ export function setupExploreMocks(mock: MockAdapter) {
   // Supports filtering by category and fuzzy query matching
   mock.onGet('/explore/tutorials').reply((config) => {
     const { category, query } = config.params || {};
-    let filtered = [...mockTutorials];
+    let filtered = [...bundledTutorials];
 
     if (category) {
       filtered = filtered.filter(t => t.categoryId === category);
@@ -37,7 +38,7 @@ export function setupExploreMocks(mock: MockAdapter) {
     // Clean query parameters from ID if any
     const cleanId = id.split('?')[0];
 
-    const tutorial = mockTutorials.find(t => t.id === cleanId);
+    const tutorial = bundledTutorials.find(t => t.id === cleanId);
 
     if (tutorial) {
       return [
@@ -66,24 +67,24 @@ export function setupExploreMocks(mock: MockAdapter) {
   mock.onGet('/explore/recommendations').reply((config) => {
     const { isVerified, helpfulVotesCount } = config.params || {};
 
-    const recommendations: typeof mockTutorials = [];
+    const recommendations: typeof bundledTutorials = [];
 
     // Rule 1: If not verified, highly recommend Residency Verification
     if (isVerified === 'false' || !isVerified) {
-      const v = mockTutorials.find(t => t.id === 'tut-1');
+      const v = bundledTutorials.find(t => t.id === 'tut-1');
       if (v) recommendations.push(v);
     }
 
     // Rule 2: If user has votes but hasn't published guides, recommend guide publishing
-    const creatorGuide = mockTutorials.find(t => t.id === 'tut-2');
+    const creatorGuide = bundledTutorials.find(t => t.id === 'tut-2');
     if (creatorGuide) recommendations.push(creatorGuide);
 
     // Rule 3: Recommend general safety
-    const safety = mockTutorials.find(t => t.id === 'tut-3');
+    const safety = bundledTutorials.find(t => t.id === 'tut-3');
     if (safety) recommendations.push(safety);
 
     // Add others up to 3 items
-    mockTutorials.forEach((t) => {
+    bundledTutorials.forEach((t) => {
       if (recommendations.length < 4 && !recommendations.find(r => r.id === t.id)) {
         recommendations.push(t);
       }

@@ -22,7 +22,7 @@ import { SettingsItem, SettingsGroup } from '@/components/SettingsItem';
 import { useTheme } from '@/design-system';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { LanguageSheet } from '@/components/settings/LanguageSheet';
-import { mockLanguages } from '@/mocks/data';
+import { supportedLanguages } from '@/lib/reference/languages';
 import { useAuthStore } from '@/store/auth';
 
 export default function SettingsScreen() {
@@ -31,7 +31,7 @@ export default function SettingsScreen() {
   // The language picker is a sheet rather than a route. See `LanguageSheet`.
   const [isLanguageOpen, setLanguageOpen] = useState(false);
   const [language, setLanguage] = useState('en');
-  const languageName = mockLanguages.find((l) => l.code === language)?.name ?? 'English';
+  const languageName = supportedLanguages.find((l) => l.code === language)?.name ?? 'English';
 
   // The platform's own grants are posted by its administrators (UAT, 3 Nov
   // 2026, item 7). Shown only where the server granted the permission; the

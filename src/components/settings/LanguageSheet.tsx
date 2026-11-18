@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Sheet } from '@/components/overlays/AppModal';
 import { useTheme } from '@/design-system';
-import { mockLanguages } from '@/mocks/data';
+import { supportedLanguages } from '@/lib/reference/languages';
 
 interface LanguageSheetProps {
   visible: boolean;
@@ -43,7 +43,7 @@ export function LanguageSheet({ visible, onClose, selected, onSelect }: Language
         accessibilityLabel="Language"
         className="px-1 pb-2"
       >
-        {mockLanguages.map((language, index) => {
+        {supportedLanguages.map((language, index) => {
           const isSelected = selected === language.code;
 
           return (

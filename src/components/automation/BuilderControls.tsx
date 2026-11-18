@@ -34,7 +34,7 @@ import React, { memo, useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
-import { allCountries } from '@/mocks/countries';
+import { allCountries } from '@/lib/reference/countries';
 import {
   resolvePartSupport,
   type ServedSupportLookup,

@@ -10,7 +10,7 @@ import { WizardFooter } from '@/components/forms/WizardFooter';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
 import { coordinatesOf, ownPinOrTown } from '@/lib/place-coordinates';
-import { mockCategories } from '@/mocks/data';
+import { providerCategoryIcon, providerCategoryKey } from '@/lib/reference/provider-categories';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { useMemberCurrency } from '@/lib/member-currency';
 import { Image } from 'expo-image';
@@ -1218,17 +1218,25 @@ export default function PostScreen() {
 
 /**
  * The server's key for a picked category: its slug. Picks are slugs since
- * 13 Oct 2026; a draft saved before holds the fixture's `cat-1` ids, which are
- * translated here so it can still be published.
+ * 13 Oct 2026; a draft saved before holds the old `cat-1` ids, which are
+ * translated so it can still be published.
+ *
+ * The translation table moved out of `@/mocks/data` on 18 Nov 2026 (FBL-002):
+ * it was never a fixture, it is a closed list of ids the client stopped
+ * minting over a month ago. See `@/lib/reference/provider-categories`.
  */
 function categoryKey(id: string | undefined): string {
-  if (!id) return '';
-  return mockCategories.find((category) => category.id === id)?.slug ?? id;
+  return providerCategoryKey(id);
 }
 
-/** An emoji for a category chip. The server's icon field names an icon set, not an emoji. */
+/**
+ * An emoji for a category chip. The server's icon field names an icon set, not
+ * an emoji.
+ *
+ * The four slugs that used to be an inline fallback map here are in the same
+ * table as the rest now, so the two cannot disagree about a category the
+ * server serves.
+ */
 function categoryIcon(slug: string): string {
-  const known = mockCategories.find((category) => category.slug === slug)?.icon;
-  if (known) return known;
-  return ({ 'faith-worship': '🙏', 'community-associations': '🤝', 'government-embassies': '🏛️', other: '🏷️' } as Record<string, string>)[slug] ?? '🏷️';
+  return providerCategoryIcon(slug);
 }

@@ -30,7 +30,7 @@ import { DatePickerInput } from '@/components/DatePickerInput';
 import { useNotification } from '@/providers/notification-provider';
 import { useResidenceEditor, useResidenceTimeline } from '@/hooks/residence';
 import { toIsoDay, type ResidenceWire } from '@/lib/location/residence';
-import { allCountries } from '@/mocks/countries';
+import { allCountries } from '@/lib/reference/countries';
 import { clearSightings, dismissSuggestion, suggestRelocation } from '@/lib/location/relocation-hint';
 import { backOr } from '@/lib/navigation';
 

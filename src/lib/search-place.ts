@@ -35,7 +35,7 @@ import { newIdempotencyKey } from './idempotency';
 import { resolveAddress } from './maps/address-search';
 import { searchWords, type PlaceCandidate, type SearchIntent, type SearchTab } from './search-intent';
 import { searchTowns } from './town-search';
-import { allCountries } from '@/mocks/countries';
+import { allCountries } from '@/lib/reference/countries';
 import { hasCoordinate, RADIUS_DEFAULT_KM, type PlatformLocation } from '@/store/location';
 
 export type SentencePlace =
