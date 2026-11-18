@@ -116,3 +116,6 @@ docs/uat/*
 !docs/uat/android/
 docs/uat/android/*
 !docs/uat/android/*.md
+
+# The CI bundle export (FARCH-001). Local runs land here too.
+dist-ci/

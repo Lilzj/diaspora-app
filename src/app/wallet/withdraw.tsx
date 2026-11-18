@@ -86,10 +86,31 @@ function presentWithdrawalStatus(status: string): StatusPresentation {
         description: 'Failed. The money is back in your wallet.',
         isTerminal: true, isSettled: false, needsReconciliation: false,
       };
+    // ── Reversed, which was unreachable (FSEC-007, 18 Nov 2026) ────────────
+    //
+    // This block existed, labelled "Refused", with no `case` above it -- so it
+    // sat after `case 'Failed'`'s return and no input could ever reach it. The
+    // first run of the linter this project did not have reported it as
+    // `no-unreachable`, and what it was hiding is the part that mattered:
+    // `Reversed` had no case at all and fell through to `default`, which reads
+    // "On its way. Bank transfers usually take one to two working days."
+    //
+    // `Reversed` is the backend's term for a withdrawal that completed and then
+    // came back -- a bounced transfer, a recalled payment, settled by a
+    // compensating entry rather than by undoing the payout. So the wallet was
+    // telling a member whose money had already returned that it was still in
+    // flight, on a terminal state, with `needsReconciliation` left true.
+    //
+    // "Refused" is not a withdrawal status on this platform and never was; the
+    // backend's six are Requested, Processing, Completed, Failed, Cancelled and
+    // Reversed. The tone and icon match `financial-status.ts`'s own `Reversed`,
+    // and `isSettled` is true there and here for the same reason: the money did
+    // move, twice.
+    case 'Reversed':
       return {
-        label: 'Refused', tone: 'negative', icon: 'close-circle-outline',
-        description: 'Refused after review. The money is back in your wallet.',
-        isTerminal: true, isSettled: false, needsReconciliation: false,
+        label: 'Reversed', tone: 'warning', icon: 'swap-horizontal-outline',
+        description: 'Reversed. The transfer came back and the money is in your wallet again.',
+        isTerminal: true, isSettled: true, needsReconciliation: false,
       };
     case 'Cancelled':
       return {

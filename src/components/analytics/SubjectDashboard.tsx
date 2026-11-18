@@ -63,24 +63,32 @@ import type {
   AnalyticsMetricKey,
   AnalyticsSubject,
 } from '@/types/analytics';
-import {
-  AnalyticsEmptyState,
-  AnalyticsFetchingIndicator,
-  AnalyticsFilterBar,
-  AnalyticsSection,
-  BreakdownPanel,
-  ChartCard,
-  ComparisonPicker,
-  ExportHeaderButton,
-  ExportSheet,
-  FunnelPanel,
-  LeaderboardPanel,
-  MetricGrid,
-  RangePicker,
-  WithheldMetricsNote,
-  useMetricDefinitionSheet,
-} from './index';
-import { AnalyticsScreen } from './AnalyticsScreen';
+// ── Siblings by name, not through the barrel (FARCH-001, 18 Nov 2026) ───────
+//
+// This block used to read `from './index'`, which made the only circular
+// import in the repository: the barrel's last line exports this file, so the
+// barrel was mid-initialisation when this module asked it for a component.
+//
+// It worked, and only because of the order of lines in `index.ts` — every name
+// below is exported above `SubjectDashboard` there, so each binding was already
+// set by the time this ran. The barrel's own comment records the reasoning:
+// "Exported last because it depends on everything above it."
+//
+// That is a correctness invariant held by the order of statements in a file
+// nobody edits for correctness reasons. Alphabetise those exports and the cycle
+// resolves the other way: Metro hands this module a partially-initialised
+// barrel, `MetricGrid` is undefined, and every analytics route crashes with
+// "undefined is not a function" at a call site far from the cause — on a cold
+// bundle, which is to say on a launch and not in development.
+//
+// Naming the siblings costs nothing and removes the ordering dependency, which
+// is what lets `npm run lint:cycles` assert zero rather than one.
+import { ChartCard } from './AnalyticsCharts';
+import { AnalyticsFilterBar, ComparisonPicker, ExportSheet, RangePicker } from './AnalyticsControls';
+import { BreakdownPanel, FunnelPanel, LeaderboardPanel } from './AnalyticsPanels';
+import { AnalyticsEmptyState, AnalyticsSection, WithheldMetricsNote } from './AnalyticsPrimitives';
+import { MetricGrid, useMetricDefinitionSheet } from './MetricCards';
+import { AnalyticsFetchingIndicator, AnalyticsScreen, ExportHeaderButton } from './AnalyticsScreen';
 
 export interface SubjectDashboardProps {
   subject: AnalyticsSubject;
