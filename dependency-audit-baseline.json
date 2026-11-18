@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-18",
+  "generated": "2026-11-16",
   "accepted": [
     {
       "id": "GHSA-27p8-2357-5qqv",
@@ -116,15 +116,6 @@
       "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
       "reachedVia": "expo, babel-preset-expo",
       "accepted": "Prebuild and config-plugin tooling (expo, @expo/config-plugins, expo-sharing, the React Native jest preset). Not imported by app code, so not in the bundle. Still carried after the Expo SDK 58 upgrade of 16 November 2026, which cleared 38 advisories but not this one.",
-      "tracked": "FSEC-001"
-    },
-    {
-      "id": "GHSA-fc5q-39xc-vjpf",
-      "package": "picomatch",
-      "severity": "high",
-      "title": "picomatch vulnerable to ReDoS through single-branch repeated extglobs",
-      "reachedVia": "@expo/cli, @expo/metro-config, @parcel/watcher, jest-haste-map and jest-message-util",
-      "accepted": "Build and test tooling only -- the Expo CLI, the Metro config, the file watcher and jest internals. Not imported by app code, so not in the bundle; verified against the production export, which contains neither of the development-only markers the bundle-shape job greps for. No fixed release exists: every published picomatch up to and including 4.0.7 is in range, and npm reports the only \"fix\" as a semver-major downgrade of jest-expo, which would not resolve it. Pre-existing and unrelated to the lint toolchain added on 18 Nov 2026: the gate fails identically with that toolchain removed, 79 vulnerable packages instead of 92 but the same 22 distinct advisories.",
       "tracked": "FSEC-001"
     },
     {
