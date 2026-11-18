@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
+import { grantsCommunityAccess } from '@/lib/access-state';
 import { useMyVerifications, useSubmitAppeal } from '@/hooks/trust';
 import { APPEAL_REASON_MIN_LENGTH, isAppealAlreadyOpenError, trustErrorMessage } from '@/lib/trust-api';
 import { Button } from '@/components/Button';
@@ -55,7 +56,10 @@ export default function AccessGatewayScreen() {
     } else if (accountState === 'LimitedAccess') {
       // Allow explore mode in tabs
       router.replace('/(tabs)/discover');
-    } else if (accountState === 'DiasporaVerified' || accountState === 'FullCommunityAccess') {
+    } else if (grantsCommunityAccess(accountState)) {
+      // The shared predicate, not a comparison written here: this screen
+      // deciding a member is verified while `FeatureGate` disagrees is how the
+      // gateway sends somebody to a tab that then refuses them.
       router.replace('/(tabs)');
     }
   }, [accountState]);

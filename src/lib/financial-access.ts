@@ -117,7 +117,6 @@ export function toAccessTier(state: AccountState | undefined | null): AccessTier
       return AccessTier.PendingVerification;
 
     case 'DiasporaVerified':
-    case 'FullCommunityAccess':
       return AccessTier.Verified;
 
     default:

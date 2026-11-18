@@ -56,7 +56,7 @@ beforeEach(() => {
   useAuthStore.setState({
     status: 'authenticated',
     isAuthenticated: true,
-    user: { userId: 'member', accountState: 'FullCommunityAccess' } as never,
+    user: { userId: 'member', accountState: 'DiasporaVerified' } as never,
   });
 
   // earned 1,450 − converted 500 − spent 300 − taken back 200 = 450.

@@ -40,7 +40,7 @@ export function VerificationDecisionNotice() {
     previous.current = accountState;
     if (!before || !isAwaitingDecision(before as never) || before === accountState) return;
 
-    if (accountState === 'DiasporaVerified' || accountState === 'FullCommunityAccess') {
+    if (accountState === 'DiasporaVerified') {
       showAlert({
         type: 'success',
         title: firstName ? `You're verified, ${firstName}!` : "You're verified!",

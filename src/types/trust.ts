@@ -104,6 +104,30 @@ export type VerificationStatus =
   /** Never attempted (`GET /trust/profile` only, since 20 Oct 2026; was reported as Pending). */
   | 'NotStarted';
 
+/**
+ * What this client believes about a member's standing.
+ *
+ * Not the server's vocabulary. The backend's `AccessState` has nine values and
+ * this union has eleven; `lib/access-state.ts` holds the one translation
+ * between them, and `lib/__tests__/access-state.test.ts` asserts it covers the
+ * server's enumeration exactly, reading the server's own source to do it.
+ *
+ * **`FullCommunityAccess` used to be here and is gone (18 Nov 2026).** Nothing
+ * produced it — not the translation, not any `setAccountState` call — so every
+ * branch on it was dead, including `FeatureGate`'s second condition, which was
+ * permanently false and harmless only because the first one is right. It was
+ * left in place because other screens branched on it; that is circular, and the
+ * compiler settles it in one pass. Removing it from this union is what makes
+ * its return a type error rather than a comment nobody reads.
+ *
+ * Two members are still unreachable, for a different reason, and
+ * `access-state.test.ts` names them with that reason rather than letting them
+ * pass unremarked: `VerificationRejected` and `RequiresMoreInformation` are
+ * real situations the server reports through the Trust verification status, not
+ * through `AccessState`, so nothing sets them here. Those are unwired, not
+ * redundant — deleting them would delete this app's only handling of a refused
+ * verification.
+ */
 export type AccountState =
   | 'RegistrationStarted'
   | 'PhoneVerified'
@@ -111,7 +135,6 @@ export type AccountState =
   | 'DiasporaVerificationPending'
   | 'VerificationUnderReview'
   | 'DiasporaVerified'
-  | 'FullCommunityAccess'
   | 'VerificationRejected'
   | 'RequiresMoreInformation'
   | 'Suspended'
