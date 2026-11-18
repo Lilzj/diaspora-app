@@ -35,7 +35,7 @@
 // rather than a number in the country they left.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { allCountries, type CountryItem } from '@/mocks/countries';
+import { allCountries, type CountryItem } from '@/lib/reference/countries';
 
 /** The country that a calling code belongs to, when exactly one does. */
 export interface CallingCodeMatch {

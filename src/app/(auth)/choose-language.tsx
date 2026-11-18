@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { mockLanguages } from '@/mocks/data';
+import { supportedLanguages } from '@/lib/reference/languages';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function ChooseLanguageScreen() {
@@ -24,7 +24,7 @@ export default function ChooseLanguageScreen() {
       </View>
 
       <FlatList
-        data={mockLanguages}
+        data={supportedLanguages}
         keyExtractor={(item) => item.code}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: bottomInset }}
         renderItem={({ item }) => (

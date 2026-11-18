@@ -39,7 +39,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { AUTOMATION_GAPS } from '@/config/automation-gaps';
-import { allCountries } from '@/mocks/countries';
+import { allCountries } from '@/lib/reference/countries';
 import type {
   AutomationAccess,
   AutomationAudience,

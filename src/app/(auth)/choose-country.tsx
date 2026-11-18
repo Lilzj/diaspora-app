@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SearchBar } from '@/components/SearchBar';
-import { allCountries } from '@/mocks/countries';
+import { allCountries } from '@/lib/reference/countries';
 import { detectCountry, type CountryDetection } from '@/lib/location/detect-country';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 

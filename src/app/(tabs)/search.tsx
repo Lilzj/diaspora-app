@@ -182,7 +182,7 @@ import { CategoryChip } from '@/components/CategoryChip';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/Button';
 import { ProviderCard } from '@/components/ProviderCard';
-import { mockTutorials } from '@/mocks/explore-data';
+import { bundledTutorials } from '@/lib/content/tutorials';
 import { TutorialCard } from '@/components/explore/TutorialCard';
 
 // Certified provider client — `GET /providers` and `GET /providers/categories`.
@@ -351,7 +351,7 @@ export default function SearchScreen() {
     const q = query.trim().toLowerCase();
     if (!q) return [];
 
-    return mockTutorials.filter(
+    return bundledTutorials.filter(
       (tut) =>
         tut.title.toLowerCase().includes(q) ||
         tut.summary.toLowerCase().includes(q) ||

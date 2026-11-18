@@ -1,18 +1,5 @@
 // Centralised mock data for the entire application
 
-export const mockCategories = [
-  { id: 'cat-1', name: 'Food & Restaurants', icon: '🍛', slug: 'food-restaurants' },
-  { id: 'cat-2', name: 'Hair & Beauty', icon: '💇', slug: 'hair-beauty' },
-  { id: 'cat-3', name: 'Retail & Shopping', icon: '🛍️', slug: 'retail-shopping' },
-  { id: 'cat-4', name: 'Health & Wellness', icon: '💪', slug: 'health-wellness' },
-  { id: 'cat-5', name: 'Home Services', icon: '🏠', slug: 'home-services' },
-  { id: 'cat-6', name: 'Auto & Transport', icon: '🚗', slug: 'auto-transport' },
-  { id: 'cat-7', name: 'Finance & Legal', icon: '⚖️', slug: 'finance-legal' },
-  { id: 'cat-8', name: 'Education', icon: '📚', slug: 'education' },
-  { id: 'cat-9', name: 'Events', icon: '🎉', slug: 'events' },
-  { id: 'cat-10', name: 'IT & Tech', icon: '💻', slug: 'it-tech' },
-];
-
 export const mockListings = [
   {
     listingId: 'list-1',
@@ -196,18 +183,6 @@ export const mockCountries = [
   { code: 'CM', name: 'Cameroon', flag: '🇨🇲', callingCode: '+237' },
   { code: 'SN', name: 'Senegal', flag: '🇸🇳', callingCode: '+221' },
   { code: 'ET', name: 'Ethiopia', flag: '🇪🇹', callingCode: '+251' },
-];
-
-export const mockLanguages = [
-  { code: 'en', name: 'English' },
-  { code: 'fr', name: 'Français' },
-  { code: 'ar', name: 'العربية' },
-  { code: 'pt', name: 'Português' },
-  { code: 'sw', name: 'Kiswahili' },
-  { code: 'ha', name: 'Hausa' },
-  { code: 'yo', name: 'Yorùbá' },
-  { code: 'ig', name: 'Igbo' },
-  { code: 'am', name: 'አማርኛ' },
 ];
 
 export const mockUser = {

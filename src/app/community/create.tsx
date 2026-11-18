@@ -33,7 +33,7 @@ import { useProposeCommunity } from '@/hooks/communities';
 import { communityTypeLabel } from '@/components/community-directory';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
-import { allCountries } from '@/mocks/countries';
+import { allCountries } from '@/lib/reference/countries';
 import { backOr } from '@/lib/navigation';
 
 const TYPES: CommunityType[] = [

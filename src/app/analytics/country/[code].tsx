@@ -24,7 +24,7 @@
 
 import React from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { allCountries } from '@/mocks/countries';
+import { allCountries } from '@/lib/reference/countries';
 import { SubjectDashboard } from '@/components/analytics';
 
 export default function CountryAnalyticsScreen() {

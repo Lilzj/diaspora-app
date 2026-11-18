@@ -1,3 +1,42 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// The country list — reference data, not a fixture (FBL-002 / FSOLID-008).
+//
+// This lived in `src/mocks/countries.ts` until 18 Nov 2026 and was imported
+// from there by fifteen production files, three of which are the registration
+// eligibility funnel: choose-country, choose-origin and eligibility-error.
+//
+// ── Why the move mattered more than it looks ────────────────────────────────
+//
+// The server decides eligibility, so a divergence here produces a confusing
+// refusal rather than a bypass — the client offers a country the server
+// rejects, or omits one it would accept. The direction is safe. What was not
+// safe is what the misfiling cost everything around it:
+//
+//   * It defeats the mock audit. Anyone checking "mock data on production
+//     paths" found nineteen hits and had to determine by hand that these were
+//     reference data. A genuine leftover fixture hides in a list like that —
+//     and one was: see `provider-categories.ts`, which this move found.
+//
+//   * It kept `src/mocks` in the production bundle. FSEC-004 resolves the mock
+//     tree away at build time, and `scripts/production-stubs.js` states the
+//     rule that makes that safe: nothing in a production path may depend on
+//     the *behaviour* of a stubbed module. Fifteen screens depended on this
+//     file's behaviour, so it could never be stubbed, and the tree could never
+//     be fully absent.
+//
+//   * It blocked a one-line guarantee. "No production code imports from
+//     @/mocks" is now a test — `src/lib/__tests__/reference-data-provenance.test.ts`.
+//
+// ── Provenance, and what is still owed ──────────────────────────────────────
+//
+// Bundled, and this file is now its single source on the client. The audit's
+// preferred end state is to generate it from the backend at build time, the
+// way `served-routes.ts` is generated from the contract — the Location module
+// owns the authoritative list and serves it. That is a build-pipeline change
+// and is deliberately not made here; what is fixed is that there is one copy
+// and it is filed as what it is.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface CountryItem {
   code: string;
   name: string;
