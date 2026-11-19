@@ -113,9 +113,15 @@ describe('where it is used', () => {
   const profile = read('src', 'app', 'housing', 'host', '[id].tsx');
   const home = read('src', 'app', 'housing', '[id].tsx');
   const item = read('src', 'app', 'marketplace', '[id].tsx');
+  const module = read('src', 'lib', 'housing-landlord.ts');
 
   it('reads the landlord route through the mapper, not through fields it does not send', () => {
-    expect(profile).toContain('landlordProfileFromWire(');
+    // The mapper moved behind `fetchLandlordProfile` for FSOLID-002, so the
+    // screen names the read rather than the mapping. The guarantee is the same
+    // one and is now stronger: the screen *cannot* get a profile without the
+    // mapping having run, where before it could have stopped calling it.
+    expect(profile).toContain('fetchLandlordProfile(');
+    expect(module).toContain('landlordProfileFromWire(');
     expect(profile).toContain('landlordHomesParams(');
     // The fields it used to read and render; the header still names them, so
     // these match the code that used them rather than the prose about them.

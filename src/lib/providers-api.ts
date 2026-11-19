@@ -50,6 +50,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
+import { toList } from './platform-envelope';
 import { toFinancialError } from './financial-errors';
 
 /** The platform's `{ data, meta }` envelope, as `PlatformResults.Ok` writes it. */
@@ -647,4 +648,28 @@ export async function setProviderBookmark(
     // the platform lost their save.
     throw toFinancialError(cause, 'mutating');
   }
+}
+
+/**
+ * The provider directory around a point (FSOLID-002).
+ *
+ * Read by `housing/[id].tsx` for the strip under a home. `/listings` was never
+ * a route on this platform and a `/discovery/search` fallback that also does
+ * not exist used to sit behind it, turning one failure into two on every load —
+ * that history is why this is one function with one route in it.
+ *
+ * A signed-out viewer gets a 401: unlike housing and marketplace discovery, the
+ * provider directory requires `providers.read`. The caller decides what an
+ * empty strip means.
+ */
+export async function fetchProvidersNear(params: {
+  cityName?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  radiusKm?: number;
+  sort?: string;
+  limit?: number;
+}): Promise<unknown[]> {
+  const response = await apiClient.get('/providers', { params });
+  return toList(response.data);
 }

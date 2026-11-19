@@ -289,7 +289,13 @@ describe('the marketplace detail screen reads the wire shape', () => {
 
   it('reads the wire through the seam rather than flattening it again inline', () => {
     // The screen must not go back to picking the nested objects apart itself.
-    expect(SCREEN).toContain('toListing(');
+    // Since FSOLID-002 it cannot: `fetchMarketplaceListingDetail` runs
+    // `toListing` inside the boundary, so the screen never sees a wire object
+    // to flatten. Asserted on both halves -- that the screen asks for the
+    // mapped listing, and that the seam is what maps it.
+    expect(SCREEN).toContain('fetchMarketplaceListingDetail(');
+    expect(SCREEN).not.toContain('res.data.data');
+    expect(SEAM).toContain('toListing(');
     expect(SCREEN).not.toContain('raw?.price');
     expect(SCREEN).not.toContain('seller.displayName');
   });

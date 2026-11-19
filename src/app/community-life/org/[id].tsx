@@ -6,9 +6,9 @@ import { ReportModal } from '@/components/ReportModal';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { API_BASE_URL, apiClient } from '@/lib/apiClient';
+import { mediaImageUrl } from '@/lib/media-url';
 import { useSavedStore } from '@/store/saved';
-import { readPage } from '@/lib/platform-envelope';
+import { FinancialError } from '@/lib/financial-errors';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { useTheme } from '@/design-system';
@@ -25,7 +25,7 @@ import { useAuthStore } from '@/store/auth';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { backOr } from '@/lib/navigation';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
-import { deleteOrganization } from '@/lib/community-life-api';
+import { deleteOrganization, fetchEvents, fetchOrganizationWire } from '@/lib/community-life-api';
 
 /**
  * Where the platform serves a media item's bytes.
@@ -39,9 +39,12 @@ import { deleteOrganization } from '@/lib/community-life-api';
  * that will 404 on every render.
  */
 export function mediaUri(mediaId?: string | null): string | undefined {
-  return typeof mediaId === 'string' && mediaId.length > 0
-    ? `${API_BASE_URL}/media/${mediaId}/content`
-    : undefined;
+  // Through `mediaImageUrl`, which builds the same address. This screen used to
+  // import `API_BASE_URL` from `@/lib/apiClient` and interpolate it here, which
+  // is the same boundary crossing as calling `apiClient` directly — the screen
+  // owned a route shape (FSOLID-002). `'original'` is `/media/{id}/content`,
+  // which is what this was.
+  return mediaImageUrl(mediaId, 'original') ?? undefined;
 }
 
 /**
@@ -180,8 +183,7 @@ export default function OrgProfileScreen() {
 
   /** Re-read the organisation, so what is rendered is what was stored. */
   const reloadOrg = async () => {
-    const res = await apiClient.get(`/community-life/organizations/${id}`);
-    setOrg(res.data.data);
+    setOrg(await fetchOrganizationWire(String(id)));
   };
 
   // Set when a manager opens the edit screen, so coming back re-reads what they
@@ -192,9 +194,8 @@ export default function OrgProfileScreen() {
     useCallback(() => {
       if (!returningFromEdit.current) return;
       returningFromEdit.current = false;
-      apiClient
-        .get(`/community-life/organizations/${id}`)
-        .then((res) => setOrg(res.data.data))
+      fetchOrganizationWire(String(id))
+        .then(setOrg)
         .catch(() => {
           // The page keeps what it had; a pull re-reads it.
         });
@@ -427,11 +428,17 @@ export default function OrgProfileScreen() {
       setIsLoading(true);
       setErrorMsg('');
       try {
-        const res = await apiClient.get(`/community-life/organizations/${id}`);
-        setOrg(res.data.data);
-      } catch (err: any) {
+        setOrg(await fetchOrganizationWire(String(id)));
+      } catch (err: unknown) {
         console.error('Error fetching organization details', err);
-        setErrorMsg(err?.response?.data?.message || 'Failed to load organization profile.');
+        // `fetchOrganizationWire` converts every failure to the platform's
+        // `FinancialError`, whose `message` is the copy written for a member —
+        // so there is no `err.response.data.message` to read any more, and
+        // reading it would have produced the fallback sentence every time.
+        setErrorMsg(
+          (err instanceof FinancialError ? err.message.trim() : '') ||
+            'Failed to load organization profile.'
+        );
       } finally {
         setIsLoading(false);
       }
@@ -532,10 +539,12 @@ export default function OrgProfileScreen() {
 
     (async () => {
       try {
-        const res = await apiClient.get('/community-life/events', {
-          params: { organizationId: id, limit: 20 },
-        });
-        if (!cancelled) setOrgEvents(readPage<any>(res.data).items);
+        // `organizationId` had no member on `EventQueryParams` until FSOLID-002
+        // added one, which is why this screen asked the route itself. Migrating
+        // without adding it would have dropped the filter and shown every event
+        // on the platform under this organisation's name.
+        const page = await fetchEvents({ organizationId: String(id), limit: 20 });
+        if (!cancelled) setOrgEvents(page.items);
       } catch {
         // An unreadable list is not an empty one, but this tab has no error
         // state of its own yet; leaving it empty is the same thing it did

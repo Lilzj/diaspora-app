@@ -144,8 +144,20 @@ export interface BaseAttachment {
   type: AttachmentType;
   uploadState: AttachmentUploadState;
   uploadProgress?: number;   // 0–100
-  url?: string;              // Available once uploaded
+  /**
+   * The address of the bytes.
+   *
+   * **The server leaves this null in a default deployment.**
+   * `MessageAttachmentResponse.Url` is documented as *"populated only where a
+   * deployment resolves Media URLs"* — the identifier below is the load-bearing
+   * field. `ConversationHub.media()` fills this in from `mediaAssetId` on the
+   * way through, so a reader of this type still gets an address.
+   */
+  url?: string;
   thumbnailUrl?: string;
+  /** The B5 asset the bytes live on. Absent only on an attachment not yet uploaded. */
+  mediaAssetId?: string;
+  thumbnailMediaId?: string;
   mimeType?: string;
   sizeBytes?: number;
   createdAt: string;
@@ -171,6 +183,16 @@ export interface VoiceAttachment extends BaseAttachment {
 }
 
 export type MessageAttachment = ImageAttachment | DocumentAttachment | VoiceAttachment;
+
+/**
+ * `GET /conversations/{id}/media` — the attachment gallery, in the three
+ * buckets the route sorts it into.
+ */
+export interface ConversationMediaGallery {
+  images: ImageAttachment[];
+  documents: DocumentAttachment[];
+  voice: VoiceAttachment[];
+}
 
 // ---------------------------------------------------------------------------
 // MESSAGES

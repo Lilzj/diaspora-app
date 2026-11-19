@@ -30,9 +30,12 @@ import { useConversationStore } from '@/store/conversation';
 import { usePresenceStore } from '@/store/presence';
 import { useTypingStore } from '@/store/typing';
 import { showAlertOutsideReact } from '@/providers/notification-provider';
+import { mediaImageUrl } from '@/lib/media-url';
 import type {
   BlockedUser,
   Conversation,
+  ConversationMediaGallery,
+  MessageAttachment,
   OpenConversationParams,
   ConversationContextSnapshot,
   MuteDuration,
@@ -40,6 +43,25 @@ import type {
 } from '@/types/conversation';
 
 const MAX_PINS = 5;
+
+/**
+ * Attachments with an address on them, whether or not the deployment supplied
+ * one.
+ *
+ * `url` is nullable on the wire by design; `mediaAssetId` is `required`. An
+ * attachment that already carries a URL keeps it — a deployment that resolves
+ * Media URLs may be signing them, and a signed link is not reconstructable.
+ */
+function withResolvedAddresses<T extends MessageAttachment>(items: T[] | undefined): T[] {
+  if (!Array.isArray(items)) return [];
+
+  return items.map((item) => ({
+    ...item,
+    url: item.url ?? mediaImageUrl(item.mediaAssetId, 'original') ?? undefined,
+    thumbnailUrl:
+      item.thumbnailUrl ?? mediaImageUrl(item.thumbnailMediaId, 'thumbnail') ?? undefined,
+  }));
+}
 
 // ---------------------------------------------------------------------------
 // HUB SERVICE
@@ -494,6 +516,39 @@ class ConversationHubService {
     const list = Array.isArray(payload) ? payload : payload?.data;
 
     return Array.isArray(list) ? list : [];
+  }
+
+  /**
+   * The attachment gallery: images, documents and voice notes.
+   *
+   * **Added for FSOLID-002**, where `conversation/media/[id].tsx` called
+   * `GET /conversations/{id}/media` itself and read `res.data.data` as the
+   * gallery. Moving it here is not only tidiness — the screen could not have
+   * rendered the images:
+   *
+   * `MessageAttachmentResponse.Url` is documented as *"populated only where a
+   * deployment resolves Media URLs. Null by default."* The screen handed that
+   * null straight to `<Image source={{ uri: item.url }}>`, so every photograph
+   * in every conversation gallery drew an empty box. The bytes were reachable
+   * the whole time through the required `MediaAssetId`.
+   *
+   * That is the same defect `media-url.ts` exists to prevent for listing cards,
+   * and it is exactly the knowledge the audit says leaks when a screen owns its
+   * own request: the route, the envelope *and* the assumption that the server
+   * hands back an address. The address is resolved here, once, at the boundary.
+   */
+  async media(conversationId: string): Promise<ConversationMediaGallery> {
+    const response = await apiClient.get<{ data?: Partial<ConversationMediaGallery> }>(
+      `/conversations/${encodeURIComponent(conversationId)}/media`
+    );
+
+    const gallery = response.data?.data;
+
+    return {
+      images: withResolvedAddresses(gallery?.images),
+      documents: withResolvedAddresses(gallery?.documents),
+      voice: withResolvedAddresses(gallery?.voice),
+    };
   }
 
   /**

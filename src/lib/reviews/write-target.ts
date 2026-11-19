@@ -20,6 +20,8 @@
 // anything.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { apiClient } from '@/lib/apiClient';
+
 /** Who is being reviewed. */
 export type ReviewSubject = 'provider' | 'seller' | 'landlord';
 
@@ -43,6 +45,48 @@ export interface ReviewTargetInput {
 export interface ReviewRequest {
   path: string;
   body: Record<string, unknown>;
+}
+
+/**
+ * A refusal the server expressed, carried in the platform's own vocabulary.
+ *
+ * `write-review.tsx` used to read `cause.response.data.code` and `.detail` off
+ * the axios error itself, which is the envelope knowledge FSOLID-002 is about:
+ * the screen knew the route *and* the shape of a problem document. Those two
+ * values are all it ever wanted, so they are what crosses the boundary.
+ */
+export class ReviewSubmissionError extends Error {
+  readonly code: string | null;
+  readonly detail: string | null;
+
+  constructor(code: string | null, detail: string | null) {
+    super(detail ?? code ?? 'The review could not be sent.');
+    this.name = 'ReviewSubmissionError';
+    this.code = code;
+    this.detail = detail;
+  }
+}
+
+/**
+ * Sends a review that {@link buildReviewRequest} accepted.
+ *
+ * **This module was pure until FSOLID-002 and the trade is deliberate.** The
+ * three review routes live here, in `SUBJECT_PATH`, and the screen posting to
+ * `built.request.path` meant a screen holding a route this module had just
+ * finished choosing. Putting the send anywhere else would leave the path in one
+ * module and the request in another, which is the same split one level down.
+ *
+ * Everything above this line is still pure and still testable without a
+ * transport.
+ */
+export async function submitReview(request: ReviewRequest): Promise<void> {
+  try {
+    await apiClient.post(request.path, request.body);
+  } catch (cause) {
+    const payload = (cause as { response?: { data?: { code?: string; detail?: string } } })?.response
+      ?.data;
+    throw new ReviewSubmissionError(payload?.code ?? null, payload?.detail ?? null);
+  }
 }
 
 /** Why a review cannot be sent, in words a member can act on. */

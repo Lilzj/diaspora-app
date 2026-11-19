@@ -45,8 +45,24 @@ const STEPS_THROUGH = /\bset(?:Current)?(?:Step|ActiveStep|StepIndex)\s*\(/;
 /** Somewhere it collects what a member types. */
 const COLLECTS = /<TextInput|<Input[\s>]/;
 
-/** Somewhere it sends it. */
-const SENDS = /useMutation|mutateAsync|apiClient\.(?:post|put|patch)/;
+/**
+ * Somewhere it sends it.
+ *
+ * **This under-matched, and FSOLID-002 is how that showed.** It knew three
+ * spellings — a TanStack mutation, a mutation's `mutateAsync`, and a direct
+ * `apiClient.post|put|patch` — and after that row moved thirteen screens behind
+ * the api layer, two declared screens stopped matching any of them. The screens
+ * had not stopped sending; they had stopped sending *in a spelling this knew*.
+ *
+ * Adding the fourth spelling — awaiting a domain verb from the boundary —
+ * found **seven more screens the sweep had never seen**, every one of them
+ * already sending through a `*-api` module rather than through `apiClient`. A
+ * detector that recognises one transport and calls the absence of it "not a
+ * form" fails open, and silently: it reports nothing rather than reporting
+ * less. They are in `PENDING` below, which is what that list is for.
+ */
+const SENDS =
+  /useMutation|mutateAsync|apiClient\.(?:post|put|patch)|\bawait\s+(?:create|submit|save|send|publish|register|search)[A-Z]\w*\(/;
 
 /**
  * Every screen under `src/app` that collects typed input and sends it, and is
@@ -243,8 +259,57 @@ const NOT_A_FORM: { name: string; file: string[]; why: string; proof: RegExp }[]
   },
 ];
 
-/** Not yet done. Empty, and checked in both directions below. */
-const PENDING: { name: string; file: string[]; note: string }[] = [];
+/**
+ * Not yet done, and checked in both directions below.
+ *
+ * **These seven were found when `SENDS` learned its fourth spelling** (see the
+ * note on it). Each collects typed input and sends it through a `*-api` module;
+ * none ever went through `apiClient` directly, so the sweep had never seen any
+ * of them and each has been unexamined for as long as this file has existed.
+ *
+ * They are recorded rather than examined here because gating a form's submit
+ * button on what the form holds is a change to that screen, and seven of them
+ * is a phase rather than a footnote to FSOLID-002. Listing them is the point:
+ * an unexamined form that nothing names is indistinguishable from one that does
+ * not exist.
+ */
+const PENDING: { name: string; file: string[]; note: string }[] = [
+  {
+    name: 'one-time passcode',
+    file: ['(auth)', 'otp.tsx'],
+    note: 'Sends a code the member types. Whether it refuses an incomplete code before asking is unexamined.',
+  },
+  {
+    name: 'access gateway',
+    file: ['access-gateway.tsx'],
+    note: 'Collects and submits; never seen by this sweep because it goes through the trust module.',
+  },
+  {
+    name: 'edit an event',
+    file: ['community-life', 'event', 'edit', '[id].tsx'],
+    note: 'The create form is gated and examined; its edit twin has never been.',
+  },
+  {
+    name: 'edit an organisation',
+    file: ['community-life', 'org', 'edit', '[id].tsx'],
+    note: 'As above, and the same pair: register is examined, edit is not.',
+  },
+  {
+    name: 'edit a guide',
+    file: ['guide', 'edit', '[id].tsx'],
+    note: 'Sends through the guides module. Unexamined.',
+  },
+  {
+    name: 'post an update',
+    file: ['update', 'create.tsx'],
+    note: 'Collects a body and posts it through the community module. Unexamined.',
+  },
+  {
+    name: 'verify a country',
+    file: ['verification', 'country.tsx'],
+    note: 'Submits an identity claim through the trust module. Unexamined, and the most consequential of the seven.',
+  },
+];
 
 describe.each(FORMS)('$name', ({ file, gate, tells, why }) => {
   const source = sourceOf(...file);

@@ -3,7 +3,6 @@ import { View, Text, ScrollView, TouchableOpacity, Linking, Share, ActivityIndic
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotification } from '@/providers/notification-provider';
-import { toList } from '@/lib/platform-envelope';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { Image } from 'expo-image';
 import { useSavedStore } from '@/store/saved';
@@ -15,7 +14,14 @@ import { ProviderCard } from '@/components/ProviderCard';
 import { GuideResultCard } from '@/components/guides/GuideResultCard';
 import { ListingPhoto } from '@/components/ListingPhoto';
 import { ReportModal } from '@/components/ReportModal';
-import { apiClient } from '@/lib/apiClient';
+import {
+  fetchHousingListingDetail,
+  searchHousing,
+} from '@/lib/housing-listings-api';
+import { fetchLandlordDisclosure } from '@/lib/housing-landlord';
+import { fetchJobsNear } from '@/lib/job-postings-api';
+import { fetchProvidersNear } from '@/lib/providers-api';
+import { fetchGuidesFor } from '@/lib/guides-api';
 import { createSignedUrl } from '@/lib/media-api';
 import {
   isViewingAlreadyOpenError,
@@ -25,11 +31,9 @@ import {
 import type { HousingListing } from '@/types/housing';
 import { housingMediaIds } from '@/types/housing';
 import { placeLabelOf } from '@/lib/listing-place';
-import { toHousingCardListings, type HousingCardWire } from '@/lib/housing-cards';
 import { ConversationHub } from '@/lib/conversation-hub';
 import {
   homeConversationSubtitle,
-  hostFromLandlord,
   hostWithDisclosedContact,
   isHostedBy,
 } from '@/lib/housing-host';
@@ -121,7 +125,7 @@ export default function HousingDetailScreen() {
    */
   const [photoUris, setPhotoUris] = useState<string[]>([]);
 
-  // This screen loads through `useEffect` + `apiClient`, so there is no
+  // This screen loads through a `useEffect`, not a TanStack query, so there is
   // TanStack `refetch` to hand over. `refreshNonce` sits in the fetch
   // effect's dependency list and re-runs it.
   const { nonce: refreshNonce, refreshControl } = useEffectRefresh(loading);
@@ -153,64 +157,14 @@ export default function HousingDetailScreen() {
       try {
         // Remediation Wave A′. `/housing/{id}` has never existed; the listing
         // read is `/housing/listings/{idOrSlug}` and accepts either form.
-        const response = await apiClient.get(`/housing/listings/${encodeURIComponent(String(id))}`);
-        const raw = response.data.data;
+        //
+        // The forty-line flattening that used to sit here — `price`, `capacity`
+        // and `availability` unnested, `landlord` renamed to `host` — is
+        // `toHousingListingDetail` now (FSOLID-002). It is the same mapping with
+        // the same comments, in the module that owns the route, where it can be
+        // tested against a wire object instead of by rendering a screen.
+        const data = await fetchHousingListingDetail(String(id));
 
-        // **The wire calls the landlord `landlord`; this screen calls it `host`.**
-        // Nothing bridged the two, so `listing.host` was undefined and the first
-        // `listing.host.name.substring(0, 1)` threw — this screen could not render
-        // a real listing at all. Normalised here, and only from fields the summary
-        // actually carries: no tenure, no languages, no telephone number.
-        // ── The wire nests what this screen reads flat ────────────────────
-        //
-        // `HousingListingResponse` groups the listing's facts:
-        //
-        //     price:        { isDisclosed, amount, currencyCode, period,
-        //                     depositAmount, depositRequired, moveInTotal, … }
-        //     capacity:     { bedrooms, bathrooms, maximumOccupants, … }
-        //     availability: { availableFrom, availableUntil, totalUnits, … }
-        //     address:      { line1, postalCode, latitude, longitude, … }
-        //     furnishedStatus / leaseType / parking      — top-level strings
-        //
-        // The screen reads `listing.rent`, `listing.deposit`, `listing.currency`,
-        // `listing.bedrooms`, `listing.bathrooms`, `listing.furnished`,
-        // `listing.leaseDuration` and `listing.availabilityDate` — none of which
-        // the server sends. On the release build that rendered, in the member's
-        // own words:
-        //
-        //     MONTHLY RENT   undefined
-        //     Deposit: undefined      Lease:
-        //     BEDROOMS  Bedroom       BATHROOMS  Bathroom
-        //
-        // The rent is the single most important fact on a rental listing, and it
-        // said "undefined". Flattened here, beside the `landlord → host` mapping
-        // that already existed for the same reason, so the render stays as it is.
-        //
-        // Nothing is invented. An undisclosed price stays undefined and the
-        // render below says so; `"Unspecified"` — the server's own null lease —
-        // is dropped rather than shown as a lease term.
-        const price = raw.price ?? {};
-        const capacity = raw.capacity ?? {};
-        const availability = raw.availability ?? {};
-
-        const data: HousingListing = {
-          ...raw,
-          rent: price.isDisclosed === false ? undefined : price.amount,
-          currency: price.currencyCode ?? undefined,
-          deposit: price.depositAmount ?? 0,
-          billsIncluded: price.utilitiesIncluded ?? false,
-          internetIncluded: price.internetIncluded ?? false,
-          bedrooms: capacity.bedrooms ?? 0,
-          bathrooms: capacity.bathrooms ?? 0,
-          furnished: raw.furnishedStatus ?? undefined,
-          leaseDuration:
-            raw.leaseType && raw.leaseType !== 'Unspecified' ? raw.leaseType : undefined,
-          availabilityDate: availability.availableFrom ?? undefined,
-          // Including `ownerUserId`, which this inline mapping once left out, so
-          // every message about a home went to nobody.
-          host: hostFromLandlord(raw.landlord),
-        };
-        
         // Calculate distance locally
         if (data.location?.latitude && data.location?.longitude) {
           data.location.distanceKm = getDistanceKm(activeLocation.latitude, activeLocation.longitude, data.location.latitude, data.location.longitude);
@@ -225,11 +179,7 @@ export default function HousingDetailScreen() {
         // rather than take the page down.
         if (data.host.landlordId) {
           try {
-            const landlordRes = await apiClient.get(
-              `/housing/landlords/${encodeURIComponent(data.host.landlordId)}`
-            );
-
-            const disclosed = landlordRes.data?.data;
+            const disclosed = await fetchLandlordDisclosure(data.host.landlordId);
 
             setListing((current) =>
               current ? { ...current, host: hostWithDisclosedContact(current.host, disclosed) } : current
@@ -254,17 +204,12 @@ export default function HousingDetailScreen() {
         // and a failed search for its neighbours must not take the page down
         // with it — which it did, into the "not found" panel.
         try {
-          const similarRes = await apiClient.get('/housing/search', {
-            params: {
-              city: data.location.cityName || undefined,
-              countryCode: data.location.countryCode || undefined,
-              limit: 5,
-            }
+          const similar = await searchHousing({
+            city: data.location.cityName || undefined,
+            countryCode: data.location.countryCode || undefined,
+            limit: 5,
           });
-          // The route returns a cursor page of `HousingListingCardResponse` rows —
-          // `landlord`, not `host` — mapped once so the card can read them.
-          const allListings = toHousingCardListings(toList<HousingCardWire>(similarRes.data));
-          setSimilarListings(allListings.filter((h) => h.id !== data.id).slice(0, 2));
+          setSimilarListings(similar.items.filter((h) => h.id !== data.id).slice(0, 2));
         } catch (err) {
           console.log('No similar homes loaded', err);
           setSimilarListings([]);
@@ -272,14 +217,12 @@ export default function HousingDetailScreen() {
 
         // 2. Fetch nearby Jobs relative to listing coordinates
         try {
-          const jobsRes = await apiClient.get('/jobs', {
-            params: {
-              cityName: data.location.cityName,
-              latitude: data.location.latitude,
-              longitude: data.location.longitude
-            }
+          const jobs = await fetchJobsNear({
+            cityName: data.location.cityName,
+            latitude: data.location.latitude,
+            longitude: data.location.longitude,
           });
-          setNearbyJobs(toList(jobsRes.data).slice(0, 2));
+          setNearbyJobs(jobs.slice(0, 2));
         } catch (err) {
           console.log('No nearby jobs loaded', err);
         }
@@ -293,17 +236,15 @@ export default function HousingDetailScreen() {
         // two — and it was reached on *every* provider load, because the call it
         // was catching for always failed.
         try {
-          const provRes = await apiClient.get('/providers', {
-            params: {
-              cityName: data.location.cityName,
-              latitude: data.location.latitude,
-              longitude: data.location.longitude,
-              radiusKm: 10,
-              sort: 'distance',
-              limit: 5,
-            }
+          const providers = await fetchProvidersNear({
+            cityName: data.location.cityName,
+            latitude: data.location.latitude,
+            longitude: data.location.longitude,
+            radiusKm: 10,
+            sort: 'distance',
+            limit: 5,
           });
-          setNearbyProviders(toList(provRes.data).slice(0, 2));
+          setNearbyProviders(providers.slice(0, 2));
         } catch (err) {
           // A signed-out viewer gets a 401 here: unlike housing and marketplace
           // discovery, the provider directory requires `providers.read`. An
@@ -315,10 +256,11 @@ export default function HousingDetailScreen() {
         // has no cross-domain `/discovery/search` aggregator at all, which is
         // recorded as MC-03 and is genuinely missing from both repositories.
         try {
-          const guidesRes = await apiClient.get('/guides', {
-            params: { countryCode: data.location.countryCode, limit: 5 }
+          const guides = await fetchGuidesFor({
+            countryCode: data.location.countryCode,
+            limit: 5,
           });
-          setNearbyGuides(toList(guidesRes.data).slice(0, 2));
+          setNearbyGuides(guides.slice(0, 2));
         } catch (e) {
           console.log('No nearby guides loaded', e);
         }
@@ -818,7 +760,16 @@ export default function HousingDetailScreen() {
             through this app, and the one they are most likely to assume is
             being held for them.
           */}
-          {listing.deposit > 0 ? (
+          {/*
+            * **And a currency.** The deposit button takes `currency` and sends
+            * it into a payment; `listing.currency` is absent whenever the
+            * landlord did not disclose a price. It used to be typed `string`
+            * and reach here as `undefined`, so a deposit could be offered for
+            * payment in no currency at all. Typing the mapping against the wire
+            * for FSOLID-002 is what surfaced it. An amount with no currency is
+            * not a payable amount, so the button is not offered.
+            */}
+          {listing.deposit > 0 && listing.currency ? (
             <View className="mt-4 pt-4 border-t border-faint">
               <SubjectPaymentButton
                 subjectType="HousingListing"

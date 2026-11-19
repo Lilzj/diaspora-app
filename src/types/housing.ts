@@ -116,14 +116,31 @@ export interface HousingListing {
   rent?: number;
   /** `RentPeriod` — `PerMonth`, `PerWeek`, `PerNight`… — when the platform said. */
   rentPeriod?: string;
-  currency: string; // GBP, MUR, USD, EUR, etc.
+  // ── Four fields the wire may simply not carry ────────────────────────────
+  //
+  // These were declared required and the detail screen's mapping has always
+  // been able to produce `undefined` for every one of them — its own comment
+  // says so: *"Nothing is invented. An undisclosed price stays undefined and
+  // the render below says so; 'Unspecified' — the server's own null lease — is
+  // dropped rather than shown as a lease term."*
+  //
+  // It type-checked because the mapping read `response.data.data`, which is
+  // `any`, so the assignment was unchecked. FSOLID-002 moved that mapping into
+  // `housing-listings-api.ts` against a typed wire and all four surfaced at
+  // once. The renderers already guard — `listing.leaseDuration ? … : null` —
+  // so the type was the only thing claiming otherwise.
+  /** `PriceResponse.currencyCode`, absent on a listing with no disclosed price. */
+  currency?: string; // GBP, MUR, USD, EUR, etc.
   deposit: number;
   billsIncluded: boolean;
   internetIncluded: boolean;
   parkingAvailable: boolean;
-  furnished: 'Furnished' | 'Unfurnished' | 'Partially Furnished';
-  availabilityDate: string; // YYYY-MM-DD or custom string
-  leaseDuration: string; // e.g. '6 Months', '1 Year', 'Flexible'
+  /** `FurnishedStatus`. A string the server owns; absent when it said nothing. */
+  furnished?: string;
+  /** `availability.availableFrom`. Absent when no date was published. */
+  availabilityDate?: string; // YYYY-MM-DD or custom string
+  /** `LeaseType`, with the server's null sentinel `'Unspecified'` dropped. */
+  leaseDuration?: string; // e.g. '6 Months', '1 Year', 'Flexible'
   // ── What the wire actually sends ─────────────────────────────────────────
   //
   // `HousingListingResponse` has **no `gallery`**, and its `coverImage` is a

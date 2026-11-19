@@ -11,7 +11,6 @@ import { WizardFooter } from '@/components/forms/WizardFooter';
 import { ContactChoice } from '@/components/forms/ContactChoice';
 import { coordinatesOf, ownPinOrTown } from '@/lib/place-coordinates';
 import { Input } from '@/components/Input';
-import { apiClient } from '@/lib/apiClient';
 import { useTrustStore } from '@/store/trust';
 import * as ImagePicker from 'expo-image-picker';
 import { PhotoDropZone } from '@/components/PhotoDropZone';

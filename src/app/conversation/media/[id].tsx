@@ -8,15 +8,19 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useLocalSearchParams } from 'expo-router';
-import { apiClient } from '@/lib/apiClient';
+import { ConversationHub } from '@/lib/conversation-hub';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import type { ConversationMediaGallery } from '@/types/conversation';
 
 export default function ConversationMediaScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
 
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [media, setMedia] = useState<{ images: any[]; documents: any[]; voice: any[] }>({
+  // Typed rather than `any[]`, which is what going through the boundary buys:
+  // the gallery's shape is now checked against `MessageAttachment` instead of
+  // being asserted field by field at the render site (FSOLID-002).
+  const [media, setMedia] = useState<ConversationMediaGallery>({
     images: [], documents: [], voice: [],
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -25,8 +29,7 @@ export default function ConversationMediaScreen() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await apiClient.get(`/conversations/${id}/media`);
-        setMedia(res.data.data);
+        setMedia(await ConversationHub.media(String(id)));
       } finally {
         setIsLoading(false);
       }

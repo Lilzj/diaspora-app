@@ -1,3 +1,4 @@
+import { toHousingListingDetail } from '@/lib/housing-listings-api';
 import {
   homeConversationSubtitle,
   hostFromLandlord,
@@ -123,7 +124,21 @@ describe('the housing listing screen', () => {
   const screen = code('src', 'app', 'housing', '[id].tsx');
 
   it('builds its host from the landlord summary through the shared mapping', () => {
-    expect(screen).toContain('host: hostFromLandlord(raw.landlord)');
+    // Asserted by running the mapping rather than by reading the screen for it.
+    // It used to be inline in `[id].tsx` as `host: hostFromLandlord(raw.landlord)`;
+    // FSOLID-002 moved it into `toHousingListingDetail`, where the screen cannot
+    // get a listing without it having run.
+    const detail = toHousingListingDetail({
+      id: 'listing-1',
+      // `id` on the summary wire, `landlordId` on the host the screen renders —
+      // the rename this mapping exists to perform.
+      landlord: { id: 'll-9', displayName: 'Mensah Property Rentals', ownerUserId: 'u-3' },
+    } as never);
+
+    expect(detail.host.landlordId).toBe('ll-9');
+    // `ownerUserId` is the member one, and an earlier inline version of this
+    // mapping left it out — so every message about a home went to nobody.
+    expect(detail.host.ownerUserId).toBe('u-3');
   });
 
   it('decides ownership by the owner user id, not the provider id', () => {

@@ -827,8 +827,11 @@ describe('the community-life offline banner', () => {
       screen.indexOf('const handleRetryConnection'),
       screen.indexOf('const handleSaveToggle')
     );
-    // A genuine request, and a branch that says so when it fails.
-    expect(handler).toContain('await apiClient.get');
+    // A genuine request, and a branch that says so when it fails. Through
+    // `fetchEvents` since FSOLID-002 -- the same read the screen already loads
+    // through, on the same `apiClient`, so the interceptors that record a
+    // success or a network failure still run on the way past.
+    expect(handler).toContain('await fetchEvents(');
     expect(handler).toContain('Still offline');
   });
 
