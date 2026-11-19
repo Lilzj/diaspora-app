@@ -23,13 +23,13 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
 
   const handlePress = () => {
     // Record view in recentlyViewed queue
-    viewTutorial(tutorial.id);
+    void viewTutorial(tutorial.id);
     router.push(`/explore/tutorial/${tutorial.id}`);
   };
 
   const handleBookmark = (e: any) => {
     e.stopPropagation();
-    toggleSaveTutorial(tutorial.id);
+    void toggleSaveTutorial(tutorial.id);
   };
 
   const difficultyColors = {

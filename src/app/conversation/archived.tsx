@@ -26,7 +26,7 @@ export default function ArchivedConversationsScreen() {
   const { conversations, loadConversations } = useConversationStore();
 
   useEffect(() => {
-    loadConversations();
+    void loadConversations();
   }, []);
 
   const archived = selectFilteredConversations(selectSortedConversations(conversations), 'Archived');

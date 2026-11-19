@@ -46,7 +46,7 @@ export default function MyTransactionsScreen() {
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   if (isLoading) {

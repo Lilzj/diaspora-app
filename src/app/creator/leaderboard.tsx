@@ -59,7 +59,7 @@ export default function CreatorLeaderboardScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    query.refetch();
+    void query.refetch();
     setRefreshing(false);
   }, [query]);
 

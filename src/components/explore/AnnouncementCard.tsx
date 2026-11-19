@@ -29,7 +29,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   };
 
   const handleDismiss = () => {
-    dismissAnnouncement(announcement.version);
+    void dismissAnnouncement(announcement.version);
     if (onDismiss) {
       onDismiss();
     }

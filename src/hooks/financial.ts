@@ -370,7 +370,7 @@ export function usePaymentReconciliation(paymentIntentId: string | undefined): R
     const delay = reconciliationInterval(attempts.current);
     timer.current = setTimeout(() => {
       attempts.current += 1;
-      queryClient.invalidateQueries({ queryKey: financialKeys.payment(paymentIntentId) });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.payment(paymentIntentId) });
     }, delay);
 
     return () => {
@@ -390,7 +390,7 @@ export function usePaymentReconciliation(paymentIntentId: string | undefined): R
     if (!paymentIntentId) return;
     startedAt.current = Date.now();
     attempts.current = 0;
-    queryClient.invalidateQueries({ queryKey: financialKeys.payment(paymentIntentId) });
+    void queryClient.invalidateQueries({ queryKey: financialKeys.payment(paymentIntentId) });
   }, [paymentIntentId, queryClient]);
 
   return {
@@ -411,13 +411,13 @@ export function usePaymentReconciliation(paymentIntentId: string | undefined): R
  * remembered four of the five would leave a screen showing an old balance.
  */
 export function invalidateAfterMoneyMoved(queryClient: QueryClient): void {
-  queryClient.invalidateQueries({ queryKey: financialKeys.wallets() });
-  queryClient.invalidateQueries({ queryKey: financialKeys.transactions() });
-  queryClient.invalidateQueries({ queryKey: financialKeys.payments() });
-  queryClient.invalidateQueries({ queryKey: financialKeys.purchases() });
-  queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
-  queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
-  queryClient.invalidateQueries({ queryKey: financialKeys.subscription() });
+  void queryClient.invalidateQueries({ queryKey: financialKeys.wallets() });
+  void queryClient.invalidateQueries({ queryKey: financialKeys.transactions() });
+  void queryClient.invalidateQueries({ queryKey: financialKeys.payments() });
+  void queryClient.invalidateQueries({ queryKey: financialKeys.purchases() });
+  void queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+  void queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
+  void queryClient.invalidateQueries({ queryKey: financialKeys.subscription() });
 }
 
 /**
@@ -591,7 +591,7 @@ export function usePurchaseProduct() {
       if (purchase.payment) {
         queryClient.setQueryData(financialKeys.payment(purchase.payment.paymentIntentId), purchase.payment);
       }
-      queryClient.invalidateQueries({ queryKey: financialKeys.purchases() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.purchases() });
       if (purchase.status === 'Completed') invalidateAfterMoneyMoved(queryClient);
     },
   });
@@ -633,7 +633,7 @@ export function useCancelPlacement() {
     mutationFn: ({ placementId, reason }: { placementId: string; reason?: string }) =>
       api.cancelPlacement(placementId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
     },
   });
 }
@@ -792,7 +792,7 @@ export function useCreateDonation() {
       if (donation.payment) {
         queryClient.setQueryData(financialKeys.payment(donation.payment.paymentIntentId), donation.payment);
       }
-      queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
       if (donation.status === 'Completed') invalidateAfterMoneyMoved(queryClient);
     },
   });
@@ -841,8 +841,8 @@ export function useCreateContribution() {
           contribution.payment
         );
       }
-      queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
-      queryClient.invalidateQueries({ queryKey: financialKeys.funds() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.funds() });
       if (contribution.kind === 'Monetary' && contribution.status === 'Completed') {
         invalidateAfterMoneyMoved(queryClient);
       }
@@ -917,7 +917,7 @@ export function useRegisterPayoutDestination() {
     mutationFn: (request: RegisterPayoutDestinationRequest) =>
       api.registerPayoutDestination(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
     },
   });
 }
@@ -937,7 +937,7 @@ export function useStartPayoutOnboarding() {
     ...mutationOptions,
     mutationFn: (request: StartPayoutOnboardingRequest) => api.startPayoutOnboarding(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
     },
   });
 }
@@ -950,7 +950,7 @@ export function useRegisterPayoutIdentity() {
     ...mutationOptions,
     mutationFn: (request: RegisterPayoutIdentityRequest) => api.registerPayoutIdentity(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
     },
   });
 }
@@ -963,7 +963,7 @@ export function useRefreshPayoutDestination() {
     ...mutationOptions,
     mutationFn: (destinationId: string) => api.refreshPayoutDestination(destinationId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
     },
   });
 }
@@ -975,7 +975,7 @@ export function useRemovePayoutDestination() {
     ...mutationOptions,
     mutationFn: (destinationId: string) => api.removePayoutDestination(destinationId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
     },
   });
 }
@@ -1058,7 +1058,7 @@ export function useCreateDeposit() {
       return intent;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialKeys.deposits() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.deposits() });
     },
   });
 }
@@ -1152,7 +1152,7 @@ export function useCreateWithdrawal() {
       return withdrawal;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialKeys.withdrawals() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.withdrawals() });
 
       // A withdrawal holds the money the moment it is raised — the balance is
       // stale before anything settles.
@@ -1168,7 +1168,7 @@ export function useCancelWithdrawal() {
     ...mutationOptions,
     mutationFn: (withdrawalId: string) => api.cancelWithdrawal(withdrawalId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialKeys.withdrawals() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.withdrawals() });
       invalidateAfterMoneyMoved(queryClient);
     },
   });
@@ -1222,7 +1222,7 @@ export function useWithdrawalReconciliation(withdrawalId: string | undefined) {
     const timer = setTimeout(
       () => {
         attempts.current += 1;
-        queryClient.invalidateQueries({ queryKey: financialKeys.withdrawal(withdrawalId) });
+        void queryClient.invalidateQueries({ queryKey: financialKeys.withdrawal(withdrawalId) });
       },
       attempts.current < 5 ? 2_000 : 5_000
     );
@@ -1235,7 +1235,7 @@ export function useWithdrawalReconciliation(withdrawalId: string | undefined) {
       return;
     }
 
-    queryClient.invalidateQueries({ queryKey: financialKeys.withdrawal(withdrawalId) });
+    void queryClient.invalidateQueries({ queryKey: financialKeys.withdrawal(withdrawalId) });
   }, [withdrawalId, queryClient]);
 
   return {

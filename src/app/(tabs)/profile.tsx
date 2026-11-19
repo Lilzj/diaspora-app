@@ -35,7 +35,7 @@ export default function ProfileScreen() {
   const completionPercentage = Math.round((completedTutorials.length / totalTutorials) * 100);
 
   useEffect(() => {
-    useExploreStore.getState().loadPersistedState(); // Load state
+    void useExploreStore.getState().loadPersistedState(); // Load state
   }, []);
 
   return (

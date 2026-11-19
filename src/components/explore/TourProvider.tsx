@@ -97,9 +97,13 @@ const TourOverlay: React.FC = () => {
     });
 
     // Check accessibility reduced motion setting
-    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      setReduceMotion(enabled);
-    });
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        setReduceMotion(enabled);
+      })
+      // A platform that cannot answer leaves the default in place, which is
+      // "do not reduce motion" — the same state as before this ran.
+      .catch(() => undefined);
 
     return () => subscription.remove();
   }, []);

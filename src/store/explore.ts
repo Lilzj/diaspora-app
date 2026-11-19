@@ -3,6 +3,26 @@ import { exploreStorage } from '@/lib/storage/exploreStorage';
 import { TourId, TourStep, TourAnalyticsEvent, FeatureDiscoveryAnalyticsEvent, Tutorial } from '@/types/explore';
 import { getTourConfig, FEATURE_TOURS, CURRENT_PLATFORM_VERSION } from '@/config/featureRegistry';
 
+/**
+ * Persist in the background, and say so when it fails.
+ *
+ * `skipTour`, `finishTour` and `completeOnboarding` are synchronous: the member
+ * sees the result immediately and the write follows. So a rejected write has
+ * nobody to tell, and losing it silently means the tour runs again on the next
+ * launch — which `completeOnboarding`'s own comment calls indistinguishable from
+ * a reinstall. Awaiting it would make these actions async and change every
+ * caller; logging the failure costs nothing and makes the cause findable.
+ *
+ * The async actions below (`toggleSaveTutorial`, `completeTutorial`,
+ * `viewTutorial`, `addSearchTerm`, `dismissAnnouncement`) already await their
+ * writes. These five were the only ones that did neither.
+ */
+function persistInBackground(write: Promise<void>, what: string): void {
+  write.catch((error: unknown) => {
+    console.warn(`[explore] could not persist ${what}`, error);
+  });
+}
+
 interface ElementLayout {
   x: number;
   y: number;
@@ -284,9 +304,9 @@ export const useExploreStore = create<ExploreState>((set, get) => ({
       onboardingCompleted: isOnboarding ? true : state.onboardingCompleted,
     }));
 
-    exploreStorage.setCompletedTours(updatedCompleted);
+    persistInBackground(exploreStorage.setCompletedTours(updatedCompleted), 'the completed tours');
     if (isOnboarding) {
-      exploreStorage.setOnboardingCompleted(true);
+      persistInBackground(exploreStorage.setOnboardingCompleted(true), 'that onboarding is done');
     }
 
     trackTourAnalytics({
@@ -332,7 +352,7 @@ export const useExploreStore = create<ExploreState>((set, get) => ({
     if (get().onboardingCompleted) return;
 
     set({ onboardingCompleted: true });
-    exploreStorage.setOnboardingCompleted(true);
+    persistInBackground(exploreStorage.setOnboardingCompleted(true), 'that onboarding is done');
   },
 
   finishTour: () => {
@@ -353,9 +373,9 @@ export const useExploreStore = create<ExploreState>((set, get) => ({
       onboardingCompleted: isOnboarding ? true : state.onboardingCompleted,
     }));
 
-    exploreStorage.setCompletedTours(updatedCompleted);
+    persistInBackground(exploreStorage.setCompletedTours(updatedCompleted), 'the completed tours');
     if (isOnboarding) {
-      exploreStorage.setOnboardingCompleted(true);
+      persistInBackground(exploreStorage.setOnboardingCompleted(true), 'that onboarding is done');
     }
 
     trackTourAnalytics({

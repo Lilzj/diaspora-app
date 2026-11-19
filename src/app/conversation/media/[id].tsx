@@ -34,7 +34,7 @@ export default function ConversationMediaScreen() {
         setIsLoading(false);
       }
     };
-    load();
+    void load();
   }, [id]);
 
   const tabs = [

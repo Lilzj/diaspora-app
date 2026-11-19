@@ -107,7 +107,7 @@ export function WorkspaceSection({ onOpenHealthCentre }: WorkspaceSectionProps) 
     // BG-06. The activity history is read alongside the content lists rather
     // than when the Timeline toggle is first pressed: the toggle is a per-visit
     // preference and a member who flips it should not then wait for a request.
-    loadActivity(user.fullName);
+    void loadActivity(user.fullName);
   }, [user, setPublishingIdentity, loadContent, loadActivity]);
 
   // ── Filtering, exactly as it was ──────────────────────────────────────────

@@ -1,9 +1,4 @@
 {
-  "src/app/(auth)/choose-country.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
   "src/app/(auth)/eligibility-error.tsx": {
     "react/no-unescaped-entities": {
       "count": 2
@@ -42,9 +37,6 @@
     }
   },
   "src/app/(tabs)/discover.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 2
     },
@@ -59,9 +51,6 @@
     }
   },
   "src/app/(tabs)/index.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 2
     },
@@ -70,26 +59,15 @@
     }
   },
   "src/app/(tabs)/messages.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 4
-    },
     "react-hooks/exhaustive-deps": {
       "count": 3
     }
   },
   "src/app/(tabs)/post.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
     "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/app/(tabs)/profile.tsx": {
-    "@typescript-eslint/no-floating-promises": {
       "count": 1
     }
   },
@@ -145,9 +123,6 @@
     }
   },
   "src/app/community-life/event/[id].tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 6
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
@@ -181,9 +156,6 @@
     }
   },
   "src/app/community-life/org/[id].tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 3
-    },
     "react-hooks/exhaustive-deps": {
       "count": 2
     },
@@ -251,30 +223,16 @@
     }
   },
   "src/app/conversation/[id].tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 3
-    },
     "react-hooks/exhaustive-deps": {
       "count": 4
     }
   },
   "src/app/conversation/archived.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
-  "src/app/conversation/media/[id].tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
   "src/app/conversation/request.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
@@ -307,11 +265,6 @@
       "count": 4
     },
     "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/app/creator/leaderboard.tsx": {
-    "@typescript-eslint/no-floating-promises": {
       "count": 1
     }
   },
@@ -352,15 +305,7 @@
       "count": 1
     }
   },
-  "src/app/housing/[id].tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 4
-    }
-  },
   "src/app/housing/create.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
@@ -380,11 +325,6 @@
   },
   "src/app/housing/viewings.tsx": {
     "react-hooks/purity": {
-      "count": 1
-    }
-  },
-  "src/app/job/[id].tsx": {
-    "@typescript-eslint/no-floating-promises": {
       "count": 1
     }
   },
@@ -428,9 +368,6 @@
     }
   },
   "src/app/marketplace/[id].tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 4
-    },
     "react-hooks/purity": {
       "count": 1
     }
@@ -440,11 +377,6 @@
       "count": 1
     },
     "react-hooks/set-state-in-effect": {
-      "count": 2
-    }
-  },
-  "src/app/marketplace/donation-causes.tsx": {
-    "@typescript-eslint/no-floating-promises": {
       "count": 2
     }
   },
@@ -474,9 +406,6 @@
     }
   },
   "src/app/my-transactions.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
@@ -487,9 +416,6 @@
     }
   },
   "src/app/provider/[id].tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     }
@@ -523,9 +449,6 @@
     }
   },
   "src/app/verification/diaspora.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 3
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
@@ -566,23 +489,8 @@
       "count": 12
     }
   },
-  "src/components/HousingCard.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
-  "src/components/JobCard.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
   "src/components/ListingPhoto.tsx": {
     "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/components/MarketplaceCard.tsx": {
-    "@typescript-eslint/no-floating-promises": {
       "count": 1
     }
   },
@@ -678,16 +586,6 @@
       "count": 1
     }
   },
-  "src/components/creator/sections/WorkspaceSection.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
-  "src/components/explore/AnnouncementCard.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
   "src/components/explore/ProgressiveUnlockCard.tsx": {
     "react-hooks/exhaustive-deps": {
       "count": 1
@@ -697,19 +595,11 @@
     }
   },
   "src/components/explore/TourProvider.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
     "react-hooks/static-components": {
       "count": 4
-    }
-  },
-  "src/components/explore/TutorialCard.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 2
     }
   },
   "src/components/financial/PaymentSheet.tsx": {
@@ -732,18 +622,8 @@
       "count": 1
     }
   },
-  "src/components/maps/MapResultList.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
   "src/components/maps/MapsGapNotice.tsx": {
     "react-hooks/purity": {
-      "count": 1
-    }
-  },
-  "src/design-system/ThemeContext.tsx": {
-    "@typescript-eslint/no-floating-promises": {
       "count": 1
     }
   },
@@ -758,35 +638,16 @@
     }
   },
   "src/hooks/analytics.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 10
-    },
     "react-hooks/refs": {
       "count": 1
     }
   },
-  "src/hooks/community-life.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 59
-    }
-  },
-  "src/hooks/creator-economy.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 22
-    }
-  },
   "src/hooks/financial-gaps.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 10
-    },
     "react-hooks/refs": {
       "count": 4
     }
   },
   "src/hooks/financial.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 24
-    },
     "react-hooks/purity": {
       "count": 1
     },
@@ -810,16 +671,6 @@
   "src/hooks/media.ts": {
     "react-hooks/immutability": {
       "count": 1
-    }
-  },
-  "src/hooks/monetization-gaps.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 10
-    }
-  },
-  "src/hooks/monetization.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 7
     }
   },
   "src/hooks/usePullToRefresh.tsx": {
@@ -854,11 +705,6 @@
   "src/providers/pricing-provider.tsx": {
     "react-hooks/use-memo": {
       "count": 1
-    }
-  },
-  "src/store/explore.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 5
     }
   }
 }

@@ -66,6 +66,10 @@ export function MarketplaceCard({ listing: given, variant = 'list' }: Marketplac
     const priceText = priceLine();
     Share.share({
       message: `Check out this listing on Diaspora: "${title}" - ${priceText} in ${placeLabel}! Proximity: ${formattedDistance()}`,
+    }).catch((error: unknown) => {
+      // A card has no alert of its own, so this is logged rather than shown. The
+      // share sheet failing to open is otherwise a tap that does nothing.
+      console.warn('[marketplace-card] the share sheet could not be opened', error);
     });
   };
 

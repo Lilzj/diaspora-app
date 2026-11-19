@@ -444,7 +444,7 @@ export default function OrgProfileScreen() {
       }
     };
     if (id) {
-      fetchOrgDetails();
+      void fetchOrgDetails();
     }
   }, [id]);
 
@@ -507,7 +507,13 @@ export default function OrgProfileScreen() {
       showAlert({ type: 'info', title: 'Unavailable', message: 'This organization has not linked this social channel.' });
       return;
     }
-    Linking.openURL(url);
+    Linking.openURL(url).catch(() => {
+      showAlert({
+        type: 'error',
+        title: 'Unavailable',
+        message: 'Could not open that link.',
+      });
+    });
   };
 
   // ── What actually belongs to this organisation ─────────────────────────────
@@ -537,7 +543,7 @@ export default function OrgProfileScreen() {
     if (!id) return;
     let cancelled = false;
 
-    (async () => {
+    void (async () => {
       try {
         // `organizationId` had no member on `EventQueryParams` until FSOLID-002
         // added one, which is why this screen asked the route itself. Migrating

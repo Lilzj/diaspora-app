@@ -250,7 +250,13 @@ export default function ProviderDetailScreen() {
       showAlert({ type: 'error', title: 'Unavailable', message: 'No phone number provided by this provider.' });
       return;
     }
-    Linking.openURL(`tel:${phone}`);
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      showAlert({
+        type: 'error',
+        title: 'Unavailable',
+        message: 'Could not open the phone dialler on this device.',
+      });
+    });
   };
 
   const handleMessage = async () => {

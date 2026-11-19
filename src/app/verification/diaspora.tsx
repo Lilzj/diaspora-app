@@ -136,7 +136,7 @@ export default function DiasporaVerificationWizard() {
         console.error('Failed to read draft', err);
       }
     };
-    checkDraft();
+    void checkDraft();
   }, []);
 
   // Auto-save draft when changes happen
@@ -163,7 +163,7 @@ export default function DiasporaVerificationWizard() {
         }
       }
     };
-    saveDraft();
+    void saveDraft();
   }, [nationality, residenceCountry, docType, issueCountry, documentNumber, issueDate, expiryDate, supportingNotes, uploadedDocUri, selfieUri, step]);
 
   const handleRestoreDraft = async () => {
@@ -348,7 +348,7 @@ export default function DiasporaVerificationWizard() {
     if (step < STEPS.length - 1) {
       setStep(step + 1);
     } else {
-      handleSubmit();
+      void handleSubmit();
     }
   };
 

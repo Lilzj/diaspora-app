@@ -241,7 +241,7 @@ export default function DiscoverScreen() {
   const exploreStore = useExploreStore();
 
   useEffect(() => {
-    exploreStore.loadPersistedState();
+    void exploreStore.loadPersistedState();
   }, []);
 
   // ── First-visit tours, and why this is a `useFocusEffect` ─────────────────

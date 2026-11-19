@@ -131,7 +131,7 @@ export default function ConversationScreen() {
   // Load messages + mark read
   useEffect(() => {
     if (id) {
-      loadMessages(id);
+      void loadMessages(id);
       markConversationRead(id);
       ConversationHub.markRead(id).catch(() => {});
     }
@@ -222,7 +222,12 @@ export default function ConversationScreen() {
   const handleCopy = useCallback(() => {
     if (selectedMessage?.text) {
       if (Platform.OS === 'web') {
-        navigator.clipboard?.writeText(selectedMessage.text);
+        // No confirmation to guard here — the native branch below is synchronous
+        // and says nothing either. This only stops a refused clipboard from
+        // being an unhandled rejection.
+        navigator.clipboard?.writeText(selectedMessage.text).catch((error: unknown) => {
+          console.warn('[conversation] the browser would not let us copy the message', error);
+        });
       } else {
         Clipboard.setString(selectedMessage.text);
       }
@@ -238,10 +243,20 @@ export default function ConversationScreen() {
   const handleEditSave = useCallback(() => {
     const trimmed = editText.trim();
     if (editingMessage && trimmed) {
-      ConversationHub.editMessage(id, editingMessage.messageId, trimmed);
+      // The editor closes either way, below. Before this catch, a server that
+      // refused the edit left the member looking at their new text with no
+      // indication it had not been saved — the conversation would show the old
+      // one again on the next load, with nothing to explain it.
+      ConversationHub.editMessage(id, editingMessage.messageId, trimmed).catch(() => {
+        showAlert({
+          type: 'error',
+          title: 'Not saved',
+          message: 'That edit could not be saved. The original message is unchanged.',
+        });
+      });
     }
     setEditingMessage(null);
-  }, [editingMessage, editText, id]);
+  }, [editingMessage, editText, id, showAlert]);
 
   const handleDelete = useCallback(() => {
     if (!selectedMessage) return;

@@ -585,12 +585,12 @@ export function useAnalyticsDataset(
   ]);
 
   const refetch = useCallback(() => {
-    if (wantsContent) contentQuery.refetch();
-    if (wantsOwner) ownerQuery.refetch();
-    if (wantsPlace) placeQuery.refetch();
-    if (wantsInsights) insightsQuery.refetch();
-    if (wantsInventory) inventoryQuery.refetch();
-    if (communityId) communityStatistics.refetch();
+    if (wantsContent) void contentQuery.refetch();
+    if (wantsOwner) void ownerQuery.refetch();
+    if (wantsPlace) void placeQuery.refetch();
+    if (wantsInsights) void insightsQuery.refetch();
+    if (wantsInventory) void inventoryQuery.refetch();
+    if (communityId) void communityStatistics.refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     contentQuery,
@@ -1037,7 +1037,7 @@ export function useReportMutations() {
   const queryClient = useQueryClient();
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['analytics', 'reports'] });
+    void queryClient.invalidateQueries({ queryKey: ['analytics', 'reports'] });
   };
 
   const create = useMutation({
@@ -1155,9 +1155,9 @@ export function useInvalidateAnalyticsOnCommunitySwitch() {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['analytics', 'dataset'] });
-    queryClient.invalidateQueries({ queryKey: ['analytics', 'access'] });
-    queryClient.invalidateQueries({ queryKey: ['analytics', 'insights'] });
+    void queryClient.invalidateQueries({ queryKey: ['analytics', 'dataset'] });
+    void queryClient.invalidateQueries({ queryKey: ['analytics', 'access'] });
+    void queryClient.invalidateQueries({ queryKey: ['analytics', 'insights'] });
   }, [queryClient]);
 }
 
