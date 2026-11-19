@@ -91,6 +91,14 @@ export const recommendationKeys = {
   feed: (country?: string | null) => ['recommendations', 'feed', country ?? 'all'] as const,
   communities: (country?: string | null) =>
     ['recommendations', 'communities', country ?? 'all'] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  communitiesAll: () => ['recommendations', 'communities'] as const,
 };
 
 // ── The feed ─────────────────────────────────────────────────────────────────

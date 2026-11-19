@@ -227,6 +227,25 @@ export const analyticsKeys = {
   /** Insights — GAP-028. */
   insights: (subject: AnalyticsSubject, range: AnalyticsQuery['range']) =>
     ['analytics', 'insights', subject.type, subject.id ?? 'self', rangeToken(range)] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  datasetAll: () => ['analytics', 'dataset'] as const,
+  accessAll: () => ['analytics', 'access'] as const,
+  insightsAll: () => ['analytics', 'insights'] as const,
+  reportsAll: () => ['analytics', 'reports'] as const,
+
+  /** A wallet's analytics over a resolved window. */
+  wallet: (walletId: string | null | undefined, from: string, to: string, timezone: string) =>
+    ['analytics', 'wallet', walletId ?? 'none', from, to, timezone] as const,
+
+  /** The owner's holdings, by the role asking. */
+  ownerHoldings: (role?: string | null) =>
+    ['analytics', 'owner-holdings', role ?? 'none'] as const,
 };
 
 /**

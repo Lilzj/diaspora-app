@@ -66,6 +66,7 @@ import {
   simpleToFullForm,
   type SimpleJobForm as SimpleJobFormValues,
 } from '@/lib/simple-job-posting';
+import { jobsHiringKeys } from '@/lib/jobs-hiring-api';
 
 const STEPS = ['The role', 'Details and pay', 'Where the work is', 'Review and publish'] as const;
 
@@ -257,7 +258,7 @@ export default function CreateJobScreen() {
     setIsPublishing(true);
     try {
       const outcome = await postSimpleJob(simple, { displayName: memberName?.trim() || 'Diaspora member' });
-      void client.invalidateQueries({ queryKey: ['jobs-hiring'] });
+      void client.invalidateQueries({ queryKey: jobsHiringKeys.all });
 
       if (outcome.kind === 'published') {
         showAlert({
@@ -285,7 +286,7 @@ export default function CreateJobScreen() {
             onPress: async () => {
               try {
                 await publishJobPosting(draftId);
-                void client.invalidateQueries({ queryKey: ['jobs-hiring'] });
+                void client.invalidateQueries({ queryKey: jobsHiringKeys.all });
                 router.replace(`/job/${draftId}`);
               } catch (cause) {
                 showAlert({ type: 'error', title: 'Still not posted', message: jobPostingErrorMessage(cause) });
@@ -318,7 +319,7 @@ export default function CreateJobScreen() {
     setIsPublishing(true);
     try {
       const outcome = await postJob(employer.data.employerId, toPostJobInput(form));
-      void client.invalidateQueries({ queryKey: ['jobs-hiring'] });
+      void client.invalidateQueries({ queryKey: jobsHiringKeys.all });
 
       if (outcome.kind === 'published') {
         showAlert({
@@ -346,7 +347,7 @@ export default function CreateJobScreen() {
             onPress: async () => {
               try {
                 await publishJobPosting(draftId);
-                void client.invalidateQueries({ queryKey: ['jobs-hiring'] });
+                void client.invalidateQueries({ queryKey: jobsHiringKeys.all });
                 router.replace(`/job/${draftId}`);
               } catch (cause) {
                 showAlert({ type: 'error', title: 'Still not published', message: jobPostingErrorMessage(cause) });

@@ -188,4 +188,14 @@ export const automationKeys = {
    * travels with each entry rather than filtering the list.
    */
   catalog: () => ['automations', 'catalog'] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  /** The platform-support surface for one member. */
+  platformSupport: (userId: string | null) =>
+    ['automations', memberToken(userId), 'platform-support'] as const,
 };

@@ -592,7 +592,7 @@ export function useChangeSubscriptionPlan() {
       queryClient.setQueryData(financialKeys.subscription(), subscription);
       // The whole subtree: entitlements, upcoming charges and every cached
       // preview were all priced against the plan that just stopped being current.
-      void queryClient.invalidateQueries({ queryKey: ['financial', 'subscription'] });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.subscription() });
       void queryClient.invalidateQueries({ queryKey: financialKeys.transactions() });
     },
   });

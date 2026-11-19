@@ -131,6 +131,28 @@ export const creatorGapKeys = {
   directory: (fingerprint: string) => ['creator-gap', 'directory', fingerprint] as const,
 
   sponsored: (state?: string) => ['creator-gap', 'sponsored', state ?? 'all'] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  directoryAll: () => ['creator-gap', 'directory'] as const,
+  challengesAll: () => ['creator-gap', 'challenges'] as const,
+  grantsAll: () => ['creator-gap', 'grants'] as const,
+  recommendationsAll: () => ['creator-gap', 'recommendations'] as const,
+
+  /**
+   * Every creator's public profile.
+   *
+   * The prefix of `publicProfile(id)`, for the mutation that changes something
+   * every public profile shows and cannot name one id.
+   */
+  publicProfileAll: () => ['creator-gap', 'profile', 'public'] as const,
+
+  academyAll: () => ['creator-gap', 'academy'] as const,
+  academyCourses: () => ['creator-gap', 'academy', 'courses'] as const,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

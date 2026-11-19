@@ -120,6 +120,20 @@ export const communityDirectoryGapKeys = {
     ['community-directory-gap', 'reports', communityId, status ?? 'all'] as const,
 
   preferences: () => ['community-directory-gap', 'preferences', 'me'] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  directoryAll: () => ['community-directory-gap', 'directory'] as const,
+  suggestionsAll: () => ['community-directory-gap', 'suggestions'] as const,
+  capabilitiesAll: () => ['community-directory-gap', 'capabilities'] as const,
+  rolesAll: (communityId: CommunityId) =>
+    ['community-directory-gap', 'roles', communityId] as const,
+  reportsAll: (communityId: CommunityId) =>
+    ['community-directory-gap', 'reports', communityId] as const,
 };
 
 /**

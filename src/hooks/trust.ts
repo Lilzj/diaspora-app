@@ -161,7 +161,7 @@ function invalidateSelf(client: QueryClient): void {
   void client.invalidateQueries({ queryKey: trustKeys.badges() });
   void client.invalidateQueries({ queryKey: trustKeys.reputation() });
   // Every feature-requirements key, whatever country it was scoped to.
-  void client.invalidateQueries({ queryKey: ['trust', 'feature-requirements'] });
+  void client.invalidateQueries({ queryKey: trustKeys.featureRequirementsAll() });
 }
 
 /** Every verification list and the queue. */
@@ -585,7 +585,7 @@ export function useMyModerationCase(caseId: string | null | undefined) {
   const client = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['trust', 'moderation-case', caseId ?? ''] as const,
+    queryKey: trustKeys.moderationCase(caseId ?? ''),
     queryFn: () => fetchMyModerationCase(caseId as string),
     enabled: Boolean(caseId),
     retry: shouldRetry,
@@ -595,7 +595,7 @@ export function useMyModerationCase(caseId: string | null | undefined) {
     mutationFn: () => requestModerationReview(caseId as string),
     retry: false,
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['trust', 'moderation-case', caseId ?? ''] });
+      void client.invalidateQueries({ queryKey: trustKeys.moderationCase(caseId ?? '') });
     },
   });
 

@@ -70,6 +70,7 @@ import type {
   CreatorStatus,
 } from '@/types/creator-economy';
 import type { UpdateCreatorProfileRequest, CreatorDirectoryParams } from '@/lib/creator-gap-api';
+import { financialGapKeys } from '@/lib/financial-gap-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared query options
@@ -541,7 +542,7 @@ export function invalidateCreatorRewards(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: creatorGapKeys.redemptions() });
   void queryClient.invalidateQueries({ queryKey: creatorGapKeys.dashboard() });
   // Phase 5's keys. Namespaced separately, so named separately.
-  void queryClient.invalidateQueries({ queryKey: ['financial-gap', 'rewards'] });
+  void queryClient.invalidateQueries({ queryKey: financialGapKeys.rewards() });
   // And the wallet's Rewards badge, which reads the certified key: a redemption
   // spends points, and the wallet went on showing them.
   void queryClient.invalidateQueries({ queryKey: financialKeys.rewardPoints() });
@@ -646,7 +647,7 @@ export function useChallengeActions() {
   const settle = useCallback(
     (challenge: { challengeId: string }) => {
       queryClient.setQueryData(creatorGapKeys.challenge(challenge.challengeId), challenge);
-      void queryClient.invalidateQueries({ queryKey: ['creator-gap', 'challenges'] });
+      void queryClient.invalidateQueries({ queryKey: creatorGapKeys.challengesAll() });
       void queryClient.invalidateQueries({ queryKey: creatorGapKeys.dashboard() });
     },
     [queryClient]
@@ -816,7 +817,7 @@ export function useGrantApplicationActions() {
     (application: { applicationId: string }) => {
       queryClient.setQueryData(creatorGapKeys.grantApplication(application.applicationId), application);
       void queryClient.invalidateQueries({ queryKey: creatorGapKeys.grantApplications() });
-      void queryClient.invalidateQueries({ queryKey: ['creator-gap', 'grants'] });
+      void queryClient.invalidateQueries({ queryKey: creatorGapKeys.grantsAll() });
       void queryClient.invalidateQueries({ queryKey: creatorGapKeys.dashboard() });
     },
     [queryClient]
@@ -966,7 +967,7 @@ export function useAcademyActions() {
   const queryClient = useQueryClient();
 
   const invalidateAcademy = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['creator-gap', 'academy'] });
+    void queryClient.invalidateQueries({ queryKey: creatorGapKeys.academyAll() });
     void queryClient.invalidateQueries({ queryKey: creatorGapKeys.dashboard() });
   }, [queryClient]);
 
@@ -1009,7 +1010,7 @@ export function useAcademyActions() {
       certifiedApi.setCourseSaved(courseId, isSaved),
     onSuccess: (course) => {
       queryClient.setQueryData(creatorGapKeys.course(course.courseId), course);
-      void queryClient.invalidateQueries({ queryKey: ['creator-gap', 'academy', 'courses'] });
+      void queryClient.invalidateQueries({ queryKey: creatorGapKeys.academyCourses() });
     },
   });
 
@@ -1468,7 +1469,7 @@ export function useDismissRecommendation() {
     ...mutationOptions,
     mutationFn: (recommendationId: string) => certifiedApi.dismissCreatorRecommendation(recommendationId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['creator-gap', 'recommendations'] });
+      void queryClient.invalidateQueries({ queryKey: creatorGapKeys.recommendationsAll() });
       void queryClient.invalidateQueries({ queryKey: creatorGapKeys.dashboard() });
     },
   });

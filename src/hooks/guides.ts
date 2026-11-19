@@ -765,9 +765,9 @@ export function useGuideSuggestions(
  */
 function invalidateGuide(client: QueryClient, guideId: string): void {
   void client.invalidateQueries({ queryKey: guideKeys.guide(guideId) });
-  void client.invalidateQueries({ queryKey: ['guides', 'search'] });
-  void client.invalidateQueries({ queryKey: ['guides', 'shelf'] });
-  void client.invalidateQueries({ queryKey: ['guides', 'mine'] });
+  void client.invalidateQueries({ queryKey: guideKeys.searchAll() });
+  void client.invalidateQueries({ queryKey: guideKeys.shelfAll() });
+  void client.invalidateQueries({ queryKey: guideKeys.mineAll() });
 }
 
 /**
@@ -807,7 +807,7 @@ export function useCreateGuide() {
     onSuccess: (guide) => {
       client.setQueryData(guideKeys.guide(guide.guideId), guide);
       void client.invalidateQueries({ queryKey: guideKeys.myDrafts() });
-      void client.invalidateQueries({ queryKey: ['guides', 'mine'] });
+      void client.invalidateQueries({ queryKey: guideKeys.mineAll() });
     },
     retry: false,
   });
@@ -881,7 +881,7 @@ export function useSetGuideTags() {
     }) => setGuideTags(guideId, { tags, baseRevision }),
     onSuccess: (guide) => {
       client.setQueryData(guideKeys.guide(guide.guideId), guide);
-      void client.invalidateQueries({ queryKey: ['guides', 'tags'] });
+      void client.invalidateQueries({ queryKey: guideKeys.tagsAll() });
     },
     retry: false,
   });
@@ -994,7 +994,7 @@ export function useSubmitGuideSuggestion() {
     }) => submitGuideSuggestion(guideId, request),
     onSuccess: (suggestion) => {
       void client.invalidateQueries({
-        queryKey: ['guides', 'guide', suggestion.guideId, 'suggestions'],
+        queryKey: guideKeys.suggestionsAll(suggestion.guideId),
       });
     },
     retry: false,

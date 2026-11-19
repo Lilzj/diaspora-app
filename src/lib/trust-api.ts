@@ -251,6 +251,22 @@ export const trustKeys = {
       filters.overdueOnly ?? false,
       clampPageSize(filters.pageSize),
     ] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  featureRequirementsAll: () => ['trust', 'feature-requirements'] as const,
+
+  /**
+   * One moderation case.
+   *
+   * Read by the case screen and invalidated by every action taken on it. It was
+   * written as a literal in both places, which is two chances to disagree.
+   */
+  moderationCase: (caseId: string) => ['trust', 'moderation-case', caseId] as const,
 };
 
 /**

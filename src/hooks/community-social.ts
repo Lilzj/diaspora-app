@@ -139,6 +139,8 @@ import type {
   TrendingHashtagResponse,
   UpdatePostRequest,
 } from '@/types/community-social';
+import { mapKeys } from '@/lib/maps-api';
+import { creatorGapKeys } from '@/lib/creator-gap-api';
 
 /**
  * A 401 from this module is "sign in", not "try again".
@@ -557,7 +559,7 @@ export function useClosePost(): {
     onSuccess: (closed, { postId }) => {
       client.setQueryData(communitySocialKeys.post(postId), closed);
       invalidateFeeds(client);
-      void client.invalidateQueries({ queryKey: ['maps', 'alerts'] });
+      void client.invalidateQueries({ queryKey: mapKeys.alertsAll() });
     },
   });
 
@@ -693,7 +695,7 @@ export function useCreateComment(target: CommentTarget): {
       // — `totalCount`, the parent's `replyCount`, the post's `commentCount`.
       // Refetching one page is cheaper than getting three counters wrong.
       void client.invalidateQueries({
-        queryKey: ['community-social', 'comments', target.contentType, target.contentId],
+        queryKey: communitySocialKeys.commentThread(target.contentType, target.contentId),
       });
       if (target.contentType === 'post') {
         invalidatePost(client, target.contentId);
@@ -721,7 +723,7 @@ export function useUpdateComment(target: CommentTarget): {
     retry: false,
     onSuccess: () => {
       void client.invalidateQueries({
-        queryKey: ['community-social', 'comments', target.contentType, target.contentId],
+        queryKey: communitySocialKeys.commentThread(target.contentType, target.contentId),
       });
     },
   });
@@ -755,7 +757,7 @@ export function useDeleteComment(target: CommentTarget): {
     retry: false,
     onSuccess: () => {
       void client.invalidateQueries({
-        queryKey: ['community-social', 'comments', target.contentType, target.contentId],
+        queryKey: communitySocialKeys.commentThread(target.contentType, target.contentId),
       });
     },
   });
@@ -781,7 +783,7 @@ export function usePinComment(target: CommentTarget): {
     retry: false,
     onSuccess: () => {
       void client.invalidateQueries({
-        queryKey: ['community-social', 'comments', target.contentType, target.contentId],
+        queryKey: communitySocialKeys.commentThread(target.contentType, target.contentId),
       });
     },
   });
@@ -822,10 +824,10 @@ export function useReact(target: CommentTarget): {
       return;
     }
     void client.invalidateQueries({
-      queryKey: ['community-social', 'comments', target.contentType, target.contentId],
+      queryKey: communitySocialKeys.commentThread(target.contentType, target.contentId),
     });
     void client.invalidateQueries({
-      queryKey: ['community-social', 'engagement', target.contentType, target.contentId],
+      queryKey: communitySocialKeys.engagement(target.contentType, target.contentId),
     });
   }, [client, target.contentType, target.contentId]);
 
@@ -861,7 +863,7 @@ export function useReact(target: CommentTarget): {
 /** The update categories, from the server. They change with deployments, not sessions. */
 export function usePostCategories() {
   return useQuery({
-    queryKey: ['community-social', 'post-categories'],
+    queryKey: communitySocialKeys.postCategories(),
     queryFn: fetchPostCategories,
     staleTime: 60 * 60 * 1000,
   });
@@ -869,7 +871,7 @@ export function usePostCategories() {
 
 export function useContentEngagement(contentType: CommunityContentType, contentId: string | null) {
   return useQuery({
-    queryKey: ['community-social', 'engagement', contentType, contentId],
+    queryKey: communitySocialKeys.engagement(contentType, contentId),
     queryFn: () => fetchContentEngagement(contentType, contentId as string),
     enabled: Boolean(contentId),
     staleTime: 30 * 1000,
@@ -1101,8 +1103,8 @@ export function useFollow(): {
     invalidateFeeds(client);
     // The Creator module keeps its own copy of the count (directory rows, public
     // profiles), updated in the background from the follow event.
-    void client.invalidateQueries({ queryKey: ['creator-gap', 'directory'] });
-    void client.invalidateQueries({ queryKey: ['creator-gap', 'profile', 'public'] });
+    void client.invalidateQueries({ queryKey: creatorGapKeys.directoryAll() });
+    void client.invalidateQueries({ queryKey: creatorGapKeys.publicProfileAll() });
   };
 
   const following = useMutation({

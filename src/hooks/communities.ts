@@ -93,6 +93,7 @@ import {
 // shared by every hook below. Nothing governance-related is simulated any more:
 // initiatives (FRONTEND-PHASE13-GAP-019) became real on 20 Oct 2026.
 import { communityDirectoryGapKeys } from '@/lib/community-gap-directory-api';
+import { mapKeys } from '@/lib/maps-api';
 
 // ── The six that are real now ───────────────────────────────────────────────
 //
@@ -276,7 +277,7 @@ export function useAvailableCommunities(): {
   const directory = useCommunityDirectory({ limit: LOOKUP_LIMIT, includeJoined: true });
 
   const cached = useQuery({
-    queryKey: ['community-directory', 'metadata-cache'],
+    queryKey: communityScopedKeys.metadataCache(),
     queryFn: () => readCommunityMetadata(),
     staleTime: 60_000,
   });
@@ -1291,7 +1292,7 @@ export function useModerationDecision(communityId: CommunityId | undefined) {
     onSettled: () => {
       if (communityId) {
         void queryClient.invalidateQueries({
-          queryKey: ['community-directory-gap', 'reports', communityId],
+          queryKey: communityDirectoryGapKeys.reportsAll(communityId),
         });
       }
     },
@@ -1340,7 +1341,7 @@ export function useSaveCommunityPreferences() {
       queryClient.setQueryData(communityDirectoryGapKeys.preferences(), saved);
       // A visibility change alters what recommendations and notifications may
       // consider, so the scoped surfaces are refetched rather than left.
-      void queryClient.invalidateQueries({ queryKey: ['community-directory', 'content'] });
+      void queryClient.invalidateQueries({ queryKey: communityScopedKeys.contentAll() });
       trackCommunityEvent('community.preferences.updated');
     },
   });
@@ -1370,8 +1371,8 @@ export function invalidateForMembershipChange(
   void queryClient.invalidateQueries({ queryKey: communityDirectoryGapKeys.memberships() });
 
   // The directory shows membership state per row.
-  void queryClient.invalidateQueries({ queryKey: ['community-directory-gap', 'directory'] });
-  void queryClient.invalidateQueries({ queryKey: ['community-directory-gap', 'suggestions'] });
+  void queryClient.invalidateQueries({ queryKey: communityDirectoryGapKeys.directoryAll() });
+  void queryClient.invalidateQueries({ queryKey: communityDirectoryGapKeys.suggestionsAll() });
 
   if (communityId) {
     void queryClient.invalidateQueries({
@@ -1383,8 +1384,8 @@ export function invalidateForMembershipChange(
   }
 
   // Community-scoped content and search: the scope may now resolve differently.
-  void queryClient.invalidateQueries({ queryKey: ['community-directory', 'content'] });
-  void queryClient.invalidateQueries({ queryKey: ['community-directory', 'search'] });
+  void queryClient.invalidateQueries({ queryKey: communityScopedKeys.contentAll() });
+  void queryClient.invalidateQueries({ queryKey: communityScopedKeys.searchAll() });
 
   // §47: community-sensitive recommendations must not survive a membership
   // change. The existing engine surface, invalidated — not a second one.
@@ -1404,7 +1405,7 @@ export function invalidateForCommunitySwitch(queryClient: QueryClient): void {
   // Phase 8's map search key hashes its filter object, which now carries the
   // scope. Invalidating the family drops the previous scope's markers rather than
   // leaving them to be replaced one refetch later (§46).
-  void queryClient.invalidateQueries({ queryKey: ['maps', 'search'] });
+  void queryClient.invalidateQueries({ queryKey: mapKeys.searchAll() });
 }
 
 /**
@@ -1437,10 +1438,10 @@ export function useCommunityRealtimeHandlers(): {
           queryKey: communityDirectoryGapKeys.capabilities(communityId),
         });
         void queryClient.invalidateQueries({
-          queryKey: ['community-directory-gap', 'roles', communityId],
+          queryKey: communityDirectoryGapKeys.rolesAll(communityId),
         });
         void queryClient.invalidateQueries({
-          queryKey: ['community-directory-gap', 'reports', communityId],
+          queryKey: communityDirectoryGapKeys.reportsAll(communityId),
         });
       },
       [queryClient]
@@ -1451,7 +1452,7 @@ export function useCommunityRealtimeHandlers(): {
         void queryClient.invalidateQueries({
           queryKey: communityDirectoryGapKeys.community(communityId),
         });
-        void queryClient.invalidateQueries({ queryKey: ['community-directory-gap', 'directory'] });
+        void queryClient.invalidateQueries({ queryKey: communityDirectoryGapKeys.directoryAll() });
       },
       [queryClient]
     ),
@@ -1573,7 +1574,7 @@ export function useChangeCommunityRole(idOrSlug: string | undefined) {
     onSuccess: () => {
       if (!idOrSlug) return;
       void queryClient.invalidateQueries({ queryKey: communityAdminKeys.members(idOrSlug) });
-      void queryClient.invalidateQueries({ queryKey: ['community-directory-gap', 'capabilities'] });
+      void queryClient.invalidateQueries({ queryKey: communityDirectoryGapKeys.capabilitiesAll() });
       void queryClient.invalidateQueries({ queryKey: communityDirectoryGapKeys.memberships() });
     },
   });

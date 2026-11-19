@@ -56,6 +56,7 @@ import { photoUriOf } from '@/lib/media-url';
 import { backOr } from '@/lib/navigation';
 import { useNotification } from '@/providers/notification-provider';
 import { useAuthStore } from '@/store/auth';
+import { communityLifeKeys } from '@/lib/community-life-api';
 
 /** States in which the server refuses every edit (`EnsureEditable`). */
 const LOCKED_STATUSES: Record<string, string> = {
@@ -71,7 +72,7 @@ export default function EditEventScreen() {
   // Its own key, never shared with a list: an edit must start from what the
   // server holds now, not from a card fetched minutes ago.
   const query = useQuery({
-    queryKey: ['community-life', 'edit', 'event', id],
+    queryKey: communityLifeKeys.editEvent(id),
     queryFn: () => fetchEventForEdit(id),
     enabled: Boolean(id),
     staleTime: 0,

@@ -272,7 +272,7 @@ export function useAutomationSupport(): {
   const userId = useMemberId();
 
   const query = useQuery({
-    queryKey: ['automations', userId ?? 'anonymous', 'platform-support'],
+    queryKey: automationKeys.platformSupport(userId),
     queryFn: fetchCertifiedAutomationSupport,
     staleTime: 5 * 60 * 1000,
     retry: shouldRetryAutomation,

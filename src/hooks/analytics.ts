@@ -871,7 +871,7 @@ export function useWalletAnalytics(
   const enabled = Boolean(walletId) && (options.enabled ?? true);
 
   const query = useQuery({
-    queryKey: ['analytics', 'wallet', walletId ?? 'none', range.from, range.to, range.timezone] as const,
+    queryKey: analyticsKeys.wallet(walletId, range.from, range.to, range.timezone),
     queryFn: () => certifiedApi.fetchWalletActivity(walletId!, range),
     enabled,
     // The ledger is live. A minute is enough to stop a tab switch re-paging it.
@@ -1037,7 +1037,7 @@ export function useReportMutations() {
   const queryClient = useQueryClient();
 
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ['analytics', 'reports'] });
+    void queryClient.invalidateQueries({ queryKey: analyticsKeys.reportsAll() });
   };
 
   const create = useMutation({
@@ -1155,9 +1155,9 @@ export function useInvalidateAnalyticsOnCommunitySwitch() {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['analytics', 'dataset'] });
-    void queryClient.invalidateQueries({ queryKey: ['analytics', 'access'] });
-    void queryClient.invalidateQueries({ queryKey: ['analytics', 'insights'] });
+    void queryClient.invalidateQueries({ queryKey: analyticsKeys.datasetAll() });
+    void queryClient.invalidateQueries({ queryKey: analyticsKeys.accessAll() });
+    void queryClient.invalidateQueries({ queryKey: analyticsKeys.insightsAll() });
   }, [queryClient]);
 }
 
@@ -1177,7 +1177,7 @@ export function useOwnerHoldings(
   options: { enabled?: boolean } = {}
 ): { hasAny: boolean | null; isLoading: boolean } {
   const query = useQuery({
-    queryKey: ['analytics', 'owner-holdings', role ?? 'none'],
+    queryKey: analyticsKeys.ownerHoldings(role),
     queryFn: async () => {
       const response = await apiClient.get(OWNER_HOLDINGS_ROUTE[role as OwnerRole]);
       return holdsAnything(role as OwnerRole, response.data);
