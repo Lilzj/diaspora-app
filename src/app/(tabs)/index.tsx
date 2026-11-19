@@ -191,7 +191,7 @@ export default function HomeScreen() {
         }, 1200);
       }
     };
-    initOnboarding();
+    void initOnboarding();
   }, [exploreStore.onboardingCompleted, exploreStore.hasLoadedPersistedState]);
 
   useEffect(() => {

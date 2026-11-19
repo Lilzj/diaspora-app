@@ -20,7 +20,7 @@ export default function ConversationRequestsScreen() {
     useConversationStore();
 
   useEffect(() => {
-    loadRequests();
+    void loadRequests();
   }, []);
 
   return (

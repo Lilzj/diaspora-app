@@ -71,11 +71,11 @@ export default function MessagesScreen() {
         if (!cancelled) setHubInitialized(true);
       }
       if (cancelled) return;
-      loadConversations();
-      loadRequests();
+      void loadConversations();
+      void loadRequests();
     };
 
-    init();
+    void init();
 
     return () => {
       cancelled = true;
@@ -122,7 +122,13 @@ export default function MessagesScreen() {
           text: conv.isMuted ? '🔔 Unmute' : '🔕 Mute',
           onPress: () => {
             if (conv.isMuted) {
-              ConversationHub.unmute(conv.conversationId);
+              ConversationHub.unmute(conv.conversationId).catch(() => {
+                showAlert({
+                  type: 'error',
+                  title: 'Still muted',
+                  message: 'That conversation could not be unmuted. Please try again.',
+                });
+              });
             } else {
               showAlert({ type: 'question', title: 'Mute Conversation', message: 'How long?', buttons: [
                 { text: '8 Hours', onPress: () => ConversationHub.mute(conv.conversationId, '8h') },

@@ -1203,7 +1203,7 @@ export default function PostScreen() {
             if (currentStep < steps.length - 1) {
               setCurrentStep(currentStep + 1);
             } else {
-              handlePublish();
+              void handlePublish();
             }
           }}
           nextLabel={currentStep === steps.length - 1 ? 'Publish listing' : 'Next'}

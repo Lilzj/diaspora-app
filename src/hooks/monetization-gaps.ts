@@ -129,7 +129,7 @@ export function useCreateCampaign() {
     },
     onSuccess: (campaign) => {
       queryClient.setQueryData(monetizationGapKeys.campaign(campaign.campaignId), campaign);
-      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
+      void queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
     },
   });
 }
@@ -143,7 +143,7 @@ export function useUpdateCampaign() {
       adApi.updateCampaign(campaignId, changes),
     onSuccess: (campaign) => {
       queryClient.setQueryData(monetizationGapKeys.campaign(campaign.campaignId), campaign);
-      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
+      void queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
     },
   });
 }
@@ -210,8 +210,8 @@ export function useDecideCampaign() {
     }) => adApi.decideCampaign(campaignId, decision, note),
     onSuccess: (campaign) => {
       queryClient.setQueryData(monetizationGapKeys.campaign(campaign.campaignId), campaign);
-      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.reviewQueue(0) });
-      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
+      void queryClient.invalidateQueries({ queryKey: monetizationGapKeys.reviewQueue(0) });
+      void queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
     },
   });
 }
@@ -235,7 +235,7 @@ export function useAppealCampaign() {
     mutationFn: ({ campaignId, note }: { campaignId: string; note: string }) =>
       adApi.appealCampaign(campaignId, note),
     onSuccess: (_review, variables) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: monetizationGapKeys.campaign(variables.campaignId),
       });
     },
@@ -273,7 +273,7 @@ export function useSubmitCampaign() {
       );
       // No payment to cache. B16 answers what to buy; the purchase route is what
       // opens an intent, and it caches its own.
-      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
+      void queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
     },
   });
 }
@@ -285,8 +285,8 @@ export function useCampaignLifecycle() {
   const settle = useCallback(
     (campaign: { campaignId: string }) => {
       queryClient.setQueryData(monetizationGapKeys.campaign(campaign.campaignId), campaign);
-      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
-      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.performance() });
+      void queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
+      void queryClient.invalidateQueries({ queryKey: monetizationGapKeys.performance() });
     },
     [queryClient]
   );
@@ -545,8 +545,8 @@ export function useChangePlan() {
       // the new plan while `useEntitlements()` still reported the old one would
       // be internally inconsistent in a way that hides real bugs.
       queryClient.setQueryData(financialKeys.subscription(), subscription);
-      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.planChange() });
-      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.entitlements() });
+      void queryClient.invalidateQueries({ queryKey: monetizationGapKeys.planChange() });
+      void queryClient.invalidateQueries({ queryKey: monetizationGapKeys.entitlements() });
     },
   });
 }

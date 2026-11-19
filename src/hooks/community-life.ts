@@ -909,10 +909,10 @@ export function usePublishOrganization() {
     mutationFn: ({ organizationId }: { organizationId: string }) =>
       b12.publishOrganization(organizationId),
     onSuccess: (organization) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['community-life', 'organization', organization.organizationId],
       });
-      queryClient.invalidateQueries({ queryKey: ['community-life', 'organizations'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-life', 'organizations'] });
     },
   });
 }
@@ -931,8 +931,8 @@ export function usePublishEvent() {
     ...mutationOptions,
     mutationFn: ({ eventId }: { eventId: string }) => b12.publishEvent(eventId),
     onSuccess: (event) => {
-      queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(event.id) });
-      queryClient.invalidateQueries({ queryKey: ['community-life', 'events'] });
+      void queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(event.id) });
+      void queryClient.invalidateQueries({ queryKey: ['community-life', 'events'] });
     },
   });
 }
@@ -953,8 +953,8 @@ export function useSetEventCapacity() {
       baseRevision?: number;
     }) => b12.setEventCapacity(eventId, capacity, baseRevision),
     onSuccess: (event) => {
-      queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(event.id) });
-      queryClient.invalidateQueries({ queryKey: ['community-life', 'events'] });
+      void queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(event.id) });
+      void queryClient.invalidateQueries({ queryKey: ['community-life', 'events'] });
     },
   });
 }
@@ -978,13 +978,13 @@ export function useSetRsvp() {
       // The event's own `viewerRsvpStatus` is now stale, and so is any list that
       // renders it. Invalidating rather than patching keeps the server's answer
       // authoritative — including a `Waitlisted` the client did not ask for.
-      queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(rsvp.eventId) });
-      queryClient.invalidateQueries({ queryKey: ['community-life', 'events'] });
+      void queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(rsvp.eventId) });
+      void queryClient.invalidateQueries({ queryKey: ['community-life', 'events'] });
 
       // And the member's own list of what they are going to, which is the
       // whole point of answering an RSVP. Without this the "Going to" screen
       // shows yesterday's commitments after somebody makes a new one.
-      queryClient.invalidateQueries({ queryKey: ['community-life', 'rsvps', 'mine'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-life', 'rsvps', 'mine'] });
     },
   });
 }
@@ -1137,9 +1137,9 @@ export function useSubmitMembershipApplication() {
     },
     onSuccess: (membership) => {
       queryClient.setQueryData(communityProgrammeKeys.membership(membership.membershipId), membership);
-      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
-      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.programme(membership.organizationId) });
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'hub'] });
+      void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
+      void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.programme(membership.organizationId) });
+      void queryClient.invalidateQueries({ queryKey: ['community-gap', 'hub'] });
     },
   });
 }
@@ -1153,7 +1153,7 @@ export function useCancelMembership() {
       b18.cancelMembership(membershipId, reason),
     onSuccess: (membership) => {
       queryClient.setQueryData(communityProgrammeKeys.membership(membership.membershipId), membership);
-      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
+      void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
     },
   });
 }
@@ -1256,11 +1256,11 @@ export function useMembershipCheckout() {
     },
     onSuccess: ({ payment, membership }) => {
       queryClient.setQueryData(financialKeys.payment(payment.paymentIntentId), payment);
-      queryClient.invalidateQueries({ queryKey: financialKeys.wallets() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.wallets() });
 
       if (membership) {
         queryClient.setQueryData(communityProgrammeKeys.membership(membership.membershipId), membership);
-        queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
+        void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
       }
     },
   });
@@ -1280,7 +1280,7 @@ export function useRenewMembership() {
     },
     onSuccess: (membership) => {
       queryClient.setQueryData(communityProgrammeKeys.membership(membership.membershipId), membership);
-      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
+      void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
     },
   });
 }
@@ -1340,9 +1340,9 @@ export function useDecideMembership(organizationId: string | undefined) {
       // Deliberately an invalidation rather than a cache write. A decision
       // changes counts on the dashboard and positions in the queue, and
       // patching one row would leave both stale.
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'membership'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'membership'] });
       if (organizationId) {
-        queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.dashboard(organizationId) });
+        void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.dashboard(organizationId) });
       }
     },
   });
@@ -1494,8 +1494,8 @@ export function useCreateSeries() {
     },
     onSuccess: (series) => {
       queryClient.setQueryData(communityProgrammeKeys.series(series.seriesId), series);
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'series'] });
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'hub'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'series'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-gap', 'hub'] });
     },
   });
 }
@@ -1516,7 +1516,7 @@ export function useUpdateSeries() {
       queryClient.setQueryData(communityProgrammeKeys.series(series.seriesId), series);
       // An edit at any scope can move or remove occurrences, so the expansion
       // is invalidated wholesale rather than patched.
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['community-programme', 'series', series.seriesId, 'occurrences'],
       });
     },
@@ -1537,10 +1537,10 @@ export function useUpdateOccurrence() {
     }) => b18.updateOccurrence(occurrenceId, request),
     onSuccess: (occurrence) => {
       queryClient.setQueryData(communityProgrammeKeys.occurrence(occurrence.occurrenceId), occurrence);
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['community-programme', 'series', occurrence.seriesId, 'occurrences'],
       });
-      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.series(occurrence.seriesId) });
+      void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.series(occurrence.seriesId) });
     },
   });
 }
@@ -1554,7 +1554,7 @@ export function useCancelSeries() {
       b18.cancelEventSeries(seriesId, reason),
     onSuccess: (series) => {
       queryClient.setQueryData(communityProgrammeKeys.series(series.seriesId), series);
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'series'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'series'] });
     },
   });
 }
@@ -1601,14 +1601,14 @@ export function useRegisterForEvent() {
       return registration;
     },
     onSuccess: (registration) => {
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.myRegistrations() });
+      void queryClient.invalidateQueries({ queryKey: communityGapKeys.myRegistrations() });
       if (registration.occurrenceId) {
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: communityGapKeys.occurrence(registration.occurrenceId),
         });
       }
       if (registration.seriesId) {
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: ['community-gap', 'series', registration.seriesId, 'occurrences'],
         });
       }
@@ -1623,9 +1623,9 @@ export function useCancelRegistration() {
     ...mutationOptions,
     mutationFn: (registrationId: string) => gapApi.cancelRegistration(registrationId),
     onSuccess: (registration) => {
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.myRegistrations() });
+      void queryClient.invalidateQueries({ queryKey: communityGapKeys.myRegistrations() });
       if (registration.occurrenceId) {
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: communityGapKeys.occurrence(registration.occurrenceId),
         });
       }
@@ -1688,8 +1688,8 @@ export function useCheckIn(eventId: string | undefined) {
     mutationFn: ({ rsvpId }: { rsvpId: string }) =>
       attendeesApi.checkInAttendee({ eventId: eventId as string, rsvpId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-life', 'attendees', eventId ?? ''] });
-      queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(eventId ?? '') });
+      void queryClient.invalidateQueries({ queryKey: ['community-life', 'attendees', eventId ?? ''] });
+      void queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(eventId ?? '') });
     },
   });
 }
@@ -1702,7 +1702,7 @@ export function useCheckInAttendee(occurrenceId: string | undefined) {
     mutationFn: (registrationId: string) => gapApi.checkInAttendee(registrationId),
     onSuccess: () => {
       if (occurrenceId) {
-        queryClient.invalidateQueries({ queryKey: communityGapKeys.attendees(occurrenceId) });
+        void queryClient.invalidateQueries({ queryKey: communityGapKeys.attendees(occurrenceId) });
       }
     },
   });
@@ -1960,7 +1960,7 @@ export function useCreateCampaign() {
     },
     onSuccess: (campaign) => {
       queryClient.setQueryData(communityProgrammeKeys.campaign(campaign.campaignId), campaign);
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'campaigns'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'campaigns'] });
     },
   });
 }
@@ -2009,7 +2009,7 @@ export function useCampaignAction() {
     }) => b18.actOnCampaign(campaignId, action, reason),
     onSuccess: (campaign) => {
       queryClient.setQueryData(communityProgrammeKeys.campaign(campaign.campaignId), campaign);
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'campaigns'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'campaigns'] });
     },
   });
 }
@@ -2043,7 +2043,7 @@ export function usePublishCampaignUpdate() {
       return update;
     },
     onSuccess: (_update, variables) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: communityProgrammeKeys.campaignUpdates(variables.campaignId),
       });
     },
@@ -2171,7 +2171,7 @@ export function useCancelRecurringDonation() {
             row.recurringDonationId === schedule.recurringDonationId ? schedule : row
           )
       );
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: communityProgrammeKeys.myRecurringDonations(),
       });
     },
@@ -2320,7 +2320,7 @@ export function useDonateToCampaign() {
       return donation;
     },
     onSuccess: (donation, variables) => {
-      queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
       if (donation.payment) {
         queryClient.setQueryData(
           financialKeys.payment(donation.payment.paymentIntentId),
@@ -2328,9 +2328,9 @@ export function useDonateToCampaign() {
         );
       }
       if (donation.status === 'Completed') {
-        queryClient.invalidateQueries({ queryKey: financialKeys.wallets() });
+        void queryClient.invalidateQueries({ queryKey: financialKeys.wallets() });
         if (variables.campaignId) {
-          queryClient.invalidateQueries({ queryKey: communityGapKeys.campaign(variables.campaignId) });
+          void queryClient.invalidateQueries({ queryKey: communityGapKeys.campaign(variables.campaignId) });
         }
       }
     },
@@ -2418,8 +2418,8 @@ export function useSubmitVolunteerApplication() {
     },
     onSuccess: (application) => {
       queryClient.setQueryData(communityProgrammeKeys.application(application.applicationId), application);
-      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myApplications() });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myApplications() });
+      void queryClient.invalidateQueries({
         queryKey: communityProgrammeKeys.opportunity(application.opportunityId),
       });
     },
@@ -2434,8 +2434,8 @@ export function useWithdrawVolunteerApplication() {
     mutationFn: (applicationId: string) => b18.withdrawVolunteerApplication(applicationId),
     onSuccess: (application) => {
       queryClient.setQueryData(communityProgrammeKeys.application(application.applicationId), application);
-      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myApplications() });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myApplications() });
+      void queryClient.invalidateQueries({
         queryKey: communityProgrammeKeys.opportunity(application.opportunityId),
       });
     },
@@ -2497,7 +2497,7 @@ export function useCreateOpportunity() {
     },
     onSuccess: (opportunity) => {
       queryClient.setQueryData(communityProgrammeKeys.opportunity(opportunity.opportunityId), opportunity);
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
     },
   });
 }
@@ -2516,7 +2516,7 @@ export function useOpportunityAction() {
     }) => b18.actOnOpportunity(opportunityId, action),
     onSuccess: (opportunity) => {
       queryClient.setQueryData(communityProgrammeKeys.opportunity(opportunity.opportunityId), opportunity);
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
     },
   });
 }
@@ -2566,9 +2566,9 @@ export function useDecideVolunteerApplication(opportunityId: string | undefined)
       reason?: string;
     }) => b18.decideVolunteerApplication(applicationId, decision, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
       if (opportunityId) {
-        queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.opportunity(opportunityId) });
+        void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.opportunity(opportunityId) });
       }
     },
   });
@@ -2582,9 +2582,9 @@ export function useAssignVolunteer(opportunityId: string | undefined) {
     mutationFn: (request: { applicationId: string; shiftId?: string }) =>
       b18.assignVolunteer(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
       if (opportunityId) {
-        queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.opportunity(opportunityId) });
+        void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.opportunity(opportunityId) });
       }
     },
   });
@@ -2598,7 +2598,7 @@ export function useConfirmVolunteerHours() {
     mutationFn: ({ assignmentId, hours }: { assignmentId: string; hours: number }) =>
       b18.confirmVolunteerHours(assignmentId, hours),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
     },
   });
 }
@@ -2708,7 +2708,7 @@ export function useSubmitPollResponse() {
     },
     onSuccess: (result, variables) => {
       queryClient.setQueryData(communityProgrammeKeys.pollResult(variables.pollId), result);
-      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.poll(variables.pollId) });
+      void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.poll(variables.pollId) });
     },
   });
 }
@@ -2730,7 +2730,7 @@ export function useCreatePoll() {
     },
     onSuccess: (poll) => {
       queryClient.setQueryData(communityProgrammeKeys.poll(poll.pollId), poll);
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'polls'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'polls'] });
     },
   });
 }
@@ -2749,8 +2749,8 @@ export function usePollAction() {
     }) => b18.actOnPoll(pollId, action),
     onSuccess: (poll) => {
       queryClient.setQueryData(communityProgrammeKeys.poll(poll.pollId), poll);
-      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.pollResult(poll.pollId) });
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'polls'] });
+      void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.pollResult(poll.pollId) });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'polls'] });
     },
   });
 }
@@ -2968,9 +2968,9 @@ export function useAssignOrganizationRole(organizationId: string | undefined) {
     mutationFn: ({ userId, role }: { userId: string; role: OrganizationRole }) =>
       b18.assignOrganizationRole(organizationId as string, userId, role),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'membership'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'membership'] });
       if (organizationId) {
-        queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.capabilities(organizationId) });
+        void queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.capabilities(organizationId) });
       }
     },
   });
@@ -3152,7 +3152,7 @@ export function usePublishAnnouncement() {
     mutationFn: (request: Parameters<typeof b18.publishAnnouncement>[0]) =>
       b18.publishAnnouncement(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-programme', 'announcements'] });
+      void queryClient.invalidateQueries({ queryKey: ['community-programme', 'announcements'] });
     },
   });
 }
@@ -3229,7 +3229,7 @@ export function useInvalidateCommunity() {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: communityGapKeys.all });
-    queryClient.invalidateQueries({ queryKey: communityLifeKeys.all });
+    void queryClient.invalidateQueries({ queryKey: communityGapKeys.all });
+    void queryClient.invalidateQueries({ queryKey: communityLifeKeys.all });
   }, [queryClient]);
 }

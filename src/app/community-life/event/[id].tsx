@@ -194,7 +194,7 @@ export default function EventDetailScreen() {
       }
     };
     if (id) {
-      fetchEventDetails();
+      void fetchEventDetails();
     }
   }, [id, refreshNonce]);
 
@@ -214,10 +214,21 @@ export default function EventDetailScreen() {
     const msg = `Check out this event on Diaspora: "${event.title}" - ${priceText} in ${event.location.areaName} ${when}!`;
     
     if (Platform.OS === 'web') {
-      navigator.clipboard.writeText(window.location.href);
-      alert('Event link copied to clipboard!');
+      // The confirmation used to run whether or not the copy succeeded, so a
+      // browser that refused clipboard access still told the member their link
+      // was copied. It follows the write now.
+      navigator.clipboard
+        .writeText(window.location.href)
+        .then(() => alert('Event link copied to clipboard!'))
+        .catch(() => alert('This browser would not let us copy the link.'));
     } else {
-      Linking.openURL(`sms:&body=${encodeURIComponent(msg)}`);
+      Linking.openURL(`sms:&body=${encodeURIComponent(msg)}`).catch(() => {
+        showAlert({
+          type: 'error',
+          title: 'Unavailable',
+          message: 'Could not open the messaging app on this device.',
+        });
+      });
     }
   };
 
@@ -227,7 +238,13 @@ export default function EventDetailScreen() {
       showAlert({ type: 'info', title: 'Unavailable', message: 'Organizer did not provide a direct call number.' });
       return;
     }
-    Linking.openURL(`tel:${phone}`);
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      showAlert({
+        type: 'error',
+        title: 'Unavailable',
+        message: 'Could not open the phone dialler on this device.',
+      });
+    });
   };
 
   const handleMessage = async () => {
@@ -257,7 +274,13 @@ export default function EventDetailScreen() {
       showAlert({ type: 'info', title: 'Unavailable', message: 'No website listed for this event.' });
       return;
     }
-    Linking.openURL(site);
+    Linking.openURL(site).catch(() => {
+      showAlert({
+        type: 'error',
+        title: 'Unavailable',
+        message: 'Could not open that link.',
+      });
+    });
   };
 
   /**
@@ -384,7 +407,7 @@ export default function EventDetailScreen() {
 
     if (parsed === 'invalid') return;
 
-    submitCapacity(parsed);
+    void submitCapacity(parsed);
   };
 
   const handleRsvpChange = async (status: 'Going' | 'Interested') => {

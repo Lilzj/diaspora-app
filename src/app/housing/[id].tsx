@@ -277,7 +277,7 @@ export default function HousingDetailScreen() {
     };
 
     if (id) {
-      fetchHousingDetails();
+      void fetchHousingDetails();
     }
   }, [id, activeLocation, refreshNonce, attempt]);
 
@@ -343,7 +343,13 @@ export default function HousingDetailScreen() {
       showAlert({ type: 'error', title: 'Unavailable', message: 'No contact phone number provided by the host.' });
       return;
     }
-    Linking.openURL(`tel:${listing.host.contactPhone}`);
+    Linking.openURL(`tel:${listing.host.contactPhone}`).catch(() => {
+      showAlert({
+        type: 'error',
+        title: 'Unavailable',
+        message: 'Could not open the phone dialler on this device.',
+      });
+    });
   };
 
   const handleEmail = () => {
@@ -355,7 +361,13 @@ export default function HousingDetailScreen() {
       showAlert({ type: 'error', title: 'Unavailable', message: 'No contact email address provided by the host.' });
       return;
     }
-    Linking.openURL(`mailto:${listing.host.contactEmail}?subject=Inquiry regarding: ${listing.title}`);
+    Linking.openURL(`mailto:${listing.host.contactEmail}?subject=Inquiry regarding: ${listing.title}`).catch(() => {
+      showAlert({
+        type: 'error',
+        title: 'Unavailable',
+        message: 'Could not open an email app on this device.',
+      });
+    });
   };
 
   const handleMessage = async () => {
@@ -388,6 +400,12 @@ export default function HousingDetailScreen() {
     if (!listing) return;
     Share.share({
       message: `Check out this home listing: "${listing.title}" in ${listing.location?.areaName || 'location not specified'} on Diaspora!`,
+    }).catch(() => {
+      showAlert({
+        type: 'error',
+        title: 'Unavailable',
+        message: 'The share sheet could not be opened on this device.',
+      });
     });
   };
 

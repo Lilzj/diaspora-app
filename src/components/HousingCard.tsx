@@ -41,6 +41,10 @@ export function HousingCard({ listing: given, variant = 'list' }: HousingCardPro
     e.stopPropagation();
     Share.share({
       message: `Check out this housing option on Diaspora: "${title}" in ${placeLabel}! Rent: ${rentText()}.`,
+    }).catch((error: unknown) => {
+      // A card has no alert of its own, so this is logged rather than shown. The
+      // share sheet failing to open is otherwise a tap that does nothing.
+      console.warn('[housing-card] the share sheet could not be opened', error);
     });
   };
 

@@ -92,7 +92,7 @@ export function useCreateDeposit() {
       return deposit;
     },
     onSuccess: (deposit) => {
-      queryClient.invalidateQueries({ queryKey: financialGapKeys.deposits() });
+      void queryClient.invalidateQueries({ queryKey: financialGapKeys.deposits() });
       if (deposit.status === 'Completed') invalidateAfterMoneyMoved(queryClient);
     },
   });
@@ -126,7 +126,7 @@ export function useDepositReconciliation(depositId: string | undefined) {
 
     const timer = setTimeout(() => {
       attempts.current += 1;
-      queryClient.invalidateQueries({ queryKey: [...financialGapKeys.deposits(), depositId] });
+      void queryClient.invalidateQueries({ queryKey: [...financialGapKeys.deposits(), depositId] });
     }, attempts.current < 5 ? 2_000 : 5_000);
 
     return () => clearTimeout(timer);
@@ -139,7 +139,7 @@ export function useDepositReconciliation(depositId: string | undefined) {
   const checkNow = useCallback(() => {
     if (!depositId) return;
     attempts.current = 0;
-    queryClient.invalidateQueries({ queryKey: [...financialGapKeys.deposits(), depositId] });
+    void queryClient.invalidateQueries({ queryKey: [...financialGapKeys.deposits(), depositId] });
   }, [depositId, queryClient]);
 
   return {
@@ -217,7 +217,7 @@ export function useCreateWithdrawal() {
       return withdrawal;
     },
     onSuccess: (withdrawal) => {
-      queryClient.invalidateQueries({ queryKey: financialGapKeys.withdrawals() });
+      void queryClient.invalidateQueries({ queryKey: financialGapKeys.withdrawals() });
       // A withdrawal debits the moment it is requested — the money is reserved
       // even before it lands — so the balance is stale immediately.
       invalidateAfterMoneyMoved(queryClient);
@@ -246,7 +246,7 @@ export function useWithdrawalReconciliation(withdrawalId: string | undefined) {
 
     const timer = setTimeout(() => {
       attempts.current += 1;
-      queryClient.invalidateQueries({ queryKey: [...financialGapKeys.withdrawals(), withdrawalId] });
+      void queryClient.invalidateQueries({ queryKey: [...financialGapKeys.withdrawals(), withdrawalId] });
     }, attempts.current < 5 ? 2_000 : 5_000);
 
     return () => clearTimeout(timer);
@@ -255,7 +255,7 @@ export function useWithdrawalReconciliation(withdrawalId: string | undefined) {
   const checkNow = useCallback(() => {
     if (!withdrawalId) return;
     attempts.current = 0;
-    queryClient.invalidateQueries({ queryKey: [...financialGapKeys.withdrawals(), withdrawalId] });
+    void queryClient.invalidateQueries({ queryKey: [...financialGapKeys.withdrawals(), withdrawalId] });
   }, [withdrawalId, queryClient]);
 
   return {
@@ -275,7 +275,7 @@ export function useCancelWithdrawal() {
     ...gapMutationOptions,
     mutationFn: (withdrawalId: string) => gapApi.cancelWithdrawal(withdrawalId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialGapKeys.withdrawals() });
+      void queryClient.invalidateQueries({ queryKey: financialGapKeys.withdrawals() });
       invalidateAfterMoneyMoved(queryClient);
     },
   });
@@ -585,12 +585,12 @@ export function useCreateConversion() {
       return conversion;
     },
     onSuccess: (conversion) => {
-      queryClient.invalidateQueries({ queryKey: financialGapKeys.rewards() });
+      void queryClient.invalidateQueries({ queryKey: financialGapKeys.rewards() });
       // The wallet's Rewards badge reads the certified key, not the gap one.
       // Neither this nor `invalidateAfterMoneyMoved` touched it, so the wallet
       // went on showing the points the member had just converted.
-      queryClient.invalidateQueries({ queryKey: certified.financialKeys.rewardPoints() });
-      queryClient.invalidateQueries({ queryKey: certified.financialKeys.rewardConversions() });
+      void queryClient.invalidateQueries({ queryKey: certified.financialKeys.rewardPoints() });
+      void queryClient.invalidateQueries({ queryKey: certified.financialKeys.rewardConversions() });
       // A held credit moved the wallet's pending balance, which it shows.
       if (conversion.status === 'Completed' || conversion.status === 'Holding') {
         invalidateAfterMoneyMoved(queryClient);

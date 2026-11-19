@@ -357,7 +357,7 @@ export default function DonationCausesScreen() {
               <View className="flex-row gap-2">
                 {cause.messageableUserId ? (
                 <TouchableOpacity
-                  onPress={(e) => { e.stopPropagation(); handleMessage(cause); }}
+                  onPress={(e) => { e.stopPropagation(); void handleMessage(cause); }}
                   className="flex-1 py-3 rounded-2xl items-center justify-center"
                   style={{ backgroundColor: '#F59300' }}
                   activeOpacity={0.8}
@@ -367,7 +367,7 @@ export default function DonationCausesScreen() {
                 ) : null}
                 {cause.contactPhone ? (
                   <TouchableOpacity
-                    onPress={(e) => { e.stopPropagation(); handleCall(cause.contactPhone!); }}
+                    onPress={(e) => { e.stopPropagation(); void handleCall(cause.contactPhone!); }}
                     className="flex-1 border border-subtle bg-surface-background py-3 rounded-2xl items-center justify-center"
                     activeOpacity={0.8}
                   >

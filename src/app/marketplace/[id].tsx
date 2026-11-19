@@ -238,7 +238,7 @@ export default function ListingDetailScreen() {
       }
     };
     if (id) {
-      fetchDetails();
+      void fetchDetails();
     }
   }, [id, activeLocation, refreshNonce, attempt]);
 
@@ -303,10 +303,21 @@ export default function ListingDetailScreen() {
     const msg = `Check out this listing on Diaspora: "${listing.title}" - ${priceText} in ${placeLabelOf(listing as never)}!`;
     
     if (Platform.OS === 'web') {
-      navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard!');
+      // The confirmation used to run whether or not the copy succeeded, so a
+      // browser that refused clipboard access still told the member their link
+      // was copied. It follows the write now.
+      navigator.clipboard
+        .writeText(window.location.href)
+        .then(() => alert('Link copied to clipboard!'))
+        .catch(() => alert('This browser would not let us copy the link.'));
     } else {
-      Linking.openURL(`sms:&body=${encodeURIComponent(msg)}`);
+      Linking.openURL(`sms:&body=${encodeURIComponent(msg)}`).catch(() => {
+        showAlert({
+          type: 'error',
+          title: 'Unavailable',
+          message: 'Could not open the messaging app on this device.',
+        });
+      });
     }
   };
 
@@ -316,7 +327,13 @@ export default function ListingDetailScreen() {
       showAlert({ type: 'info', title: 'Unavailable', message: 'Seller did not provide a direct call phone number.' });
       return;
     }
-    Linking.openURL(`tel:${phone}`);
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      showAlert({
+        type: 'error',
+        title: 'Unavailable',
+        message: 'Could not open the phone dialler on this device.',
+      });
+    });
   };
 
   const handleMessage = async () => {
