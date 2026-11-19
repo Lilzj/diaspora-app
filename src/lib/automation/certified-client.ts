@@ -152,8 +152,16 @@ function toScheduleRequest(schedule: AutomationSchedule): Record<string, unknown
   };
 }
 
-/** The server's cap. Exceeding it is a 400 rather than a truncation. */
-const MAX_PARAMETER_JSON = 2048;
+/**
+ * The server's cap. Exceeding it is a 400 rather than a truncation.
+ *
+ * `AutomationOptions.MaximumParameterLength`, and that is an **options default
+ * rather than a constant** — the only one of the four limits this client mirrors
+ * that a deployment can change without a code change. The drift test reads the
+ * default and fails if it moves; it cannot see a configured value, and nothing
+ * here can. Exported for `lib/__tests__/validation-limits-drift.test.ts`.
+ */
+export const MAX_PARAMETER_JSON = 2048;
 
 /**
  * Turns a parameter bag into the JSON **string** the write routes bind.

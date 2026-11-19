@@ -214,7 +214,7 @@ jobs:
     timeout-minutes: 20
 
     env:
-      DRIFT_SUITES: '(advertising-enum-drift|backend-gap-register-drift|backend-openapi-contract-drift|backend-request-binding-drift|backend-row-property-drift|creator-earning-drift|password-policy-drift|reputation-rules-drift|screen-response-field-drift|step-up-claims-drift|withdrawal-status|served-routes-drift|access-state)'
+      DRIFT_SUITES: '(advertising-enum-drift|backend-gap-register-drift|backend-openapi-contract-drift|backend-request-binding-drift|backend-row-property-drift|creator-earning-drift|password-policy-drift|reputation-rules-drift|screen-response-field-drift|step-up-claims-drift|withdrawal-status|served-routes-drift|access-state|validation-limits-drift)'
 
     steps:
       - name: Check out the client
@@ -283,14 +283,19 @@ jobs:
       # existed (FBL-003). It now reads the server's own `AccessState.cs`, which
       # makes it a suite that must run *here*, with a checkout, rather than in
       # `static-and-unit` where it would quietly skip.
-      - name: All thirteen suites are still here
+      #
+      # Fourteen since 19 November 2026. `validation-limits-drift` reads four
+      # limits the client copies from the backend's policy and options classes,
+      # and checks that every `*Limits`/`*Options` member named in a src/lib
+      # comment is really declared there (FBL-004).
+      - name: All fourteen suites are still here
         run: |
           found=$(npx jest --listTests "$DRIFT_SUITES" | grep -c 'test\.ts' || true)
           echo "matched $found suites"
-          if [ "$found" -ne 13 ]; then
-            echo "::error::Expected 13 contract-drift suites, matched $found. A suite was"
+          if [ "$found" -ne 14 ]; then
+            echo "::error::Expected 14 contract-drift suites, matched $found. A suite was"
             echo "::error::renamed, deleted, or DRIFT_SUITES no longer names it. Running"
-            echo "::error::fewer than thirteen is the finding this job exists to close."
+            echo "::error::fewer than fourteen is the finding this job exists to close."
             exit 1
           fi
 
@@ -343,7 +348,7 @@ jobs:
 
           case "$RESULT" in
             success)
-              echo "The thirteen cross-repository suites ran against a backend checkout."
+              echo "The fourteen cross-repository suites ran against a backend checkout."
               ;;
             skipped)
               echo "::error::Cross-repository verification did not run, so the platform's"
@@ -359,7 +364,7 @@ jobs:
               ;;
             *)
               echo "::error::The contract-drift job reported '$RESULT' rather than success."
-              echo "::error::The thirteen cross-repository suites did not pass."
+              echo "::error::The fourteen cross-repository suites did not pass."
               exit 1
               ;;
           esac

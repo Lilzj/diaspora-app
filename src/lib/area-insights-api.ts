@@ -51,7 +51,15 @@ export const AREA_INSIGHT_CATEGORY_LABELS: Record<AreaInsightCategory, string> =
   Other: 'Other',
 };
 
-/** The longest insight the server accepts. */
+/**
+ * The longest insight the server accepts: `HousingLimits.MaxInsightBody`.
+ *
+ * Enforced in the domain — `NeighborhoodInsight` refuses a longer body — rather
+ * than by a request validator, which is why a search for a FluentValidation rule
+ * on `SubmitAreaInsightRequest` finds nothing and the request's own summary
+ * ("Up to 400 characters") reads like the only statement of it. It is not.
+ * `__tests__/validation-limits-drift.test.ts` reads the constant.
+ */
 export const AREA_INSIGHT_MAX_LENGTH = 400;
 
 /** `NeighborhoodInsightResponse`, as the area routes return it. */

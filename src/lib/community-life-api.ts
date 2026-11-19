@@ -1397,8 +1397,19 @@ export function organizationEditFormFrom(wire: OrganizationWire): OrganizationEd
   };
 }
 
-const MIN_TITLE = 3; // CommunityLifeLimits.MinTitle
-const MAX_SUMMARY = 400; // CommunityLifeLimits.MaxSummary
+/**
+ * `CommunityLifeLimits.MinTitle` on the server, copied here so the form can say
+ * so before a round trip.
+ *
+ * Exported for `__tests__/validation-limits-drift.test.ts`, which reads the
+ * server's own constant and fails when the two stop agreeing. The comment
+ * naming the backend constant was here before; what it lacked was anything that
+ * breaks when the number on the other side changes (FBL-004).
+ */
+export const MIN_TITLE = 3;
+
+/** `CommunityLifeLimits.MaxSummary`. Drift-checked with {@link MIN_TITLE}. */
+export const MAX_SUMMARY = 400;
 const HTTP_URL = /^https?:\/\/\S+$/i;
 
 /** The required fields still empty, named as the form labels them. */
