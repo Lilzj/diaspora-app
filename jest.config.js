@@ -38,186 +38,93 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  // ── What is measured, and what is not (FBL-006, 19 Nov 2026) ─────────────
+  //
+  // This was an allow-list naming individual `lib` modules, individual `config`
+  // files and a `components/{area}` glob per phase, accumulated over eleven
+  // phases. It had no entry for `src/hooks` and none for `src/app`.
+  //
+  // An allow-list of files has the failure the backend's seeder registry had
+  // before ADR-018: a module added later is invisible until somebody remembers
+  // to list it, and nothing says so. `lib`, `hooks` and `config` are globbed now
+  // for that reason, and the one thing that
+  // keeps them globbed is `src/config/__tests__/coverage-scope.test.ts`.
+  //
+  // ── The hooks decision, which the row asked to be stated either way ──────
+  //
+  // **Hooks are measured.** Their exclusion carried no reasoning, and the
+  // screens' reasoning does not extend to them: a hook is not a composition of
+  // anything. 35 files and 21,784 lines hold the React Query keys, the cache
+  // invalidation, the optimistic updates and the mutation error handling — the
+  // logic a wrong answer is most likely to come from.
+  //
+  // Measured for the first time on 19 Nov 2026: **14.6% of 4,205 statements.**
+  // That is the number the row asked to be looked at before anything else was
+  // decided, and it is the argument for measuring rather than against it.
+  //
+  // ── The screens stay out, and the original reasoning stands ──────────────
+  //
+  // 298 files and 97,364 lines, deliberately excluded, in the words this file
+  // has used since Phase 5: "they are compositions of these, and covering them
+  // would measure how much of a `ScrollView` was rendered rather than whether a
+  // price, an entitlement or a gap boundary is right."
+  //
+  // ── The headline moved and nothing got worse ─────────────────────────────
+  //
+  // 72.25% of 10,178 statements before this change; **59.62% of 20,229 after**.
+  // The same tests pass; the denominator nearly doubled. A coverage figure is
+  // only as meaningful as what it is over, and the old one was over a list that
+  // happened to name the files somebody had already tested.
+  //
+  // No `coverageThreshold` yet, deliberately. A threshold chosen before anybody
+  // has seen the number is a threshold chosen to pass — the same argument the
+  // bundle-size job makes. The number is now visible, so that is a decision
+  // somebody can make on evidence.
+  //
+  // `components/{area}` stays a list. Globbing it would add 289 components in
+  // one step, which is a bigger decision than this row asks for and not one to
+  // make silently.
   collectCoverageFrom: [
-    'src/lib/money.ts',
-    'src/lib/financial-errors.ts',
-    'src/lib/financial-status.ts',
-    'src/lib/financial-access.ts',
-    'src/lib/idempotency.ts',
-    'src/lib/notification-routes.ts',
-    'src/lib/financial-api.ts',
-    'src/components/financial/**/*.tsx',
+    // Discovered, not listed.
+    'src/lib/**/*.ts',
+    'src/lib/**/*.tsx',
+    'src/hooks/**/*.ts',
+    'src/config/**/*.ts',
 
-    // Phase 6. The monetization domain layer and its reusable surfaces. Screens
-    // are deliberately excluded, here as in Phase 5: they are compositions of
-    // these, and covering them would measure how much of a `ScrollView` was
-    // rendered rather than whether a price, an entitlement or a gap boundary is
-    // right.
-    'src/lib/entitlements.ts',
-    'src/lib/pricing.ts',
-    'src/lib/monetization-catalog.ts',
-    'src/lib/monetization-gap-api.ts',
-    'src/config/monetization-gaps.ts',
-    'src/components/monetization/**/*.tsx',
+    // `utils` was outside the list too, and is the same omission as `hooks` in
+    // miniature: 258 lines of date, format and geography logic that already
+    // has its own `__tests__` directory. Tested and unmeasured.
+    'src/utils/**/*.ts',
 
-    // Phase 7. The creator domain layer and its reusable surfaces. Screens are
-    // excluded for the same reason as in Phases 5 and 6: they are compositions
-    // of these, and covering them would measure how much of a `ScrollView`
-    // rendered rather than whether a status, a progress figure, an access
-    // decision or a gap boundary is right.
-    'src/lib/creator-economy.ts',
-    'src/lib/creator-access.ts',
-    'src/lib/creator-analytics.ts',
-    'src/lib/creator-gap-api.ts',
-    'src/config/creator-gaps.ts',
-    'src/components/creator-economy/**/*.tsx',
-
-    // Phase 12. The Community Life domain layer, both API arms and the
-    // reusable surfaces. Screens are excluded for the same reason as in Phases
-    // 5, 6 and 7: they are compositions of these, and covering them would
-    // measure how much of a `ScrollView` rendered rather than whether a state,
-    // a provenance marker, an access decision or a gap boundary is right.
-    //
-    // `community-life-api.ts` is here despite being a *certified* client,
-    // because it is the seam every Community Life screen now goes through and a
-    // regression in its parameter binding would be invisible otherwise.
-    'src/lib/community-state.ts',
-    'src/lib/community-access.ts',
-    'src/lib/community-analytics.ts',
-    'src/lib/community-life-api.ts',
-    'src/lib/community-gap-api.ts',
-    'src/config/community-gaps.ts',
-    'src/components/community/**/*.tsx',
-
-    // Phase 8. The geographic domain layer, the provider adapters, both API
-    // arms and the reusable surfaces. Screens are excluded for the same reason
-    // as in every phase before it: they are compositions of these, and covering
-    // them would measure how much of a `ScrollView` rendered rather than
-    // whether a distance, a permission state, a provenance marker or a gap
-    // boundary is right.
-    //
-    // `lib/maps/providers/canvas-map.tsx` is deliberately *included* despite
-    // being a renderer, because its gesture-to-viewport arithmetic is real
-    // logic — a map whose pan maths is untested is a map that drifts.
-    'src/lib/maps/**/*.ts',
-    'src/lib/maps/**/*.tsx',
-    'src/lib/maps-api.ts',
-    'src/lib/maps-gap-api.ts',
-    'src/config/maps-gaps.ts',
-    'src/config/map-provider-gaps.ts',
-    'src/config/map-config.ts',
-    'src/components/maps/**/*.tsx',
-
-    // Phase 13. The multi-community domain layer, the scope resolver, both API
-    // arms, the context store and the reusable surfaces. Screens are excluded for
-    // the same reason as in every phase before it: they are compositions of these,
-    // and covering them would measure how much of a `ScrollView` rendered rather
-    // than whether a scope, a projection, a capability decision or a gap boundary
-    // is right.
-    //
-    // `lib/community/scope.ts` is the one file in this phase where a bug would be
-    // wrong everywhere at once — every community-sensitive query key and request in
-    // the application derives from it — so it carries the most tests.
-    //
-    // `store/community-context.ts` is included despite being state rather than
-    // logic, because its §75 fallback chain is real logic: a store that failed to
-    // drop an archived active community would leave the app pointed at a community
-    // that no longer answers.
-    'src/lib/community/**/*.ts',
-    'src/lib/community-directory-api.ts',
-    'src/lib/community-gap-directory-api.ts',
-    'src/config/multi-community-gaps.ts',
+    // Included despite being state rather than logic: its §75 fallback chain is
+    // real logic, and a store that failed to drop an archived active community
+    // would leave the app pointed at one that no longer answers.
     'src/store/community-context.ts',
+
+    // Per-phase reusable surfaces. See the note above on why this is still a
+    // list rather than `src/components/**`.
+    'src/components/financial/**/*.tsx',
+    'src/components/monetization/**/*.tsx',
+    'src/components/creator-economy/**/*.tsx',
+    'src/components/community/**/*.tsx',
+    'src/components/maps/**/*.tsx',
     'src/components/community-directory/**/*.tsx',
-
-    // Phase 15. The analytics domain layer, both API arms, the adapters onto the
-    // four surfaces that already existed, and the reusable dashboard primitives.
-    // Screens are excluded for the same reason as in every phase before it: they
-    // are compositions of these, and covering them would measure how much of a
-    // `ScrollView` rendered rather than whether a range, a provenance marker, a
-    // suppression or a cache key is right.
-    //
-    // Three files carry more weight than the rest and are worth naming:
-    //
-    //   `lib/analytics/time-range.ts` — a bug here is wrong on every screen at
-    //   once, because every figure in the application is cut by it.
-    //
-    //   `lib/analytics/query-keys.ts` — the whole of §53's cache-isolation
-    //   guarantee reduces to this file being right.
-    //
-    //   `mocks/analytics-data.ts` is deliberately *included* despite being mock
-    //   data, because §60 makes its determinism a requirement rather than a
-    //   convenience, and an internal inconsistency in it would make every
-    //   analytics review unfalsifiable.
-    'src/lib/analytics/**/*.ts',
-    'src/lib/analytics-api.ts',
-    'src/lib/analytics-gap-api.ts',
-    'src/config/analytics-gaps.ts',
-    'src/mocks/analytics-data.ts',
     'src/components/analytics/**/*.tsx',
-
-    // Phase 16. The integration platform: the domain layer, the provider
-    // adapters, both API arms and the reusable surfaces. Screens are excluded
-    // for the same reason as in every phase before it — they are compositions
-    // of these.
-    //
-    // Four files carry more weight than the rest and are worth naming:
-    //
-    //   `lib/integrations/calendar.ts` — §62's timezone conversion. A bug here
-    //   is silent, plausible, and puts a member at an event an hour early.
-    //
-    //   `lib/integrations/push-lifecycle.ts` — §44's token isolation. A bug
-    //   here routes one member's private notifications to another's phone.
-    //
-    //   `lib/integrations/payments.ts` — §26's authoritative-success rule. A bug
-    //   here either double-charges somebody or tells them a payment failed when
-    //   it did not.
-    //
-    //   `lib/integrations/query-keys.ts` — the whole of §43's cache-isolation
-    //   guarantee reduces to this file being right.
-    //
-    // `mocks/integrations-gap-data.ts` is deliberately *included* despite being
-    // fixture data, because the government fixtures carry a safety property —
-    // never `official`, never a real authority, always `unverified` — that a
-    // later edit could break without any other test noticing.
-    'src/lib/integrations/**/*.ts',
-    'src/lib/integrations-api.ts',
-    'src/lib/integrations-gap-api.ts',
-    'src/config/integration-gaps.ts',
-    'src/config/integration-provider-gaps.ts',
-    'src/config/integration-config.ts',
-    'src/mocks/integrations-gap-data.ts',
     'src/components/integrations/**/*.tsx',
-
-    // Phase 18. The automation domain layer, the three catalogues, both API
-    // arms and the reusable surfaces. Screens are excluded for the same reason
-    // as in every phase before it — they are compositions of these.
-    //
-    // Four files carry more weight than the rest and are worth naming:
-    //
-    //   `lib/automation/schedule.ts` — §42's timezone conversion, on top of
-    //   Phase 16's. A bug here is silent, plausible, and fires a member's
-    //   reminder an hour out twice a year in one timezone.
-    //
-    //   `lib/automation/access.ts` — §49's whole guarantee. A bug here offers
-    //   an affordance the server will refuse, or worse, one it will not.
-    //
-    //   `lib/automation/query-keys.ts` — the whole of §58's cache-isolation
-    //   guarantee reduces to this file being right.
-    //
-    //   `lib/automation/simulation.ts` — §35 and §57. A bug here produces a
-    //   test result indistinguishable from a real run.
-    //
-    // `mocks/automation-gap-data.ts` is deliberately *included* despite being
-    // fixture data, because it carries two safety properties a later edit could
-    // break with nothing else noticing: every record is `isSimulated`, and the
-    // development capability set never grants platform-wide authority.
-    'src/lib/automation/**/*.ts',
-    'src/lib/automation-api.ts',
-    'src/lib/automation-gap-api.ts',
-    'src/config/automation-gaps.ts',
-    'src/mocks/automation-gap-data.ts',
     'src/components/automation/**/*.tsx',
+
+    // Fixture data carrying a safety property a later edit could break with
+    // nothing else noticing: analytics determinism (§60), the government
+    // fixtures that must never read `official`, and the automation records that
+    // must always read `isSimulated`.
+    'src/mocks/analytics-data.ts',
+    'src/mocks/integrations-gap-data.ts',
+    'src/mocks/automation-gap-data.ts',
+
+    // Tests are not the subject, and the production twins are generated — their
+    // coverage would measure the generator rather than the register.
+    '!**/__tests__/**',
+    '!src/config/*.production.ts',
   ],
   testMatch: ['**/__tests__/**/*.test.[jt]s?(x)'],
 };
