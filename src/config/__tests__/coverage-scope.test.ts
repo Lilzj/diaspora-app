@@ -10,25 +10,33 @@
 // Two different problems in one list, and only one of them was reasoned.
 //
 // The screens' exclusion is argued in the config and the argument is good. The
-// hooks' exclusion carried no reasoning at all, and 35 files holding the React
+// hooks' exclusion carried no reasoning at all, and 36 files holding the React
 // Query keys, the cache invalidation, the optimistic updates and the mutation
 // error handling were simply not in the denominator. Measured for the first
-// time on 19 Nov 2026: **14.6% of 4,205 statements**. `src/utils` was missing
-// the same way, and it already had its own tests.
+// time on 19 Nov 2026: **14.4% of 4,246 statements**. `src/utils` was
+// missing the same way, and it already had its own tests.
 //
 // The deeper problem is the shape. An allow-list **of files** fails the way the
 // backend's seeder registry failed before ADR-018: a module added later is
 // invisible until somebody remembers to list it, and nothing says so. The
-// headline moved from 72.25% of 10,178 statements to 59.05% of 19,766 — the
-// same tests, a denominator that had been quietly chosen to flatter.
+// headline moved from 72.25% of 10,178 statements to 59.5% of 20,270 —
+// the same tests, a denominator that had been quietly chosen to flatter.
 //
 // ── What this file holds ────────────────────────────────────────────────────
 //
 // Not a coverage threshold: there is none yet, deliberately. This holds the
 // *scope* — that the directories carrying logic are globbed rather than listed,
-// and that every top-level directory under `src` is either measured or named
-// here with the reason it is not. A new `src/services` would otherwise arrive
+// that each glob covers every extension its directory actually contains, and
+// that every top-level directory under `src` is either measured or named here
+// with the reason it is not. A new `src/services` would otherwise arrive
 // unmeasured and nothing would mention it.
+//
+// The extension rule earns its place: the first version of this fix globbed
+// `src/hooks/**/*.ts` and silently missed `usePullToRefresh.tsx`, 190 lines of
+// hook imported by ten screens. Globbing a directory but pinning an extension
+// is the same failure one level down, and `toContain('src/hooks/**/*.ts')`
+// cannot see it — a pattern existing is not a pattern covering. So the
+// expectation is derived from the filesystem instead.
 // ─────────────────────────────────────────────────────────────────────────────
 
 declare const __dirname: string;
@@ -40,7 +48,8 @@ interface DirectoryEntry {
 
 const { readdirSync }: { readdirSync(p: string, o: { withFileTypes: true }): DirectoryEntry[] } =
   require('fs');
-const { join }: { join(...parts: string[]): string } = require('path');
+const { join, extname }: { join(...parts: string[]): string; extname(p: string): string } =
+  require('path');
 
 const ROOT = join(__dirname, '..', '..', '..');
 const SRC = join(ROOT, 'src');
@@ -53,6 +62,15 @@ const EXCLUDED = PATTERNS.filter((pattern) => pattern.startsWith('!'));
 
 /** The directories whose logic must be globbed, never listed file by file. */
 const GLOBBED = ['lib', 'hooks', 'config', 'utils'];
+
+/**
+ * Extensions that count as source for the rule below.
+ *
+ * `.js` and `.jsx` are here although nothing under those directories uses them
+ * today: if one ever appears it is either worth measuring or worth excluding on
+ * purpose, and this is where that decision gets asked for.
+ */
+const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx'];
 
 /**
  * Top-level directories under `src` that coverage does not measure, and why.
@@ -69,6 +87,35 @@ const NOT_MEASURED: Record<string, string> = {
   providers: 'React context providers: composition, in the same sense the screens are.',
 };
 
+/** Every source file under `src/<directory>`, excluding its tests. */
+function sourceFilesUnder(directory: string): string[] {
+  const found: string[] = [];
+
+  const walk = (current: string): void => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      if (entry.name === '__tests__') continue;
+
+      const full = join(current, entry.name);
+
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+
+      if (SOURCE_EXTENSIONS.includes(extname(entry.name))) found.push(full);
+    }
+  };
+
+  walk(join(SRC, directory));
+  return found;
+}
+
+function topLevelDirectories(): string[] {
+  return readdirSync(SRC, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+}
+
 describe('what the coverage figure is over', () => {
   it('loads a configuration with patterns at all — the canary', () => {
     // Everything below reads this array. An empty or missing one would satisfy
@@ -79,6 +126,22 @@ describe('what the coverage figure is over', () => {
 
   it.each(GLOBBED)('measures src/%s by glob rather than by name', (directory) => {
     expect(INCLUDED).toContain(`src/${directory}/**/*.ts`);
+  });
+
+  it.each(GLOBBED)('globs every extension src/%s actually contains', (directory) => {
+    // The rule that `toContain` above cannot express. A glob existing for a
+    // directory says nothing about whether it reaches the whole directory, and
+    // `src/hooks/**/*.ts` reached 35 of 36 files.
+    const files = sourceFilesUnder(directory);
+
+    // The canary: a walk that found nothing would make the loop below vacuous.
+    expect(files.length).toBeGreaterThan(2);
+
+    const extensions = [...new Set(files.map((file) => extname(file)))].sort();
+
+    for (const extension of extensions) {
+      expect(INCLUDED).toContain(`src/${directory}/**/*${extension}`);
+    }
   });
 
   it('names no individual file inside a globbed directory', () => {
@@ -107,9 +170,7 @@ describe('what the coverage figure is over', () => {
   });
 
   it('accounts for every top-level directory under src', () => {
-    const directories = readdirSync(SRC, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name);
+    const directories = topLevelDirectories();
 
     // The canary for this rule: a readdir that returned nothing would make the
     // comparison below trivially true.
@@ -127,11 +188,7 @@ describe('what the coverage figure is over', () => {
   });
 
   it('keeps a reason with every directory it does not measure', () => {
-    const directories = new Set(
-      readdirSync(SRC, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => entry.name)
-    );
+    const directories = new Set(topLevelDirectories());
 
     for (const [name, reason] of Object.entries(NOT_MEASURED)) {
       // A reason for a directory that no longer exists is a reason nobody will
