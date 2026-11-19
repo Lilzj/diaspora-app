@@ -15,11 +15,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { apiClient } from '@/lib/apiClient';
 import { backOr } from '@/lib/navigation';
 import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/event-capacity';
 import { eventHost, eventHostOrgId, eventOrganiserUserId } from '@/lib/event-host';
-import { describeEventPrice, toEvent } from '@/lib/event-wire';
+import { describeEventPrice } from '@/lib/event-wire';
 import { formatPrice } from '@/lib/money';
 import { useMemberCurrency } from '@/lib/member-currency';
 import { parseCapacity } from '@/lib/event-capacity-prompt';
@@ -47,7 +46,8 @@ import { useTheme } from '@/design-system';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
-import { deleteEvent } from '@/lib/community-life-api';
+import { deleteEvent, fetchEvent } from '@/lib/community-life-api';
+import { FinancialError } from '@/lib/financial-errors';
 import { EventCommunityLink } from '@/components/EventCommunityLink';
 
 export default function EventDetailScreen() {
@@ -151,11 +151,10 @@ export default function EventDetailScreen() {
       setErrorMsg('');
       setUnreachable(false);
       try {
-        const res = await apiClient.get(`/community-life/events/${id}`);
-        // Through the adapter, like every other read of an event. This screen
-        // bypassed `fetchEvent` and so bypassed the translation with it, which
-        // is why it kept rendering the wire's own vocabulary.
-        const data = toEvent(res.data.data);
+        // Through `fetchEvent`, which is what this screen's own comment said it
+        // should have been doing: the adapter runs inside it, so the screen can
+        // no longer read the wire's vocabulary by accident (FSOLID-002).
+        const data = await fetchEvent(String(id));
         setEvent(data);
         // `viewerRsvpStatus` on the wire. Reading `rsvpStatus` off the payload
         // gave `undefined` every time, so the screen never showed a member the
@@ -164,18 +163,31 @@ export default function EventDetailScreen() {
       } catch (err: any) {
         console.error('Error fetching event details', err);
 
-        // **A request that never arrived is not a missing event.** With no
-        // `response` there was no answer at all — aeroplane mode, no signal,
-        // a server that could not be reached — and the screen said the event
-        // "might have been cancelled, past, or removed", which sends somebody
-        // to ask an organiser about an event that is perfectly fine.
-        setUnreachable(err?.response === undefined);
+        // **A request that never arrived is not a missing event.** No answer at
+        // all — aeroplane mode, no signal, a server that could not be reached —
+        // and this screen used to say the event "might have been cancelled,
+        // past, or removed", which sends somebody to ask an organiser about an
+        // event that is perfectly fine.
+        //
+        // The old test for that was `err.response === undefined`, reading the
+        // axios error directly. `fetchEvent` converts every failure to the
+        // platform's `FinancialError`, so there is no `response` to read and
+        // that check would have called **every** failure unreachable — a
+        // genuine 404 included. These three kinds are the ones that mean
+        // nothing reached a server.
+        const failure = err instanceof FinancialError ? err : null;
+        const neverArrived =
+          failure?.kind === 'network' || failure?.kind === 'timeout' || failure?.kind === 'offline';
+
+        setUnreachable(neverArrived);
+        // `FinancialError.message` is the copy written for a member. The server's
+        // own `detail` is shown only for a validation problem, because the rest
+        // are written for an operator — that judgement belongs in the error
+        // module, which is the point of routing through it.
         setErrorMsg(
-          err?.response === undefined
+          neverArrived
             ? 'We could not reach Diaspora'
-            : err?.response?.data?.detail?.trim() ||
-                err?.response?.data?.message ||
-                'Failed to load event details.'
+            : failure?.message?.trim() || 'Failed to load event details.'
         );
       } finally {
         setIsLoading(false);

@@ -35,6 +35,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { coverImageUri, housingMediaIds, type HousingMediaRef } from '@/types/housing';
+import { toHousingListingDetail } from '@/lib/housing-listings-api';
 
 /** Exactly what `GET /housing/listings/{id}` returned for a seeded listing. */
 const WIRE = {
@@ -152,7 +153,90 @@ describe('the screen no longer reads fields the wire does not send', () => {
 // The rent is the single most important fact on a rental listing.
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('the housing detail screen flattens the wire shape', () => {
+describe('the housing detail wire is flattened at the boundary', () => {
+  // ── Called, not grepped ───────────────────────────────────────────────────
+  //
+  // This mapping was forty lines inside `app/housing/[id].tsx`, so the only way
+  // to check it was to read the screen's source and look for `rent:` — an
+  // assertion that passes on the word appearing anywhere, in any order, in any
+  // state. FSOLID-002 moved it to `toHousingListingDetail`, a pure exported
+  // function, so the mapping can be **run** against a wire object and the
+  // values compared.
+  //
+  // That is the audit's own argument about this finding made concrete: a screen
+  // that builds its own request is "untestable without stubbing axios rather
+  // than a typed function".
+  const WIRE_FACTS = {
+    id: 'listing-1',
+    title: 'Two-bed flat',
+    price: {
+      isDisclosed: true,
+      amount: 1450,
+      currencyCode: 'GBP',
+      depositAmount: 1450,
+      utilitiesIncluded: true,
+      internetIncluded: false,
+    },
+    capacity: { bedrooms: 2, bathrooms: 1 },
+    availability: { availableFrom: '2026-12-01' },
+    furnishedStatus: 'Partially Furnished',
+    leaseType: '12 Months',
+  };
+
+  it.each([
+    ['rent', 1450],
+    ['currency', 'GBP'],
+    ['deposit', 1450],
+    ['bedrooms', 2],
+    ['bathrooms', 1],
+    ['availabilityDate', '2026-12-01'],
+    ['billsIncluded', true],
+    ['internetIncluded', false],
+    ['furnished', 'Partially Furnished'],
+    ['leaseDuration', '12 Months'],
+  ])('maps %s out of the nested wire', (flat, expected) => {
+    const detail = toHousingListingDetail(WIRE_FACTS as never) as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(detail[flat as string]).toEqual(expected);
+  });
+
+  it('leaves an undisclosed price undefined rather than inventing a number', () => {
+    // `isDisclosed: false` is "price on request", never free. A zero here would
+    // advertise a home as costing nothing.
+    const detail = toHousingListingDetail({
+      ...WIRE_FACTS,
+      price: { ...WIRE_FACTS.price, isDisclosed: false },
+    } as never);
+
+    expect(detail.rent).toBeUndefined();
+  });
+
+  it('drops the server’s "Unspecified" lease rather than showing it as a term', () => {
+    const detail = toHousingListingDetail({
+      ...WIRE_FACTS,
+      leaseType: 'Unspecified',
+    } as never);
+
+    expect(detail.leaseDuration).toBeUndefined();
+  });
+
+  it('survives a wire with none of the nested groups on it', () => {
+    // A summary card and a full listing come through the same mapper. Reading
+    // `price.amount` off an absent `price` is a TypeError during render, which
+    // is the family of crash this file exists for.
+    const detail = toHousingListingDetail({ id: 'listing-2', title: 'Bare' } as never);
+
+    expect(detail.rent).toBeUndefined();
+    expect(detail.bedrooms).toBe(0);
+    expect(detail.deposit).toBe(0);
+  });
+});
+
+describe('the housing detail screen renders an undisclosed price honestly', () => {
+  // Still read from the screen's source: these are about what the page *says*,
+  // which is the screen's own business and not the mapper's.
   const fs = require('fs') as { readFileSync(p: string, e: string): string };
   const path = require('path') as { join(...p: string[]): string };
 
@@ -163,29 +247,8 @@ describe('the housing detail screen flattens the wire shape', () => {
     .filter((line) => !/^\s*(\/\/|\*)/.test(line))
     .join('\n');
 
-  it.each([
-    ['rent', 'price.amount'],
-    ['currency', 'price.currencyCode'],
-    ['deposit', 'price.depositAmount'],
-    ['bedrooms', 'capacity.bedrooms'],
-    ['bathrooms', 'capacity.bathrooms'],
-    ['availabilityDate', 'availability.availableFrom'],
-  ])('maps %s from the wire', (flat) => {
-    expect(SOURCE).toMatch(new RegExp(`${flat}:`));
-  });
-
-  it('reads price, capacity and availability off the raw response', () => {
-    expect(SOURCE).toContain('raw.price');
-    expect(SOURCE).toContain('raw.capacity');
-    expect(SOURCE).toContain('raw.availability');
-  });
-
   it('says "On application" rather than printing undefined next to a currency symbol', () => {
     expect(SOURCE).toContain('On application');
     expect(SOURCE).not.toMatch(/\{getCurrencySymbol\(\)\}\{listing\.rent\}/);
-  });
-
-  it('drops the server’s "Unspecified" lease rather than showing it as a term', () => {
-    expect(SOURCE).toContain("'Unspecified'");
   });
 });

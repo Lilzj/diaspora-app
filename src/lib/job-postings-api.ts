@@ -30,6 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
+import { toList } from './platform-envelope';
 import { countryCurrency } from './country-currency';
 import { coordinatesOf } from './place-coordinates';
 import type {
@@ -467,4 +468,25 @@ export function jobPostingErrorMessage(cause: unknown): string {
   if (typeof detail === 'string' && detail.trim().length > 0) return detail;
 
   return 'We could not reach the jobs service just now.';
+}
+
+/**
+ * Jobs advertised around a point, for a page about somewhere else (FSOLID-002).
+ *
+ * `housing/[id].tsx` renders a short "jobs nearby" strip under a home and read
+ * `GET /jobs` itself to fill it. The route and the envelope belong here; the
+ * screen only ever wanted a handful of rows.
+ *
+ * Deliberately loose about the row shape. This is a cross-domain courtesy
+ * strip, not the jobs tab, and typing it as a job card would promise a contract
+ * the strip does not check.
+ */
+export async function fetchJobsNear(params: {
+  cityName?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  limit?: number;
+}): Promise<unknown[]> {
+  const response = await apiClient.get('/jobs', { params });
+  return toList(response.data);
 }

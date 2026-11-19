@@ -8,10 +8,11 @@ import { Button } from '@/components/Button';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { useTheme } from '@/design-system';
 import { useNotification } from '@/providers/notification-provider';
-import { apiClient } from '@/lib/apiClient';
 import {
   buildReviewRequest,
   describeReviewFailure,
+  ReviewSubmissionError,
+  submitReview,
   type ReviewSubject,
 } from '@/lib/reviews/write-target';
 import { backOr } from '@/lib/navigation';
@@ -80,7 +81,7 @@ export default function WriteReviewScreen() {
 
     setIsSubmitting(true);
     try {
-      await apiClient.post(built.request.path, built.request.body);
+      await submitReview(built.request);
       // The page the member came from shows the rating and the reviews; it
       // kept its cached copy until they left and came back (14 Oct 2026).
       void queryClient.invalidateQueries();
@@ -91,12 +92,16 @@ export default function WriteReviewScreen() {
         message: 'Thank you for your feedback.',
         buttons: [{ text: 'OK', onPress: () => backOr() }],
       });
-    } catch (cause: any) {
+    } catch (cause: unknown) {
       // The server's own refusal, in the member's terms. The gate is a rule
       // rather than a fault, and flattening it into "something went wrong"
       // hides the one thing they could act on.
-      const payload = cause?.response?.data;
-      const described = describeReviewFailure(payload?.code, payload?.detail);
+      //
+      // The code and the detail arrive on `ReviewSubmissionError` rather than
+      // being dug out of `cause.response.data` here: the shape of a problem
+      // document is the boundary's knowledge, not this screen's (FSOLID-002).
+      const refusal = cause instanceof ReviewSubmissionError ? cause : null;
+      const described = describeReviewFailure(refusal?.code, refusal?.detail);
       showAlert({ type: 'error', title: described.title, message: described.message });
     } finally {
       setIsSubmitting(false);

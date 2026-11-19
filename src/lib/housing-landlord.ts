@@ -19,6 +19,9 @@
 // screen leaves the row out.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { apiClient } from './apiClient';
+import { unwrapEnvelope } from './platform-envelope';
+
 /** `LandlordProfileResponse`, loosely — every member optional but the id. */
 export interface LandlordProfileWire {
   id?: string | null;
@@ -119,6 +122,36 @@ export function landlordProfileFromWire(raw: LandlordProfileWire | null | undefi
  */
 export function landlordHomesParams(landlordId: string, limit = 20): Record<string, string | number> {
   return { landlordId, limit };
+}
+
+/**
+ * `GET /housing/landlords/{id}` — the public profile, already read (FSOLID-002).
+ *
+ * Null for a 200 that is not a landlord, which `landlordProfileFromWire`
+ * already decides and which the profile screen treats as the same fact as a
+ * 404. The screen used to unwrap the envelope itself before it could ask.
+ */
+export async function fetchLandlordProfile(landlordId: string): Promise<LandlordProfile | null> {
+  const response = await apiClient.get(`/housing/landlords/${encodeURIComponent(landlordId)}`);
+  return landlordProfileFromWire(unwrapEnvelope<LandlordProfileWire>(response.data));
+}
+
+/**
+ * The contact channels a landlord has published, for
+ * `hostWithDisclosedContact` (FSOLID-002).
+ *
+ * The same route as {@link fetchLandlordProfile}; a different question. The
+ * listing read cannot carry these — a telephone number is disclosed by the
+ * landlord's profile, not by the home — so the detail screen makes a second
+ * read and merges the two. It used to unwrap the envelope itself to do it.
+ */
+export async function fetchLandlordDisclosure(
+  landlordId: string
+): Promise<{ phoneNumber?: string | null; email?: string | null } | null> {
+  const response = await apiClient.get(`/housing/landlords/${encodeURIComponent(landlordId)}`);
+  return (
+    unwrapEnvelope<{ phoneNumber?: string | null; email?: string | null }>(response.data) ?? null
+  );
 }
 
 /** "Private landlord" / "Letting agency" — the word a member reads for a `LandlordKind`. */

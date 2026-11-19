@@ -40,7 +40,7 @@ import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
 import { toLocalFile } from '@/hooks/media';
 import {
   editErrorMessage,
-  fetchOrganizationForEdit,
+  fetchOrganizationWire,
   organizationEditFormFrom,
   organizationEditMissing,
   organizationEditProblem,
@@ -60,7 +60,7 @@ export default function EditOrganizationScreen() {
   // server holds now.
   const query = useQuery({
     queryKey: ['community-life', 'edit', 'organization', id],
-    queryFn: () => fetchOrganizationForEdit(id),
+    queryFn: () => fetchOrganizationWire(id),
     enabled: Boolean(id),
     staleTime: 0,
     gcTime: 0,

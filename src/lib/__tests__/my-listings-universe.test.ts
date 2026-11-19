@@ -88,8 +88,11 @@ describe('the screen that lists them', () => {
   );
 
   it('reads all three universes, each settled on its own', () => {
-    expect(screen).toContain("apiClient.get('/marketplace/listings/mine')");
-    expect(screen).toContain("apiClient.get('/housing/listings/mine')");
+    // Each vertical through its own module since FSOLID-002. The guarantee is
+    // unchanged -- three independent reads, settled separately -- and the
+    // route strings now live beside the envelope that answers them.
+    expect(screen).toContain('fetchMyMarketplaceListings()');
+    expect(screen).toContain('fetchMyHousingListings()');
     expect(screen).toContain('fetchMyProviders()');
     expect(screen).toContain('Promise.allSettled');
   });

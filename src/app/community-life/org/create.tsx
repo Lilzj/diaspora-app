@@ -7,7 +7,11 @@ import { FeatureGate } from '@/components/FeatureGate';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
 import { coordinatesOf } from '@/lib/place-coordinates';
-import { apiClient } from '@/lib/apiClient';
+import {
+  createOrganization,
+  type CreateOrganizationRequest,
+} from '@/lib/community-life-api';
+import { FinancialError } from '@/lib/financial-errors';
 import type { OrgFormState } from '@/types/community-life';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
@@ -185,7 +189,7 @@ export default function CreateOrgScreen() {
       : { latitude: pin.latitude, longitude: pin.longitude };
   };
 
-  const buildPayload = () => {
+  const buildPayload = (): CreateOrganizationRequest => {
     const media: { mediaId: string; role: string }[] = [];
     if (formData.logo) media.push({ mediaId: formData.logo, role: 'Logo' });
     if (formData.coverImage) media.push({ mediaId: formData.coverImage, role: 'Cover' });
@@ -299,14 +303,18 @@ export default function CreateOrgScreen() {
 
     setIsDraftSaving(true);
     try {
-      await apiClient.post('/community-life/organizations', buildPayload());
+      await createOrganization(buildPayload());
       showAlert({
         type: 'success',
         title: 'Draft saved',
         message: 'Saved as a private draft. Nobody else can see it yet.',
       });
     } catch (err) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      // `createOrganization` converts every failure to the platform's
+      // `FinancialError`, whose `message` is written for a member. Reading
+      // `err.response.data.detail` was this screen knowing the shape of a
+      // problem document (FSOLID-002).
+      const detail = err instanceof FinancialError ? err.message : '';
       showAlert({
         type: 'error',
         title: 'Not saved',
@@ -329,12 +337,12 @@ export default function CreateOrgScreen() {
       // Creating always produces a draft — there is no `publish` flag on the
       // request, and publishing is its own route. The copy says so rather than
       // implying the profile is live.
-      const created = await apiClient.post('/community-life/organizations', buildPayload());
+      const created = await createOrganization(buildPayload());
       // **Somewhere to go afterwards.** This used to land on a generic success
       // page, and since nothing in the client calls `GET /organizations/mine`,
       // a member who registered an organisation had no way back to it — it
       // existed, and they could not find it. The response carries the profile.
-      const organizationId: string | undefined = created?.data?.data?.organizationId;
+      const organizationId: string | undefined = created?.organizationId;
 
       showAlert({
         type: 'success',

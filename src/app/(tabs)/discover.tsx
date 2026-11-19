@@ -60,17 +60,14 @@ import { JobCard } from '@/components/JobCard';
 import { HousingCard } from '@/components/HousingCard';
 import { MarketplaceCard } from '@/components/MarketplaceCard';
 import { JobCardSkeleton } from '@/components/Skeleton';
-import { apiClient } from '@/lib/apiClient';
-import { readPage } from '@/lib/platform-envelope';
 import type { HousingListing } from '@/types/housing';
 import type {
   MarketplaceListing,
-  MarketplaceListingCardResponse,
   ListingIntent,
   ListingCondition,
 } from '@/types/marketplace';
-import { toMarketplaceListings } from '@/lib/marketplace-listings-api';
-import { toHousingCardListings, type HousingCardWire } from '@/lib/housing-cards';
+import { searchMarketplace } from '@/lib/marketplace-listings-api';
+import { searchHousing } from '@/lib/housing-listings-api';
 import {
   describeDiscoverScope,
   guideScopeParams,
@@ -84,7 +81,6 @@ import type { SentenceSearch } from '@/lib/search-place';
 import {
   amountInputText,
   appendPage,
-  appliedSortOf,
   distanceSortNote,
   effectiveSort,
   housingSearchParams,
@@ -591,31 +587,22 @@ export default function DiscoverScreen() {
           // The price range went unapplied until the same day: the server
           // drops a range with no currency, and none was sent. See
           // `lib/discover-filters.ts`.
-          const res = await apiClient.post(
-            '/marketplace/search',
+          const page = await searchMarketplace(
             marketplaceSearchBody(searchQuery, scope, marketFilters, marketSort)
           );
 
           // A newer search started while this one was out.
           if (generation !== marketGeneration.current) return;
 
-          // `readPage` is the single place that knows the four list shapes these
-          // routes return between them — a bare array, two hand-rolled cursor
-          // pages with different total field names, and an offset page. Reading
-          // `res.data.data` directly is what made the failure above silent.
-          //
-          // DEFECT-009: it used to read `readPage<MarketplaceListing>`, which is
-          // a cast and therefore an assertion rather than a check. The server
-          // sends `MarketplaceListingCardResponse` — `listingId` not `id`, a
-          // `price` object not a number, `coverMediaId` not `coverImage` — so
-          // every card in this tab rendered with an undefined key and navigated
-          // to `/marketplace/undefined` when tapped. The page is now read as
-          // what it is and mapped once, in the one place that knows the shape.
-          const page = readPage<MarketplaceListingCardResponse>(res.data);
+          // Reading the page and mapping the cards is `searchMarketplace`'s
+          // job now (FSOLID-002). DEFECT-009 — every card navigating to
+          // `/marketplace/undefined` because the page was *cast* to
+          // `MarketplaceListing` rather than read as `…CardResponse` — is
+          // written up there, beside the code that can reintroduce it.
 
           // In the server's order, "Rating" included.
-          setMarketplaceListings(toMarketplaceListings(page.items));
-          setMarketCursor(page.hasMore ? page.nextCursor : null);
+          setMarketplaceListings(page.items);
+          setMarketCursor(page.nextCursor);
           setMarketMore('idle');
           setMarketplaceError(null);
         } catch (err) {
@@ -677,20 +664,19 @@ export default function DiscoverScreen() {
           // The rent range, "Partially Furnished" and ",5000" were still wrong
           // after that, and the tab read one page; `lib/discover-filters.ts`
           // says how.
-          const res = await apiClient.get('/housing/search', {
-            params: housingSearchParams(searchQuery, scope, housingFilters, housingSort),
-          });
+          const page = await searchHousing(
+            housingSearchParams(searchQuery, scope, housingFilters, housingSort)
+          );
 
           // A newer search started while this one was out.
           if (generation !== housingGeneration.current) return;
 
-          const page = readPage<HousingCardWire>(res.data);
 
           // In the server's order, "Distance" included: nearest first across
           // every page, measured from where each home is published.
-          setHousingListings(toHousingCardListings(page.items));
-          setHousingAppliedSort(appliedSortOf(res.data));
-          setHousingCursor(page.hasMore ? page.nextCursor : null);
+          setHousingListings(page.items);
+          setHousingAppliedSort(page.appliedSort);
+          setHousingCursor(page.nextCursor);
           setHousingMore('idle');
           setHousingError(null);
         } catch (err) {
@@ -718,16 +704,14 @@ export default function DiscoverScreen() {
     setHousingMore('loading');
 
     try {
-      const res = await apiClient.get('/housing/search', {
-        params: housingSearchParams(searchQuery, scope, housingFilters, housingSort, housingCursor),
-      });
+      const page = await searchHousing(
+        housingSearchParams(searchQuery, scope, housingFilters, housingSort, housingCursor)
+      );
 
       if (generation !== housingGeneration.current) return;
 
-      const page = readPage<HousingCardWire>(res.data);
-
-      setHousingListings((shown) => appendPage(shown, toHousingCardListings(page.items)));
-      setHousingCursor(page.hasMore ? page.nextCursor : null);
+      setHousingListings((shown) => appendPage(shown, page.items));
+      setHousingCursor(page.nextCursor);
       setHousingMore('idle');
     } catch (err) {
       if (generation !== housingGeneration.current) return;
@@ -745,17 +729,14 @@ export default function DiscoverScreen() {
     setMarketMore('loading');
 
     try {
-      const res = await apiClient.post(
-        '/marketplace/search',
+      const page = await searchMarketplace(
         marketplaceSearchBody(searchQuery, scope, marketFilters, marketSort, marketCursor)
       );
 
       if (generation !== marketGeneration.current) return;
 
-      const page = readPage<MarketplaceListingCardResponse>(res.data);
-
-      setMarketplaceListings((shown) => appendPage(shown, toMarketplaceListings(page.items)));
-      setMarketCursor(page.hasMore ? page.nextCursor : null);
+      setMarketplaceListings((shown) => appendPage(shown, page.items));
+      setMarketCursor(page.nextCursor);
       setMarketMore('idle');
     } catch (err) {
       if (generation !== marketGeneration.current) return;

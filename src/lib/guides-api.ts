@@ -93,7 +93,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
-import { readPage, type Page } from './platform-envelope';
+import { readPage, toList, type Page } from './platform-envelope';
 import type {
   AddGuideModerationNoteRequest,
   AttachGuideMediaRequest,
@@ -1325,4 +1325,21 @@ export async function saveGuideEdits(
   }
 
   return latest;
+}
+
+/**
+ * Guides for a country, for a strip on a page about something else
+ * (FSOLID-002).
+ *
+ * `/guides` is the real discovery route. The platform has no cross-domain
+ * `/discovery/search` aggregator at all — recorded as MC-03 and genuinely
+ * missing from both repositories — which is why a courtesy strip has to ask
+ * each vertical in turn.
+ */
+export async function fetchGuidesFor(params: {
+  countryCode?: string | null;
+  limit?: number;
+}): Promise<unknown[]> {
+  const response = await apiClient.get('/guides', { params });
+  return toList(response.data);
 }

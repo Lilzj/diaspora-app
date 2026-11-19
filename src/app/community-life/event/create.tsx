@@ -7,7 +7,6 @@ import { FeatureGate } from '@/components/FeatureGate';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
 import { coordinatesOf } from '@/lib/place-coordinates';
-import { apiClient } from '@/lib/apiClient';
 import type { EventFormState } from '@/types/community-life';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
 import { useAuthStore } from '@/store/auth';
@@ -22,7 +21,9 @@ import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { defaultScheduleDate } from '@/utils/calendar-date';
 import {
+  createEvent,
   createEventSeries,
+  type CreateEventRequest,
   type CreateEventSeriesRequest,
 } from '@/lib/community-life-api';
 import {
@@ -296,7 +297,7 @@ export default function CreateEventScreen() {
       : { latitude: pin.latitude, longitude: pin.longitude };
   };
 
-  const buildPayload = (): Record<string, unknown> | null => {
+  const buildPayload = (): CreateEventRequest | null => {
     const instants = toInstants();
     if (!instants) return null;
 
@@ -320,7 +321,14 @@ export default function CreateEventScreen() {
       },
       contact: {
         phone: formData.phone?.trim() || undefined,
-        whatsapp: formData.whatsapp?.trim() || undefined,
+        // `whatsApp`, as `ContactDetailsRequest.cs` spells it — the org
+        // register form already did. **This was not a defect**: minimal APIs
+        // and controllers both run on `JsonSerializerDefaults.Web`, which
+        // matches property names case-insensitively, so `whatsapp` bound
+        // perfectly well. It is corrected because the contract says `WhatsApp`
+        // and because the two Community Life forms disagreeing about it is how
+        // somebody later concludes one of them is broken.
+        whatsApp: formData.whatsapp?.trim() || undefined,
         website: formData.website?.trim() || undefined,
         email: formData.email?.trim() || undefined,
       },
@@ -492,7 +500,7 @@ export default function CreateEventScreen() {
 
     setIsDraftSaving(true);
     try {
-      await apiClient.post('/community-life/events', payload);
+      await createEvent(payload);
       showAlert({
         type: 'success',
         title: 'Draft saved',
@@ -582,7 +590,7 @@ export default function CreateEventScreen() {
         return;
       }
 
-      await apiClient.post('/community-life/events', payload);
+      await createEvent(payload);
       showAlert({
         type: 'success',
         title: 'Event created',

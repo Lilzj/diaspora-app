@@ -57,7 +57,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
-import { toList } from './platform-envelope';
+import { readPage, toList } from './platform-envelope';
+import { appliedSortOf } from './discover-filters';
+import { toHousingCardListings, type HousingCardWire } from './housing-cards';
+import { hostFromLandlord } from './housing-host';
+import type { HousingListing } from '@/types/housing';
 
 interface Envelope<T> {
   data: T;
@@ -516,6 +520,116 @@ export async function fetchHousingListing(idOrSlug: string): Promise<HousingList
     `/housing/listings/${encodeURIComponent(idOrSlug)}`
   );
   return response.data.data;
+}
+
+/** `HousingListingCardResponse`, as much of it as the owner's list renders. */
+export interface MyHousingListing {
+  id: string;
+  title: string;
+  status: string;
+  accommodationTypeName?: string | null;
+  accommodationTypeKey: string;
+  price?: { displayText?: string | null } | null;
+  location?: { cityName?: string | null; areaName?: string | null } | null;
+}
+
+/** `GET /housing/listings/mine` — the caller's own homes, every status (FSOLID-002). */
+export async function fetchMyHousingListings(): Promise<MyHousingListing[]> {
+  const response = await apiClient.get('/housing/listings/mine');
+  return readPage<MyHousingListing>(response.data).items;
+}
+
+/**
+ * The listing detail page's shape, flattened out of the wire (FSOLID-002).
+ *
+ * **This mapping was forty lines inside `housing/[id].tsx`**, and the comments
+ * it carried there are the reason it is worth having in one place:
+ *
+ *   * `HousingListingResponse` nests the facts — `price`, `capacity`,
+ *     `availability`, `address` — and the screen read `listing.rent`,
+ *     `listing.deposit`, `listing.bedrooms` and five more at the top level. On
+ *     a release build the most important fact on a rental listing rendered as
+ *     **"MONTHLY RENT undefined"**.
+ *   * The wire calls the landlord `landlord`; the screen calls it `host`.
+ *     Nothing bridged them, so `listing.host.name.substring(0, 1)` threw and
+ *     the screen could not render a real listing at all.
+ *   * An earlier inline version of the `host` mapping left out `ownerUserId`,
+ *     so every message about a home went to nobody.
+ *
+ * Nothing is invented here: an undisclosed price stays undefined so the render
+ * can say so, and `'Unspecified'` — the server's own null lease — is dropped
+ * rather than shown as a lease term.
+ *
+ * Exported separately from the read so it can be tested against a wire object
+ * without a transport, which is the other half of what the audit says a screen
+ * owning its own request costs.
+ */
+export function toHousingListingDetail(raw: HousingListingWire): HousingListing {
+  const price = raw.price ?? {};
+  const capacity = raw.capacity ?? {};
+  const availability = raw.availability ?? {};
+
+  return {
+    ...(raw as unknown as HousingListing),
+    rent: price.isDisclosed === false ? undefined : (price.amount ?? undefined),
+    currency: price.currencyCode ?? undefined,
+    deposit: price.depositAmount ?? 0,
+    billsIncluded: price.utilitiesIncluded ?? false,
+    internetIncluded: price.internetIncluded ?? false,
+    bedrooms: capacity.bedrooms ?? 0,
+    bathrooms: capacity.bathrooms ?? 0,
+    furnished: raw.furnishedStatus ?? undefined,
+    leaseDuration: raw.leaseType && raw.leaseType !== 'Unspecified' ? raw.leaseType : undefined,
+    availabilityDate: availability.availableFrom ?? undefined,
+    host: hostFromLandlord(raw.landlord as Parameters<typeof hostFromLandlord>[0]),
+  };
+}
+
+/** `GET /housing/listings/{idOrSlug}`, flattened for the detail screen. */
+export async function fetchHousingListingDetail(idOrSlug: string): Promise<HousingListing> {
+  return toHousingListingDetail(await fetchHousingListing(idOrSlug));
+}
+
+/** One page of `GET /housing/search`, already read and already mapped. */
+export interface HousingSearchPage {
+  items: HousingListing[];
+  /** The cursor for the next page, or null when this is the last one. */
+  nextCursor: string | null;
+  hasMore: boolean;
+  /** The order the server says it applied, which is not always the one asked for. */
+  appliedSort: string | null;
+}
+
+/**
+ * `GET /housing/search` (FSOLID-002).
+ *
+ * Three screens called this route by hand — Discover, the home detail page and
+ * a landlord's profile — and each of them repeated the same four steps
+ * afterwards: `readPage<HousingCardWire>`, `toHousingCardListings`,
+ * `page.hasMore ? page.nextCursor : null`, and for one of them
+ * `appliedSortOf(res.data)`.
+ *
+ * Every one of those is envelope knowledge. `readPage` exists because these
+ * routes return four different list shapes between them, and `appliedSort` sits
+ * beside `data` rather than inside it — a screen reading `res.data.appliedSort`
+ * is a screen that knows where the platform puts a sort order.
+ *
+ * Callers build `params` with `housingSearchParams` or `landlordHomesParams`,
+ * which is where the *query* vocabulary lives; this is where the *response*
+ * vocabulary stops.
+ */
+export async function searchHousing(
+  params: Record<string, string | string[] | number | boolean | undefined>
+): Promise<HousingSearchPage> {
+  const response = await apiClient.get('/housing/search', { params });
+  const page = readPage<HousingCardWire>(response.data);
+
+  return {
+    items: toHousingCardListings(page.items),
+    nextCursor: page.hasMore ? page.nextCursor : null,
+    hasMore: page.hasMore,
+    appliedSort: appliedSortOf(response.data),
+  };
 }
 
 /** What the edit form holds, already parsed. `null` money means "not stated". */

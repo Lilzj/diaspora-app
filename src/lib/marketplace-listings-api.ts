@@ -59,7 +59,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
-import { swapTermsOf } from './marketplace-wire';
+import { readPage } from './platform-envelope';
+import { swapTermsOf, toListing, type ListingWire } from './marketplace-wire';
 import { coordinatesOf } from './place-coordinates';
 import type {
   ListingCondition,
@@ -220,6 +221,39 @@ export function toMarketplaceListings(
   cards: readonly MarketplaceListingCardResponse[]
 ): MarketplaceListing[] {
   return cards.filter((card) => !!card?.listingId).map(toMarketplaceListing);
+}
+
+/** One page of `POST /marketplace/search`, already read and already mapped. */
+export interface MarketplaceSearchPage {
+  items: MarketplaceListing[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+/**
+ * `POST /marketplace/search` (FSOLID-002).
+ *
+ * Discover called this route by hand, twice — a first page and a next page —
+ * and repeated `readPage<MarketplaceListingCardResponse>` and
+ * `toMarketplaceListings` at both sites. DEFECT-009 is what happens when that
+ * is a screen's job: the page was read as `readPage<MarketplaceListing>`, which
+ * is a cast and not a check, so every card carried an undefined key and
+ * navigated to `/marketplace/undefined`.
+ *
+ * The search *body* is built by `marketplaceSearchBody`, which owns the query
+ * vocabulary. This owns the response vocabulary, once.
+ */
+export async function searchMarketplace(
+  body: Record<string, unknown>
+): Promise<MarketplaceSearchPage> {
+  const response = await apiClient.post('/marketplace/search', body);
+  const page = readPage<MarketplaceListingCardResponse>(response.data);
+
+  return {
+    items: toMarketplaceListings(page.items),
+    nextCursor: page.hasMore ? page.nextCursor : null,
+    hasMore: page.hasMore,
+  };
 }
 
 /**
@@ -650,6 +684,88 @@ export async function fetchMarketplaceListingForEdit(
     `/marketplace/listings/${encodeURIComponent(listingId)}`
   );
   return response.data.data;
+}
+
+/**
+ * The listing a buyer sees, read through `toListing` (FSOLID-002).
+ *
+ * The detail screen called this route itself and then called `toListing` on
+ * `res.data.data` — so it owned the path, the envelope and the knowledge that
+ * the wire needs translating. Two fields were missed when that translation was
+ * inline, which is the comment `marketplace-wire.ts` carries to this day.
+ *
+ * ── The six companions, and why they are grouped and named ──────────────────
+ *
+ * The screen also read `nearbyUpdates`, `nearbyJobs`, `nearbyHousing`,
+ * `nearbyProviders`, `similarListings` and `nearbyAlternatives` off the
+ * **envelope**, beside `data`, and renders a section from each.
+ *
+ * **Only the development handler supplies any of them**
+ * (`src/mocks/handlers/marketplace.ts` builds all six by filtering the fixture
+ * set). The published contract for `GET /marketplace/listings/{listingId}` has
+ * no such members and the backend source has no such properties — so against a
+ * real backend all six are empty and all six sections read zero.
+ *
+ * They are returned here, grouped and documented, rather than quietly dropped.
+ * Removing six sections of a screen is a product decision and this migration is
+ * not the place to take it; hiding the fact inside a screen is how it stayed
+ * unnoticed. Grouping them under one name means the next person to ask "what
+ * does this listing page actually get from the server?" has one place to look.
+ */
+export interface MarketplaceListingCompanions {
+  nearbyUpdates: unknown[];
+  nearbyJobs: unknown[];
+  nearbyHousing: unknown[];
+  nearbyProviders: unknown[];
+  similarListings: unknown[];
+  nearbyAlternatives: unknown[];
+}
+
+export interface MarketplaceListingDetail {
+  listing: MarketplaceListing;
+  /** Development-only. See the note above: the real route sends none of these. */
+  companions: MarketplaceListingCompanions;
+}
+
+const COMPANION_KEYS = [
+  'nearbyUpdates',
+  'nearbyJobs',
+  'nearbyHousing',
+  'nearbyProviders',
+  'similarListings',
+  'nearbyAlternatives',
+] as const;
+
+export async function fetchMarketplaceListingDetail(
+  listingId: string
+): Promise<MarketplaceListingDetail> {
+  const response = await apiClient.get<Envelope<ListingWire> & Record<string, unknown>>(
+    `/marketplace/listings/${encodeURIComponent(listingId)}`
+  );
+
+  const body = response.data;
+
+  const companions = Object.fromEntries(
+    COMPANION_KEYS.map((key) => [key, Array.isArray(body[key]) ? (body[key] as unknown[]) : []])
+  ) as unknown as MarketplaceListingCompanions;
+
+  return { listing: toListing(body.data), companions };
+}
+
+/** `ListingCardResponse`, as much of it as the owner's list renders. */
+export interface MyMarketplaceListing {
+  listingId: string;
+  title: string;
+  status: string;
+  categoryKey: string;
+  price?: { displayText?: string | null } | null;
+  location?: { cityName?: string | null; areaName?: string | null } | null;
+}
+
+/** `GET /marketplace/listings/mine` — the caller's own listings, every status. */
+export async function fetchMyMarketplaceListings(): Promise<MyMarketplaceListing[]> {
+  const response = await apiClient.get('/marketplace/listings/mine');
+  return readPage<MyMarketplaceListing>(response.data).items;
 }
 
 /** `UpdateListingRequest`, as `Contracts/V1/Requests/UpdateListingRequest.cs` declares it. */

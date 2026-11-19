@@ -6,14 +6,13 @@ import {
   describeListingPrice,
   describeSwapTopUp,
   isPurchasable,
-  toListing,
 } from '@/lib/marketplace-wire';
+import { fetchMarketplaceListingDetail } from '@/lib/marketplace-listings-api';
 import type { MarketplaceListing } from '@/types/marketplace';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
-import { apiClient } from '@/lib/apiClient';
 import { createSignedUrl } from '@/lib/media-api';
 import type { SellerRating } from '@/types/marketplace';
 import { useSavedStore } from '@/store/saved';
@@ -90,9 +89,9 @@ export default function ListingDetailScreen() {
   
   const [isLoading, setIsLoading] = useState(true);
 
-  // This screen loads through `useEffect` + `apiClient`, so there is no
-  // TanStack `refetch` to hand over. `refreshNonce` sits in the fetch
-  // effect's dependency list and re-runs it.
+  // This screen loads through a `useEffect`, not a TanStack query, so there is
+  // no `refetch` to hand over. `refreshNonce` sits in the fetch effect's
+  // dependency list and re-runs it.
   const { nonce: refreshNonce, refreshControl } = useEffectRefresh(isLoading);
 
   // The seller's rating, straight off the wire. Absent — not zero — when nobody
@@ -154,15 +153,12 @@ export default function ListingDetailScreen() {
       setIsLoading(true);
       setFailure(null);
       try {
-        // Remediation Wave A′: the listing read is `/marketplace/listings/{listingId}`.
-        const res = await apiClient.get(`/marketplace/listings/${encodeURIComponent(String(id))}`);
-        const data = res.data;
-        const raw = data.data;
-
-        // Through `toListing`, which is where the wire is read. It used to be
-        // done here, inline, which is why two fields were missed and stayed
-        // missed. See `lib/marketplace-wire.ts`.
-        const mainItem = toListing(raw);
+        // Through `fetchMarketplaceListingDetail`, which owns the route, the
+        // envelope and the `toListing` translation (FSOLID-002). The
+        // translation used to be done here, inline, which is why two fields
+        // were missed and stayed missed. See `lib/marketplace-wire.ts`.
+        const detail = await fetchMarketplaceListingDetail(String(id));
+        const mainItem = detail.listing;
 
         // Calculate distance locally
         if (mainItem.location?.latitude && mainItem.location?.longitude) {
@@ -172,7 +168,7 @@ export default function ListingDetailScreen() {
         setListing(mainItem);
 
         // Map updates to calculate distance relative to the listing
-        const updates = (data.nearbyUpdates || []).map((item: any) => {
+        const updates = detail.companions.nearbyUpdates.map((item: any) => {
           const dist = item.location?.latitude && item.location?.longitude && mainItem.location?.latitude && mainItem.location?.longitude
             ? getDistanceKm(mainItem.location.latitude, mainItem.location.longitude, item.location.latitude, item.location.longitude)
             : null;
@@ -187,7 +183,7 @@ export default function ListingDetailScreen() {
         setNearbyUpdates(updates);
 
         // Map jobs distance relative to listing
-        const jobs = (data.nearbyJobs || []).map((item: any) => {
+        const jobs = detail.companions.nearbyJobs.map((item: any) => {
           if (item.location?.latitude && item.location?.longitude && mainItem.location?.latitude && mainItem.location?.longitude) {
             item.location.distanceKm = getDistanceKm(mainItem.location.latitude, mainItem.location.longitude, item.location.latitude, item.location.longitude);
           }
@@ -196,7 +192,7 @@ export default function ListingDetailScreen() {
         setNearbyJobs(jobs);
 
         // Map housing distance relative to listing
-        const housing = (data.nearbyHousing || []).map((item: any) => {
+        const housing = detail.companions.nearbyHousing.map((item: any) => {
           if (item.location?.latitude && item.location?.longitude && mainItem.location?.latitude && mainItem.location?.longitude) {
             item.location.distanceKm = getDistanceKm(mainItem.location.latitude, mainItem.location.longitude, item.location.latitude, item.location.longitude);
           }
@@ -205,7 +201,7 @@ export default function ListingDetailScreen() {
         setNearbyHousing(housing);
 
         // Map providers distance relative to listing
-        const providers = (data.nearbyProviders || []).map((item: any) => {
+        const providers = detail.companions.nearbyProviders.map((item: any) => {
           if (item.location?.latitude && item.location?.longitude && mainItem.location?.latitude && mainItem.location?.longitude) {
             item.location.distanceKm = getDistanceKm(mainItem.location.latitude, mainItem.location.longitude, item.location.latitude, item.location.longitude);
           }
@@ -214,7 +210,7 @@ export default function ListingDetailScreen() {
         setNearbyProviders(providers);
 
         // Map similar listings
-        const similar = (data.similarListings || []).map((item: any) => {
+        const similar = detail.companions.similarListings.map((item: any) => {
           if (item.location?.latitude && item.location?.longitude) {
             item.location.distanceKm = getDistanceKm(activeLocation.latitude, activeLocation.longitude, item.location.latitude, item.location.longitude);
           }
@@ -223,7 +219,7 @@ export default function ListingDetailScreen() {
         setSimilarListings(similar);
 
         // Map alternatives
-        const alts = (data.nearbyAlternatives || []).map((item: any) => {
+        const alts = detail.companions.nearbyAlternatives.map((item: any) => {
           if (item.location?.latitude && item.location?.longitude) {
             item.location.distanceKm = getDistanceKm(activeLocation.latitude, activeLocation.longitude, item.location.latitude, item.location.longitude);
           }

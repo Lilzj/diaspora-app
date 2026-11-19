@@ -26,17 +26,14 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { HousingCard } from '@/components/HousingCard';
 import { Button } from '@/components/Button';
-import { apiClient } from '@/lib/apiClient';
-import { readPage, unwrapEnvelope } from '@/lib/platform-envelope';
-import { toHousingCardListings, type HousingCardWire } from '@/lib/housing-cards';
+import { searchHousing } from '@/lib/housing-listings-api';
 import {
+  fetchLandlordProfile,
   landlordHomesParams,
   landlordKindLabel,
-  landlordProfileFromWire,
   landlordResponseLabel,
   memberSinceLabel,
   type LandlordProfile,
-  type LandlordProfileWire,
 } from '@/lib/housing-landlord';
 import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
 import type { HousingListing } from '@/types/housing';
@@ -66,13 +63,7 @@ export default function LandlordProfileScreen() {
       setHomesFailed(false);
 
       try {
-        const response = await apiClient.get(
-          `/housing/landlords/${encodeURIComponent(String(id))}`
-        );
-
-        const profile = landlordProfileFromWire(
-          unwrapEnvelope<LandlordProfileWire>(response.data)
-        );
+        const profile = await fetchLandlordProfile(String(id));
 
         if (abandoned) return;
 
@@ -87,13 +78,11 @@ export default function LandlordProfileScreen() {
         // Their homes are a second read, in its own `try`: a search that fails
         // must not blank a profile that loaded.
         try {
-          const homesResponse = await apiClient.get('/housing/search', {
-            params: landlordHomesParams(profile.landlordId),
-          });
+          const page = await searchHousing(landlordHomesParams(profile.landlordId));
 
           if (abandoned) return;
 
-          setHomes(toHousingCardListings(readPage<HousingCardWire>(homesResponse.data).items));
+          setHomes(page.items);
         } catch (cause) {
           if (abandoned) return;
           console.error('Failed to load the homes of a landlord', cause);

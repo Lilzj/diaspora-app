@@ -359,6 +359,20 @@ export interface EventQueryParams {
   /** → `free`. The only discovery bucket with a server-side counterpart. */
   free?: boolean;
   /**
+   * → `organizationId` (a Guid): the events this organisation is hosting.
+   *
+   * **Added for FSOLID-002, and the reason it was missing is the finding.** The
+   * organisation profile's Events tab called `GET /community-life/events` with
+   * `organizationId` by hand, because this type had no member for it — so the
+   * screen *had* to bypass the boundary to ask the question. Migrating it
+   * without adding this would have dropped the filter silently and shown every
+   * event on the platform under one organisation's name.
+   *
+   * The route binds it: `CommunityLifeDiscoveryEndpoints.cs:152`,
+   * `[FromQuery(Name = "organizationId")]`.
+   */
+  organizationId?: string;
+  /**
    * → `communityId` (a Guid, not a slug): events the host posted in that
    * community (21 Oct 2026). Unlike `countryCode`, this *is* a community filter.
    */
@@ -400,6 +414,7 @@ export function toEventBrowseQuery(params: EventQueryParams): Record<string, unk
       ? { latitude: params.latitude, longitude: params.longitude, radiusKm: params.radiusKm }
       : {}),
     free: params.free === true ? true : undefined,
+    organizationId: params.organizationId || undefined,
     communityId: params.communityId || undefined,
     joinedCommunities: params.joinedCommunities === true ? true : undefined,
     startsAfter: params.startsAfter || undefined,
@@ -455,60 +470,138 @@ export async function fetchEvent(eventId: string): Promise<Event> {
  * one-time events, including the one-time events a neighbourhood organiser
  * creates; only a *series* goes to the gap adapter.
  */
+/**
+ * `CreateEventRequest.cs`, as the route actually declares it.
+ *
+ * ── This type was wrong, and it was wrong in a way that 400'd ──────────────
+ *
+ * It used to declare `title`, `description`, `category`, `date`, `time`,
+ * `endTime`, `cityName`, `areaName`, `addressLine` and `price`. The DTO marks
+ * **six members `required`** — `Title`, `Summary`, `CategoryKey`, `StartsAt`,
+ * `EndsAt`, `CountryCode` — and C# `required` means System.Text.Json refuses
+ * the body *before any handler runs*. Four of the six were absent, so every
+ * call this type could express answered 400.
+ *
+ * The module's own header carried that as open remediation item 2, "out of
+ * this wave's scope". FSOLID-002 is the wave that could not leave it: the row
+ * says to move `community-life/event/create.tsx` behind this boundary, and
+ * that screen has had the **correct** payload since an earlier remediation —
+ * `event-create-contract.test.ts` asserts all six required fields in its
+ * source. Migrating it onto the old type would have taken a working create
+ * flow and pointed it at a guaranteed 400.
+ *
+ * So the type is the screen's shape, which is the contract's shape. A wall
+ * clock and a zone are not an instant: `startsAt`/`endsAt` are the DTO's
+ * `DateTimeOffset` members, composed by `convertToInstant`, and `date`/`time`/
+ * `endTime` are gone because no field ever bound them.
+ *
+ * There is no `price`: paid events are out of scope and the DTO has no member
+ * for one. There is no `status`: the route lands a private draft whatever the
+ * body says. There is no `id`: `POST /events` does not upsert — editing is
+ * `PATCH /events/{eventId}`.
+ */
 export interface CreateEventRequest {
-  /** Present when saving over an existing draft. */
-  id?: string;
   title: string;
-  description: string;
-  coverImage?: string;
-  gallery?: string[];
-  category: EventCategory;
-  date: string;
-  time: string;
-  endTime: string;
-  timezone?: string;
-  cityName: string;
-  areaName: string;
-  addressLine: string;
+  summary: string;
+  description?: string;
+  /** A lower-kebab catalogue key from `toEventCategoryKey`, never a display string. */
+  categoryKey: string;
+  organizationId?: string;
+  communityId?: string;
+  hostName?: string;
+  /** ISO-8601 instant. `DateTimeOffset` on the wire. */
+  startsAt: string;
+  /** ISO-8601 instant. `DateTimeOffset` on the wire. */
+  endsAt: string;
+  timeZoneId?: string;
+  registrationDeadline?: string;
+  attendanceMode?: string;
+  /** The country the event is *in*. Required, and never defaulted. */
+  countryCode: string;
+  regionName?: string;
+  cityName?: string;
+  neighborhoodAreaId?: string;
+  venue?: EventVenueRequest;
+  capacity?: number;
+  requiresRsvp?: boolean;
+  isFamilyFriendly?: boolean;
+  isChildFriendly?: boolean;
+  isStudentFocused?: boolean;
+  isFree?: boolean;
+  dressCode?: string;
+  accessibilityNotes?: string;
+  contact?: ContactDetailsRequest;
+  media?: MediaAttachmentRequest[];
+  guideIds?: string[];
+  providerIds?: string[];
+}
+
+/** `EventVenueRequest.cs`. */
+export interface EventVenueRequest {
+  name?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  latitude?: number;
+  longitude?: number;
   landmark?: string;
-  organizerName?: string;
+}
+
+/** `ContactDetailsRequest.cs`. Note the capital A in `whatsApp`. */
+export interface ContactDetailsRequest {
   phone?: string;
-  whatsapp?: string;
+  whatsApp?: string;
   email?: string;
   website?: string;
-  price?: number | string;
-  currency?: string;
-  /** B12 accepts `Draft` here and treats anything else as published. */
-  status?: 'Draft' | 'Published';
+}
+
+/** `MediaAttachmentRequest.cs`. */
+export interface MediaAttachmentRequest {
+  mediaId: string;
+  role?: string;
+  caption?: string;
 }
 
 /**
- * Translates the client's display category into the catalogue key the write
- * routes bind.
+ * ── `withCategoryKey` was removed by FSOLID-002, and this is what it knew ───
  *
- * **The field name was wrong as well as the value.** `CreateEventRequest.cs:19`
- * declares `public required string CategoryKey` — `categoryKey` on the wire, not
- * `category` — and the handler resolves it through
- * `CommunityLifeCatalogResolver.RequireCategoryAsync`
+ * It turned a display category into a catalogue key on the way out, because
+ * `CreateEventRequest.cs:19` declares `public required string CategoryKey` —
+ * `categoryKey` on the wire, not `category` — and the handler resolves it
+ * through `CommunityLifeCatalogResolver.RequireCategoryAsync`
  * (`Application/Events/CreateEventCommandHandler.cs:122`), which returns
  * `EventCategoryNotFound`, an `Error.NotFound`, for anything the catalogue does
- * not have. `PlatformResults` renders that as **404**. So unlike the browse
- * filter, a write does not silently file the event under a default — it refuses
- * it outright.
+ * not have. `PlatformResults` renders that as **404**. Unlike the browse
+ * filter, a write does not silently file the event under a default — it
+ * refuses it outright.
  *
- * `category` is still sent alongside `categoryKey`. That is deliberate and not
- * belt-and-braces: the development handler in `src/mocks/handlers/community-life.ts`
- * stores the display category on the `Event` it echoes back, and every screen
- * reads `event.category` expecting a display string. Dropping it would blank the
- * category chip on every card. The server ignores the extra property.
+ * It is gone because it had no caller left that could use it. `CreateEvent-
+ * Request` carries `categoryKey` directly now, and `UpdateEventFields` only
+ * ever declared `categoryKey` — so the helper's `category` branch was dead on
+ * both paths and the helper was an identity function wearing a long comment.
+ * `toEventCategoryKey` is still the translation; the two screens call it where
+ * they build their payload, which is where the display value lives.
+ *
+ * One thing it did that nothing does now: it also *kept* `category` on the
+ * body. That was for the development handler in
+ * `src/mocks/handlers/community-life.ts`, which stores the display category on
+ * the `Event` it echoes back so a card's chip has something to render. The
+ * handler is updated to derive that from `categoryKey` instead, so the chip
+ * survives without the client sending a field the server has no member for.
  */
-function withCategoryKey<T extends { category?: EventCategory }>(request: T) {
-  if (request.category === undefined) return request;
-  return { ...request, categoryKey: toEventCategoryKey(request.category) };
-}
 
+/**
+ * `POST /community-life/events` — lands a **private draft**, whatever the body
+ * says, and `CreateEventCommand`'s own summary says so.
+ *
+ * No `withCategoryKey` here any more. That helper exists to turn a display
+ * category into a catalogue key for callers that still send one; a create
+ * request carries `categoryKey` directly, because the caller has to choose the
+ * key anyway to satisfy the catalogue — `RequireCategoryAsync` answers
+ * `EventCategoryNotFound` (a 404) for anything it cannot resolve, so there is
+ * no value in letting an unresolvable display string reach the wire.
+ */
 export async function createEvent(request: CreateEventRequest): Promise<Event> {
-  return toEvent(await write<EventWire>('post', '/events', withCategoryKey(request)));
+  return toEvent(await write<EventWire>('post', '/events', request));
 }
 
 /**
@@ -527,12 +620,13 @@ export async function createEvent(request: CreateEventRequest): Promise<Event> {
  */
 export async function updateEvent(
   eventId: string,
-  // Widened 14 Oct 2026 for the edit screen, which sends `UpdateEventRequest`'s
-  // own field names (`summary`, `categoryKey`, `contact`, …) rather than the
-  // create form's. `withCategoryKey` leaves a body with no `category` alone.
-  request: Partial<CreateEventRequest> & UpdateEventFields
+  // The edit screen sends `UpdateEventRequest`'s own field names — `summary`,
+  // `categoryKey`, `contact` — which is exactly `UpdateEventFields`. It used to
+  // be widened with `Partial<CreateEventRequest>` as well, for a create-shaped
+  // body that no caller sends.
+  request: UpdateEventFields
 ): Promise<Event> {
-  return toEvent(await write<EventWire>('patch', `/events/${eventId}`, withCategoryKey(request)));
+  return toEvent(await write<EventWire>('patch', `/events/${eventId}`, request));
 }
 
 /**
@@ -1050,49 +1144,59 @@ export function fetchOrganization(organizationId: string): Promise<CommunityOrga
   return read<CommunityOrganization>(`/organizations/${organizationId}`);
 }
 
+/**
+ * `CreateOrganizationRequest.cs`, as the route actually declares it.
+ *
+ * **The same defect as {@link CreateEventRequest}, in the same module.** The
+ * DTO marks four members `required` — `Name`, `Summary`, `OrganizationTypeKey`,
+ * `CountryCode` — and this type carried none of `summary`, `countryCode` or
+ * `organizationTypeKey`, sending a display `category` instead. Three of four
+ * absent is a 400 before any handler runs.
+ *
+ * `community-life/org/create.tsx` has sent the correct body since an earlier
+ * remediation, and `organization-create-contract.test.ts` asserts it. This type
+ * is now that body, so the screen can go through the boundary (FSOLID-002)
+ * instead of around it.
+ *
+ * `openingHours` is still absent and still deliberately so: the route has never
+ * accepted it. Hours are set afterwards through
+ * `PUT /organizations/{id}/operating-hours`, in a structured shape.
+ */
 export interface CreateOrganizationRequest {
   name: string;
-  category: OrgCategory;
-  description: string;
+  shortName?: string;
+  summary: string;
+  description?: string;
+  /** A lower-kebab catalogue key from `toOrganizationTypeKey`, never a display string. */
+  organizationTypeKey: string;
+  /** Required, and never defaulted — the form has no country field for that reason. */
+  countryCode: string;
+  regionName?: string;
+  cityName?: string;
+  neighborhoodAreaId?: string;
+  latitude?: number;
+  longitude?: number;
   mission?: string;
-  logo?: string;
-  coverImage?: string;
-  services?: string[];
-  cityName: string;
-  areaName: string;
-  addressLine: string;
-  phone?: string;
-  whatsapp?: string;
-  email?: string;
-  website?: string;
-  /*
-   * **`openingHours` was declared here and the route has never accepted it.**
-   *
-   * `CreateOrganizationRequest` has no such member — opening hours are set
-   * afterwards, through `PUT /organizations/{id}/operating-hours`, in a
-   * structured shape rather than the free-text `{ day, hours }` pair this
-   * declared. The register form filled it with three invented rows and
-   * `buildPayload` correctly dropped them, so the type was describing a field
-   * that went nowhere and telling the next reader it was supported.
-   *
-   * Removed rather than renamed: nothing about opening hours belongs on a
-   * create request. See `setOperatingHours`.
-   */
-  verificationDocument?: string;
-
-  /*
-   * `hasMembershipPlans` was declared here for the same reason `openingHours`
-   * was: a form field with nowhere to go. `CreateOrganizationRequest` has no
-   * such member, so it was never sent.
-   *
-   * Paid membership plans do exist — as a *programme* on the organisation,
-   * created through `PUT /communities/{organizationId}/membership`, not as a
-   * boolean at registration. What the create request accepts is below.
-   */
-  /** `Open`, `RequestToJoin`, `InviteOnly` or `Closed`. */
+  vision?: string;
+  contact?: ContactDetailsRequest;
+  socialLinks?: SocialLinksRequest;
   membershipPolicy?: string;
-  /** What the organisation asks of a member, in its own words. */
   membershipRequirements?: string;
+  isMembershipPublic?: boolean;
+  languages?: string[];
+  services?: string[];
+  providerId?: string;
+  media?: MediaAttachmentRequest[];
+}
+
+/** `SocialLinksRequest.cs`. */
+export interface SocialLinksRequest {
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  youTube?: string;
+  linkedIn?: string;
+  tikTok?: string;
 }
 
 /** One row of an organisation's opening hours, as the platform sends and takes it. */
@@ -1110,23 +1214,27 @@ export interface OperatingHourWire {
 }
 
 /**
+ * `POST /community-life/organizations` — lands an unpublished organisation.
+ *
  * `CreateOrganizationRequest.cs:22` declares
  * `public required string OrganizationTypeKey`, resolved through the same
  * `RequireTypeAsync` guard as the event category and refused with
- * `OrganizationTypeNotFound` (**404**) when the catalogue has no such key. The
- * client was sending `category` with a display name, which is neither the right
- * field nor a resolvable value.
+ * `OrganizationTypeNotFound` (**404**) when the catalogue has no such key.
  *
- * `category` rides along for the same reason it does on the event write — see
- * {@link withCategoryKey}.
+ * The caller supplies that key — through `toOrganizationTypeKey` — for the same
+ * reason the event write now does: a display name is not resolvable, so there
+ * is nothing to gain by letting one reach the wire.
  */
 export function createOrganization(
   request: CreateOrganizationRequest
-): Promise<CommunityOrganization> {
-  return write<CommunityOrganization>('post', '/organizations', {
-    ...request,
-    organizationTypeKey: toOrganizationTypeKey(request.category),
-  });
+): Promise<OrganizationWire> {
+  // `OrganizationWire`, not `CommunityOrganization`: the route answers the
+  // organisation as the server holds it, whose identifier is `organizationId`.
+  // `CommunityOrganization` is the **list card's** shape and calls it `id`, so
+  // the old return type was an unchecked cast that renamed the one field the
+  // caller needs — the register screen read `created.data.data.organizationId`
+  // off the raw response precisely because the typed path did not work.
+  return write<OrganizationWire>('post', '/organizations', request);
 }
 
 // ── Calendar ─────────────────────────────────────────────────────────────────
@@ -1261,8 +1369,18 @@ export function fetchEventForEdit(eventId: string): Promise<EventWire> {
   return read<EventWire>(`/events/${eventId}`);
 }
 
-/** The organisation as the server sends it — `fetchOrganization`'s type is the list card's. */
-export function fetchOrganizationForEdit(organizationId: string): Promise<OrganizationWire> {
+/**
+ * The organisation as the server sends it — `fetchOrganization`'s type is the
+ * list card's, which is a narrower view of the same body.
+ *
+ * **Renamed from `fetchOrganizationForEdit` for FSOLID-002.** Nothing about it
+ * is edit-specific: it is the same route, the same read, and the same wire. The
+ * old name described the one screen it happened to be written for, and the
+ * organisation *profile* — a read-only surface — needs exactly this shape. A
+ * profile calling something called `ForEdit` would tell the next reader the
+ * page is an edit surface when it is not.
+ */
+export function fetchOrganizationWire(organizationId: string): Promise<OrganizationWire> {
   return read<OrganizationWire>(`/organizations/${organizationId}`);
 }
 

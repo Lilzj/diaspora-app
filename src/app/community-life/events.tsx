@@ -11,7 +11,6 @@ import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { Ionicons } from '@expo/vector-icons';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import Svg, { Circle, Rect, Path, G } from 'react-native-svg';
-import { apiClient } from '@/lib/apiClient';
 import { eventHost } from '@/lib/event-host';
 import {
   fetchCalendar,
@@ -417,9 +416,11 @@ export default function CommunityLifeScreen() {
   const handleRetryConnection = async () => {
     setIsRetrying(true);
     try {
-      await apiClient.get('/community-life/events', {
-        params: { cityName: selectedLocation.city || undefined },
-      });
+      // The same read the screen already loads through, so the probe exercises
+      // the real path rather than a route string written out a second time.
+      // `fetchEvents` uses the same `apiClient`, so the interceptors that
+      // record success and failure still run on the way through (FSOLID-002).
+      await fetchEvents({ cityName: selectedLocation.city || undefined });
       // The interceptor has already recorded the success; the banner is gone by
       // the time this alert lands, so it confirms rather than announces.
       showAlert({

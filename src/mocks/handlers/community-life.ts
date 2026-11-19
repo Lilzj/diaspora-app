@@ -515,7 +515,33 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
 
       customOrganizations.unshift(newOrg);
       console.log(`[MOCK] Created organization hub: ${newOrg.id}`);
-      return [201, { data: newOrg }];
+
+      // ── The contract's identifier, which this handler did not send ────────
+      //
+      // `POST /community-life/organizations` answers `OrganizationWire`, whose
+      // identifier is **`organizationId`**; this builds a
+      // `CommunityOrganization`, which is the *list card's* shape and calls it
+      // `id`. The register screen reads `organizationId` — correctly, against
+      // the real route — so against this handler it read `undefined` and the
+      // "go and see it" link after registering had nothing to navigate to.
+      //
+      // Surfaced by FSOLID-002, which gave `createOrganization` the return type
+      // the route actually has. The card shape is left alone because the browse
+      // handler and several screens read it; the contract's identifier is added
+      // beside it so both readers work. `summary` and `organizationTypeKey` are
+      // here for the same reason: they are `required` on the way in, and a
+      // handler that drops them teaches the next reader they are optional.
+      return [
+        201,
+        {
+          data: {
+            ...newOrg,
+            organizationId: newOrg.id,
+            summary: data.summary || '',
+            organizationTypeKey: data.organizationTypeKey || 'other',
+          },
+        },
+      ];
     } catch (err) {
       return platformProblem(400, 'Invalid organization registration payload');
     }

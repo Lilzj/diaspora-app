@@ -1012,14 +1012,14 @@ describe('B12 event and organization writes (certified)', () => {
     // generator above it; it does not add a second event.
     const created = await b12.createEvent({
       title: 'Independence Day picnic',
-      description: 'Bring a dish and a chair.',
-      category: 'Picnic',
-      date: '2026-10-03',
-      time: '12:00',
-      endTime: '18:00',
+      summary: 'Bring a dish and a chair.',
+      categoryKey: 'picnic',
+      startsAt: '2026-10-03T12:00:00Z',
+      endsAt: '2026-10-03T18:00:00Z',
+      countryCode: 'GB',
       cityName: 'London',
-      areaName: 'Camberwell',
-      addressLine: 'Burgess Park',
+      regionName: 'Camberwell',
+      venue: { addressLine1: 'Burgess Park' },
     });
 
     expect(created.id).toBeTruthy();
@@ -1034,15 +1034,14 @@ describe('B12 event and organization writes (certified)', () => {
   it('saves a draft through the same route', async () => {
     const draft = await b12.createEvent({
       title: 'Draft event',
-      description: 'Not finished.',
-      category: 'Other',
-      date: '2026-11-01',
-      time: '10:00',
-      endTime: '12:00',
+      summary: 'Not finished.',
+      categoryKey: 'other',
+      startsAt: '2026-11-01T10:00:00Z',
+      endsAt: '2026-11-01T12:00:00Z',
+      countryCode: 'GB',
       cityName: 'London',
-      areaName: 'Peckham',
-      addressLine: 'TBD',
-      status: 'Draft',
+      regionName: 'Peckham',
+      venue: { addressLine1: 'TBD' },
     });
 
     expect(draft.id).toBeTruthy();
@@ -1051,14 +1050,14 @@ describe('B12 event and organization writes (certified)', () => {
   it('updates an event', async () => {
     const created = await b12.createEvent({
       title: 'Original title',
-      description: 'x',
-      category: 'Other',
-      date: '2026-11-02',
-      time: '10:00',
-      endTime: '12:00',
+      summary: 'x',
+      categoryKey: 'other',
+      startsAt: '2026-11-02T10:00:00Z',
+      endsAt: '2026-11-02T12:00:00Z',
+      countryCode: 'GB',
       cityName: 'London',
-      areaName: 'Peckham',
-      addressLine: '1 Road',
+      regionName: 'Peckham',
+      venue: { addressLine1: '1 Road' },
     });
 
     const updated = await b12.updateEvent(created.id, { title: 'Corrected title' });
@@ -1068,14 +1067,14 @@ describe('B12 event and organization writes (certified)', () => {
   it('sets an RSVP — the real B12 intent signal, distinct from registration', async () => {
     const created = await b12.createEvent({
       title: 'RSVP test',
-      description: 'x',
-      category: 'Other',
-      date: '2026-11-03',
-      time: '10:00',
-      endTime: '12:00',
+      summary: 'x',
+      categoryKey: 'other',
+      startsAt: '2026-11-03T10:00:00Z',
+      endsAt: '2026-11-03T12:00:00Z',
+      countryCode: 'GB',
       cityName: 'London',
-      areaName: 'Peckham',
-      addressLine: '1 Road',
+      regionName: 'Peckham',
+      venue: { addressLine1: '1 Road' },
     });
 
     // Remediation Wave A′. This used to assert against `rsvpStatus` on an
@@ -1097,14 +1096,14 @@ describe('B12 event and organization writes (certified)', () => {
   it('deletes an event', async () => {
     const created = await b12.createEvent({
       title: 'Temporary',
-      description: 'x',
-      category: 'Other',
-      date: '2026-11-04',
-      time: '10:00',
-      endTime: '12:00',
+      summary: 'x',
+      categoryKey: 'other',
+      startsAt: '2026-11-04T10:00:00Z',
+      endsAt: '2026-11-04T12:00:00Z',
+      countryCode: 'GB',
       cityName: 'London',
-      areaName: 'Peckham',
-      addressLine: '1 Road',
+      regionName: 'Peckham',
+      venue: { addressLine1: '1 Road' },
     });
 
     const result = await b12.deleteEvent(created.id);
@@ -1114,21 +1113,25 @@ describe('B12 event and organization writes (certified)', () => {
   it('creates an organization through the real route', async () => {
     const created = await b12.createOrganization({
       name: 'Camberwell Ghanaian Union',
-      category: 'Associations',
-      description: 'A new union for Ghanaians in Camberwell.',
+      summary: 'A new union for Ghanaians in Camberwell.',
+      organizationTypeKey: 'association',
+      countryCode: 'GB',
       cityName: 'London',
-      areaName: 'Camberwell',
-      addressLine: '5 Denmark Hill',
+      regionName: 'Camberwell',
       // Was `hasMembershipPlans: true`, a field the create route has never
       // accepted. `membershipPolicy` is the question it does ask.
       membershipPolicy: 'RequestToJoin',
     });
 
-    expect(created.id).toBeTruthy();
+    // `organizationId`, not `id`. The route answers `OrganizationWire`, whose
+    // identifier the server spells `organizationId`; `CommunityOrganization`
+    // is the *list card's* shape and calls it `id`. `createOrganization` used
+    // to claim the latter, which is why the register screen reached past the
+    // typed value into `response.data.data.organizationId` (FSOLID-002).
+    expect(created.organizationId).toBeTruthy();
     expect(created.name).toBe('Camberwell Ghanaian Union');
     // A brand new organization is unverified, which is the honest default.
     expect(created.isVerified).toBe(false);
-    expect(created.followersCount).toBe(0);
   });
 
   it('returns the merged calendar of events and public holidays', async () => {

@@ -70,8 +70,19 @@ describe('an opening-hours row becomes a sentence', () => {
 });
 
 describe('an image comes from the media id the route sends', () => {
+  // A real media identifier. The fixture here used to be `'abc-123'`, which no
+  // media id has ever looked like: `MediaReferenceResponse.mediaId` is a C#
+  // `Guid`. It passed because the screen interpolated whatever it was given
+  // straight into a URL.
+  //
+  // Since FSOLID-002 this delegates to `mediaImageUrl`, which checks the shape
+  // and answers null for anything that is not an identifier — so the fixture
+  // had to become a realistic one, and the looser case below is now an
+  // assertion in its own right rather than an accident.
+  const MEDIA_ID = '6f1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d';
+
   it('builds the address the platform serves the bytes from', () => {
-    expect(mediaUri('abc-123')).toBe(`${API_BASE_URL}/media/abc-123/content`);
+    expect(mediaUri(MEDIA_ID)).toBe(`${API_BASE_URL}/media/${MEDIA_ID}/content`);
   });
 
   it('returns undefined rather than a URL containing "undefined"', () => {
@@ -81,6 +92,15 @@ describe('an image comes from the media id the route sends', () => {
     expect(mediaUri(null)).toBeUndefined();
     expect(mediaUri(undefined)).toBeUndefined();
     expect(mediaUri('')).toBeUndefined();
+  });
+
+  it('refuses a value that is not a media identifier', () => {
+    // The guarantee the old version did not have. A caption, a filename or a
+    // half-built address used to become `/media/<that>/content` and 404 on
+    // every render; there is now nothing to load instead.
+    expect(mediaUri('abc-123')).toBeUndefined();
+    expect(mediaUri('cover.png')).toBeUndefined();
+    expect(mediaUri('   ')).toBeUndefined();
   });
 });
 

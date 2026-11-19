@@ -51,31 +51,15 @@ import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/Button';
 import { router } from 'expo-router';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { apiClient } from '@/lib/apiClient';
-import { readPage } from '@/lib/platform-envelope';
 import { fetchMyProviders } from '@/lib/providers-api';
+import { fetchMyMarketplaceListings } from '@/lib/marketplace-listings-api';
+import { fetchMyHousingListings } from '@/lib/housing-listings-api';
 import { holdingsFromFailure } from '@/lib/analytics/owner-holdings';
 
-/** `ListingCardResponse`, as much of it as this screen renders. */
-interface MyMarketplaceListing {
-  listingId: string;
-  title: string;
-  status: string;
-  categoryKey: string;
-  price?: { displayText?: string | null } | null;
-  location?: { cityName?: string | null; areaName?: string | null } | null;
-}
-
-/** `HousingListingCardResponse`, as much of it as this screen renders. */
-interface MyHousingListing {
-  id: string;
-  title: string;
-  status: string;
-  accommodationTypeName?: string | null;
-  accommodationTypeKey: string;
-  price?: { displayText?: string | null } | null;
-  location?: { cityName?: string | null; areaName?: string | null } | null;
-}
+// `MyMarketplaceListing` and `MyHousingListing` moved to the two modules that
+// own those routes (FSOLID-002). They described `ListingCardResponse` and
+// `HousingListingCardResponse` — wire shapes, which belong beside the read that
+// produces them rather than in the one screen that happened to need them first.
 
 /** One row, whichever vertical it came from. */
 interface OwnedListing {
@@ -99,16 +83,20 @@ function subtitleOf(
 }
 
 async function fetchMyListings(): Promise<{ items: OwnedListing[]; partial: boolean }> {
+  // Each vertical's own module owns its route and its envelope (FSOLID-002).
+  // `Promise.allSettled` still gives the partial-result behaviour below: one
+  // vertical being unreachable must not empty the other two, because a member
+  // seeing an empty list concludes their listings are gone.
   const [marketplace, housing, providers] = await Promise.allSettled([
-    apiClient.get('/marketplace/listings/mine'),
-    apiClient.get('/housing/listings/mine'),
+    fetchMyMarketplaceListings(),
+    fetchMyHousingListings(),
     fetchMyProviders(),
   ]);
 
   const items: OwnedListing[] = [];
 
   if (marketplace.status === 'fulfilled') {
-    for (const listing of readPage<MyMarketplaceListing>(marketplace.value.data).items) {
+    for (const listing of marketplace.value) {
       items.push({
         key: `marketplace:${listing.listingId}`,
         id: listing.listingId,
@@ -122,7 +110,7 @@ async function fetchMyListings(): Promise<{ items: OwnedListing[]; partial: bool
   }
 
   if (housing.status === 'fulfilled') {
-    for (const listing of readPage<MyHousingListing>(housing.value.data).items) {
+    for (const listing of housing.value) {
       items.push({
         key: `housing:${listing.id}`,
         id: listing.id,
