@@ -41,7 +41,7 @@ export default function ChooseCountryScreen() {
     // decide for the member, who can pick any of the 190 rows below.
     let cancelled = false;
 
-    detectCountry()
+    void detectCountry()
       .then((result) => {
         if (cancelled) return;
 

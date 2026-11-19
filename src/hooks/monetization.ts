@@ -304,8 +304,8 @@ export function useRenewPromotion() {
           purchase.payment
         );
       }
-      queryClient.invalidateQueries({ queryKey: financialKeys.purchases() });
-      queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.purchases() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
     },
   });
 }
@@ -327,7 +327,7 @@ export function useSetPromotionAutoRenew() {
       api.setPlacementAutoRenew(input.placementId, input.enabled),
     onSuccess: (placement) => {
       queryClient.setQueryData(financialKeys.placement(placement.placementId), placement);
-      queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
     },
   });
 }
@@ -347,7 +347,7 @@ export function usePausePromotion() {
     mutationFn: (placementId: string) => api.pausePlacement(placementId),
     onSuccess: (placement) => {
       queryClient.setQueryData(financialKeys.placement(placement.placementId), placement);
-      queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
     },
   });
 }
@@ -361,7 +361,7 @@ export function useResumePromotion() {
     mutationFn: (placementId: string) => api.resumePlacement(placementId),
     onSuccess: (placement) => {
       queryClient.setQueryData(financialKeys.placement(placement.placementId), placement);
-      queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
     },
   });
 }
@@ -592,8 +592,8 @@ export function useChangeSubscriptionPlan() {
       queryClient.setQueryData(financialKeys.subscription(), subscription);
       // The whole subtree: entitlements, upcoming charges and every cached
       // preview were all priced against the plan that just stopped being current.
-      queryClient.invalidateQueries({ queryKey: ['financial', 'subscription'] });
-      queryClient.invalidateQueries({ queryKey: financialKeys.transactions() });
+      void queryClient.invalidateQueries({ queryKey: ['financial', 'subscription'] });
+      void queryClient.invalidateQueries({ queryKey: financialKeys.transactions() });
     },
   });
 }

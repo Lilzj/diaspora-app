@@ -394,8 +394,12 @@ export default function CreateListingScreen() {
 
   const stepProblem = problemsByStep[currentStep] ?? null;
 
-  // Auto-save draft
-  const saveDraft = () => {
+  // Auto-save draft.
+  //
+  // Memoised so the effect below can name it. `currentStep` is in this list and
+  // was never in the effect's, so the stored draft held whichever step the
+  // member was on when some *other* field last changed.
+  const saveDraft = useCallback(() => {
     globalMarketplaceDraft = {
       intent, category, subcategory, brand, condition, title, description, price,
       currency, negotiable, quantity, cityName, townPin, landmark, causeId,
@@ -403,7 +407,12 @@ export default function CreateListingScreen() {
       currentStep
     };
     void saveDeviceDraft('marketplace', globalMarketplaceDraft, title);
-  };
+  }, [
+    intent, category, subcategory, brand, condition, title, description, price,
+    currency, negotiable, quantity, cityName, townPin, landmark, causeId,
+    coverPhoto, galleryPhotos, contactPhone, preferredContactMethod,
+    currentStep
+  ]);
 
   // The contact details the platform already holds, if this member has sold
   // before. A first-time seller has no profile and no number, and the read says
@@ -432,11 +441,7 @@ export default function CreateListingScreen() {
     if (title || description || category || price) {
       saveDraft();
     }
-  }, [
-    intent, category, subcategory, brand, condition, title, description, price,
-    currency, negotiable, quantity, cityName, townPin, landmark, causeId,
-    coverPhoto, galleryPhotos, contactPhone, preferredContactMethod
-  ]);
+  }, [saveDraft, title, description, category, price]);
 
   const restoreDraft = () => {
     if (globalMarketplaceDraft) {

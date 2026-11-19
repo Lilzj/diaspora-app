@@ -728,8 +728,12 @@ export default function CreateHousingScreen() {
     .filter((field) => !field.filled)
     .map((field) => field.label);
 
-  // Auto-save draft triggers
-  const saveDraft = () => {
+  // Auto-save draft triggers.
+  //
+  // Memoised so the effect below can name it. `currentStep` is in this list and
+  // was never in the effect's, so the stored draft held whichever step the
+  // member was on when some *other* field last changed.
+  const saveDraft = useCallback(() => {
     globalHousingDraft = {
       // 2 since 14 Oct 2026: the town is chosen from the catalogue. A draft
       // without it holds one of the old hard-coded chips (London by default).
@@ -741,19 +745,19 @@ export default function CreateHousingScreen() {
       publishContact, coverPhoto, galleryPhotos, currentStep
     };
     void saveDeviceDraft('housing', globalHousingDraft, title);
-  };
-
-  useEffect(() => {
-    if (title || description || propertyType || rent) {
-      saveDraft();
-    }
   }, [
     listingType, propertyType, title, summary, description, bedrooms, bathrooms, furnished,
     amenityKeys, houseRulesText, selectedLifestyleMatches, cityName,
     addressLine, landmark, rent, currency, deposit, billsIncluded, internetIncluded,
     parkingAvailable, leaseDuration, availabilityDate, contactPhone, contactEmail,
-    publishContact, coverPhoto, galleryPhotos
+    publishContact, coverPhoto, galleryPhotos, currentStep
   ]);
+
+  useEffect(() => {
+    if (title || description || propertyType || rent) {
+      saveDraft();
+    }
+  }, [saveDraft, title, description, propertyType, rent]);
 
   const restoreDraft = () => {
     if (globalHousingDraft) {
@@ -1922,7 +1926,7 @@ export default function CreateHousingScreen() {
             if (currentStep < steps.length - 1) {
               setCurrentStep(currentStep + 1);
             } else {
-              handlePublish();
+              void handlePublish();
             }
           }}
           nextLabel={currentStep === steps.length - 1 ? 'Publish' : 'Next'}

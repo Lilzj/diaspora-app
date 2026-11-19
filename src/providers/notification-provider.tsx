@@ -111,7 +111,9 @@ function ToastComponent({ type, title, message, duration = 3000, onPress, onDism
         runOnJS(onDismiss)();
       }
     });
-  }, [onDismiss]);
+    // Both are `useSharedValue` handles — the same objects for the life of the
+    // toast, so this callback's identity still turns only on `onDismiss`.
+  }, [onDismiss, opacity, translateY]);
 
   useEffect(() => {
     // Slide in
@@ -127,7 +129,13 @@ function ToastComponent({ type, title, message, duration = 3000, onPress, onDism
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [insets.top, duration]);
+    // `opacity` and `translateY` are stable shared values. `dismiss` is not
+    // listed on purpose: it closes over `onDismiss`, which the provider passes
+    // as a fresh arrow on every render, so naming it here would clear and reset
+    // the auto-dismiss timer on each render and the toast would never close by
+    // itself. The countdown is meant to start once per toast.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insets.top, duration, opacity, translateY]);
 
   return (
     <Animated.View
@@ -231,7 +239,9 @@ function AlertModalComponent({ type, title, message, buttons, visible, onDismiss
       scale.value = withTiming(0.9, { duration: 150 });
       opacity.value = withTiming(0, { duration: 150 });
     }
-  }, [visible]);
+    // `useSharedValue` handles, not refs: naming them is safe here, where a
+    // `useRef(...).current` would have traded this rule for `react-hooks/refs`.
+  }, [visible, scale, opacity]);
 
   const handleButtonPress = (btnPress?: () => void) => {
     onDismiss();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput, Animated, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -244,8 +244,13 @@ export default function PostScreen() {
     });
   }, []);
 
-  // Save draft state periodically
-  const saveDraft = () => {
+  // Save draft state periodically.
+  //
+  // Memoised so the effect below can name it. `currentStep` is in this list and
+  // was never in the effect's, so the saved draft recorded whichever step the
+  // member happened to be on when some *other* field last changed — moving
+  // between steps without editing anything left the stored step behind.
+  const saveDraft = useCallback(() => {
     globalDraftStorage = {
       businessName,
       description,
@@ -267,12 +272,6 @@ export default function PostScreen() {
       currentStep,
     };
     void saveDeviceDraft('provider', globalDraftStorage, businessName);
-  };
-
-  useEffect(() => {
-    if (businessName || phone || description) {
-      saveDraft();
-    }
   }, [
     businessName,
     description,
@@ -291,7 +290,14 @@ export default function PostScreen() {
     uploadedPhotos,
     businessHours,
     is24Hours,
+    currentStep,
   ]);
+
+  useEffect(() => {
+    if (businessName || phone || description) {
+      saveDraft();
+    }
+  }, [saveDraft, businessName, phone, description]);
 
   const restoreDraft = () => {
     if (globalDraftStorage) {
@@ -1203,7 +1209,7 @@ export default function PostScreen() {
             if (currentStep < steps.length - 1) {
               setCurrentStep(currentStep + 1);
             } else {
-              handlePublish();
+              void handlePublish();
             }
           }}
           nextLabel={currentStep === steps.length - 1 ? 'Publish listing' : 'Next'}

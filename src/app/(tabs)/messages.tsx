@@ -71,24 +71,26 @@ export default function MessagesScreen() {
         if (!cancelled) setHubInitialized(true);
       }
       if (cancelled) return;
-      loadConversations();
-      loadRequests();
+      void loadConversations();
+      void loadRequests();
     };
 
-    init();
+    void init();
 
     return () => {
       cancelled = true;
       ConversationHub.teardown();
     };
-  }, [isAuthenticated]);
+    // Both are Zustand actions — created with the store and never recreated —
+    // so the hub is still set up and torn down once per sign-in state change.
+  }, [isAuthenticated, loadConversations, loadRequests]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadConversations();
     await loadRequests();
     setRefreshing(false);
-  }, []);
+  }, [loadConversations, loadRequests]);
 
   // Filter + sort conversations
   const sorted = selectSortedConversations(conversations);
@@ -122,7 +124,13 @@ export default function MessagesScreen() {
           text: conv.isMuted ? '🔔 Unmute' : '🔕 Mute',
           onPress: () => {
             if (conv.isMuted) {
-              ConversationHub.unmute(conv.conversationId);
+              ConversationHub.unmute(conv.conversationId).catch(() => {
+                showAlert({
+                  type: 'error',
+                  title: 'Still muted',
+                  message: 'That conversation could not be unmuted. Please try again.',
+                });
+              });
             } else {
               showAlert({ type: 'question', title: 'Mute Conversation', message: 'How long?', buttons: [
                 { text: '8 Hours', onPress: () => ConversationHub.mute(conv.conversationId, '8h') },
@@ -144,7 +152,9 @@ export default function MessagesScreen() {
         },
         { text: 'Cancel', style: 'cancel' },
       ] });
-  }, []);
+    // `showAlert` comes from the notification provider. Naming it only changes
+    // this callback's identity, which nothing here depends on.
+  }, [showAlert]);
 
   // Not authenticated
   if (!isAuthenticated) {

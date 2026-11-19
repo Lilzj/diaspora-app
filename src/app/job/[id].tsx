@@ -205,6 +205,12 @@ export default function JobDetailScreen() {
   const handleShare = () => {
     Share.share({
       message: `"${job.title}" at ${job.employer.displayName}${place ? ` in ${place}` : ''}, on Diaspora.`,
+    }).catch(() => {
+      showAlert({
+        type: 'error',
+        title: 'Unavailable',
+        message: 'The share sheet could not be opened on this device.',
+      });
     });
   };
 

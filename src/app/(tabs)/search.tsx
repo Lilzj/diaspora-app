@@ -284,7 +284,9 @@ export default function SearchScreen() {
     { enabled: hasCriteria }
   );
 
-  const providers = providerSearch.page?.items ?? [];
+  // Memoised because the `?? []` built a fresh array on every render, which
+  // made every memo downstream of it recompute on every render too.
+  const providers = useMemo(() => providerSearch.page?.items ?? [], [providerSearch.page]);
 
   /**
    * One impression per provider the member was actually shown.

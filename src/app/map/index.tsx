@@ -230,7 +230,9 @@ export default function MapDiscoveryScreen() {
   // Full screen, the map runs under the gesture bar; split, the list is below it.
   const chromeInset = useChromeInset('none');
 
-  const results = search.data?.results ?? [];
+  // Memoised because the `?? []` built a fresh array on every render, so the
+  // marker list and the selected-result lookup below recomputed every time.
+  const results = useMemo(() => search.data?.results ?? [], [search.data]);
   const markers = useMemo(() => results.map((result) => result.marker), [results]);
 
   const selectedResult = useMemo(

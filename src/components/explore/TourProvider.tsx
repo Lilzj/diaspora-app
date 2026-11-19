@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -42,7 +42,12 @@ export const TourSpotlight: React.FC<{
   const registerElementLayout = useExploreStore((state) => state.registerElementLayout);
   const activeTour = useExploreStore((state) => state.activeTour);
 
-  const measure = () => {
+  // Memoised so the effect below can name it. `registerElementLayout` is
+  // selected out of the store and `spotlightKey` is a prop, so this is stable
+  // in practice — which matters, because an unmemoised `measure` named in that
+  // effect would clear and restart the 300ms timer on every render and the
+  // spotlight would never settle.
+  const measure = useCallback(() => {
     if (viewRef.current) {
       // Small delay for layout calculation
       viewRef.current.measure((x, y, width, height, pageX, pageY) => {
@@ -51,7 +56,7 @@ export const TourSpotlight: React.FC<{
         }
       });
     }
-  };
+  }, [registerElementLayout, spotlightKey]);
 
   useEffect(() => {
     if (activeTour) {
@@ -60,7 +65,7 @@ export const TourSpotlight: React.FC<{
     } else {
       registerElementLayout(spotlightKey, null);
     }
-  }, [activeTour]);
+  }, [activeTour, measure, registerElementLayout, spotlightKey]);
 
   // Merge ref and onLayout support
   return (
@@ -97,9 +102,13 @@ const TourOverlay: React.FC = () => {
     });
 
     // Check accessibility reduced motion setting
-    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      setReduceMotion(enabled);
-    });
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        setReduceMotion(enabled);
+      })
+      // A platform that cannot answer leaves the default in place, which is
+      // "do not reduce motion" — the same state as before this ran.
+      .catch(() => undefined);
 
     return () => subscription.remove();
   }, []);

@@ -114,6 +114,11 @@ export default function OrgProfileScreen() {
       friction: 8,
       tension: 40,
     }).start();
+    // A ref-held Animated.Value. It cannot be named here: a dependency array is
+    // evaluated during render and `react-hooks/refs` forbids reading a ref during
+    // render, so naming it trades this rule for that one. It never changes
+    // identity, so nothing is lost by leaving it out.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBottomNavVisible, insets.bottom]);
 
   // **`any` is how three wrong reads went unnoticed on this screen.**
@@ -379,6 +384,12 @@ export default function OrgProfileScreen() {
     // an unknown answer is not a yes, and inventing a Join button here is how
     // the card this replaced came to exist.
     return hidden;
+    // Keyed on the four membership fields that decide which action is offered.
+    // `handleJoin` and `handleLeave` are plain functions, recreated on every
+    // render: naming them would make this recompute every render, which is the
+    // one thing the memo exists to avoid, and they are picked up fresh whenever
+    // any of these fields moves because the memo recomputes then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     org?.viewerMembershipStatus,
     org?.viewerMembershipRole,
@@ -444,7 +455,7 @@ export default function OrgProfileScreen() {
       }
     };
     if (id) {
-      fetchOrgDetails();
+      void fetchOrgDetails();
     }
   }, [id]);
 
@@ -507,7 +518,13 @@ export default function OrgProfileScreen() {
       showAlert({ type: 'info', title: 'Unavailable', message: 'This organization has not linked this social channel.' });
       return;
     }
-    Linking.openURL(url);
+    Linking.openURL(url).catch(() => {
+      showAlert({
+        type: 'error',
+        title: 'Unavailable',
+        message: 'Could not open that link.',
+      });
+    });
   };
 
   // ── What actually belongs to this organisation ─────────────────────────────
@@ -537,7 +554,7 @@ export default function OrgProfileScreen() {
     if (!id) return;
     let cancelled = false;
 
-    (async () => {
+    void (async () => {
       try {
         // `organizationId` had no member on `EventQueryParams` until FSOLID-002
         // added one, which is why this screen asked the route itself. Migrating

@@ -20,8 +20,10 @@ export default function ConversationRequestsScreen() {
     useConversationStore();
 
   useEffect(() => {
-    loadRequests();
-  }, []);
+    void loadRequests();
+    // A Zustand action: defined once when the store is created and never
+    // recreated, so naming it keeps this a mount-only load.
+  }, [loadRequests]);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">

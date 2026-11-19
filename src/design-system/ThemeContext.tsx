@@ -145,7 +145,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
     let cancelled = false;
 
-    (async () => {
+    void (async () => {
       try {
         const stored = await AsyncStorage.getItem(THEME_PREFERENCE_KEY);
         if (cancelled) return;

@@ -56,7 +56,7 @@
 // refuse is worse than no control.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocationStore, getActiveLocation, locationLabel, hasCoordinate } from '@/store/location';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -223,7 +223,11 @@ export default function CreateUpdateScreen() {
   }, []);
 
   // Auto-save draft
-  const saveDraft = () => {
+  // Memoised so the effect below can name it. Its identity changes exactly when
+  // one of the values the draft is built from changes, so the autosave still
+  // fires on the same edits it always did — and the dependency list now lives
+  // beside the object it describes rather than beside the effect.
+  const saveDraft = useCallback(() => {
     globalUpdateDraft = {
       selectedCategory,
       location,
@@ -231,13 +235,13 @@ export default function CreateUpdateScreen() {
       urgency,
       expiresHours,
     };
-  };
+  }, [selectedCategory, location, message, urgency, expiresHours]);
 
   useEffect(() => {
     if (message || selectedCategory) {
       saveDraft();
     }
-  }, [selectedCategory, location, message, urgency, expiresHours]);
+  }, [saveDraft, message, selectedCategory]);
 
   const restoreDraft = () => {
     if (globalUpdateDraft) {

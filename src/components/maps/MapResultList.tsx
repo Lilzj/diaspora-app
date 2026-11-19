@@ -73,7 +73,12 @@ export function MapResultList({
     const index = results.findIndex((result) => result.marker.id === selectedMarkerId);
     if (index < 0) return;
 
-    listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
+    // A scroll that cannot be performed — an index the list has not measured
+    // yet — leaves the list where it is. Cosmetic, so it is swallowed rather
+    // than surfaced, but not left as an unhandled rejection.
+    listRef.current
+      ?.scrollToIndex({ index, animated: true, viewPosition: 0.3 })
+      .catch(() => undefined);
   }, [results, selectedMarkerId, selectionOrigin]);
 
   const renderItem = useCallback(
