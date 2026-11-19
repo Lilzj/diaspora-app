@@ -54,11 +54,11 @@ module.exports = {
   //
   // **Hooks are measured.** Their exclusion carried no reasoning, and the
   // screens' reasoning does not extend to them: a hook is not a composition of
-  // anything. 35 files and 21,784 lines hold the React Query keys, the cache
+  // anything. 36 files and 21,974 lines hold the React Query keys, the cache
   // invalidation, the optimistic updates and the mutation error handling — the
   // logic a wrong answer is most likely to come from.
   //
-  // Measured for the first time on 19 Nov 2026: **14.6% of 4,205 statements.**
+  // Measured for the first time on 19 Nov 2026: **14.4% of 4,246 statements.**
   // That is the number the row asked to be looked at before anything else was
   // decided, and it is the argument for measuring rather than against it.
   //
@@ -71,7 +71,7 @@ module.exports = {
   //
   // ── The headline moved and nothing got worse ─────────────────────────────
   //
-  // 72.25% of 10,178 statements before this change; **59.62% of 20,229 after**.
+  // 72.25% of 10,178 statements before this change; **59.5% of 20,270 after**.
   // The same tests pass; the denominator nearly doubled. A coverage figure is
   // only as meaningful as what it is over, and the old one was over a list that
   // happened to name the files somebody had already tested.
@@ -89,6 +89,11 @@ module.exports = {
     'src/lib/**/*.ts',
     'src/lib/**/*.tsx',
     'src/hooks/**/*.ts',
+    // `.tsx` too. `usePullToRefresh.tsx` is 190 lines of hook imported by ten
+    // screens, and a `.ts`-only glob missed it: globbing a directory while
+    // pinning an extension is the same failure one level down. It covered 0 of
+    // 41 statements the first time it appeared in the denominator.
+    'src/hooks/**/*.tsx',
     'src/config/**/*.ts',
 
     // `utils` was outside the list too, and is the same omission as `hooks` in
