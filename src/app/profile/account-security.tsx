@@ -63,6 +63,11 @@ export default function AccountSecurityScreen() {
   // is a prompt; "✓ Configured" would be the FSEC-002 defect again.
   const isPhoneVerified = useAuthStore((state) => state.user?.isPhoneVerified ?? false);
 
+  // Not derived from a boolean: `refused` is a phone with no keystore, `web` is
+  // the adapter working as designed, and the member should only hear about the
+  // first. See `lib/auth-storage.ts`.
+  const sessionPersistence = useAuthStore((state) => state.sessionPersistence);
+
   const [devices, setDevices] = useState<AuthSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -133,7 +138,27 @@ export default function AccountSecurityScreen() {
 
       <ScrollEndScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}>
-        
+
+        {/* FSEC-006. The one place this fact has ever been visible to anybody.
+            It was recorded in the store from the day session storage was
+            written and read by nothing — no screen, no telemetry, no behaviour.
+            Only the native refusal is shown: `web` is the adapter's design, and
+            a warning on an expected state is a warning people learn to skip. */}
+        {sessionPersistence === 'refused' && (
+          <View className="bg-surface-muted border border-error-default/30 rounded-3xl p-5 mb-4">
+            <Text className="text-xs font-extrabold text-error-default uppercase tracking-widest">
+              This device
+            </Text>
+            <Text className="text-base font-black text-content-primary tracking-tight mt-0.5">
+              You will be signed out when you close the app
+            </Text>
+            <Text className="text-xs text-content-muted mt-2 leading-5">
+              This phone&apos;s secure keystore is unavailable, so Diaspora will not store your
+              sign-in on it. Everything else works normally while the app is open.
+            </Text>
+          </View>
+        )}
+
         {/* Trusted Devices Section */}
         <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4">
           <View className="flex-row justify-between items-center mb-4">

@@ -59,11 +59,12 @@ import { isIntegrationError } from '@/lib/integrations/errors';
 import {
   clearProfileCache,
   clearSession,
-  isSecureStorageActive,
+  sessionPersistence as readSessionPersistence,
   loadProfileCache,
   loadSession,
   saveProfileCache,
   saveSession,
+  type SessionPersistence,
 } from '@/lib/auth-storage';
 import { fetchCurrentUser, logout as logoutRequest, refreshSession } from '@/lib/auth-api';
 
@@ -120,8 +121,15 @@ interface AuthState {
   access: AccessDecision | null;
   sessionId: string | null;
   isExploringLimited: boolean;
-  /** False when the token pair is in AsyncStorage rather than the platform keystore. */
-  isSessionStorageSecure: boolean;
+  /**
+   * Where this device can keep the token pair, and so whether it keeps it.
+   *
+   * Was `isSessionStorageSecure: boolean`, set in two places and read in none
+   * (FSEC-006). A boolean also could not tell `web`, which is the design, from
+   * a phone whose keystore did not load, which is a refusal the member is told
+   * about on the account-security screen.
+   */
+  sessionPersistence: SessionPersistence;
 
   restore: () => Promise<void>;
   adoptSession: (result: AuthenticationResult) => Promise<void>;
@@ -234,7 +242,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   access: null,
   sessionId: null,
   isExploringLimited: false,
-  isSessionStorageSecure: false,
+  sessionPersistence: 'refused',
   signOutReason: null,
 
   /**
@@ -252,7 +260,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     keystoreRead = new Promise<void>((resolve) => {
       markRead = resolve;
     });
-    set({ status: 'restoring', isSessionStorageSecure: isSecureStorageActive() });
+    set({ status: 'restoring', sessionPersistence: readSessionPersistence() });
 
     let stored: StoredSession | null;
     try {
@@ -349,7 +357,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       access: result.access,
       sessionId: result.sessionId,
       isExploringLimited: false,
-      isSessionStorageSecure: isSecureStorageActive(),
+      sessionPersistence: readSessionPersistence(),
     });
 
     seedDiscoveryCountry(user);

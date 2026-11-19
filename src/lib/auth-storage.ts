@@ -22,8 +22,34 @@
 // `react-native-web`, so a straight import would throw at module load on that
 // platform rather than at the call site. The adapter below resolves the backend
 // once, at first use, and falls back to AsyncStorage on web with the honesty
-// that deserves: `isSecure()` reports which one answered, and the session store
-// records it, so "the token is in the keystore" is never assumed.
+// that deserves: `sessionPersistence()` reports which one answered, and the
+// session store records it, so "the token is in the keystore" is never assumed.
+//
+// ── What changed on 18 Nov 2026 (FSEC-006) ───────────────────────────────────
+//
+// That honesty was the whole of the control, and it was a boolean nobody read.
+// `isSecureStorageActive()` was exported, the store recorded it in
+// `isSessionStorageSecure`, and **a search for any consumer of that field
+// returned the two assignments and nothing else.** No screen showed it, no
+// telemetry reported it, and nothing behaved differently because of it. The
+// comment above it said a false value "is worth surfacing rather than
+// discovering during an incident", and then it was not surfaced.
+//
+// So on a native device whose keystore did not load, a refresh token with a
+// 30-day lifetime — a credential that re-mints access tokens for as long as the
+// server allows — was written to `AsyncStorage`, which this file's own prose
+// correctly describes as readable on a rooted device and included in backups.
+// Silently, in every direction.
+//
+// **A device with no keystore now gets a degraded session rather than an unsafe
+// one.** Nothing of the token pair is persisted; the access token lives in the
+// store for as long as the app is open, and a restart requires a fresh sign-in.
+// That is a worse experience than today and a better one than a long-lived
+// credential in the clear, and it is the trade the audit asked for.
+//
+// Web is deliberately unchanged: `Platform.OS === 'web'` is a known branch, the
+// web target is not a shipped product here, and refusing there would break the
+// one platform where the fallback was always the design.
 //
 // ── The size constraint, and why the shape below respects it ─────────────────
 //
@@ -37,6 +63,7 @@
 
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { trackPlatformEvent } from '@/lib/creator-analytics';
 import type { StoredSession } from '@/types/auth';
 
 const ACCESS_KEY = 'diaspora.session.access';
@@ -49,8 +76,25 @@ interface KeyValueBackend {
   deleteItemAsync(key: string): Promise<void>;
 }
 
+/**
+ * Where this device's session can be kept, and therefore whether it is kept.
+ *
+ * * `keystore` — Keychain or EncryptedSharedPreferences, through
+ *   `expo-secure-store`. The intended answer on every native build.
+ * * `web` — `localStorage` behind AsyncStorage. Deliberate, and the reason the
+ *   adapter exists at all.
+ * * `refused` — a native device whose keystore did not load. **Nothing is
+ *   persisted**, because the only place left to put a 30-day credential is in
+ *   the clear.
+ */
+export type SessionPersistence = 'keystore' | 'web' | 'refused';
+
 let backend: KeyValueBackend | null = null;
-let secure = false;
+let persistence: SessionPersistence = 'refused';
+let reported = false;
+
+/** Emitted once per launch when a native device has no keystore. */
+const STORAGE_REFUSED = 'session.storage.refused';
 
 /**
  * Resolves the storage backend once.
@@ -67,7 +111,7 @@ function resolveBackend(): KeyValueBackend {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const store = require('expo-secure-store');
       if (typeof store?.setItemAsync === 'function') {
-        secure = true;
+        persistence = 'keystore';
         backend = {
           getItemAsync: (key) => store.getItemAsync(key),
           setItemAsync: (key, value) => store.setItemAsync(key, value),
@@ -77,29 +121,46 @@ function resolveBackend(): KeyValueBackend {
       }
     } catch {
       // Falls through to AsyncStorage. A device without a working keystore is
-      // still a device somebody has to be able to sign in on.
+      // still a device somebody has to be able to *use*; what it does not get
+      // is a credential written to it in the clear.
     }
   }
 
-  secure = false;
+  persistence = Platform.OS === 'web' ? 'web' : 'refused';
+
+  // AsyncStorage still answers in the refused case, and it has to: that is
+  // where an earlier build of this app may have left a session, and
+  // `loadSession` and `saveSession` both use this backend to delete it.
   backend = {
     getItemAsync: (key) => AsyncStorage.getItem(key),
     setItemAsync: (key, value) => AsyncStorage.setItem(key, value),
     deleteItemAsync: (key) => AsyncStorage.removeItem(key),
   };
+
+  // Reported here rather than by a caller, because this function runs exactly
+  // once and a caller can forget. Only the native refusal is reported: `web` is
+  // a deliberate, known branch, and an alert that fires on an expected state is
+  // an alert somebody learns to ignore.
+  if (persistence === 'refused' && !reported) {
+    reported = true;
+    trackPlatformEvent(STORAGE_REFUSED, { reason: 'keystore-unavailable' });
+  }
+
   return backend;
 }
 
 /**
- * Whether the persisted session is in platform-secure storage.
+ * How this device can keep a session. Resolves the backend if it has not been.
  *
- * Exposed so the client can *state* the property rather than assume it. A build
- * where this is false on a native platform is a build whose keystore did not
- * load, and that is worth surfacing rather than discovering during an incident.
+ * Exposed so the client can *state* the property rather than assume it, and so
+ * the account-security screen can tell the member. It replaces
+ * `isSecureStorageActive()`, which answered a yes/no question where there are
+ * three answers: a boolean could not distinguish "web, as designed" from "this
+ * phone has no keystore", and the screen needs to say different things.
  */
-export function isSecureStorageActive(): boolean {
+export function sessionPersistence(): SessionPersistence {
   resolveBackend();
-  return secure;
+  return persistence;
 }
 
 interface SessionMeta {
@@ -109,8 +170,27 @@ interface SessionMeta {
   userId: string;
 }
 
-export async function saveSession(session: StoredSession): Promise<void> {
+/**
+ * Persists the session, or refuses to and says so.
+ *
+ * Returns what it did rather than `void`, because "saved" and "deliberately not
+ * saved" are different outcomes and a caller that cannot tell them apart is how
+ * this finding happened in the first place.
+ *
+ * The refusal **deletes** rather than merely skipping. A build before this
+ * change wrote the pair to `AsyncStorage` on exactly the devices that now
+ * refuse, so the plaintext refresh token is already on disk there; leaving it
+ * would mean this change protected new sessions and left the existing credential
+ * lying about for the rest of its thirty days.
+ */
+export async function saveSession(session: StoredSession): Promise<SessionPersistence> {
   const store = resolveBackend();
+
+  if (persistence === 'refused') {
+    await clearSession();
+    return persistence;
+  }
+
   const meta: SessionMeta = {
     accessTokenExpiresAt: session.accessTokenExpiresAt,
     refreshTokenExpiresAt: session.refreshTokenExpiresAt,
@@ -123,6 +203,8 @@ export async function saveSession(session: StoredSession): Promise<void> {
     store.setItemAsync(REFRESH_KEY, session.refreshToken),
     store.setItemAsync(META_KEY, JSON.stringify(meta)),
   ]);
+
+  return persistence;
 }
 
 /**
@@ -135,6 +217,15 @@ export async function saveSession(session: StoredSession): Promise<void> {
  */
 export async function loadSession(): Promise<StoredSession | null> {
   const store = resolveBackend();
+
+  if (persistence === 'refused') {
+    // There should be nothing here, and if there is it was written by a build
+    // that predates this refusal. Reading it would keep a plaintext refresh
+    // token working for the rest of its life, which is the credential this
+    // change exists to stop existing. One sign-in is the cost, once.
+    await clearSession();
+    return null;
+  }
 
   try {
     const [accessToken, refreshToken, rawMeta] = await Promise.all([
@@ -227,5 +318,6 @@ export async function clearProfileCache(): Promise<void> {
 /** Test seam. Resets the memoised backend so a suite can swap platforms. */
 export function __resetAuthStorageForTests(): void {
   backend = null;
-  secure = false;
+  persistence = 'refused';
+  reported = false;
 }
