@@ -52,6 +52,7 @@ import { photoUriOf } from '@/lib/media-url';
 import { backOr } from '@/lib/navigation';
 import { useNotification } from '@/providers/notification-provider';
 import type { OrganizationWire } from '@/types/community-life';
+import { communityLifeKeys } from '@/lib/community-life-api';
 
 export default function EditOrganizationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -59,7 +60,7 @@ export default function EditOrganizationScreen() {
   // Its own key, never shared with a list: an edit must start from what the
   // server holds now.
   const query = useQuery({
-    queryKey: ['community-life', 'edit', 'organization', id],
+    queryKey: communityLifeKeys.editOrganization(id),
     queryFn: () => fetchOrganizationWire(id),
     enabled: Boolean(id),
     staleTime: 0,

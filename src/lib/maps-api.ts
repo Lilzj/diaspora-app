@@ -168,6 +168,43 @@ export const mapKeys = {
    * would be a request for an answer that has not moved.
    */
   geoCapabilities: () => ['maps', 'geo-capabilities'] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  searchAll: () => ['maps', 'search'] as const,
+  alertsAll: () => ['maps', 'alerts'] as const,
+
+  /** A travel-time estimate between two points for one mode. */
+  estimate: (travelMode: string, originToken: string, destinationToken: string) =>
+    ['maps', 'estimate', travelMode, originToken, destinationToken] as const,
+
+  /** Server-side clustering for a viewport and a resource selection. */
+  serverClusters: (boundsToken: string, resourceToken: string) =>
+    ['maps', 'server-clusters', boundsToken, resourceToken] as const,
+
+  /**
+   * Area insight for one point.
+   *
+   * The coordinates arrive already rounded — five decimal places, about a metre
+   * — because the caller rounds them to stop GPS jitter forking the cache. The
+   * rounding is the caller's to choose and the key's to record, so the tokens
+   * are strings here rather than numbers this function rounds itself.
+   */
+  area: (
+    latitudeToken: string,
+    longitudeToken: string,
+    countryCode: string,
+    name: string,
+    radius: number | 'default'
+  ) => ['maps', 'area', latitudeToken, longitudeToken, countryCode, name, radius] as const,
+
+  /** Two areas compared, each as one already-rounded token. */
+  areaCompare: (first: string, second: string, radius: number | 'default') =>
+    ['maps', 'area-compare', first, second, radius] as const,
 };
 
 interface Envelope<T> {

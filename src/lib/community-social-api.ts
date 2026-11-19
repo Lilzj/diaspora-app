@@ -247,6 +247,40 @@ export const communitySocialKeys = {
     ['community-social', 'hashtags', 'suggest', prefix.trim().toLowerCase(), limit ?? null] as const,
   trendingHashtags: (countryCode?: string | null, limit?: number | null) =>
     ['community-social', 'hashtags', 'trending', countryCode ?? 'all', limit ?? null] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  /**
+   * Every cached page of one content item's comments, whatever limit was asked
+   * for.
+   *
+   * `commentsFor()` ends in `clampLimit(limit)`, so a mutation that wants to
+   * refresh the thread cannot name a single key — it has to invalidate the
+   * prefix. Five mutation sites were writing that prefix out by hand: a reply,
+   * an edit, a delete, a reaction and a report. All five had to agree with
+   * `commentsFor` for a new comment to appear, and nothing checked that they did.
+   */
+  commentThread: (contentType: CommunityContentType, contentId: string) =>
+    ['community-social', 'comments', contentType, contentId] as const,
+
+  /**
+   * The reaction and comment counters on one piece of content.
+   *
+   * `contentId` is nullable because `useContentEngagement` is called before the
+   * content it is about has been resolved, and holds the query with
+   * `enabled: Boolean(contentId)`. The null reaches the key and no request is
+   * made; normalising it to a token here would change the key for a query that
+   * never runs and would make this shape differ from the literal it replaced.
+   */
+  engagement: (contentType: CommunityContentType, contentId: string | null) =>
+    ['community-social', 'engagement', contentType, contentId] as const,
+
+  /** The post category reference list. */
+  postCategories: () => ['community-social', 'post-categories'] as const,
 };
 
 /**

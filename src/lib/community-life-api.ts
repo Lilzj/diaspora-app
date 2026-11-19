@@ -139,6 +139,60 @@ export const communityLifeKeys = {
 
   calendar: (cityName?: string, communityScope?: string) =>
     ['community-life', 'calendar', cityName ?? 'all', communityScope ?? 'all'] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  eventsAll: () => ['community-life', 'events'] as const,
+  organizationsAll: () => ['community-life', 'organizations'] as const,
+  myRsvpsAll: () => ['community-life', 'rsvps', 'mine'] as const,
+
+  /**
+   * The attendee list for one event. Read by the attendee sheet and invalidated
+   * when an RSVP changes.
+   */
+  attendees: (eventId: string) => ['community-life', 'attendees', eventId] as const,
+
+  /**
+   * One event or organisation as the edit screen holds it.
+   *
+   * A separate entry from `event()` deliberately: the edit screen reads the
+   * record it is about to change and must not share a cache entry with the
+   * read-only detail screen, which may be showing the pre-edit version behind it.
+   */
+  editEvent: (eventId: string) => ['community-life', 'edit', 'event', eventId] as const,
+  editOrganization: (organizationId: string) =>
+    ['community-life', 'edit', 'organization', organizationId] as const,
+
+  /** One community's events, as the community screen lists them. */
+  communityEvents: (communityId: string, limit: number | null) =>
+    ['community-life', 'community-events', communityId, limit] as const,
+
+  // ── The Community Life hub's own rails ───────────────────────────────────
+  //
+  // The hub reads three B12 lists nothing else reads. They were literals, and
+  // the two that carry a point carry it as a rounded token so that a metre of
+  // GPS drift does not fork the cache.
+  hubAll: () => ['community-life', 'hub'] as const,
+  hubUpcoming: (countryCode?: string | null) =>
+    ['community-life', 'hub', 'upcoming', countryCode ?? 'any'] as const,
+  hubNearby: (pointToken: string, placeToken: string) =>
+    ['community-life', 'hub', 'nearby', pointToken, placeToken] as const,
+  hubArea: (pointToken: string) => ['community-life', 'hub', 'area', pointToken] as const,
+
+  /** Events and activity around a point, for the map-backed surfaces. */
+  eventsAround: (latitudeToken: string, longitudeToken: string, radiusKm: number) =>
+    ['community-life', 'events-around', latitudeToken, longitudeToken, radiusKm] as const,
+  areaActivity: (
+    latitudeToken: string,
+    longitudeToken: string,
+    name: string,
+    radiusKm: number
+  ) =>
+    ['community-life', 'area-activity', latitudeToken, longitudeToken, name, radiusKm] as const,
 };
 
 // ── Transport ────────────────────────────────────────────────────────────────

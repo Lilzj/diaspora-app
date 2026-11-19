@@ -178,6 +178,16 @@ export const communityGapKeys = {
   // Cross-cutting
   recommendations: (surface: string) => ['community-gap', 'recommendations', surface] as const,
   search: (fingerprint: string) => ['community-gap', 'search', fingerprint] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  hubAll: () => ['community-gap', 'hub'] as const,
+  seriesOccurrences: (seriesId: string) =>
+    ['community-gap', 'series', seriesId, 'occurrences'] as const,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

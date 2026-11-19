@@ -15,6 +15,8 @@
 // that is the commonest shape of defect in this repository.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { communityLifeKeys } from '../community-life-api';
+
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...parts: string[]): string };
 
@@ -43,7 +45,13 @@ describe('the organisation publish route is reachable', () => {
   });
 
   it('refreshes the directory, because that is the point of publishing', () => {
-    expect(HOOKS).toMatch(/usePublishOrganization[\s\S]{0,700}community-life', 'organizations'/);
+    // The key comes from the factory since FARCH-003, so this matches the call
+    // rather than the array literal it replaced. Matching source text is only as
+    // durable as the spelling, so the key itself is pinned on the second line:
+    // changing what `organizationsAll()` returns cannot quietly change what
+    // publishing refreshes.
+    expect(HOOKS).toMatch(/usePublishOrganization[\s\S]{0,700}organizationsAll\(\)/);
+    expect(communityLifeKeys.organizationsAll()).toEqual(['community-life', 'organizations']);
   });
 
   it('has a control on the page somebody is actually looking at', () => {

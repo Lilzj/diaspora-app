@@ -306,6 +306,52 @@ export const communityProgrammeKeys = {
     ['community-programme', 'giving', 'timeseries', causeCode, from ?? 'any', to ?? 'any'] as const,
   myRecurringDonations: () =>
     ['community-programme', 'giving', 'recurring', 'me'] as const,
+
+  // ── Prefixes, so a mutation does not have to retype a key shape ───────────
+  //
+  // Every one of these was an array literal at a mutation site. A literal
+  // prefix is correct only for as long as nobody changes the shape it assumes,
+  // and nothing here would fail if someone did — the invalidation would simply
+  // stop matching, and the symptom is a stale list rather than an error.
+  membershipAll: () => ['community-programme', 'membership'] as const,
+  seriesAll: () => ['community-programme', 'series'] as const,
+  seriesOccurrences: (seriesId: string) =>
+    ['community-programme', 'series', seriesId, 'occurrences'] as const,
+  campaignsAll: () => ['community-programme', 'campaigns'] as const,
+  volunteerAll: () => ['community-programme', 'volunteer'] as const,
+  pollsAll: () => ['community-programme', 'polls'] as const,
+  announcementsAll: () => ['community-programme', 'announcements'] as const,
+
+  // ── The Community Life hub's discovery rails ──────────────────────────────
+  //
+  // The hub reads four B18 lists no other screen reads: a country's campaigns,
+  // a city's volunteer opportunities, the open polls, and the latest
+  // announcements. They were written as array literals in `hooks/community-life.ts`
+  // and so sat under `['community-programme', 'hub', …]` — a namespace this
+  // factory did not own and therefore could not invalidate.
+  //
+  // That was not cosmetic. React Query matches a prefix **positionally**, so
+  // the invalidation a campaign mutation already performs,
+  // `['community-programme', 'campaigns']`, cannot reach
+  // `['community-programme', 'hub', 'campaigns', …]`: element 1 is `hub`, not
+  // `campaigns`. Creating a campaign, opening or voting in a poll, posting an
+  // announcement, or publishing a volunteer opportunity refreshed the family
+  // this factory owned and left the rail the member was looking at alone until
+  // its own `staleTime` expired.
+  //
+  // The shapes below are **byte-identical** to the literals they replace, so no
+  // cache entry moves and no rail refetches on deploy. What changes is that one
+  // place now knows them, and the `…All` prefixes give the mutations something
+  // to name.
+  hubAll: () => ['community-programme', 'hub'] as const,
+  hubCampaigns: (countryCode?: string | null) =>
+    ['community-programme', 'hub', 'campaigns', countryCode ?? 'any'] as const,
+  hubCampaignsAll: () => ['community-programme', 'hub', 'campaigns'] as const,
+  hubOpportunities: (cityName?: string | null) =>
+    ['community-programme', 'hub', 'opportunities', cityName ?? 'any'] as const,
+  hubOpportunitiesAll: () => ['community-programme', 'hub', 'opportunities'] as const,
+  hubPolls: () => ['community-programme', 'hub', 'polls'] as const,
+  hubAnnouncements: () => ['community-programme', 'hub', 'announcements'] as const,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -547,13 +547,11 @@ export function useTravelEstimate(
   const provider = useMemo(() => resolveRoutingProvider(), []);
 
   return useQuery<TravelEstimate, Error>({
-    queryKey: [
-      'maps',
-      'estimate',
+    queryKey: mapKeys.estimate(
       travelMode,
       origin ? `${origin.latitude.toFixed(3)},${origin.longitude.toFixed(3)}` : 'none',
-      destination ? `${destination.latitude.toFixed(3)},${destination.longitude.toFixed(3)}` : 'none',
-    ],
+      destination ? `${destination.latitude.toFixed(3)},${destination.longitude.toFixed(3)}` : 'none'
+    ),
     queryFn: async () => {
       const result = await provider.estimate(origin!, destination!, travelMode);
       if (!result.ok) {
@@ -654,7 +652,7 @@ export function useServerClusters(
     enabled && isPlacedBounds(bounds) && wantsServerClusters(viewport) && resourceTypes.length > 0;
 
   const query = useQuery<ServerClusterPage, Error>({
-    queryKey: ['maps', 'server-clusters', boundsCacheKey(bounds), resourceTypes.join(',')],
+    queryKey: mapKeys.serverClusters(boundsCacheKey(bounds), resourceTypes.join(',')),
     queryFn: ({ signal }) => fetchServerClusters(bounds, resourceTypes, { signal }),
     enabled: isActive,
     // Counts move slowly, and a refusal (signed out, no permission) will not
@@ -782,15 +780,13 @@ export function useAreaReport(point: AreaPoint | null, radiusKm?: number) {
   const isReady = isAskablePoint(point);
 
   return useQuery<AreaReport, Error>({
-    queryKey: [
-      'maps',
-      'area',
+    queryKey: mapKeys.area(
       point ? point.latitude.toFixed(5) : 'none',
       point ? point.longitude.toFixed(5) : 'none',
       point?.countryCode ?? '',
       point?.name ?? '',
-      radiusKm ?? 'default',
-    ],
+      radiusKm ?? 'default'
+    ),
     queryFn: () => fetchAreaReport(point!, { radiusKm }),
     enabled: isReady,
     staleTime: 10 * 60_000,
@@ -806,13 +802,11 @@ export function useAreaComparison(a: AreaPoint | null, b: AreaPoint | null, radi
   const isReady = isAskablePoint(a) && isAskablePoint(b);
 
   return useQuery<AreaComparison, Error>({
-    queryKey: [
-      'maps',
-      'area-compare',
+    queryKey: mapKeys.areaCompare(
       a ? `${a.latitude.toFixed(5)},${a.longitude.toFixed(5)},${a.countryCode},${a.name ?? ''}` : 'none',
       b ? `${b.latitude.toFixed(5)},${b.longitude.toFixed(5)},${b.countryCode},${b.name ?? ''}` : 'none',
-      radiusKm ?? 'default',
-    ],
+      radiusKm ?? 'default'
+    ),
     queryFn: () => compareAreas(a!, b!, { radiusKm }),
     enabled: isReady,
     staleTime: 10 * 60_000,
@@ -922,7 +916,7 @@ export function useMapRealtime(bounds: GeoBoundingBox | null, enabled = true): {
     // Scoped to the alerts key rather than invalidating the whole map: a blanket
     // invalidation would refetch every listing in the viewport, which is the
     // transfer §41 exists to prevent.
-    void queryClient.invalidateQueries({ queryKey: ['maps', 'alerts'] });
+    void queryClient.invalidateQueries({ queryKey: mapKeys.alertsAll() });
     setLastUpdatedAt(Date.now());
   }, [queryClient]);
 

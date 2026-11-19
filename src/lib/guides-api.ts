@@ -267,6 +267,19 @@ export const guideKeys = {
 
   moderationQueue: (query: GuideModerationQueueQuery = {}) =>
     ['guides', 'moderation', 'queue', filterToken(query)] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  searchAll: () => ['guides', 'search'] as const,
+  shelfAll: () => ['guides', 'shelf'] as const,
+  mineAll: () => ['guides', 'mine'] as const,
+  tagsAll: () => ['guides', 'tags'] as const,
+  suggestionsAll: (guideId: string) =>
+    ['guides', 'guide', guideId, 'suggestions'] as const,
 };
 
 /**

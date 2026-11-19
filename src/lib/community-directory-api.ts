@@ -98,6 +98,24 @@ export const communityScopedKeys = {
       communityScopeToken(scope),
       filters,
     ] as const,
+
+  // ── Prefixes the call sites were writing by hand ──────────────────────────
+  //
+  // Each of these was an array literal at a mutation site. A hand-written
+  // prefix is correct only while nobody changes the shape it assumes, and
+  // nothing fails when someone does: the invalidation stops matching and the
+  // symptom is a stale list, not an error.
+  contentAll: () => ['community-directory', 'content'] as const,
+  searchAll: () => ['community-directory', 'search'] as const,
+
+  /**
+   * The resolved-metadata cache for the directory.
+   *
+   * Not scoped: it holds the community records themselves, which are the same
+   * whichever scope is looking at them. The scope decides which of them a
+   * screen may show, and that decision is made at the call site.
+   */
+  metadataCache: () => ['community-directory', 'metadata-cache'] as const,
 };
 
 /**

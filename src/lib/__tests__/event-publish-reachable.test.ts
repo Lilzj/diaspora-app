@@ -25,6 +25,8 @@
 // of reach.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { communityLifeKeys } from '../community-life-api';
+
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...parts: string[]): string };
 
@@ -60,7 +62,12 @@ describe('the publish route is reachable from the application', () => {
 
   it('refreshes the discovery lists, because that is the point of publishing', () => {
     // A published event is a new arrival everywhere it was previously absent.
-    expect(HOOKS).toMatch(/usePublishEvent[\s\S]{0,600}community-life', 'events'/);
+    //
+    // The key comes from the factory since FARCH-003, so this matches the call
+    // rather than the array literal it replaced, and pins the key the factory
+    // returns so the spelling and the behaviour cannot drift apart.
+    expect(HOOKS).toMatch(/usePublishEvent[\s\S]{0,600}eventsAll\(\)/);
+    expect(communityLifeKeys.eventsAll()).toEqual(['community-life', 'events']);
   });
 
   it('has a control on the screen an organiser is actually looking at', () => {
