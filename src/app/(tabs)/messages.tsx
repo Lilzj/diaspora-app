@@ -81,14 +81,16 @@ export default function MessagesScreen() {
       cancelled = true;
       ConversationHub.teardown();
     };
-  }, [isAuthenticated]);
+    // Both are Zustand actions — created with the store and never recreated —
+    // so the hub is still set up and torn down once per sign-in state change.
+  }, [isAuthenticated, loadConversations, loadRequests]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadConversations();
     await loadRequests();
     setRefreshing(false);
-  }, []);
+  }, [loadConversations, loadRequests]);
 
   // Filter + sort conversations
   const sorted = selectSortedConversations(conversations);
@@ -150,7 +152,9 @@ export default function MessagesScreen() {
         },
         { text: 'Cancel', style: 'cancel' },
       ] });
-  }, []);
+    // `showAlert` comes from the notification provider. Naming it only changes
+    // this callback's identity, which nothing here depends on.
+  }, [showAlert]);
 
   // Not authenticated
   if (!isAuthenticated) {

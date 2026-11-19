@@ -89,6 +89,11 @@ export default function GrantDetailScreen() {
         category: grant.category,
       });
     }
+    // Keyed on the id on purpose. This is a 'viewed' event and has to fire
+    // once per grant rather than once per refetch — naming the object would
+    // re-fire it every time the query returned a new reference and inflate the
+    // very figure it exists to measure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grant?.grantId]);
 
   // Seed the form from a saved draft, so somebody who left and came back does
@@ -97,7 +102,9 @@ export default function GrantDetailScreen() {
     if (application?.state === 'Draft' && Object.keys(answers).length === 0) {
       setAnswers(application.answers);
     }
-  }, [application]);
+    // `answers` is safe to name: the guard above makes a repeat run a no-op, so
+    // the effect still seeds the form exactly once per saved draft.
+  }, [application, answers]);
 
   const refusal = checkCreatorAccess(CreatorCapabilities.ViewDashboard, {
     accountState,
@@ -144,7 +151,7 @@ export default function GrantDetailScreen() {
       { grantId: grant.grantId, answers },
       { onSuccess: () => showAlert({ type: 'success', title: 'Saved', message: 'Your draft is saved. You can come back to it.' }) }
     );
-  }, [actions.saveDraft, answers, grant]);
+  }, [actions.saveDraft, answers, grant, showAlert]);
 
   const submit = useCallback(() => {
     if (!grant || !form) return;
@@ -183,7 +190,7 @@ export default function GrantDetailScreen() {
             }),
         },
       ] });
-  }, [actions.withdraw, application]);
+  }, [actions.withdraw, application, showAlert]);
 
   const grantWindow = grant ? grantWindowLabel(grant) : null;
 

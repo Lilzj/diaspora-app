@@ -163,8 +163,10 @@ export default function ConvertRewardsScreen() {
     }, 400);
 
     return () => clearTimeout(timer);
-    // `preview` is a stable mutation object from TanStack Query.
-  }, [points]);
+    // `preview` is a stable mutation object from TanStack Query, which is what
+    // the note here already said — so it costs nothing to name it and the
+    // reader no longer has to take the claim on trust.
+  }, [points, preview]);
 
   const handleConvert = useCallback(() => {
     if (!quote?.isValid) return;

@@ -87,6 +87,11 @@ export default function CampaignScreen() {
         ...bucketProgress(campaign.progress.percentage.value),
       });
     }
+    // Keyed on the id on purpose. This is a 'viewed' event and has to fire
+    // once per campaign rather than once per refetch — naming the object would
+    // re-fire it every time the query returned a new reference and inflate the
+    // very figure it exists to measure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign?.campaignId]);
 
   const state = describeCampaign(campaign?.status ?? 'Draft');

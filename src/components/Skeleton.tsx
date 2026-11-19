@@ -26,7 +26,10 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = 8, classN
       -1,
       true
     );
-  }, []);
+    // `useSharedValue` returns the same object for the life of the component,
+    // so naming it here is honest about what the effect reads and re-runs the
+    // effect never.
+  }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,

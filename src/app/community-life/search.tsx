@@ -128,6 +128,10 @@ export default function CommunitySearchScreen() {
         filterCount: (type === 'all' ? 0 : 1) + (priceBand === 'any' ? 0 : 1) + (useCity ? 1 : 0),
       });
     }
+    // One event per set of results. `query`, `type`, `priceBand` and `useCity`
+    // are read to label the event, not to decide whether it fires — naming them
+    // would send a "search performed" on every keystroke and every filter tap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [results.length]);
 
   const grouped = useMemo(() => {

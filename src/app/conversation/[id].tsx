@@ -135,7 +135,9 @@ export default function ConversationScreen() {
       markConversationRead(id);
       ConversationHub.markRead(id).catch(() => {});
     }
-  }, [id]);
+    // Both are Zustand actions, created with the store and never recreated, so
+    // this still runs once per conversation.
+  }, [id, loadMessages, markConversationRead]);
 
   // A message that arrives while the thread is open has been read. Marking it
   // only on opening left it unread in the inbox, and left the sender's ticks
@@ -148,7 +150,11 @@ export default function ConversationScreen() {
     lastMarkedRef.current = latest.messageId;
     markConversationRead(id);
     ConversationHub.markRead(id).catch(() => {});
-  }, [id, latest?.messageId, currentUserId]);
+    // `latest` is a fresh reference whenever the message list changes, and that
+    // is safe to name here: `lastMarkedRef` already makes a repeat run a no-op,
+    // so the extra renders cost nothing and the effect now reads the object it
+    // actually uses rather than one field of it.
+  }, [id, latest, currentUserId, markConversationRead]);
 
   // Connection state listener
   useEffect(() => {
@@ -200,7 +206,9 @@ export default function ConversationScreen() {
     await ConversationHub.sendMessage(id, text, replyTo?.messageId);
     setReplyTo(undefined);
     setTimeout(scrollToBottom, 100);
-  }, [id, replyTo]);
+    // `scrollToBottom` is a `useCallback` with an empty dependency list, so it
+    // is stable and naming it changes nothing.
+  }, [id, replyTo, scrollToBottom]);
 
   const handleLongPress = useCallback((message: Message) => {
     setSelectedMessage(message);
@@ -268,7 +276,7 @@ export default function ConversationScreen() {
         onPress: () => ConversationHub.deleteMessage(id, selectedMessage.messageId),
       },
     ] });
-  }, [selectedMessage, id]);
+  }, [selectedMessage, id, showAlert]);
 
   // ── Reporting a message ────────────────────────────────────────────────────
   //

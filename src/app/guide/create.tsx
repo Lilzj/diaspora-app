@@ -55,7 +55,7 @@
 // the server.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -201,10 +201,18 @@ export default function CreateGuideScreen() {
     if (countryOptions.length > 0) {
       setSelectedCountry(countryOptions[0].countryCode);
     }
-  }, [countryOptions, selectedCountry]);
+    // `residenceCountry` belongs here: if the member's residence changes, the
+    // default country should follow it. It cannot loop — the branch above sets
+    // the two equal, so the next run falls through.
+  }, [countryOptions, selectedCountry, residenceCountry]);
 
   // Save draft state periodically
-  const saveDraft = () => {
+  // Memoised so the effect below can name it. `currentStep` is in this list and
+  // was never in the effect's: the draft recorded whichever step the member
+  // happened to be on when some *other* field last changed, so moving between
+  // steps without editing anything left the saved step behind. Naming every
+  // value the draft is built from is what fixes that.
+  const saveDraft = useCallback(() => {
     globalGuideDraft = {
       selectedCountry,
       selectedCategory,
@@ -214,13 +222,13 @@ export default function CreateGuideScreen() {
       content,
       currentStep,
     };
-  };
+  }, [selectedCountry, selectedCategory, title, summary, coverImage, content, currentStep]);
 
   useEffect(() => {
     if (title || content || selectedCountry) {
       saveDraft();
     }
-  }, [selectedCountry, selectedCategory, title, summary, coverImage, content]);
+  }, [saveDraft, title, content, selectedCountry]);
 
   const restoreDraft = () => {
     if (globalGuideDraft) {

@@ -281,7 +281,7 @@ export default function AutomationBuilderScreen() {
 
       apply();
     },
-    [draft.conditions.length, draft.actions.length, draft.trigger?.key]
+    [draft.conditions.length, draft.actions.length, draft.trigger?.key, showAlert]
   );
 
   const addCondition = useCallback((key: string) => {

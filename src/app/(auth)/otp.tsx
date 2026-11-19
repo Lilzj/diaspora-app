@@ -175,6 +175,11 @@ export default function OtpScreen() {
         setIsLoading(false);
       }
     },
+    // `triggerSuccessAnimation` is declared below this callback, so naming it
+    // here would read the binding before its initialiser runs and throw on
+    // every render. It closes over animated values and `router`, none of which
+    // vary per render, so the omission costs nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [otp, phone, adoptSession]
   );
 

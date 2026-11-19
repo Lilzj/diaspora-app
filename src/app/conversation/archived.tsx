@@ -27,7 +27,9 @@ export default function ArchivedConversationsScreen() {
 
   useEffect(() => {
     void loadConversations();
-  }, []);
+    // A Zustand action: defined once when the store is created and never
+    // recreated, so naming it keeps this a mount-only load.
+  }, [loadConversations]);
 
   const archived = selectFilteredConversations(selectSortedConversations(conversations), 'Archived');
 

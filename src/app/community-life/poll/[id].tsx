@@ -84,6 +84,11 @@ export default function PollScreen() {
       }
       if (poll.hasVoted) setShowResults(true);
     }
+    // Keyed on the id on purpose. This is a 'viewed' event and has to fire
+    // once per poll rather than once per refetch — naming the object would
+    // re-fire it every time the query returned a new reference and inflate the
+    // very figure it exists to measure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poll?.pollId]);
 
   const refusal = checkCommunityAccess(CommunityCapabilities.VotePoll, accountState, isAuthenticated);
