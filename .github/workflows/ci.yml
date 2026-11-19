@@ -214,7 +214,7 @@ jobs:
     timeout-minutes: 20
 
     env:
-      DRIFT_SUITES: '(advertising-enum-drift|backend-gap-register-drift|backend-openapi-contract-drift|backend-request-binding-drift|backend-row-property-drift|creator-earning-drift|password-policy-drift|reputation-rules-drift|screen-response-field-drift|step-up-claims-drift|withdrawal-status|served-routes-drift|access-state|validation-limits-drift)'
+      DRIFT_SUITES: '(advertising-enum-drift|backend-gap-register-drift|backend-openapi-contract-drift|backend-request-binding-drift|backend-row-property-drift|creator-earning-drift|password-policy-drift|reputation-rules-drift|screen-response-field-drift|step-up-claims-drift|withdrawal-status|served-routes-drift|access-state|validation-limits-drift|countries-drift)'
 
     steps:
       - name: Check out the client
@@ -288,14 +288,28 @@ jobs:
       # limits the client copies from the backend's policy and options classes,
       # and checks that every `*Limits`/`*Options` member named in a src/lib
       # comment is really declared there (FBL-004).
-      - name: All fourteen suites are still here
+      #
+      # Fifteen since 19 November 2026. `countries-drift` compares the bundled
+      # country list against the backend's `WorldCountryData.cs`, which is its
+      # source: `src/lib/reference/countries.ts` is now generated from that
+      # table (FSOLID-008). The registration funnel runs before the member has a
+      # token and every Location route requires authorisation, so those screens
+      # cannot fetch the catalogue and the bundled copy is their only source.
+      #
+      # The step below counts, and counting cannot see the failure that mattered
+      # here: a suite written against a backend checkout and never added to
+      # `DRIFT_SUITES` leaves the count at fourteen and runs only in
+      # `static-and-unit`, where it skips. `drift-suite-coverage.test.ts` is
+      # that direction — it reads this file and fails when a suite importing
+      # `support/backend-checkout` is not named above.
+      - name: All fifteen suites are still here
         run: |
           found=$(npx jest --listTests "$DRIFT_SUITES" | grep -c 'test\.ts' || true)
           echo "matched $found suites"
-          if [ "$found" -ne 14 ]; then
-            echo "::error::Expected 14 contract-drift suites, matched $found. A suite was"
+          if [ "$found" -ne 15 ]; then
+            echo "::error::Expected 15 contract-drift suites, matched $found. A suite was"
             echo "::error::renamed, deleted, or DRIFT_SUITES no longer names it. Running"
-            echo "::error::fewer than fourteen is the finding this job exists to close."
+            echo "::error::fewer than fifteen is the finding this job exists to close."
             exit 1
           fi
 
@@ -348,7 +362,7 @@ jobs:
 
           case "$RESULT" in
             success)
-              echo "The fourteen cross-repository suites ran against a backend checkout."
+              echo "The fifteen cross-repository suites ran against a backend checkout."
               ;;
             skipped)
               echo "::error::Cross-repository verification did not run, so the platform's"
@@ -364,7 +378,7 @@ jobs:
               ;;
             *)
               echo "::error::The contract-drift job reported '$RESULT' rather than success."
-              echo "::error::The fourteen cross-repository suites did not pass."
+              echo "::error::The fifteen cross-repository suites did not pass."
               exit 1
               ;;
           esac
