@@ -62,8 +62,7 @@
           "color": "#F59300",
           "defaultChannel": "default"
         }
-      ],
-      "./plugins/with-loopback-cleartext"
+      ]
     ],
     "extra": {
       "router": {},
