@@ -140,10 +140,16 @@ export default function CommunityAlertsScreen() {
   const alerts = useCommunityAlerts(bounds);
   const realtime = useMapRealtime(bounds);
 
-  const origin = deviceLocation?.coordinate ?? {
-    latitude: activeLocation.latitude,
-    longitude: activeLocation.longitude,
-  };
+  // Memoised because the fallback object literal was rebuilt on every render,
+  // so everything memoised on `origin` recomputed on every render too.
+  const origin = useMemo(
+    () =>
+      deviceLocation?.coordinate ?? {
+        latitude: activeLocation.latitude,
+        longitude: activeLocation.longitude,
+      },
+    [deviceLocation?.coordinate, activeLocation.latitude, activeLocation.longitude]
+  );
 
   // §29. Expired and withdrawn alerts are filtered out here as well as in the
   // marker converter — the list and the map must not disagree about what is

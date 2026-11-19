@@ -27,6 +27,10 @@
 // there; until then the number may only be lowered, and lowering it is the
 // whole of the remaining work.
 //
+// Both of the audit's rules reached zero on 19 Nov 2026. The entries that
+// remain are debt that arrived with the linter rather than from any finding,
+// recorded here so it cannot grow back.
+//
 // The error-level rules are read from the config itself rather than listed
 // here, so a rule promoted to `error` with suppressions still on it fails this
 // test rather than quietly arriving unprotected.
@@ -96,11 +100,11 @@ function suppressed(rule: string): number {
  * the test below is what makes that true rather than customary.
  */
 const CEILING: Record<string, number> = {
-  // The audit named this one and it is done: 199 fixed, none re-suppressed.
+  // The two the audit named, both at zero: 199 floating promises and 61
+  // dependency arrays, none of them re-suppressed. These two zeroes are what
+  // FSEC-007 and FARCH-001 asked for, and this file is what keeps them.
   '@typescript-eslint/no-floating-promises': 0,
-  // The audit named this one too. 61 left, each a judgement about whether an
-  // effect should re-run. This number is the remaining work for FSEC-007.
-  'react-hooks/exhaustive-deps': 61,
+  'react-hooks/exhaustive-deps': 0,
   // Debt that came with the linter rather than from the audit, recorded so it
   // cannot grow. Not named by any finding.
   'react-hooks/refs': 81,
@@ -156,10 +160,13 @@ describe('suppressions for error-level rules', () => {
     }
   );
 
+  // Stated on their own because they are the two the audit named, and because
+  // the fix was 260 individual decisions rather than one `--suppress-rule`.
   it('no longer suppresses a single floating promise', () => {
-    // Stated on its own because it is the thing that changed: 199 of these were
-    // recorded rather than fixed, and the fix was 199 decisions about what each
-    // promise was for, not one `--suppress-rule`.
     expect(suppressed('@typescript-eslint/no-floating-promises')).toBe(0);
+  });
+
+  it('no longer suppresses a single dependency array', () => {
+    expect(suppressed('react-hooks/exhaustive-deps')).toBe(0);
   });
 });

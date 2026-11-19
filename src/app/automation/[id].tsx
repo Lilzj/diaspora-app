@@ -110,7 +110,7 @@ export default function AutomationDetailScreen() {
     } catch (cause) {
       setActionError(cause instanceof AutomationError ? cause : null);
     }
-  }, [automation, mutations]);
+  }, [automation, mutations, showAlert]);
 
   const handleResume = useCallback(async () => {
     if (!automation) return;
@@ -144,7 +144,7 @@ export default function AutomationDetailScreen() {
           },
         },
       ] });
-  }, [automation, mutations]);
+  }, [automation, mutations, showAlert]);
 
   const handleTest = useCallback(async () => {
     if (!draft) return;

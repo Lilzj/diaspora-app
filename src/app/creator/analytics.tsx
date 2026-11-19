@@ -90,6 +90,10 @@ export default function CreatorAnalyticsScreen() {
 
   useEffect(() => {
     trackCreatorEvent('creator.analytics.viewed', { period: range.period });
+    // Once per visit, not once per range. `range.period` is read to label the
+    // event, not to decide whether it fires — naming it would send a fresh
+    // "viewed" every time the member switched between week and month.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refusal = checkCreatorAccess(CreatorCapabilities.ViewDashboard, {

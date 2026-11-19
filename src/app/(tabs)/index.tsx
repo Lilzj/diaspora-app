@@ -176,8 +176,11 @@ export default function HomeScreen() {
   useEffect(() => {
     // Synchronize persistent explore state
     const initOnboarding = async () => {
-      await exploreStore.loadPersistedState();
-      
+      // Called through `getState()` rather than the subscribed store object,
+      // which is a new reference on every state change: naming that object
+      // would re-run this on every change the store makes.
+      await useExploreStore.getState().loadPersistedState();
+
       // Auto-trigger welcome if onboarding is not finished, and no tour is currently paused/active
       if (
         exploreStore.hasLoadedPersistedState &&
@@ -192,14 +195,22 @@ export default function HomeScreen() {
       }
     };
     void initOnboarding();
-  }, [exploreStore.onboardingCompleted, exploreStore.hasLoadedPersistedState]);
+    // The two tour fields were read in the condition and missing from this
+    // list, so a tour starting or pausing did not re-evaluate the welcome.
+  }, [
+    exploreStore.onboardingCompleted,
+    exploreStore.hasLoadedPersistedState,
+    exploreStore.pausedTourId,
+    exploreStore.activeTour,
+  ]);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setPlaceholderIdx((prev) => (prev + 1) % placeholders.length);
     }, 3000);
     return () => clearInterval(timer);
-  }, []);
+    // A constant array's length — naming it is honest and never re-runs this.
+  }, [placeholders.length]);
 
   // ── The feed ───────────────────────────────────────────────────────────────
   //

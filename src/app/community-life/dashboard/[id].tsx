@@ -56,6 +56,11 @@ export default function OrganizationDashboardScreen() {
         state: capabilities.role ?? 'none',
       });
     }
+    // Keyed on the id on purpose. This is a 'viewed' event and has to fire
+    // once per dashboard rather than once per refetch — naming the object would
+    // re-fire it every time the query returned a new reference and inflate the
+    // very figure it exists to measure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard?.organizationId, capabilities.role]);
 
   const counts = dashboard?.counts;

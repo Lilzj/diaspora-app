@@ -37,6 +37,12 @@ export function ConnectionBanner({ state }: Props) {
         return () => clearTimeout(timer);
       }
     }
+    // `visible` is read as a snapshot, not watched: the `|| visible` guard says
+    // "show the connected confirmation only if a banner was already up", which
+    // is a question about the moment `state` changed. Naming it would re-run
+    // this when the effect's own `setVisible` lands and restart the fade.
+    // `opacity` is a ref-held Animated.Value and never changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   if (!visible) return null;

@@ -10,9 +10,6 @@
     }
   },
   "src/app/(auth)/otp.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/immutability": {
       "count": 1
     },
@@ -37,9 +34,6 @@
     }
   },
   "src/app/(tabs)/discover.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 2
-    },
     "react-hooks/preserve-manual-memoization": {
       "count": 2
     },
@@ -51,28 +45,12 @@
     }
   },
   "src/app/(tabs)/index.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 2
-    },
     "react-hooks/preserve-manual-memoization": {
       "count": 1
     }
   },
-  "src/app/(tabs)/messages.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 3
-    }
-  },
   "src/app/(tabs)/post.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/app/(tabs)/search.tsx": {
-    "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
@@ -86,21 +64,8 @@
       "count": 2
     }
   },
-  "src/app/automation/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 2
-    }
-  },
   "src/app/automation/create.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/app/community-life/campaign/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
@@ -117,15 +82,7 @@
       "count": 1
     }
   },
-  "src/app/community-life/dashboard/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "src/app/community-life/event/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/refs": {
       "count": 2
     }
@@ -145,20 +102,7 @@
       "count": 1
     }
   },
-  "src/app/community-life/membership/manage.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "src/app/community-life/occurrence/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "src/app/community-life/org/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 2
-    },
     "react-hooks/preserve-manual-memoization": {
       "count": 2
     },
@@ -175,30 +119,12 @@
     }
   },
   "src/app/community-life/poll/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
   },
   "src/app/community-life/poll/create.tsx": {
     "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/app/community-life/search.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "src/app/community-life/series/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "src/app/community-life/volunteer/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
@@ -222,48 +148,12 @@
       "count": 1
     }
   },
-  "src/app/conversation/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 4
-    }
-  },
-  "src/app/conversation/archived.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "src/app/conversation/request.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react/no-unescaped-entities": {
       "count": 1
     }
   },
-  "src/app/creator/academy/course/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "src/app/creator/academy/lesson/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "src/app/creator/analytics.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "src/app/creator/challenges/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "src/app/creator/grants/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 4
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
@@ -279,9 +169,6 @@
     }
   },
   "src/app/guide/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/refs": {
       "count": 2
     },
@@ -290,9 +177,6 @@
     }
   },
   "src/app/guide/create.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 2
-    },
     "react-hooks/refs": {
       "count": 4
     },
@@ -306,9 +190,6 @@
     }
   },
   "src/app/housing/create.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 2
     }
@@ -339,9 +220,6 @@
     }
   },
   "src/app/listing-success.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/purity": {
       "count": 2
     },
@@ -350,16 +228,8 @@
     }
   },
   "src/app/map/alerts.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
-    }
-  },
-  "src/app/map/index.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 2
     }
   },
   "src/app/map/route.tsx": {
@@ -373,9 +243,6 @@
     }
   },
   "src/app/marketplace/create.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 2
     }
@@ -415,11 +282,6 @@
       "count": 1
     }
   },
-  "src/app/provider/[id].tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "src/app/provider/edit/[id].tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
@@ -436,9 +298,6 @@
     }
   },
   "src/app/update/create.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 3
     }
@@ -454,9 +313,6 @@
     }
   },
   "src/app/wallet/rewards/convert.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
@@ -495,9 +351,6 @@
     }
   },
   "src/components/NotificationItem.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/refs": {
       "count": 4
     }
@@ -517,11 +370,6 @@
       "count": 8
     }
   },
-  "src/components/Skeleton.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "src/components/UpdateCard.tsx": {
     "react-hooks/refs": {
       "count": 4
@@ -529,11 +377,6 @@
   },
   "src/components/VersionChanges.tsx": {
     "react/no-unescaped-entities": {
-      "count": 1
-    }
-  },
-  "src/components/analytics/AnalyticsCharts.tsx": {
-    "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
@@ -558,9 +401,6 @@
     }
   },
   "src/components/conversation/ConnectionBanner.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/refs": {
       "count": 2
     },
@@ -574,9 +414,6 @@
     }
   },
   "src/components/conversation/TypingIndicator.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/refs": {
       "count": 5
     }
@@ -587,17 +424,11 @@
     }
   },
   "src/components/explore/ProgressiveUnlockCard.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/refs": {
       "count": 5
     }
   },
   "src/components/explore/TourProvider.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/static-components": {
       "count": 4
     }
@@ -679,9 +510,6 @@
     }
   },
   "src/lib/maps/providers/canvas-map.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/purity": {
       "count": 2
     },
@@ -695,9 +523,6 @@
     }
   },
   "src/providers/notification-provider.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 3
-    },
     "react-hooks/immutability": {
       "count": 6
     }

@@ -330,7 +330,9 @@ export function BarChart({
   }, []);
 
   const entry = series[0];
-  const points = entry?.points ?? [];
+  // Memoised because the `?? []` built a fresh array on every render, so the
+  // scale was rebuilt on every render of the chart.
+  const points = useMemo(() => entry?.points ?? [], [entry]);
 
   const scale = useMemo(
     () => buildScale(points.map((point) => point.value), width, height),

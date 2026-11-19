@@ -370,8 +370,10 @@ export function CanvasMapSurface({
       onViewportChange,
       projection,
       scheduleSettle,
-      size.height,
-      size.width,
+      // The whole object rather than its two fields: the body passes `size`
+      // through to the projection helpers, and `setSize` is only ever called
+      // from `onLayout`, so this changes no more often than the two did.
+      size,
     ]
   );
 

@@ -241,7 +241,11 @@ export default function DiscoverScreen() {
   const exploreStore = useExploreStore();
 
   useEffect(() => {
-    void exploreStore.loadPersistedState();
+    // Read through `getState()` rather than the subscribed store object, which
+    // is a new reference on every state change: naming that object would re-run
+    // this on every change the store makes. `profile.tsx` already loads it this
+    // way. The action itself is created once with the store.
+    void useExploreStore.getState().loadPersistedState();
   }, []);
 
   // ── First-visit tours, and why this is a `useFocusEffect` ─────────────────
@@ -900,7 +904,9 @@ export default function DiscoverScreen() {
     }
 
     return Array.from(countriesMap.values());
-  }, [activeTab, baseListings, baseJobs, housingListings, marketplaceListings]);
+    // `baseListings` and `baseJobs` were listed and never read here, so this
+    // recomputed whenever either changed for no reason.
+  }, [activeTab, housingListings, marketplaceListings]);
 
   useEffect(() => {
     if (selectedCountryCode && !availableCountries.some(c => c.code === selectedCountryCode)) {

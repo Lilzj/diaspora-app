@@ -146,6 +146,11 @@ export default function ProviderDetailScreen() {
       friction: 8,
       tension: 40,
     }).start();
+    // A ref-held Animated.Value. It cannot be named here: a dependency array is
+    // evaluated during render and `react-hooks/refs` forbids reading a ref during
+    // render, so naming it trades this rule for that one. It never changes
+    // identity, so nothing is lost by leaving it out.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBottomNavVisible, insets.bottom]);
 
   const [reportModalVisible, setReportModalVisible] = useState(false);

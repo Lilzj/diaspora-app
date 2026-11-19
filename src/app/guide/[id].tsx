@@ -163,6 +163,11 @@ export default function GuideReaderScreen() {
     const saved = getBookmark(id ?? '')?.scrollPosition ?? 0;
     resumeFrom.current = saved;
     setShowResumeBanner(saved > 0.05 && saved < READ_TO_END);
+    // Deliberately keyed on the guide alone, as the comment above records:
+    // naming `getBookmark` would make this follow the live reading position
+    // again, which is the 20 Oct 2026 defect where the resume banner appeared
+    // mid-read and would not go away.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Where the guide's own text sits in the scroll content: progress is how far
