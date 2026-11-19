@@ -14,9 +14,9 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
-import { GuideEditError, saveGuideEdits } from '../guides-api';
-import { postEditRequest, updatePost } from '../community-social-api';
+import { apiClient } from '../transport/apiClient';
+import { GuideEditError, saveGuideEdits } from '../api/guides-api';
+import { postEditRequest, updatePost } from '../api/community-social-api';
 import type { GuideResponse } from '@/types/guides';
 import type { CommunityPostResponse } from '@/types/community-social';
 

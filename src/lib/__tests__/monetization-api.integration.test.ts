@@ -17,11 +17,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { setupMonetizationGapMocks } from '@/mocks/handlers/monetization-gaps';
-import { FinancialError } from '../financial-errors';
-import * as api from '../monetization-gap-api';
-import { presentCampaignStatus } from '../monetization-catalog';
+import { FinancialError } from '../transport/financial-errors';
+import * as api from '../api/monetization-gap-api';
+import { presentCampaignStatus } from '../domain/monetization-catalog';
 import type { CampaignAudience, CreateCampaignRequest } from '@/types/monetization-gaps';
 
 let mock: MockAdapter;

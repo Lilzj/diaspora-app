@@ -34,7 +34,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { initMocks } from '@/mocks';
-import * as gapApi from '@/lib/community-gap-api';
+import * as gapApi from '@/lib/api/community-gap-api';
 import { MOCK_SERIES } from '@/mocks/community-gap-data';
 
 describe('gap routes are not intercepted by the real community-life handlers', () => {

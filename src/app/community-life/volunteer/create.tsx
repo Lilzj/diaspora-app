@@ -23,10 +23,10 @@ import {
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
 import { useCreateOpportunity, useMyOrganizations } from '@/hooks/community-life';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import { useLocationStore } from '@/store/location';
 import { TownPicker } from '@/components/forms/TownPicker';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 
 const CAUSES = [
   { value: 'Community Events', label: 'Events' },

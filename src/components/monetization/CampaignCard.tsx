@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { StatusBadge } from '@/components/financial';
 import { usePricing } from '@/providers/pricing-provider';
-import { presentCampaignStatus } from '@/lib/monetization-catalog';
+import { presentCampaignStatus } from '@/lib/domain/monetization-catalog';
 import { describeObjective, describePlacements } from './CampaignBuilder';
 import type { Campaign } from '@/types/monetization-gaps';
 

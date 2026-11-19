@@ -75,7 +75,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { areSimulatedFeaturesEnabled, isGapPreviewBuild } from '@/config/gap-preview';
 import { setupAuthMocks } from './handlers/auth';
 import { setupDiscoveryMocks } from './handlers/discovery';

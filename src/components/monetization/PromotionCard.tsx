@@ -21,8 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { StatusBadge } from '@/components/financial';
 import { usePricing } from '@/providers/pricing-provider';
-import { presentPlacementStatus, describeSubjectType } from '@/lib/financial-status';
-import { describePlacementKind } from '@/lib/monetization-catalog';
+import { presentPlacementStatus, describeSubjectType } from '@/lib/domain/financial-status';
+import { describePlacementKind } from '@/lib/domain/monetization-catalog';
 import type { Promotion } from '@/types/monetization';
 
 export interface PromotionRowProps {

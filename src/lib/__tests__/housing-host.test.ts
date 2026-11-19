@@ -1,11 +1,11 @@
-import { toHousingListingDetail } from '@/lib/housing-listings-api';
+import { toHousingListingDetail } from '@/lib/api/housing-listings-api';
 import {
   homeConversationSubtitle,
   hostFromLandlord,
   hostWithDisclosedContact,
   isHostedBy,
-} from '@/lib/housing-host';
-import { placeLabelOf } from '@/lib/listing-place';
+} from '@/lib/api/housing-host';
+import { placeLabelOf } from '@/lib/platform/listing-place';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };

@@ -44,7 +44,7 @@ import {
 import { CommunityUnavailablePanel } from '@/components/community-directory/CommunityStatePanels';
 import { governanceWriteError } from '@/components/community-directory/CommunityGovernanceEditor';
 import type { CommunityInitiative, CommunityInitiativeUpdate } from '@/types/community-directory';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** The update form's required fields, named for the member. */
 function missingUpdateFields(title: string, body: string): string[] {

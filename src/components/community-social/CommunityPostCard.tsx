@@ -39,7 +39,7 @@ import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 
-import { shouldRenderSafetyBadge, isFlaggedContent } from '@/lib/community-social-api';
+import { shouldRenderSafetyBadge, isFlaggedContent } from '@/lib/api/community-social-api';
 import { useBookmark, useReact } from '@/hooks/community-social';
 import type { CommunityPostResponse, CommunityReactionKey } from '@/types/community-social';
 

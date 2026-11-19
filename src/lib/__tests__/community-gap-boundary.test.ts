@@ -21,7 +21,7 @@
  *      routes, and this is asserted structurally rather than by reading it.
  */
 
-import * as gapApi from '../community-gap-api';
+import * as gapApi from '../api/community-gap-api';
 import {
   COMMUNITY_GAPS,
   COMMUNITY_GAP_LIST,
@@ -29,7 +29,7 @@ import {
   areCommunityGapsEnabled,
   getCommunityGap,
 } from '@/config/community-gaps';
-import { FinancialError } from '../financial-errors';
+import { FinancialError } from '../transport/financial-errors';
 
 describe('the gap register', () => {
   it('gives every gap a stable identifier in the documented format', () => {

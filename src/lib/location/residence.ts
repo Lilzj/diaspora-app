@@ -28,9 +28,9 @@
 // removes a residence Trust has already proven has not unproven it.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '@/lib/apiClient';
-import { unwrapEnvelope } from '@/lib/platform-envelope';
-import { toFinancialError } from '@/lib/financial-errors';
+import { apiClient } from '@/lib/transport/apiClient';
+import { unwrapEnvelope } from '@/lib/transport/platform-envelope';
+import { toFinancialError } from '@/lib/transport/financial-errors';
 
 const ROOT = '/location/me/countries';
 

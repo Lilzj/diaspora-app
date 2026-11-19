@@ -30,7 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { WITHDRAWAL_STATUSES } from '@/types/financial';
-import { presentWithdrawalStatus } from '../financial-status';
+import { presentWithdrawalStatus } from '../domain/financial-status';
 import { backendSourceRoot } from './support/backend-checkout';
 
 declare const __dirname: string;

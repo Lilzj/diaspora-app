@@ -11,12 +11,12 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   fetchOwnerAnalytics,
   isCertifiedContentSubject,
   isCertifiedOwnerSubject,
-} from '@/lib/analytics-api';
+} from '@/lib/api/analytics-api';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };

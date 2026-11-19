@@ -39,7 +39,7 @@ import {
   useCommunitySuggestions,
 } from '@/hooks/communities';
 import { getActiveLocation, useLocationStore } from '@/store/location';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { trackCommunityEvent } from '@/lib/community/analytics';
 import {
   CommunityOfflineBanner,
@@ -48,7 +48,7 @@ import {
   MultiCommunityGapNotice,
   communityTypeLabel,
 } from '@/components/community-directory';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 const TYPE_FILTERS: (CommunityType | 'All')[] = [
   'All',

@@ -12,14 +12,14 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   fetchMonetizationRecommendations,
   isAcceptableTargetType,
   monetizationFeedbackFor,
   recordDismiss,
-} from '../recommendations-api';
-import { fetchMyCampaignDonations } from '../community-programme-api';
+} from '../api/recommendations-api';
+import { fetchMyCampaignDonations } from '../api/community-programme-api';
 
 describe('monetization suggestions and campaign gifts', () => {
   let mock: MockAdapter;

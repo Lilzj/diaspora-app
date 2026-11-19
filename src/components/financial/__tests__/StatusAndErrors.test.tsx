@@ -15,9 +15,9 @@ import { ThemeProvider } from '@/design-system';
 import { StatusBadge, StatusBanner } from '../StatusBadge';
 import { FinancialErrorInline, FinancialErrorView, GapNotice, GapUnavailableView } from '../FinancialError';
 import { AccessGate } from '../AccessGate';
-import { FinancialError } from '@/lib/financial-errors';
-import { presentPaymentStatus, presentWalletStatus } from '@/lib/financial-status';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
+import { FinancialError } from '@/lib/transport/financial-errors';
+import { presentPaymentStatus, presentWalletStatus } from '@/lib/domain/financial-status';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
 
 function renderWithTheme(node: React.ReactElement) {
   return render(<ThemeProvider>{node}</ThemeProvider>);

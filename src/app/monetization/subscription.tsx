@@ -34,8 +34,8 @@ import {
 import { useEntitlements, useMonetizationPlans } from '@/hooks/monetization';
 import { useCancelSubscription, useMySubscription } from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
-import { presentSubscriptionStatus } from '@/lib/financial-status';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { presentSubscriptionStatus } from '@/lib/domain/financial-status';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
 import { useRefreshControl } from '@/hooks/usePullToRefresh';
 

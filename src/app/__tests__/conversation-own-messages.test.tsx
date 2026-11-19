@@ -15,7 +15,7 @@ import { ThemeProvider } from '@/design-system';
 import { useConversationStore } from '@/store/conversation';
 import type { Conversation, Message } from '@/types/conversation';
 
-jest.mock('@/lib/conversation-hub', () => ({
+jest.mock('@/lib/transport/conversation-hub', () => ({
   ConversationHub: {
     markRead: jest.fn(() => Promise.resolve()),
     joinConversation: jest.fn(() => Promise.resolve(true)),
@@ -35,7 +35,7 @@ jest.mock('@/providers/notification-provider', () => ({
   useNotification: () => ({ showAlert: jest.fn() }),
 }));
 jest.mock('@/components/ReportModal', () => ({ ReportModal: () => null }));
-jest.mock('@/lib/apiClient', () => ({
+jest.mock('@/lib/transport/apiClient', () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
 }));
 

@@ -12,14 +12,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { setupCommunityGapMocks } from '@/mocks/handlers/community-gaps';
 import { setupCommunityLifeMocks } from '@/mocks/handlers/community-life';
 import { setupFinancialMocks } from '@/mocks/handlers/financial';
-import * as gapApi from '../community-gap-api';
-import * as b12 from '../community-life-api';
-import * as financialApi from '../financial-api';
-import { isGivingSettled, isPaymentSettled, isPaymentSuccessful } from '../community-state';
+import * as gapApi from '../api/community-gap-api';
+import * as b12 from '../api/community-life-api';
+import * as financialApi from '../api/financial-api';
+import { isGivingSettled, isPaymentSettled, isPaymentSuccessful } from '../domain/community-state';
 
 /** The platform's RSVP routes, answered the way the server does (20 Oct 2026). */
 function stubRsvps(adapter: MockAdapter, statusFor: (eventId: string) => string = () => 'Going') {

@@ -7,12 +7,12 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/design-system';
-import { changePassword } from '@/lib/auth-api';
+import { changePassword } from '@/lib/api/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { useNotification } from '@/providers/notification-provider';
-import { meetsPasswordRules } from '@/lib/password-policy';
+import { meetsPasswordRules } from '@/lib/domain/password-policy';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /**
  * Changes the password of a member who is already signed in.

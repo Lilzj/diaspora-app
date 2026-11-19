@@ -13,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient, registerAuthBridge } from '../apiClient';
+import { apiClient, registerAuthBridge } from '../transport/apiClient';
 import {
   attachMedia,
   attachMediaInOrder,
@@ -22,7 +22,7 @@ import {
   guessMimeType,
   toFormData,
   uploadDirect,
-} from '../media-api';
+} from '../api/media-api';
 import { toLocalFile } from '@/hooks/media';
 import type { LocalFile } from '@/types/media';
 

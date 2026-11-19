@@ -29,7 +29,7 @@ import {
   drainCreatorEvents,
   peekCreatorEvents,
   resetCreatorEvents,
-} from '@/lib/creator-analytics';
+} from '@/lib/platform/creator-analytics';
 import {
   associationProperties,
   scopeProperties,

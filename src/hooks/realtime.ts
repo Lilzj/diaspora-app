@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { peekRealtimeClient } from '@/lib/realtime';
+import { peekRealtimeClient } from '@/lib/transport/realtime';
 import { NO_REALTIME_CAPABILITIES, type RealtimeCapabilities } from '@/types/conversation';
 
 /**

@@ -63,7 +63,7 @@ jest.mock('@microsoft/signalr', () => {
   };
 });
 
-import { DiasporaRealtimeClient } from '../realtime';
+import { DiasporaRealtimeClient } from '../transport/realtime';
 
 /** The payload shape the hub sends, with the field names it really uses. */
 function serverPayload(messageId: string) {

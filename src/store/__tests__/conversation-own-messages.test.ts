@@ -11,7 +11,7 @@
 import { useConversationStore } from '../conversation';
 import type { Conversation, Message } from '@/types/conversation';
 
-jest.mock('@/lib/apiClient', () => ({
+jest.mock('@/lib/transport/apiClient', () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 

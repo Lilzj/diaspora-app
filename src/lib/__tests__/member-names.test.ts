@@ -14,14 +14,14 @@
  * with an answer, and the guard that fails if anybody wires a name back to an
  * id field.
  */
-import { UNNAMED_MEMBER, nameOrNeutral } from '../community-programme-api';
+import { UNNAMED_MEMBER, nameOrNeutral } from '../api/community-programme-api';
 
 // `require`, as the other source-reading guards in this folder do: the tsconfig
 // declares only the jest types, so a node import does not typecheck here.
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
-const SOURCE = path.join(process.cwd(), 'src', 'lib', 'community-programme-api.ts');
+const SOURCE = path.join(process.cwd(), 'src', 'lib', 'api', 'community-programme-api.ts');
 
 describe('the name a member is shown by', () => {
   it('uses the name the platform resolved', () => {

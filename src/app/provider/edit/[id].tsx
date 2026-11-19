@@ -32,13 +32,13 @@ import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
-import { coordinatesOf, ownPinOrTown } from '@/lib/place-coordinates';
+import { coordinatesOf, ownPinOrTown } from '@/lib/platform/place-coordinates';
 import { useProvider, useServiceCategories } from '@/hooks/providers';
 import { toLocalFile } from '@/hooks/media';
-import { uploadDirect } from '@/lib/media-api';
-import { photoUriOf } from '@/lib/media-url';
-import { backOr } from '@/lib/navigation';
-import { useMemberCurrency } from '@/lib/member-currency';
+import { uploadDirect } from '@/lib/api/media-api';
+import { photoUriOf } from '@/lib/platform/media-url';
+import { backOr } from '@/lib/platform/navigation';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 import { useNotification } from '@/providers/notification-provider';
 import {
   addProviderPhoto,
@@ -50,7 +50,7 @@ import {
   updateProviderService,
   type ProviderDetailsPatch,
   type ProviderServiceRequest,
-} from '@/lib/provider-registration-api';
+} from '@/lib/api/provider-registration-api';
 import {
   resolveDeviceLocationProvider,
   resolveLocationPermissionProvider,

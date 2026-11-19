@@ -22,8 +22,8 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
-import { createAndPublishProvider, registerProvider } from '@/lib/provider-registration-api';
+import { apiClient } from '@/lib/transport/apiClient';
+import { createAndPublishProvider, registerProvider } from '@/lib/api/provider-registration-api';
 
 const PROVIDER_ID = '9f1c1f6e-6c1a-4a3f-9a4a-2f2c9a1b0001';
 

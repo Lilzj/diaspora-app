@@ -46,7 +46,7 @@ import {
   intelligenceErrorMessage,
   isEmergencyDirectoryMissing,
   searchOfficialNotices,
-} from '@/lib/country-intelligence-api';
+} from '@/lib/api/country-intelligence-api';
 import type {
   CountryIntelligenceResponse,
   EmbassyDirectoryQuery,

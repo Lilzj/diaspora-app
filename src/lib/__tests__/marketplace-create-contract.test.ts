@@ -46,7 +46,7 @@ describe('the marketplace create payload', () => {
     expect(SOURCE).toContain('subcategory || category');
     expect(SOURCE).not.toContain('mockMarketplaceCategories');
     const CATEGORIES = fs.readFileSync(
-      path.join(process.cwd(), 'src', 'lib', 'marketplace-categories.ts'),
+      path.join(process.cwd(), 'src', 'lib', 'domain', 'marketplace-categories.ts'),
       'utf8'
     );
     expect(CATEGORIES).toContain("african_food: 'imported-groceries'");

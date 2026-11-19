@@ -14,7 +14,7 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { PostedBy } from '@/components/intelligence/PostedBy';
 import { useOfficialNotice } from '@/hooks/country-intelligence';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 import { ReactionBar, CommentThread, ReportContentSheet } from '@/components/community-social';
 import { useContentComments, useContentEngagement, useReact } from '@/hooks/community-social';
 import { useNotification } from '@/providers/notification-provider';

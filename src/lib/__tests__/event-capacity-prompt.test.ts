@@ -18,7 +18,7 @@
 // worth testing.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { parseCapacity } from '../event-capacity-prompt';
+import { parseCapacity } from '../platform/event-capacity-prompt';
 
 describe('a number of places', () => {
   it.each([

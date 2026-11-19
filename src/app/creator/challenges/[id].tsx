@@ -36,12 +36,12 @@ import {
   useCreatorAccess,
   useCreatorChallenge,
 } from '@/hooks/creator-economy';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { presentChallengeState } from '@/lib/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { presentChallengeState } from '@/lib/domain/creator-economy';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import { formatRelativeTime } from '@/utils/format';
-import type { FinancialError } from '@/lib/financial-errors';
-import { appRouteFor } from '@/lib/server-route';
+import type { FinancialError } from '@/lib/transport/financial-errors';
+import { appRouteFor } from '@/lib/platform/server-route';
 
 export default function ChallengeDetailScreen() {
   const { tokens } = useTheme();

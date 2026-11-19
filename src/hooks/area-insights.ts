@@ -7,7 +7,7 @@ import {
   submitAreaInsight,
   type AreaInsight,
   type SubmitAreaInsightInput,
-} from '@/lib/area-insights-api';
+} from '@/lib/api/area-insights-api';
 
 const areaInsightKeys = {
   all: ['housing', 'area-insights'] as const,

@@ -32,10 +32,10 @@ import {
 import { useMonetizationOverview, useEntitlements } from '@/hooks/monetization';
 import { usePerformanceSummary, useMonetizationRecommendations } from '@/hooks/monetization-gaps';
 import { usePricing } from '@/providers/pricing-provider';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { presentSubscriptionStatus, presentPurchaseStatus } from '@/lib/financial-status';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
+import { presentSubscriptionStatus, presentPurchaseStatus } from '@/lib/domain/financial-status';
 import { useAuthStore } from '@/store/auth';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { Promotion } from '@/types/monetization';
 import { useRefreshControl } from '@/hooks/usePullToRefresh';
 

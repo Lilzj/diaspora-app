@@ -3,14 +3,14 @@ import { View, Text, TouchableOpacity, Share, Alert, Platform } from 'react-nati
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { HousingListing } from '@/types/housing';
-import { asHousingCardListing, type HousingCardWire } from '@/lib/housing-cards';
-import { placeOf } from '@/lib/listing-place';
+import { asHousingCardListing, type HousingCardWire } from '@/lib/platform/housing-cards';
+import { placeOf } from '@/lib/platform/listing-place';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
 // Remediation Wave E. A listing may now genuinely have no photograph — the
 // development handler no longer substitutes a stock one — so the cover slot has
 // to render the absence rather than an empty `<Image>`.
 import { ListingPhoto } from './ListingPhoto';
-import { currencySymbol as symbolFor } from '@/lib/money';
+import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 interface HousingCardProps {
   /** A mapped home, or the raw row a list route sent — see `asHousingCardListing`. */

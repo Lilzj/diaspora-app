@@ -53,7 +53,7 @@ import { INTEGRATION_GAPS } from '@/config/integration-gaps';
 // platform has no adapter" from "this build cannot ask", and it changes to a
 // success the day an operator contracts one without this file changing.
 import * as integrationsApi from '@/lib/integrations/certified-client';
-import { acquireIdempotencyKey, releaseIdempotencyKey } from '@/lib/idempotency';
+import { acquireIdempotencyKey, releaseIdempotencyKey } from '@/lib/domain/idempotency';
 import { backendGapError, integrationError } from '../errors';
 import type { CalendarProvider, PermissionSnapshot } from './types';
 

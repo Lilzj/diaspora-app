@@ -15,7 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { setupHousingMocks } from '@/mocks/handlers/housing';
 import { setupMarketplaceMocks } from '@/mocks/handlers/marketplace';
 import { setupJobsMocks } from '@/mocks/handlers/jobs';
@@ -28,7 +28,7 @@ import {
   mapKeys,
   neighborhoodIdFor,
   searchMap,
-} from '@/lib/maps-api';
+} from '@/lib/api/maps-api';
 import { boundsContain, circleToBounds } from '@/lib/maps/geo';
 import type { DiscoveryCategory, GeoBoundingBox } from '@/types/maps';
 

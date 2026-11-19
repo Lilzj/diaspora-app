@@ -56,7 +56,7 @@ import {
   MembershipStatePill,
   MultiCommunityGapNotice,
 } from '@/components/community-directory';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /**
  * The categories this overlay applies to.

@@ -59,7 +59,7 @@ import type {
   AutomationScope,
   AutomationSimulation,
 } from '@/types/automation';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function AutomationDetailScreen() {
   // The guard rail: the phone's gesture area plus breathing room.

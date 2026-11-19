@@ -9,7 +9,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConversationRequestCard } from '@/components/conversation/ConversationRequestCard';
 import { ConversationEmptyState } from '@/components/conversation/ConversationEmptyState';
 import { useConversationStore } from '@/store/conversation';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function ConversationRequestsScreen() {

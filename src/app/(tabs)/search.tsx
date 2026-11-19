@@ -190,7 +190,7 @@ import { useProviderSearch, useServiceCategories } from '@/hooks/providers';
 
 // Hyperlocal integrations
 import { useLocationStore, getActiveLocation, locationLabel } from '@/store/location';
-import { providerScopeParams, resolveDiscoverScope } from '@/lib/discover-scope';
+import { providerScopeParams, resolveDiscoverScope } from '@/lib/domain/discover-scope';
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
 
@@ -209,7 +209,7 @@ import {
 import { useCommunityScope } from '@/hooks/communities';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { trackContentImpression } from '@/lib/analytics/content-events';
-import { photoUriOf } from '@/lib/media-url';
+import { photoUriOf } from '@/lib/platform/media-url';
 
 /** A pin on the map view. Only providers carry coordinates this screen can plot. */
 interface MapPin {

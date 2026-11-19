@@ -11,12 +11,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   createAndPublishListing,
   ensureLandlordProfile,
   isNotLandlordError,
-} from '../housing-listings-api';
+} from '../api/housing-listings-api';
 
 let api: MockAdapter;
 

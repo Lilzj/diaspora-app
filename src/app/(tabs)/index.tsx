@@ -36,7 +36,7 @@ import { ScrollView, View, Text, TextInput, TouchableOpacity, RefreshControl, Ac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { SectionHeader } from '@/components/SectionHeader';
-import { seeAllDestination } from '@/lib/see-all-routes';
+import { seeAllDestination } from '@/lib/platform/see-all-routes';
 import { NotificationBell } from '@/components/NotificationBell';
 import { Avatar } from '@/components/Avatar';
 import { EmptyState } from '@/components/EmptyState';
@@ -52,13 +52,13 @@ import { WelcomeModal } from '@/components/explore/WelcomeModal';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { FeatureGate } from '@/components/FeatureGate';
 import { feedbackFor, useHomeFeed, useRecommendationFeedback } from '@/hooks/recommendations';
-import { routeForRecommendation } from '@/lib/recommendations-api';
+import { routeForRecommendation } from '@/lib/api/recommendations-api';
 import type { FeedSection, Recommendation } from '@/types/recommendations';
 import { useThemeTokens } from '@/design-system';
-import { readSearch } from '@/lib/search-intent';
-import { resolveSearch } from '@/lib/search-place';
-import { outsideMessage, searchAtHome, sentenceParams } from '@/lib/search-sentence';
-import type { SentenceSearch } from '@/lib/search-place';
+import { readSearch } from '@/lib/platform/search-intent';
+import { resolveSearch } from '@/lib/platform/search-place';
+import { outsideMessage, searchAtHome, sentenceParams } from '@/lib/platform/search-sentence';
+import type { SentenceSearch } from '@/lib/platform/search-place';
 
 // Frontend Phase 13 — Multi-Community Expansion (§16).
 //

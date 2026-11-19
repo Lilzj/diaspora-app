@@ -26,7 +26,7 @@ import {
   type ProviderSearchParams,
   type ProviderPage,
   type ServiceCategory,
-} from '@/lib/providers-api';
+} from '@/lib/api/providers-api';
 
 /** True for the error `fetchProvider` raises when nothing matched the id or slug. */
 export function isProviderNotFound(error: unknown): boolean {

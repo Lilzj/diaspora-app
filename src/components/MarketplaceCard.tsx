@@ -1,17 +1,17 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Share, Platform, Alert } from 'react-native';
-import { placeOf } from '@/lib/listing-place';
+import { placeOf } from '@/lib/platform/listing-place';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { MarketplaceListing, MarketplaceListingCardResponse } from '@/types/marketplace';
-import { asMarketplaceCardListing } from '@/lib/marketplace-listings-api';
+import { asMarketplaceCardListing } from '@/lib/api/marketplace-listings-api';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
 // Remediation Wave E. A listing may now genuinely have no photograph — the swap
 // composer never sends one and the development handler no longer substitutes a
 // stock one — so the cover slot has to render the absence.
 import { ListingPhoto } from './ListingPhoto';
-import { describeListingPrice, describeSwapWants } from '@/lib/marketplace-wire';
-import { currencySymbol as symbolFor } from '@/lib/money';
+import { describeListingPrice, describeSwapWants } from '@/lib/api/marketplace-wire';
+import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 interface MarketplaceCardProps {
   /** A mapped listing, or the raw row a search sent — see `asMarketplaceCardListing`. */

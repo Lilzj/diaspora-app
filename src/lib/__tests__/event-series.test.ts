@@ -27,7 +27,7 @@ const source = (...segments: string[]) =>
     .replace(new RegExp('//[^\\n]*', 'g'), ' ');
 
 const screen = source('app', 'community-life', 'event', 'create.tsx');
-const api = source('lib', 'community-life-api.ts');
+const api = source('lib', 'api', 'community-life-api.ts');
 
 describe('the toggle reaches a route', () => {
   it('posts a series when the organiser said it repeats', () => {
@@ -161,7 +161,7 @@ describe('a member can find their own drafts', () => {
   // exactly that listing, and a member who had just created a weekly clinic
   // found nothing under any of the four.
   const listScreen = source('app', 'community-life', 'series', 'index.tsx');
-  const programmeApi = source('lib', 'community-programme-api.ts');
+  const programmeApi = source('lib', 'api', 'community-programme-api.ts');
 
   it('declares the two parameters the platform takes', () => {
     // Neither was declared. `status` had been sent for as long as the screen

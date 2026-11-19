@@ -26,8 +26,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { AmountDisplay } from './AmountDisplay';
 import { StatusBadge, useStatusColours } from './StatusBadge';
-import { presentPaymentStatus, presentRefundStatus, describeRefundReason } from '@/lib/financial-status';
-import { describeMoney, isZero } from '@/lib/money';
+import { presentPaymentStatus, presentRefundStatus, describeRefundReason } from '@/lib/domain/financial-status';
+import { describeMoney, isZero } from '@/lib/domain/money';
 import { formatRelativeTime } from '@/utils/format';
 import type { PaymentIntent, Refund } from '@/types/financial';
 

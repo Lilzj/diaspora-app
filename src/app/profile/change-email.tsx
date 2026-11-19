@@ -7,10 +7,10 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { Button } from '@/components/Button';
 import { useTheme } from '@/design-system';
 import { useEmailChange, useEmailIdentity } from '@/hooks/integrations';
-import { isEmailChangeError } from '@/lib/auth-api';
+import { isEmailChangeError } from '@/lib/api/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
-import { pendingExpiry } from '@/lib/pending-email-change';
-import { backOr } from '@/lib/navigation';
+import { pendingExpiry } from '@/lib/domain/pending-email-change';
+import { backOr } from '@/lib/platform/navigation';
 
 /**
  * Changes the email address a member signs in with (`PUT /auth/email`, served

@@ -9,7 +9,7 @@ import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
 import { WizardFooter } from '@/components/forms/WizardFooter';
 import { ContactChoice } from '@/components/forms/ContactChoice';
-import { coordinatesOf, ownPinOrTown } from '@/lib/place-coordinates';
+import { coordinatesOf, ownPinOrTown } from '@/lib/platform/place-coordinates';
 import { Input } from '@/components/Input';
 import { useTrustStore } from '@/store/trust';
 import * as ImagePicker from 'expo-image-picker';
@@ -27,18 +27,18 @@ import {
   fetchMySellerContact,
   problemDetail,
   type SellerContact,
-} from '@/lib/marketplace-listings-api';
-import { toListingCondition } from '@/lib/marketplace-categories';
-import { listingFieldsFor, listingPricePayload } from '@/lib/marketplace-listing-fields';
-import { backOr } from '@/lib/navigation';
+} from '@/lib/api/marketplace-listings-api';
+import { toListingCondition } from '@/lib/domain/marketplace-categories';
+import { listingFieldsFor, listingPricePayload } from '@/lib/domain/marketplace-listing-fields';
+import { backOr } from '@/lib/platform/navigation';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { CurrencyNote } from '@/components/CurrencyNote';
-import { useMemberCurrency } from '@/lib/member-currency';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 import { useMarketplaceCategories } from '@/hooks/marketplace-categories';
 import { useDonationCauses } from '@/hooks/financial';
-import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/marketplace-categories';
-import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/device-drafts';
-import { currencySymbol as symbolFor } from '@/lib/money';
+import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/domain/marketplace-categories';
+import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/platform/device-drafts';
+import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;

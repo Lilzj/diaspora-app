@@ -16,7 +16,7 @@
 // way. The bug lives entirely in the encoding.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 
 describe('array query parameters', () => {
   it('repeats the bare key, which is what ASP.NET binds', () => {

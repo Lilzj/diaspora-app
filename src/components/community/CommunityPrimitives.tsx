@@ -30,7 +30,7 @@ import { useTheme } from '@/design-system';
 import { useMediaAsset } from '@/hooks/media';
 import { Button } from '@/components/Button';
 import { AmountDisplay } from '@/components/financial';
-import type { StateDescriptor, StateTone } from '@/lib/community-state';
+import type { StateDescriptor, StateTone } from '@/lib/domain/community-state';
 import type { Money } from '@/types/financial';
 import type { Sourced } from '@/types/community-advanced';
 import { SimulatedFigure, VerifiedFigure } from './CommunityGapNotice';

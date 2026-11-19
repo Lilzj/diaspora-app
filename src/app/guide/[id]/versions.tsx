@@ -39,7 +39,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useGuide, useGuideVersionDiff, useGuideVersions } from '@/hooks/guides';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function GuideVersionsScreen() {
   // The guard rail: the phone's gesture area plus breathing room.

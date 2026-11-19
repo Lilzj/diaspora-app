@@ -29,12 +29,12 @@ jest.mock('expo-constants', () => {
   };
 });
 
-type AuthApi = typeof import('../auth-api');
+type AuthApi = typeof import('../api/auth-api');
 
 /** Closes and reopens the app: module state goes, storage stays. */
 function launchApp(): AuthApi {
   jest.resetModules();
-  return require('../auth-api') as AuthApi;
+  return require('../api/auth-api') as AuthApi;
 }
 
 function storedValues(): string[] {

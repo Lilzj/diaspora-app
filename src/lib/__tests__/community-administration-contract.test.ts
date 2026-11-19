@@ -9,12 +9,12 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   changeCommunityRole,
   fetchCommunityMembers,
   proposeCommunity,
-} from '../community-entity-api';
+} from '../api/community-entity-api';
 
 const COMMUNITY_ID = '01a0902e-4289-7f61-9d8b-d50638c7fb1b';
 const USER_ID = '0dc73f0c-7efa-4b60-8706-7a60eacace65';

@@ -24,7 +24,7 @@
 // to earn, each with the server's how-to-earn line as its description.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { isFlagEmoji, servedIcon, splitLeadingEmoji } from '@/lib/served-icon';
+import { isFlagEmoji, servedIcon, splitLeadingEmoji } from '@/lib/platform/served-icon';
 import type { CreatorReputationBadge } from '@/types/creator-economy';
 
 export interface BadgeItem {

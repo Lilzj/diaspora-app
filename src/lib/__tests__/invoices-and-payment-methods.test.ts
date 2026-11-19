@@ -17,15 +17,15 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   fetchInvoice,
   fetchInvoiceDocument,
   fetchMyInvoices,
   fetchSavedPaymentMethods,
   forgetSavedPaymentMethod,
-} from '../financial-api';
-import { describeInvoiceKind, presentInvoiceStatus } from '../financial-status';
+} from '../api/financial-api';
+import { describeInvoiceKind, presentInvoiceStatus } from '../domain/financial-status';
 import type { Invoice, Money } from '@/types/financial';
 
 const gbp = (minorUnits: number): Money => ({

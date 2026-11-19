@@ -38,7 +38,7 @@ import {
   toMajorUnits,
   toRequestAmount,
   zeroLike,
-} from '../money';
+} from '../domain/money';
 import type { CurrencyFact } from '@/types/financial';
 
 const CATALOGUE: CurrencyFact[] = [
@@ -303,7 +303,7 @@ describe('progressRatio', () => {
 // The one symbol lookup shared by events, listings, campaigns and map pins. It
 // replaced `code === 'GBP' ? '£' : '$'` and eight copied switch tables.
 describe('currencySymbol and formatPrice', () => {
-  const { currencySymbol, formatPrice } = require('../money') as typeof import('../money');
+  const { currencySymbol, formatPrice } = require('../domain/money') as typeof import('../domain/money');
 
   it('prefers the symbol the server sent', () => {
     expect(currencySymbol('MUR', 'Rs')).toBe('Rs');

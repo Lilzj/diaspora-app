@@ -4,14 +4,14 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 
 // B15 — `GET /donations/causes` replaces this screen's `MOCK_CAUSES`.
 import { useDonationCauses } from '@/hooks/financial';
 import { FinancialErrorInline } from '@/components/financial';
 import { useLocationStore } from '@/store/location';
 import type { DonationCause } from '@/types/financial';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import { useThemeTokens } from '@/design-system';
 
 const SUPPORT_TYPES = ['Monetary', 'Goods / Items', 'Volunteer Service', 'Professional Skills', 'Food & Supplies'];

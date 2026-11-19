@@ -20,8 +20,8 @@ import {
   checkCreatorAccess,
   resolveCreatorAccess,
   type CreatorCapability,
-} from '../creator-access';
-import { AccessTier } from '../financial-access';
+} from '../domain/creator-access';
+import { AccessTier } from '../domain/financial-access';
 import type { AccountState } from '@/types/trust';
 
 const verified: AccountState = 'DiasporaVerified';

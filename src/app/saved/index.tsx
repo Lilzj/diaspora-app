@@ -24,7 +24,7 @@ import { router } from 'expo-router';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useBookmarkedGuides } from '@/hooks/guides';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 import { useSavedStore } from '@/store/saved';
 import { SAVED_COLLECTION_CONFIG, type SavedContentType } from '@/types/saved';
 

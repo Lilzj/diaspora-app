@@ -307,7 +307,7 @@ const CONVERTED: {
     // here. What is left is what `PostJobCommand` will not accept without.
     // The country is not a field since 14 Oct 2026 (the member's residence),
     // so it is named as theirs when the account has none.
-    labelsIn: ['lib', 'job-postings-api.ts'],
+    labelsIn: ['lib', 'api', 'job-postings-api.ts'],
     fields: ['Category', 'Job title', 'Description', 'Country of residence'],
   },
   {
@@ -316,7 +316,7 @@ const CONVERTED: {
     // Declared in the module that already held the step's rules, so that
     // "Still needed: Photo" and "Add a photo of your item." cannot drift
     // apart. The screen reads it; it does not restate it.
-    labelsIn: ['lib', 'swap-listings.ts'],
+    labelsIn: ['lib', 'domain', 'swap-listings.ts'],
     fields: [
       'Item title',
       'Description',

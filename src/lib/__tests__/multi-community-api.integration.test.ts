@@ -21,7 +21,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { setupCommunityDirectoryMocks } from '@/mocks/handlers/community-directory';
 import { setupHousingMocks } from '@/mocks/handlers/housing';
 import { setupJobsMocks } from '@/mocks/handlers/jobs';
@@ -35,8 +35,8 @@ import {
   fetchMembershipSet,
   performMembershipAction,
   setPrimaryCommunity,
-} from '@/lib/community-gap-directory-api';
-import { fetchScopedContent, narrowToScope } from '@/lib/community-directory-api';
+} from '@/lib/api/community-gap-directory-api';
+import { fetchScopedContent, narrowToScope } from '@/lib/api/community-directory-api';
 import { projectScope, toRef } from '@/lib/community/scope';
 import { MOCK_COMMUNITIES } from '@/mocks/community-directory-data';
 import type { Community, CommunityScope } from '@/types/community-directory';

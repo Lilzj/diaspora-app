@@ -20,7 +20,7 @@
 // anything.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 
 /** Who is being reviewed. */
 export type ReviewSubject = 'provider' | 'seller' | 'landlord';

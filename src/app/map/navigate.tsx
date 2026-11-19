@@ -49,7 +49,7 @@ import { openExternalDirections } from '@/lib/maps/external-navigation';
 import { trackMapsEvent } from '@/lib/maps/analytics';
 import { canUseLocation } from '@/store/map-session';
 import type { GeoPoint, MapViewport, TravelMode } from '@/types/maps';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function NavigationScreen() {
   const { tokens } = useTheme();

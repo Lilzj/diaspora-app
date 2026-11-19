@@ -16,8 +16,8 @@ import {
   bucketProgress,
   moneyProps,
   trackCommunityEvent,
-} from '../community-analytics';
-import { drainCreatorEvents, peekCreatorEvents, resetCreatorEvents } from '../creator-analytics';
+} from '../platform/community-analytics';
+import { drainCreatorEvents, peekCreatorEvents, resetCreatorEvents } from '../platform/creator-analytics';
 import { money } from '@/mocks/financial-data';
 
 beforeEach(() => {

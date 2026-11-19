@@ -4,7 +4,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 
-import type { MemberCurrency } from '@/lib/member-currency';
+import type { MemberCurrency } from '@/lib/domain/member-currency';
 import { allCountries } from '@/lib/reference/countries';
 
 export function CurrencyNote({ currency }: { currency: MemberCurrency }) {

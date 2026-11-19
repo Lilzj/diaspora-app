@@ -23,8 +23,8 @@ import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { AmountDisplay } from './AmountDisplay';
-import { describeMoney, formatMoney, isZero } from '@/lib/money';
-import { describePaymentMethod } from '@/lib/financial-status';
+import { describeMoney, formatMoney, isZero } from '@/lib/domain/money';
+import { describePaymentMethod } from '@/lib/domain/financial-status';
 import type { Money, PaymentMethodKind } from '@/types/financial';
 
 // ── Line items ───────────────────────────────────────────────────────────────

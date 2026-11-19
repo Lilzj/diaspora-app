@@ -11,7 +11,7 @@ import {
   countryFlagEmoji,
   fetchKnowledgeCountries,
   knowledgeCountryKeys,
-} from '@/lib/knowledge-countries-api';
+} from '@/lib/api/knowledge-countries-api';
 
 // Remediation Wave D-3.
 //

@@ -22,9 +22,9 @@ import {
   fetchLesson,
   fetchMyCreatorReputation,
 } from '../creator/certified-client';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 
-jest.mock('../apiClient', () => ({
+jest.mock('../transport/apiClient', () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn() },
 }));
 

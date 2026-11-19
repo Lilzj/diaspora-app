@@ -21,7 +21,7 @@ import { TagEditor } from '@/components/forms/TagEditor';
 import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
 import { Image } from 'expo-image';
 import { useMediaUpload, toLocalFile } from '@/hooks/media';
-import { setProfileAvatar } from '@/lib/auth-api';
+import { setProfileAvatar } from '@/lib/api/auth-api';
 import { setCreatorCover } from '@/lib/creator/certified-client';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { useGuideCategories } from '@/hooks/guides';
@@ -48,9 +48,9 @@ import {
   useCreatorProfile,
   useUpdateCreatorProfile,
 } from '@/hooks/creator-economy';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { formatCount, presentCreatorStatus } from '@/lib/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { formatCount, presentCreatorStatus } from '@/lib/domain/creator-economy';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import type { CreatorRequirement } from '@/types/creator-economy';
 import { profileFieldFor, requirementRoute, type ProfileField } from '@/lib/creator/profile-fields';
 

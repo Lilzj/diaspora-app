@@ -47,18 +47,18 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 
-import * as gapApi from '@/lib/creator-gap-api';
-import { fetchCreatorContentPerformance, fetchCreatorSummary } from '@/lib/analytics-api';
+import * as gapApi from '@/lib/api/creator-gap-api';
+import { fetchCreatorContentPerformance, fetchCreatorSummary } from '@/lib/api/analytics-api';
 import { resolveRange } from '@/lib/analytics/time-range';
 import type { AnalyticsRangePreset } from '@/types/analytics';
 import * as certifiedApi from '@/lib/creator/certified-client';
-import { creatorGapKeys } from '@/lib/creator-gap-api';
-import { financialKeys } from '@/lib/financial-api';
+import { creatorGapKeys } from '@/lib/api/creator-gap-api';
+import { financialKeys } from '@/lib/api/financial-api';
 import { areCreatorGapsEnabled } from '@/config/creator-gaps';
-import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
-import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
-import { fingerprintRange, isRangeQueryable } from '@/lib/creator-economy';
-import { resolveCreatorAccess, type CreatorAccess } from '@/lib/creator-access';
+import { shouldRetryQuery, type FinancialError } from '@/lib/transport/financial-errors';
+import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/domain/idempotency';
+import { fingerprintRange, isRangeQueryable } from '@/lib/domain/creator-economy';
+import { resolveCreatorAccess, type CreatorAccess } from '@/lib/domain/creator-access';
 import { useAuthStore } from '@/store/auth';
 import { useFinancialAccess, useMyPlacements, usePrimaryWallet } from './financial';
 import { useEntitlements } from './monetization';
@@ -69,8 +69,8 @@ import type {
   CreatorPoints,
   CreatorStatus,
 } from '@/types/creator-economy';
-import type { UpdateCreatorProfileRequest, CreatorDirectoryParams } from '@/lib/creator-gap-api';
-import { financialGapKeys } from '@/lib/financial-gap-api';
+import type { UpdateCreatorProfileRequest, CreatorDirectoryParams } from '@/lib/api/creator-gap-api';
+import { financialGapKeys } from '@/lib/api/financial-gap-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared query options

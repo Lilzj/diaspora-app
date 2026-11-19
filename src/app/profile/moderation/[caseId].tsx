@@ -17,7 +17,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useMyModerationCase } from '@/hooks/trust';
 import { useNotification } from '@/providers/notification-provider';
-import { canAppeal, decisionHeadline, longDate } from '@/lib/moderation-case';
+import { canAppeal, decisionHeadline, longDate } from '@/lib/domain/moderation-case';
 
 export default function ModerationDecisionScreen() {
   const { caseId } = useLocalSearchParams<{ caseId: string }>();

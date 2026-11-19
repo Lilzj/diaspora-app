@@ -16,7 +16,7 @@ describe('place search', () => {
   });
 
   it('the town picker asks Google for towns, with no place-list fallback', () => {
-    const towns = read('lib', 'town-search.ts');
+    const towns = read('lib', 'platform', 'town-search.ts');
     expect(towns).toContain('townsOnly: true');
     expect(towns).not.toContain("'/location/search'");
   });

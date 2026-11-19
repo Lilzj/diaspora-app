@@ -8,10 +8,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { authTransport } from '@/lib/auth-api';
-import { apiClient } from '@/lib/apiClient';
-import { hasExpired, INACTIVITY_LIMIT_MS } from '@/lib/inactivity';
-import { saveSession } from '@/lib/auth-storage';
+import { authTransport } from '@/lib/api/auth-api';
+import { apiClient } from '@/lib/transport/apiClient';
+import { hasExpired, INACTIVITY_LIMIT_MS } from '@/lib/platform/inactivity';
+import { saveSession } from '@/lib/platform/auth-storage';
 import { keepSessionAlive, useAuthStore, __setSessionForTests } from '@/store/auth';
 import { buildAuthenticationResult } from '@/mocks/auth-session';
 

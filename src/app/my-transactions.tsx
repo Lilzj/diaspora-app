@@ -29,7 +29,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { fetchMemberReservations, type MemberReservation } from '@/lib/reservations-api';
+import { fetchMemberReservations, type MemberReservation } from '@/lib/api/reservations-api';
 
 export default function MyTransactionsScreen() {
   const bottomInset = useBottomInset();

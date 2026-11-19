@@ -33,7 +33,7 @@ import {
 } from '@/components/community';
 import { useAreaActivity, useEventsAroundPoint } from '@/hooks/community-life';
 import { useMemberPoint } from '@/hooks/member-point';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { Event } from '@/types/community-life';
 
 const RADII_KM = [1, 2, 5, 10] as const;

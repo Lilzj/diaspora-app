@@ -1,4 +1,4 @@
-import { guideCountryOptions, guideCountryTieLabel } from '../guide-countries';
+import { guideCountryOptions, guideCountryTieLabel } from '../domain/guide-countries';
 
 describe('guideCountryOptions', () => {
   it('offers where the member lives first, then where they are from, then their standings', () => {

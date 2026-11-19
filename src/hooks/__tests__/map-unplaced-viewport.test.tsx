@@ -29,9 +29,9 @@ jest.mock('@/config/map-config', () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 // eslint-disable-next-line import/first
-import { NEARBY_MAX_RADIUS_KM, fetchAlertsNear } from '@/lib/maps-api';
+import { NEARBY_MAX_RADIUS_KM, fetchAlertsNear } from '@/lib/api/maps-api';
 // eslint-disable-next-line import/first
 import {
   boundsToCircle,

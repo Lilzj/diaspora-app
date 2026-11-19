@@ -14,8 +14,8 @@ import {
   sentenceFromParams,
   sentenceParams,
   sentenceScope,
-} from '../search-sentence';
-import type { SentenceSearch } from '../search-place';
+} from '../platform/search-sentence';
+import type { SentenceSearch } from '../platform/search-place';
 
 const FLAT_IN_GRAND_BAIE: SentenceSearch = {
   said: '3-bedroom flat in Grand Baie',

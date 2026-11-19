@@ -22,8 +22,8 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { usePricing } from '@/providers/pricing-provider';
-import { describeEntitlement, describeEntitlementValue } from '@/lib/entitlements';
-import { pricePerMonth } from '@/lib/pricing';
+import { describeEntitlement, describeEntitlementValue } from '@/lib/domain/entitlements';
+import { pricePerMonth } from '@/lib/domain/pricing';
 import { PriceTag } from './PriceTag';
 import type { PlanView } from '@/types/monetization';
 

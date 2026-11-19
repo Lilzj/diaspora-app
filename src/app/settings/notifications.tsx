@@ -47,7 +47,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/design-system';
 import { useNotificationPreferences } from '@/hooks/integrations';
-import { fetchNotificationCategories, notificationKeys } from '@/lib/notifications-api';
+import { fetchNotificationCategories, notificationKeys } from '@/lib/api/notifications-api';
 import { IntegrationErrorNotice } from '@/components/integrations';
 import type { CategoryPreference } from '@/types/notification-preferences';
 import { useBottomInset } from '@/components/layout/bottom-inset';

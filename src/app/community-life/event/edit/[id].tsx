@@ -49,14 +49,14 @@ import {
   fetchEventForEdit,
   saveEventEdits,
   type EventEditForm,
-} from '@/lib/community-life-api';
-import type { EventWire } from '@/lib/event-wire';
-import { uploadDirect } from '@/lib/media-api';
-import { photoUriOf } from '@/lib/media-url';
-import { backOr } from '@/lib/navigation';
+} from '@/lib/api/community-life-api';
+import type { EventWire } from '@/lib/api/event-wire';
+import { uploadDirect } from '@/lib/api/media-api';
+import { photoUriOf } from '@/lib/platform/media-url';
+import { backOr } from '@/lib/platform/navigation';
 import { useNotification } from '@/providers/notification-provider';
 import { useAuthStore } from '@/store/auth';
-import { communityLifeKeys } from '@/lib/community-life-api';
+import { communityLifeKeys } from '@/lib/api/community-life-api';
 
 /** States in which the server refuses every edit (`EnsureEditable`). */
 const LOCKED_STATUSES: Record<string, string> = {

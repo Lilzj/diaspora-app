@@ -24,7 +24,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
-import type { AccessRefusal } from '@/lib/financial-access';
+import type { AccessRefusal } from '@/lib/domain/financial-access';
 
 const ICONS: Record<string, string> = {
   signedOut: 'log-in-outline',

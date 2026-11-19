@@ -25,7 +25,7 @@
 // crash is neither.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { formatMoney, describeMoney } from '@/lib/money';
+import { formatMoney, describeMoney } from '@/lib/domain/money';
 import type {
   AnalyticsComparison,
   AnalyticsMetric,

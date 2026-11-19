@@ -20,9 +20,9 @@
 // is what the selector's "SAVE ACTIVE" means.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '@/lib/apiClient';
-import { unwrapEnvelope } from '@/lib/platform-envelope';
-import { toFinancialError } from '@/lib/financial-errors';
+import { apiClient } from '@/lib/transport/apiClient';
+import { unwrapEnvelope } from '@/lib/transport/platform-envelope';
+import { toFinancialError } from '@/lib/transport/financial-errors';
 import type { PlatformLocation } from '@/store/location';
 
 const ROOT = '/location/me';

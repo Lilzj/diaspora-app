@@ -70,7 +70,7 @@ import {
   type ModerationQueueFilters,
   type VerificationListFilters,
   type VerificationQueueFilters,
-} from '@/lib/trust-api';
+} from '@/lib/api/trust-api';
 import type {
   AppealStatus,
   EvaluateEligibilityBody,

@@ -22,7 +22,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import { BACKEND_GAPS, type BackendGapId } from '@/config/financial-gaps';
 
 function iconFor(error: FinancialError): { name: string; tone: 'error' | 'warning' | 'info' } {

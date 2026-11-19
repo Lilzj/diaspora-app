@@ -30,8 +30,8 @@ import {
   parseLimitValue,
   planRelation,
   requiresUpgrade,
-} from '../entitlements';
-import { fromMinorUnits } from '../money';
+} from '../domain/entitlements';
+import { fromMinorUnits } from '../domain/money';
 import type { Entitlement, Subscription, SubscriptionPlan } from '@/types/financial';
 
 const gbp = (minor: number) => fromMinorUnits(minor, 'GBP', 2, '£');

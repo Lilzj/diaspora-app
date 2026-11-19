@@ -133,7 +133,7 @@ function loadBuild(kind: BuildKind): LoadedBuild {
 
   try {
     jest.isolateModules(() => {
-      const { apiClient } = require('@/lib/apiClient') as { apiClient: AxiosInstance };
+      const { apiClient } = require('@/lib/transport/apiClient') as { apiClient: AxiosInstance };
 
       // A stand-in for the network, installed *before* `@/mocks` is imported.
       //

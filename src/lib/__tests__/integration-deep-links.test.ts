@@ -33,7 +33,7 @@ import {
   isIntegrationNotification,
   isResolvableRoute,
   INTEGRATION_NOTIFICATION_TYPES,
-} from '@/lib/notification-routes';
+} from '@/lib/platform/notification-routes';
 
 const USER = 'user-deep-link';
 

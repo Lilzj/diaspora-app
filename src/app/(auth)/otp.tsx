@@ -39,9 +39,9 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useAuthStore } from '@/store/auth';
-import { routeForAccess } from '@/lib/auth-destination';
-import { sendOtp, type OtpChallengeState } from '@/lib/integrations-api';
-import { verifyPhone } from '@/lib/auth-api';
+import { routeForAccess } from '@/lib/platform/auth-destination';
+import { sendOtp, type OtpChallengeState } from '@/lib/api/integrations-api';
+import { verifyPhone } from '@/lib/api/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { registerPushToken } from '@/lib/integrations/push-lifecycle';
 import { trackIntegrationEvent } from '@/lib/integrations/events';

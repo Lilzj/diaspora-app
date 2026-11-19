@@ -20,8 +20,8 @@ import {
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
 import { useCampaign, usePublishCampaignUpdate } from '@/hooks/community-life';
-import type { FinancialError } from '@/lib/financial-errors';
-import { backOr } from '@/lib/navigation';
+import type { FinancialError } from '@/lib/transport/financial-errors';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function CampaignUpdateScreen() {
   const { campaignId } = useLocalSearchParams<{ campaignId: string }>();

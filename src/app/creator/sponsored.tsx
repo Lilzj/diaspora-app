@@ -34,9 +34,9 @@ import {
 } from '@/components/creator-economy';
 import { AmountDisplay } from '@/components/financial';
 import { useCreatorAccess, useCreatorSponsoredContent } from '@/hooks/creator-economy';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { formatCount, presentSponsoredState } from '@/lib/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { formatCount, presentSponsoredState } from '@/lib/domain/creator-economy';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import { formatRelativeTime } from '@/utils/format';
 import type { SponsoredContentItem } from '@/types/creator-economy';
 

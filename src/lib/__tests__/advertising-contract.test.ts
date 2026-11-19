@@ -22,7 +22,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   decideCampaign,
   fetchReviewQueue,
@@ -34,7 +34,7 @@ import {
   fetchTargetingOptions,
   recordCampaignClick,
   submitCampaign,
-} from '../advertising-api';
+} from '../api/advertising-api';
 import type { CampaignAudience } from '@/types/monetization-gaps';
 
 const CAMPAIGN_ID = '3a2b1c40-1e5f-4d2b-8e31-6c7d8e9f0a12';

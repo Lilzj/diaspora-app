@@ -22,7 +22,7 @@ jest.mock('@/providers/notification-provider', () => ({
 }));
 
 const mockBackOr = jest.fn();
-jest.mock('@/lib/navigation', () => ({ backOr: (...args: unknown[]) => mockBackOr(...args) }));
+jest.mock('@/lib/platform/navigation', () => ({ backOr: (...args: unknown[]) => mockBackOr(...args) }));
 
 type AlertButton = { text: string; onPress?: () => void };
 

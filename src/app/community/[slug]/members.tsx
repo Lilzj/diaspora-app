@@ -48,7 +48,7 @@ import {
   CommunityUnavailablePanel,
   rolesForDisplay,
 } from '@/components/community-directory';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** How a role reads in a sentence about giving it. */
 const ROLE_NOUN: Record<AssignableCommunityRole, string> = {

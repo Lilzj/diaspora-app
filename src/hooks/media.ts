@@ -34,7 +34,7 @@ import {
   guessMimeType,
   uploadDirect,
   type MediaOwner,
-} from '@/lib/media-api';
+} from '@/lib/api/media-api';
 import type {
   LocalFile,
   MediaAsset,

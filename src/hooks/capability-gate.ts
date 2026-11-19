@@ -51,7 +51,7 @@
 import { useMemo } from 'react';
 
 import { useFeatureRequirements } from './trust';
-import { TrustEngine } from '@/lib/trustEngine';
+import { TrustEngine } from '@/lib/domain/trustEngine';
 import { useAuthStore } from '@/store/auth';
 import type { FeatureRequirementItem, TrustCapabilityKey } from '@/types/trust';
 

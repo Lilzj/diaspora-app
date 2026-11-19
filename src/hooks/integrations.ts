@@ -37,7 +37,7 @@ import {
   requestEmailChange,
   sendEmailVerification,
   type EmailChangeRequestBody,
-} from '@/lib/auth-api';
+} from '@/lib/api/auth-api';
 import {
   clearPendingEmailChange,
   isSettledBy,
@@ -45,12 +45,12 @@ import {
   readPendingEmailChange,
   savePendingEmailChange,
   type PendingEmailChange,
-} from '@/lib/pending-email-change';
+} from '@/lib/domain/pending-email-change';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import * as gapApi from '@/lib/integrations-gap-api';
-import * as certifiedApi from '@/lib/integrations-api';
+import * as gapApi from '@/lib/api/integrations-gap-api';
+import * as certifiedApi from '@/lib/api/integrations-api';
 // Remediation Wave C-05. `Diaspora.Modules.Integrations` serves the connection
 // registry, the OAuth exchange, the calendar proxy, calendar settings and
 // identity linking under `/api/v1/integrations`. Every hook below that used to
@@ -62,14 +62,14 @@ import * as certifiedApi from '@/lib/integrations-api';
 // `/financial/payment-methods/me` through `financial-api.ts` in every build,
 // and the simulated arm for it is deleted.
 import * as integrationsApi from '@/lib/integrations/certified-client';
-import { fetchSavedPaymentMethods, forgetSavedPaymentMethod } from '@/lib/financial-api';
+import { fetchSavedPaymentMethods, forgetSavedPaymentMethod } from '@/lib/api/financial-api';
 import { useAuthStore } from '@/store/auth';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import {
   fetchNotificationPreferences,
   notificationKeys,
   updateNotificationPreferences,
-} from '@/lib/notifications-api';
+} from '@/lib/api/notifications-api';
 import type {
   NotificationPreferences,
   UpdateNotificationPreferences,

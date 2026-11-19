@@ -6,11 +6,11 @@ import { ReportModal } from '@/components/ReportModal';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { mediaImageUrl } from '@/lib/media-url';
+import { mediaImageUrl } from '@/lib/platform/media-url';
 import { useSavedStore } from '@/store/saved';
-import { FinancialError } from '@/lib/financial-errors';
+import { FinancialError } from '@/lib/transport/financial-errors';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 import { useTheme } from '@/design-system';
 import type { OrganizationWire } from '@/types/community-life';
 import { useMembershipProgramme, usePublishOrganization } from '@/hooks/community-life';
@@ -19,13 +19,13 @@ import {
   leaveOrganization,
   setOperatingHours,
   type OperatingHourWire,
-} from '@/lib/community-life-api';
+} from '@/lib/api/community-life-api';
 import { OperatingHoursEditor } from '@/components/community';
 import { useAuthStore } from '@/store/auth';
 import { trackContentViewed } from '@/lib/analytics/content-events';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
-import { deleteOrganization, fetchEvents, fetchOrganizationWire } from '@/lib/community-life-api';
+import { deleteOrganization, fetchEvents, fetchOrganizationWire } from '@/lib/api/community-life-api';
 
 /**
  * Where the platform serves a media item's bytes.

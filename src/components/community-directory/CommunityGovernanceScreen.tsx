@@ -57,7 +57,7 @@ import {
   CommunityRuleControls,
 } from './CommunityGovernanceEditor';
 import { canPerform } from '@/lib/community/access';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export type GovernanceKind = 'rules' | 'moderators' | 'ambassadors';
 

@@ -46,7 +46,7 @@ import {
 import { canPerform, offerableMembershipActions } from '@/lib/community/access';
 import { membershipStateLabel } from '@/lib/community/scope';
 import { trackCommunityEvent } from '@/lib/community/analytics';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import {
   CommunityAvatar,
   CommunityContentSection,
@@ -62,9 +62,9 @@ import {
   communityStatusLabel,
   communityTypeLabel,
 } from '@/components/community-directory';
-import type { CommunityContentDomain } from '@/lib/community-directory-api';
+import type { CommunityContentDomain } from '@/lib/api/community-directory-api';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 const SECTIONS: { domain: CommunityContentDomain; route: string; icon: keyof typeof Ionicons.glyphMap }[] =
   [

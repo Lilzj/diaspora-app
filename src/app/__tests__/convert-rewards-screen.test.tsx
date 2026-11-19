@@ -13,7 +13,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
-import { FinancialError } from '@/lib/financial-errors';
+import { FinancialError } from '@/lib/transport/financial-errors';
 import { useAuthStore } from '@/store/auth';
 import type { Money } from '@/types/financial';
 import type { RewardConversionPolicy, RewardConversionPreview } from '@/types/financial-gaps';

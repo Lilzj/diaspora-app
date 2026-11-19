@@ -149,7 +149,7 @@ describe('the dev-only module register', () => {
       expect(register.stubFor(resolved, ROOT)).toBe(resolvePath(ROOT, entry.stub));
     }
 
-    expect(register.stubFor(resolvePath(ROOT, 'src/lib/apiClient.ts'), ROOT)).toBeNull();
+    expect(register.stubFor(resolvePath(ROOT, 'src/lib/transport/apiClient.ts'), ROOT)).toBeNull();
     expect(register.stubFor(resolvePath(ROOT, 'src/mocks/countries.ts'), ROOT)).toBeNull();
     expect(register.stubFor(null, ROOT)).toBeNull();
   });

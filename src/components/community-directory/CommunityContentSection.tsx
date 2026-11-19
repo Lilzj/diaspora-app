@@ -27,7 +27,7 @@
 import React, { useMemo } from 'react';
 import { Text, View } from 'react-native';
 import { useTheme } from '@/design-system';
-import type { CommunityContentDomain } from '@/lib/community-directory-api';
+import type { CommunityContentDomain } from '@/lib/api/community-directory-api';
 import type { CommunityAssociation, CommunityUnavailableReason } from '@/types/community-directory';
 import { resolveAssociation } from '@/lib/community/scope';
 import {
@@ -36,7 +36,7 @@ import {
   useScopedCollection,
   useScopedContent,
 } from '@/hooks/communities';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { getActiveLocation, useLocationStore, coordinatesOf } from '@/store/location';
 
 import { GuideResultCard } from '@/components/guides/GuideResultCard';
@@ -51,7 +51,7 @@ import { useGuideSearch } from '@/hooks/guides';
 import { CommunityScopeNote } from './MultiCommunityGapNotice';
 import { CommunityUnavailablePanel } from './CommunityStatePanels';
 import { CommunityBadge } from './CommunityIdentity';
-import { photoUriOf } from '@/lib/media-url';
+import { photoUriOf } from '@/lib/platform/media-url';
 
 /** What a member calls each section. Used in headings and in the §74 copy. */
 export const DOMAIN_LABELS: Record<CommunityContentDomain, { title: string; subject: string }> = {

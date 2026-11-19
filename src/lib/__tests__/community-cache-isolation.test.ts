@@ -30,14 +30,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { QueryClient } from '@tanstack/react-query';
-import { communityScopedKeys } from '@/lib/community-directory-api';
-import { communityDirectoryGapKeys } from '@/lib/community-gap-directory-api';
-import { communityLifeKeys } from '@/lib/community-life-api';
-import { mapKeys } from '@/lib/maps-api';
+import { communityScopedKeys } from '@/lib/api/community-directory-api';
+import { communityDirectoryGapKeys } from '@/lib/api/community-gap-directory-api';
+import { communityLifeKeys } from '@/lib/api/community-life-api';
+import { mapKeys } from '@/lib/api/maps-api';
 import { invalidateForMembershipChange } from '@/hooks/communities';
 import { communityScopeToken } from '@/lib/community/scope';
 import type { CommunityScope } from '@/types/community-directory';
-import type { CommunityContentDomain } from '@/lib/community-directory-api';
+import type { CommunityContentDomain } from '@/lib/api/community-directory-api';
 
 // ── The two scopes §72 names ─────────────────────────────────────────────────
 

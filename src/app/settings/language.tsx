@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LanguageSheet } from '@/components/settings/LanguageSheet';
 import { useTheme } from '@/design-system';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function LanguageSettingsRoute() {
   const { tokens } = useTheme();

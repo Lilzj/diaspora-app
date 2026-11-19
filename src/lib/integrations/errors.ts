@@ -47,7 +47,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import axios from 'axios';
-import { FinancialError } from '@/lib/financial-errors';
+import { FinancialError } from '@/lib/transport/financial-errors';
 import type {
   IntegrationCapability,
   IntegrationErrorKind,

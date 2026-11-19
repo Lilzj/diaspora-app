@@ -8,7 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MockAdapter from 'axios-mock-adapter';
 import { ThemeProvider } from '@/design-system';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 
 const LIVE = require('./fixtures-housing-detail-live.json');
 

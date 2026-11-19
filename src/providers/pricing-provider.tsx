@@ -34,8 +34,8 @@ import {
   type PriceView,
   type PricingContextValue,
   type ResolvePriceInput,
-} from '@/lib/pricing';
-import { formatMoney, describeMoney } from '@/lib/money';
+} from '@/lib/domain/pricing';
+import { formatMoney, describeMoney } from '@/lib/domain/money';
 import { useFinancialCapabilities, usePrimaryWallet } from '@/hooks/financial';
 import type { BillingInterval, Money, SubscriptionPlan } from '@/types/financial';
 import type { BillingCycleView } from '@/types/monetization';

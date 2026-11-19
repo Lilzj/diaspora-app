@@ -99,7 +99,7 @@ const PAIRINGS: Pairing[] = [
     // and took the whole application down, and `date`, `time`, `areaName` and
     // the running order all rendered `undefined`. `lib/event-wire.ts` is now
     // the one place the wire is read, so it is the one place to check.
-    screen: ['lib', 'event-wire.ts'],
+    screen: ['lib', 'api', 'event-wire.ts'],
     responseType: [
       'Diaspora.Modules.CommunityLife',
       'Contracts',
@@ -142,7 +142,7 @@ const PAIRINGS: Pairing[] = [
     // its own fetch effect, where this check could not see it — which is how
     // `intent` and `images` stayed wrong after everything around them was
     // fixed.
-    screen: ['lib', 'marketplace-wire.ts'],
+    screen: ['lib', 'api', 'marketplace-wire.ts'],
     responseType: [
       'Diaspora.Modules.Marketplace',
       'Contracts',

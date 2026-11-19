@@ -11,7 +11,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   applicantCountLabel,
   applyStateOf,
@@ -37,7 +37,7 @@ import {
   openingsLabel,
   ownerActionsFor,
   workArrangementFacts,
-} from '@/lib/job-detail-api';
+} from '@/lib/api/job-detail-api';
 import type { JobResponse, JobStatus } from '@/types/jobs-hiring';
 
 const JOB = '01a0a162-7d03-7a7f-a613-9fe144d60657';

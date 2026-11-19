@@ -6,8 +6,8 @@
  * first and narrows to the member's communities, so the controls are back and
  * the banner and the AI line are gone.
  */
-import { toEventBrowseQuery } from '@/lib/community-life-api';
-import { eventDistanceLabel, nearbyPointOf } from '@/lib/events-nearby';
+import { toEventBrowseQuery } from '@/lib/api/community-life-api';
+import { eventDistanceLabel, nearbyPointOf } from '@/lib/domain/events-nearby';
 
 declare const process: { cwd(): string };
 const fs: { readFileSync(path: string, encoding: string): string } = require('fs');

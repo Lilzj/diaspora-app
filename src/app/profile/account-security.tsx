@@ -32,7 +32,7 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { fetchSessions, revokeOtherSessions, revokeSession } from '@/lib/auth-api';
+import { fetchSessions, revokeOtherSessions, revokeSession } from '@/lib/api/auth-api';
 import { useAuthStore } from '@/store/auth';
 import type { AuthSession } from '@/types/auth';
 

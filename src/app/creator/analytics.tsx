@@ -43,9 +43,9 @@ import {
   useCreatorAccess,
   useCreatorAnalytics,
 } from '@/hooks/creator-economy';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { PERIOD_LABELS, formatCount } from '@/lib/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { PERIOD_LABELS, formatCount } from '@/lib/domain/creator-economy';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
 import { formatRelativeTime } from '@/utils/format';
 import type {

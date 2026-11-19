@@ -15,8 +15,8 @@ import {
   conversationSubtitle,
   conversationTitle,
   otherParticipant,
-} from '@/lib/conversation-title';
-import { backOr } from '@/lib/navigation';
+} from '@/lib/platform/conversation-title';
+import { backOr } from '@/lib/platform/navigation';
 
 interface Props {
   conversation: Conversation;

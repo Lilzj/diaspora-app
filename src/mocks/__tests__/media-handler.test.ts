@@ -11,9 +11,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { setupMediaMocks } from '../handlers/media';
-import { fetchMediaAsset, fetchMediaCapabilities, uploadDirect } from '@/lib/media-api';
+import { fetchMediaAsset, fetchMediaCapabilities, uploadDirect } from '@/lib/api/media-api';
 import type { LocalFile } from '@/types/media';
 
 let api: MockAdapter;

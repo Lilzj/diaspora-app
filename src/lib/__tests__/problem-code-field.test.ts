@@ -20,7 +20,7 @@
  */
 import { AxiosError, AxiosHeaders } from 'axios';
 
-import { FinancialErrorCodes, toFinancialError } from '../financial-errors';
+import { FinancialErrorCodes, toFinancialError } from '../transport/financial-errors';
 
 function refusal(status: number, body: Record<string, unknown>): AxiosError {
   const error = new AxiosError('Request failed', 'ERR_BAD_REQUEST');

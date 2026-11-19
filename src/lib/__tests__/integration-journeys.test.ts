@@ -23,8 +23,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '@/lib/apiClient';
-import * as gapApi from '@/lib/integrations-gap-api';
+import { apiClient } from '@/lib/transport/apiClient';
+import * as gapApi from '@/lib/api/integrations-gap-api';
 import { setupIntegrationGapMocks } from '@/mocks/handlers/integrations-gaps';
 import { resetIntegrationGapData } from '@/mocks/integrations-gap-data';
 import { integrationCatalog, descriptorFor } from '@/lib/integrations/catalog';

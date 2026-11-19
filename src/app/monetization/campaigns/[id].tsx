@@ -38,8 +38,8 @@ import {
   useCampaignLifecycle,
   useCampaignPerformance,
 } from '@/hooks/monetization-gaps';
-import { presentCampaignStatus, isCampaignRunnable } from '@/lib/monetization-catalog';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { presentCampaignStatus, isCampaignRunnable } from '@/lib/domain/monetization-catalog';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
 import { useRefreshControl } from '@/hooks/usePullToRefresh';
 

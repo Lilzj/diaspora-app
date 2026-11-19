@@ -42,8 +42,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { AccessGate, FinancialErrorInline, StatusBadge } from '@/components/financial';
-import { FinancialPermissions } from '@/lib/financial-access';
-import { checkAccess } from '@/lib/financial-access';
+import { FinancialPermissions } from '@/lib/domain/financial-access';
+import { checkAccess } from '@/lib/domain/financial-access';
 import { useAuthStore } from '@/store/auth';
 import {
   usePayoutDestinations,
@@ -54,9 +54,9 @@ import {
   useStartPayoutOnboarding,
 } from '@/hooks/financial';
 import { isSafeChallengeUrl } from '@/lib/integrations/payments';
-import { useMemberCurrency } from '@/lib/member-currency';
-import type { FinancialError } from '@/lib/financial-errors';
-import type { StatusPresentation } from '@/lib/financial-status';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
+import type { FinancialError } from '@/lib/transport/financial-errors';
+import type { StatusPresentation } from '@/lib/domain/financial-status';
 import type { PayoutDestination } from '@/types/financial';
 
 /**

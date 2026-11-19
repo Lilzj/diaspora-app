@@ -60,7 +60,7 @@ import {
   AREA_INSIGHT_MAX_LENGTH,
   type AreaInsight,
   type AreaInsightCategory,
-} from '@/lib/area-insights-api';
+} from '@/lib/api/area-insights-api';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
 /** The counts the area route publishes, in the order a member reads them. */

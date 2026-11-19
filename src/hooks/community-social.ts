@@ -108,7 +108,7 @@ import {
   withdrawPost,
   fetchFollowState,
   type FollowState,
-} from '@/lib/community-social-api';
+} from '@/lib/api/community-social-api';
 import { useAuthStore } from '@/store/auth';
 import type {
   AlertCapabilitiesResponse,
@@ -139,8 +139,8 @@ import type {
   TrendingHashtagResponse,
   UpdatePostRequest,
 } from '@/types/community-social';
-import { mapKeys } from '@/lib/maps-api';
-import { creatorGapKeys } from '@/lib/creator-gap-api';
+import { mapKeys } from '@/lib/api/maps-api';
+import { creatorGapKeys } from '@/lib/api/creator-gap-api';
 
 /**
  * A 401 from this module is "sign in", not "try again".

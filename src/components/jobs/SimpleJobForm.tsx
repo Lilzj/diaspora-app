@@ -8,13 +8,13 @@ import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
 import { WizardFooter } from '@/components/forms/WizardFooter';
 import { Chips, SectionLabel } from '@/components/jobs/JobFormParts';
-import { currencyForResidence } from '@/lib/member-currency';
-import { coordinatesOf } from '@/lib/place-coordinates';
+import { currencyForResidence } from '@/lib/domain/member-currency';
+import { coordinatesOf } from '@/lib/platform/place-coordinates';
 import {
   SIMPLE_LENGTH_UNITS,
   SIMPLE_PAY_PER,
   type SimpleJobForm as SimpleJobFormValues,
-} from '@/lib/simple-job-posting';
+} from '@/lib/domain/simple-job-posting';
 
 interface SimpleJobFormProps {
   form: SimpleJobFormValues;

@@ -48,7 +48,7 @@ jest.mock('expo-image-manipulator', () => ({
   SaveFormat: { JPEG: 'jpeg' },
 }));
 
-import { uploadDirect } from '../media-api';
+import { uploadDirect } from '../api/media-api';
 import type { LocalFile } from '@/types/media';
 
 /** The bytes that actually left, captured from the fake transport. */

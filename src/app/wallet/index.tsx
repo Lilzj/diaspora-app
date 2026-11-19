@@ -45,12 +45,12 @@ import {
   useRewardPointsBalance,
 } from '@/hooks/financial';
 import { useGapFeaturesEnabled } from '@/hooks/financial-gaps';
-import { useConnectivityStore } from '@/lib/connectivity';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { presentSubscriptionStatus, presentWalletStatus } from '@/lib/financial-status';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
+import { presentSubscriptionStatus, presentWalletStatus } from '@/lib/domain/financial-status';
 import { useAuthStore } from '@/store/auth';
 import { useNotification } from '@/providers/notification-provider';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 
 export default function WalletScreen() {
   const { tokens } = useTheme();

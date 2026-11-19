@@ -16,7 +16,7 @@ import MockAdapter from 'axios-mock-adapter';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { useProviderSearchPages } from '../providers';
 import { useScopedContentPages } from '../communities';
 import { useCommunityContextStore } from '@/store/community-context';

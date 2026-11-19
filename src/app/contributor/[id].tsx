@@ -7,7 +7,7 @@ import { useGuidesByAuthor } from '@/hooks/guides';
 import { ContributorHeader } from '@/components/knowledge/ContributorHeader';
 import { useThemeTokens } from '@/design-system';
 import { trackProfileViewed } from '@/lib/analytics/content-events';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Contributor page

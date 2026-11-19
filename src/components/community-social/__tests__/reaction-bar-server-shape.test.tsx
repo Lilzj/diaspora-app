@@ -10,7 +10,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 
 import { ReactionBar } from '@/components/community-social/ReactionBar';
-import { toReactionSummary } from '@/lib/community-social-api';
+import { toReactionSummary } from '@/lib/api/community-social-api';
 
 jest.mock('@/hooks/community-social', () => ({
   useCommunityCapabilities: () => ({

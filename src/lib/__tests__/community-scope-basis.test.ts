@@ -28,7 +28,7 @@ import {
   DOMAIN_SCOPE_BASIS,
   narrowToScope,
   type CommunityContentDomain,
-} from '../community-directory-api';
+} from '../api/community-directory-api';
 import { projectScope } from '../community/scope';
 import type { Community, CommunityId, CommunityScope } from '@/types/community-directory';
 

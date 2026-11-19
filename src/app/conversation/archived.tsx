@@ -14,7 +14,7 @@ import {
   selectFilteredConversations,
   selectSortedConversations,
 } from '@/store/conversation';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 import type { Conversation } from '@/types/conversation';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 

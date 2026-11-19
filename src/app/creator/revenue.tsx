@@ -42,9 +42,9 @@ import {
 import { AmountDisplay, FinancialErrorInline, LabelledAmount } from '@/components/financial';
 import { useCreatorAccess, useCreatorEarnings, useCreatorRevenue } from '@/hooks/creator-economy';
 import { useWithdrawals } from '@/hooks/financial';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { earningDestination, presentEarningState } from '@/lib/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { earningDestination, presentEarningState } from '@/lib/domain/creator-economy';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import { CREATOR_EARNING_FILTER_STATES } from '@/types/creator-economy';
 import type { CreatorEarning } from '@/types/creator-economy';
 

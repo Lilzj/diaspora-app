@@ -43,7 +43,7 @@
 //      `community-life/org/[id]` concatenates onto it.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { API_BASE_URL } from '@/lib/apiClient';
+import { API_BASE_URL } from '@/lib/transport/apiClient';
 
 // Node globals, declared locally rather than by widening `tsconfig`'s `types`.
 // Same pattern as `backend-request-binding-drift.test.ts`, which reads the

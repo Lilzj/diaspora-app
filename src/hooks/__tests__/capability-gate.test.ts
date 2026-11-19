@@ -36,7 +36,7 @@ jest.mock('../trust', () => ({
 }));
 
 /** The device's own reading — deliberately *wrong* in the way the defect was. */
-jest.mock('@/lib/trustEngine', () => ({
+jest.mock('@/lib/domain/trustEngine', () => ({
   TrustEngine: {
     getFeatureUnlockRequirements: () => [
       {

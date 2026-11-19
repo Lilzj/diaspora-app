@@ -25,10 +25,10 @@ import {
 } from '@/components/creator-economy';
 import { FinancialErrorInline } from '@/components/financial';
 import { useClaimMilestone, useCreatorAccess, useCreatorMilestones } from '@/hooks/creator-economy';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { orderMilestones } from '@/lib/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
-import type { FinancialError } from '@/lib/financial-errors';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { orderMilestones } from '@/lib/domain/creator-economy';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { CreatorMilestone } from '@/types/creator-economy';
 
 export default function CreatorMilestonesScreen() {

@@ -15,7 +15,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { trustKeys } from '@/lib/trust-api';
+import { trustKeys } from '@/lib/api/trust-api';
 import {
   declareResidence,
   fetchResidenceTimeline,

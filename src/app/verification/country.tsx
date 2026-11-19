@@ -42,11 +42,11 @@ import {
   latestVerificationOfType,
   mediaDocumentReference,
   SUPPORTING_NOTES_MAX_LENGTH,
-} from '@/lib/trust-api';
+} from '@/lib/api/trust-api';
 import type { WireVerificationDocumentType } from '@/types/trust';
 import { allCountries } from '@/lib/reference/countries';
 import { useNotification } from '@/providers/notification-provider';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /**
  * The document types `CountryVerificationHandler` accepts.

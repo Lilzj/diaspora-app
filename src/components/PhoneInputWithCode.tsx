@@ -20,7 +20,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
 import { useThemeTokens } from '@/design-system';
-import { callingCodeForCountry, composeE164, countryByCode } from '@/lib/calling-code';
+import { callingCodeForCountry, composeE164, countryByCode } from '@/lib/platform/calling-code';
 import { useAuthStore } from '@/store/auth';
 
 interface PhoneInputWithCodeProps {

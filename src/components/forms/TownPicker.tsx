@@ -14,8 +14,8 @@ import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'reac
 import { DropdownList } from '@/components/forms/DropdownList';
 
 import { useAuthStore } from '@/store/auth';
-import { resolveTown, searchTowns, type TownChoice } from '@/lib/town-search';
-import { newIdempotencyKey } from '@/lib/idempotency';
+import { resolveTown, searchTowns, type TownChoice } from '@/lib/platform/town-search';
+import { newIdempotencyKey } from '@/lib/domain/idempotency';
 
 interface TownPickerProps {
   label?: string;

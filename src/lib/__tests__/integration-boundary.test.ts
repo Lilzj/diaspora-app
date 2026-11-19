@@ -34,14 +34,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 
-import * as gapApi from '@/lib/integrations-gap-api';
-import * as certifiedApi from '@/lib/integrations-api';
+import * as gapApi from '@/lib/api/integrations-gap-api';
+import * as certifiedApi from '@/lib/api/integrations-api';
 import { INTEGRATION_GAPS, INTEGRATION_GAP_PREFIX } from '@/config/integration-gaps';
 import { INTEGRATION_PROVIDER_GAPS } from '@/config/integration-provider-gaps';
 import { setupIntegrationGapMocks } from '@/mocks/handlers/integrations-gaps';
-import { sanitise, drainCreatorEvents, resetCreatorEvents } from '@/lib/creator-analytics';
+import { sanitise, drainCreatorEvents, resetCreatorEvents } from '@/lib/platform/creator-analytics';
 import { trackIntegrationEvent, trackCalendarExport } from '@/lib/integrations/events';
 import { upsertConnection, resetIntegrationGapData } from '@/mocks/integrations-gap-data';
 import { impliesProductionConnectivity, isSimulatedMode } from '@/types/integrations';
@@ -342,7 +342,7 @@ describe('§30 · the certified arm reports failures as failures', () => {
     // behavioural test cannot prove a `catch` block does not exist. Comments are
     // stripped first — the file explains the removal in prose, and that
     // explanation is the thing most worth keeping.
-    const source = readSource('src', 'lib', 'integrations-api.ts');
+    const source = readSource('src', 'lib', 'api', 'integrations-api.ts');
 
     expect(source).not.toMatch(/mock-jwt-token/);
     expect(source).not.toMatch(/login\(/);

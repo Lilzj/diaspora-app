@@ -17,7 +17,7 @@ import {
   swapTopUpAttributeValue,
   toListing,
   type ListingWire,
-} from '../marketplace-wire';
+} from '../api/marketplace-wire';
 
 /** `ListingResponse`, as the detail route answers it. */
 function wire(overrides: Partial<ListingWire> = {}): ListingWire {

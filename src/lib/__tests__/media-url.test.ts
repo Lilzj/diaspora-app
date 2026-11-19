@@ -4,8 +4,8 @@
  * Listing cards handed a media identifier to `<Image>` as if it were an address,
  * so no card ever showed its photograph.
  */
-import { API_BASE_URL } from '../apiClient';
-import { isMediaId, mediaImageUrl, photoUriOf } from '../media-url';
+import { API_BASE_URL } from '../transport/apiClient';
+import { isMediaId, mediaImageUrl, photoUriOf } from '../platform/media-url';
 
 const COVER = '7723a578-86c1-4831-aef9-2e171685ddc1';
 const BASE = API_BASE_URL.replace(/\/+$/, '');

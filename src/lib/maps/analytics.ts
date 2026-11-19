@@ -36,7 +36,7 @@ import {
   registerAllowedProperties,
   trackPlatformEvent,
   type EventProperties,
-} from '@/lib/creator-analytics';
+} from '@/lib/platform/creator-analytics';
 import type { GeoCoordinate, MapErrorKind, TravelMode } from '@/types/maps';
 import { coarseForAnalytics } from './privacy';
 

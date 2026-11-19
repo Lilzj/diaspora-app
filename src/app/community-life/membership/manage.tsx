@@ -52,11 +52,11 @@ import {
   describeMembership,
   isPaymentSuccessful,
   membershipGrantsBenefits,
-} from '@/lib/community-state';
-import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
-import { moneyProps, trackCommunityEvent } from '@/lib/community-analytics';
+} from '@/lib/domain/community-state';
+import { checkCommunityAccess, CommunityCapabilities } from '@/lib/domain/community-access';
+import { moneyProps, trackCommunityEvent } from '@/lib/platform/community-analytics';
 import { useAuthStore } from '@/store/auth';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 
 export default function MembershipManageScreen() {
   const { showAlert } = useNotification();

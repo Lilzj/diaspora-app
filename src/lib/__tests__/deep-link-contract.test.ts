@@ -25,7 +25,7 @@
 // `jobs.interview.scheduled`, `events.reminder` and `provider.review.received`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { KNOWN_PREFIXES, isResolvableRoute } from '../notification-routes';
+import { KNOWN_PREFIXES, isResolvableRoute } from '../platform/notification-routes';
 
 /**
  * The agreed contract, as a literal.

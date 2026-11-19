@@ -5,7 +5,7 @@
  * read `host`, `rent` and `bedrooms`; `item.host.originCountry` threw on the
  * first real home. The fixture below is what production served for Rose Hill.
  */
-import { toHousingCardListing, toHousingCardListings, type HousingCardWire } from '../housing-cards';
+import { toHousingCardListing, toHousingCardListings, type HousingCardWire } from '../platform/housing-cards';
 
 const NOW = new Date('2026-09-15T12:00:00Z');
 

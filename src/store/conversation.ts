@@ -6,9 +6,9 @@
 
 import { create } from 'zustand';
 import { router } from 'expo-router';
-import { apiClient } from '@/lib/apiClient';
-import { currentUserIdIn, isOwnMessage } from '@/lib/conversation-identity';
-import { readPage, unwrapEnvelope } from '@/lib/platform-envelope';
+import { apiClient } from '@/lib/transport/apiClient';
+import { currentUserIdIn, isOwnMessage } from '@/lib/domain/conversation-identity';
+import { readPage, unwrapEnvelope } from '@/lib/transport/platform-envelope';
 import type {
   Conversation,
   Message,

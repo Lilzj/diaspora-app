@@ -1,7 +1,7 @@
 import type MockAdapter from 'axios-mock-adapter';
 import { mockEvents, mockOrganizations, mockHolidays } from '../community-life-data';
 import type { Event, CommunityOrganization, Holiday } from '@/types/community-life';
-import { eventHost } from '@/lib/event-host';
+import { eventHost } from '@/lib/api/event-host';
 // `getDistanceKm` is deliberately no longer imported. Wave J removed every
 // distance this handler used to compute: the two browse routes accept no point
 // and no radius, so a real response from them carries no `distanceKm` at all,
@@ -12,7 +12,7 @@ import {
   SEEDED_ORGANIZATION_TYPE_NAMES,
   toEventCategoryKey,
   toOrganizationTypeKey,
-} from '@/lib/community-life-catalogue';
+} from '@/lib/domain/community-life-catalogue';
 import { platformProblem } from '../platform-problem';
 
 // Memory store for custom events and organizations added during session

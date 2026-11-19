@@ -19,11 +19,11 @@ import { render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MockAdapter from 'axios-mock-adapter';
 import { ThemeProvider } from '@/design-system';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { compareAreas, fetchAreaReport, toAreaReport, type AreaReport, type AreaReportWire } from '@/lib/maps/geo-client';
 import { areaTitle, costOfLivingUnavailableText, parseAreaPoint } from '@/lib/maps/area-copy';
-import { fetchAreaInsights, submitAreaInsight } from '@/lib/area-insights-api';
-import { fetchAreaActivity, toEventBrowseQuery } from '@/lib/community-life-api';
+import { fetchAreaInsights, submitAreaInsight } from '@/lib/api/area-insights-api';
+import { fetchAreaActivity, toEventBrowseQuery } from '@/lib/api/community-life-api';
 
 const mockAreaReport = jest.fn();
 
@@ -361,13 +361,13 @@ describe('nothing asks the retired catalogue routes, or for outlines', () => {
     ['app', 'community-life', 'index.tsx'],
     ['hooks', 'maps.ts'],
     ['hooks', 'community-life.ts'],
-    ['lib', 'maps-api.ts'],
+    ['lib', 'api', 'maps-api.ts'],
     ['lib', 'maps', 'geo-client.ts'],
     ['lib', 'maps', 'server-clusters.ts'],
-    ['lib', 'community-life-api.ts'],
-    ['lib', 'analytics-api.ts'],
-    ['lib', 'recommendations-api.ts'],
-    ['lib', 'notification-routes.ts'],
+    ['lib', 'api', 'community-life-api.ts'],
+    ['lib', 'api', 'analytics-api.ts'],
+    ['lib', 'api', 'recommendations-api.ts'],
+    ['lib', 'platform', 'notification-routes.ts'],
   ];
 
   // A request path starts right after a quote or backtick. Prose about a route

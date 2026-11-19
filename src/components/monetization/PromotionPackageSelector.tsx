@@ -23,7 +23,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { usePricing } from '@/providers/pricing-provider';
-import { describePlacementKind } from '@/lib/monetization-catalog';
+import { describePlacementKind } from '@/lib/domain/monetization-catalog';
 import { PriceTag } from './PriceTag';
 import type { PromotionOption, PromotionPackage } from '@/types/monetization';
 

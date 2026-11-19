@@ -5,8 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
 import { NotificationProvider } from './notification-provider';
 import { PricingProvider } from './pricing-provider';
-import { bindQueryOnlineManager, startConnectivityWatch } from '@/lib/connectivity';
-import { shouldRetryQuery } from '@/lib/financial-errors';
+import { bindQueryOnlineManager, startConnectivityWatch } from '@/lib/platform/connectivity';
+import { shouldRetryQuery } from '@/lib/transport/financial-errors';
 
 /**
  * The app's query client.
@@ -27,8 +27,8 @@ import { shouldRetryQuery } from '@/lib/financial-errors';
  */
 import { useAuthStore } from '@/store/auth';
 import { useConversationStore } from '@/store/conversation';
-import { ConversationHub } from '@/lib/conversation-hub';
-import { destroyRealtimeClient } from '@/lib/realtime';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
+import { destroyRealtimeClient } from '@/lib/transport/realtime';
 
 /** The Messages store as a fresh install has it. */
 const EMPTY_CONVERSATIONS = {

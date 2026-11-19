@@ -55,7 +55,7 @@ import {
   useWithdrawalLimits,
   useWithdrawalReconciliation,
 } from '@/hooks/financial';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
 import {
   estimateWithdrawalFee,
   formatMoney,
@@ -63,13 +63,13 @@ import {
   isLessThan,
   subtract,
   toRequestAmount,
-} from '@/lib/money';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+} from '@/lib/domain/money';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import { useAuthStore } from '@/store/auth';
-import { useMemberCurrency } from '@/lib/member-currency';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 import { useNotification } from '@/providers/notification-provider';
 import { formatRelativeTime } from '@/utils/format';
-import type { StatusPresentation } from '@/lib/financial-status';
+import type { StatusPresentation } from '@/lib/domain/financial-status';
 import type { PayoutDestination } from '@/types/financial';
 
 function presentWithdrawalStatus(status: string): StatusPresentation {

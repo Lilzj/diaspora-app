@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
-import { grantsCommunityAccess } from '@/lib/access-state';
+import { grantsCommunityAccess } from '@/lib/domain/access-state';
 import { useMyReputation } from '@/hooks/trust';
 import { Avatar } from '@/components/Avatar';
 import { ReputationBadge } from '@/components/ReputationBadge';

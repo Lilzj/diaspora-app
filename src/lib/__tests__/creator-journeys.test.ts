@@ -15,10 +15,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { setupCreatorEconomyMocks } from '@/mocks/handlers/creator-economy';
-import * as api from '../creator-gap-api';
-import { FinancialError } from '../financial-errors';
+import * as api from '../api/creator-gap-api';
+import { FinancialError } from '../transport/financial-errors';
 
 let mock: MockAdapter;
 let teardown: () => void;

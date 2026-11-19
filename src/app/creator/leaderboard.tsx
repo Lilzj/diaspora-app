@@ -29,7 +29,7 @@ import {
   LeaderboardRow,
 } from '@/components/creator-economy';
 import { useCreatorLeaderboard } from '@/hooks/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 
 const SCOPES = [
   { key: 'top-creators', label: 'Top creators' },

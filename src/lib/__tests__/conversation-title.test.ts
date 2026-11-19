@@ -18,7 +18,7 @@ import {
   conversationSubtitle,
   conversationTitle,
   otherParticipant,
-} from '../conversation-title';
+} from '../platform/conversation-title';
 import type { Conversation, ConversationParticipant } from '@/types/conversation';
 
 function participant(overrides: Partial<ConversationParticipant> = {}): ConversationParticipant {

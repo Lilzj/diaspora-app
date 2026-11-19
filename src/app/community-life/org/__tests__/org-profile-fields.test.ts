@@ -32,7 +32,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { eventWhen, mediaUri, openingHoursLabel } from '../[id]';
-import { API_BASE_URL } from '@/lib/apiClient';
+import { API_BASE_URL } from '@/lib/transport/apiClient';
 
 describe('an opening-hours row becomes a sentence', () => {
   it('renders a range when the day has both ends', () => {

@@ -59,7 +59,7 @@ function read(...segments: string[]): string {
 
 const EVENTS = read('src', 'app', 'community-life', 'events.tsx');
 const DETAIL = read('src', 'app', 'community-life', 'event', '[id].tsx');
-const API = read('src', 'lib', 'community-life-api.ts');
+const API = read('src', 'lib', 'api', 'community-life-api.ts');
 
 describe('the events screen offers no filter range', () => {
   it('never tells a member to expand one', () => {

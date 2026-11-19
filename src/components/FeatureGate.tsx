@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
-import { grantsCommunityAccess } from '@/lib/access-state';
+import { grantsCommunityAccess } from '@/lib/domain/access-state';
 import { Button } from './Button';
 import { useThemeTokens } from '@/design-system';
 

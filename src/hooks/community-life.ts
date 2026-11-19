@@ -50,9 +50,9 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 
-import { joinRsvpsToEvents } from '@/lib/my-rsvps';
-import * as gapApi from '@/lib/community-gap-api';
-import { communityGapKeys } from '@/lib/community-gap-api';
+import { joinRsvpsToEvents } from '@/lib/domain/my-rsvps';
+import * as gapApi from '@/lib/api/community-gap-api';
+import { communityGapKeys } from '@/lib/api/community-gap-api';
 // Remediation Wave C-04. `Diaspora.Modules.CommunityProgramme` shipped the
 // membership programme, volunteering, polls, organization capabilities and
 // announcements at the register's own paths under `/api/v1/communities`, so the
@@ -67,31 +67,31 @@ import { communityGapKeys } from '@/lib/community-gap-api';
 // `Diaspora.Modules.Community` (`/api/v1/community`, singular) — the social
 // graph — which is a different domain with a nearly identical name. The two are
 // never merged here.
-import * as b18 from '@/lib/community-programme-api';
-import { communityProgrammeKeys } from '@/lib/community-programme-api';
-import * as b12 from '@/lib/community-life-api';
-import { communityLifeKeys } from '@/lib/community-life-api';
+import * as b18 from '@/lib/api/community-programme-api';
+import { communityProgrammeKeys } from '@/lib/api/community-programme-api';
+import * as b12 from '@/lib/api/community-life-api';
+import { communityLifeKeys } from '@/lib/api/community-life-api';
 // Frontend Phase 13, §43. The community scope becomes part of the cache key for
 // the community-sensitive B12 reads. Imported from the repository layer rather
 // than resolved here, so there is one place a scope is computed.
 import { useCommunityScope } from './communities';
 import { communityScopeToken } from '@/lib/community/scope';
-import * as financialApi from '@/lib/financial-api';
-import { financialKeys } from '@/lib/financial-api';
+import * as financialApi from '@/lib/api/financial-api';
+import { financialKeys } from '@/lib/api/financial-api';
 import { areCommunityGapsEnabled } from '@/config/community-gaps';
-import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
+import { shouldRetryQuery, type FinancialError } from '@/lib/transport/financial-errors';
 import {
   acquireIdempotencyKey,
   releaseIdempotencyKey,
   type OperationScope,
-} from '@/lib/idempotency';
+} from '@/lib/domain/idempotency';
 import {
   combineOrganizationCapabilities,
   noOrganizationCapabilities,
   resolveCommunityAccess,
   type CommunityAccess,
-} from '@/lib/community-access';
-import { isGivingSettled, isPaymentSettled, isPaymentSuccessful } from '@/lib/community-state';
+} from '@/lib/domain/community-access';
+import { isGivingSettled, isPaymentSettled, isPaymentSuccessful } from '@/lib/domain/community-state';
 import { useAuthStore } from '@/store/auth';
 import { useFinancialAccess } from './financial';
 import type {
@@ -122,7 +122,7 @@ import type {
 } from '@/types/community-advanced';
 import { backed } from '@/types/community-advanced';
 import type { CreateDonationRequest, Donation } from '@/types/financial';
-import * as attendeesApi from '@/lib/event-attendees';
+import * as attendeesApi from '@/lib/api/event-attendees';
 import {
   composeCommunityLifeSummary,
   hasAnyHubRail,
@@ -132,12 +132,12 @@ import {
   HUB_PAGE_SIZE,
   HUB_RAIL_LIMITS,
   toHubRecommendations,
-} from '@/lib/community-life-hub';
+} from '@/lib/domain/community-life-hub';
 import {
   fetchCommunityRecommendationPage,
   recommendationKeys,
   recordDismiss,
-} from '@/lib/recommendations-api';
+} from '@/lib/api/recommendations-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared query options

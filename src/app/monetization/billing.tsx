@@ -59,7 +59,7 @@ import {
   presentInvoiceStatus,
   presentPaymentStatus,
   presentTransactionStatus,
-} from '@/lib/financial-status';
+} from '@/lib/domain/financial-status';
 
 export default function BillingScreen() {
   const { tokens } = useTheme();

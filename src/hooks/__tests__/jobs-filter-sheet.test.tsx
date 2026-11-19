@@ -14,7 +14,7 @@
 // on the request the route receives does not.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { jobFilterParams, JOB_TYPE_CHOICES } from '@/lib/discover-filters';
+import { jobFilterParams, JOB_TYPE_CHOICES } from '@/lib/platform/discover-filters';
 
 describe('jobFilterParams', () => {
   it('sends the name the route parses, not the one on the chip', () => {

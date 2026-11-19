@@ -29,13 +29,13 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   fetchContentAnalytics,
   fetchOwnerAnalytics,
   isCertifiedContentSubject,
   isCertifiedOwnerSubject,
-} from '@/lib/analytics-api';
+} from '@/lib/api/analytics-api';
 import { formatMetricValue } from '@/lib/analytics/format';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 

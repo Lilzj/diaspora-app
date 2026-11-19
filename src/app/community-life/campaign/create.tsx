@@ -31,15 +31,15 @@ import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { useCurrencies } from '@/hooks/financial';
 import { useLocationStore } from '@/store/location';
 import { useCreateCampaign, useMyOrganizations } from '@/hooks/community-life';
-import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { checkCommunityAccess, CommunityCapabilities } from '@/lib/domain/community-access';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import { useAuthStore } from '@/store/auth';
 import type { CampaignCategory } from '@/types/community-advanced';
 import type { BeneficiaryType } from '@/types/financial';
-import type { FinancialError } from '@/lib/financial-errors';
-import { backOr } from '@/lib/navigation';
+import type { FinancialError } from '@/lib/transport/financial-errors';
+import { backOr } from '@/lib/platform/navigation';
 import { CurrencyNote } from '@/components/CurrencyNote';
-import { useMemberCurrency } from '@/lib/member-currency';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 
 const CATEGORIES: { value: CampaignCategory; label: string }[] = [
   { value: 'Medical', label: 'Medical' },

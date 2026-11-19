@@ -22,7 +22,7 @@
  * 4.05°S, 39.67°E", never a place name. A tap opens the area around the cell's
  * centre (`/map/area`), not a neighbourhood page.
  */
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import type { DiscoveryCategory, GeoBoundingBox, MapCluster, MarkerCategory, MapViewport } from '@/types/maps';
 
 /** How wide a view must be, in degrees of latitude (~33 km), before it shows town totals. */

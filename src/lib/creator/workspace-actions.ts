@@ -34,7 +34,7 @@
 
 import axios from 'axios';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import type { ContentType } from '@/types/creator';
 
 export type WorkspaceActionKind =

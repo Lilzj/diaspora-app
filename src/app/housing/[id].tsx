@@ -17,26 +17,26 @@ import { ReportModal } from '@/components/ReportModal';
 import {
   fetchHousingListingDetail,
   searchHousing,
-} from '@/lib/housing-listings-api';
-import { fetchLandlordDisclosure } from '@/lib/housing-landlord';
-import { fetchJobsNear } from '@/lib/job-postings-api';
-import { fetchProvidersNear } from '@/lib/providers-api';
-import { fetchGuidesFor } from '@/lib/guides-api';
-import { createSignedUrl } from '@/lib/media-api';
+} from '@/lib/api/housing-listings-api';
+import { fetchLandlordDisclosure } from '@/lib/domain/housing-landlord';
+import { fetchJobsNear } from '@/lib/api/job-postings-api';
+import { fetchProvidersNear } from '@/lib/api/providers-api';
+import { fetchGuidesFor } from '@/lib/api/guides-api';
+import { createSignedUrl } from '@/lib/api/media-api';
 import {
   isViewingAlreadyOpenError,
   requestViewing,
   viewingRefusal,
-} from '@/lib/housing-viewings-api';
+} from '@/lib/api/housing-viewings-api';
 import type { HousingListing } from '@/types/housing';
 import { housingMediaIds } from '@/types/housing';
-import { placeLabelOf } from '@/lib/listing-place';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { placeLabelOf } from '@/lib/platform/listing-place';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 import {
   homeConversationSubtitle,
   hostWithDisclosedContact,
   isHostedBy,
-} from '@/lib/housing-host';
+} from '@/lib/api/housing-host';
 import { useAuthStore } from '@/store/auth';
 
 // B15 — Housing owns the property; Financial owns the money. Nothing here is
@@ -51,13 +51,13 @@ import { MapPreviewCard } from '@/components/MapPreviewCard';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
-import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
-import { backOr } from '@/lib/navigation';
+import { readOutcome, type ReadOutcome } from '@/lib/transport/read-outcome';
+import { backOr } from '@/lib/platform/navigation';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { MemberTrustLine } from '@/components/safety/MemberTrustLine';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
-import { currencySymbol as symbolFor } from '@/lib/money';
+import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 /** A wire entry as display text: a plain string, or the named field of an object. */
 function labelOf(entry: unknown, field: 'name' | 'text'): string {

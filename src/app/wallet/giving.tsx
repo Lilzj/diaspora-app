@@ -33,11 +33,11 @@ import { useGivingHistory } from '@/hooks/financial';
 // (`GET /financial/donations/recurring/me`) and are served through the community
 // repository, which is where the campaign surface reads them from as well.
 import { useCancelRecurringDonation, useMyRecurringDonations } from '@/hooks/community-life';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { presentGivingStatus } from '@/lib/financial-status';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
+import { presentGivingStatus } from '@/lib/domain/financial-status';
 import { useAuthStore } from '@/store/auth';
 import { formatRelativeTime } from '@/utils/format';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { Contribution, Donation } from '@/types/financial';
 
 /** The four non-monetary kinds, in the words the donation screen already uses. */

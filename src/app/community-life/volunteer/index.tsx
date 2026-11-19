@@ -17,7 +17,7 @@ import {
 } from '@/components/community';
 import { useOpportunities } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 
 const CAUSES = [
   { value: '', label: 'All causes' },

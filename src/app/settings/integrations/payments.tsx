@@ -39,8 +39,8 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/design-system';
 import { usePaymentMethods } from '@/hooks/integrations';
-import { canInitiatePayment } from '@/lib/integrations-api';
-import { fetchCapabilities, financialKeys } from '@/lib/financial-api';
+import { canInitiatePayment } from '@/lib/api/integrations-api';
+import { fetchCapabilities, financialKeys } from '@/lib/api/financial-api';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import {
   IntegrationGapNotice,

@@ -14,7 +14,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
-import { formatPoints } from '@/lib/creator-economy';
+import { formatPoints } from '@/lib/domain/creator-economy';
 import type { WireReputationRule } from '@/types/trust';
 import { CreatorCard, CreatorEmptyState, CreatorSection } from './CreatorPrimitives';
 

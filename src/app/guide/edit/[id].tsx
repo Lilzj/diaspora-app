@@ -49,9 +49,9 @@ import {
   saveGuideEdits,
   sectionsAsInput,
   type GuideEditStep,
-} from '@/lib/guides-api';
-import { exceedsBlockLimit, newDocumentId } from '@/lib/guide-composer';
-import { backOr } from '@/lib/navigation';
+} from '@/lib/api/guides-api';
+import { exceedsBlockLimit, newDocumentId } from '@/lib/platform/guide-composer';
+import { backOr } from '@/lib/platform/navigation';
 import { useNotification } from '@/providers/notification-provider';
 import { useAuthStore } from '@/store/auth';
 import type { GuideBlockKind, GuideResponse, GuideSectionInput } from '@/types/guides';

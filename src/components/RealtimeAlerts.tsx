@@ -4,12 +4,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePathname } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { getRealtimeClient } from '@/lib/realtime';
-import { followNotificationRoute } from '@/lib/notification-routes';
-import { notificationKeys } from '@/lib/notifications-api';
+import { getRealtimeClient } from '@/lib/transport/realtime';
+import { followNotificationRoute } from '@/lib/platform/notification-routes';
+import { notificationKeys } from '@/lib/api/notifications-api';
 import { pushProvider } from '@/lib/integrations/push-lifecycle';
 import { setForegroundPresentation } from '@/lib/integrations/providers/push';
-import { sameUser } from '@/lib/conversation-identity';
+import { sameUser } from '@/lib/domain/conversation-identity';
 import { useAuthStore } from '@/store/auth';
 import { useConversationStore } from '@/store/conversation';
 import { useNotification } from '@/providers/notification-provider';

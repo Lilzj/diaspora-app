@@ -51,15 +51,15 @@ import type { PublishedAutomationTemplate } from '@/lib/automation/certified-cli
 import {
   fetchCertifiedAutomationSupport,
   type CertifiedAutomationSupport,
-} from '@/lib/automation-api';
+} from '@/lib/api/automation-api';
 import { useAuthStore } from '@/store/auth';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { useCommunityContextStore } from '@/store/community-context';
 import { useAutomationScopeStore } from '@/store/automation-scope';
 import { useMyOrganizations } from '@/hooks/community-life';
 import { presencePorts, usePresence } from '@/hooks/presence';
 import { releasePresenceIfUnused } from '@/lib/automation/arrival-presence';
-import { acquireIdempotencyKey, releaseIdempotencyKey } from '@/lib/idempotency';
+import { acquireIdempotencyKey, releaseIdempotencyKey } from '@/lib/domain/idempotency';
 import { automationKeys, scopeTokenFor } from '@/lib/automation/query-keys';
 import { servedOwnersLookup, servedSupportLookup } from '@/lib/automation/served-support';
 import type { ServedOwnersLookup, ServedSupportLookup } from '@/lib/automation/served-support';

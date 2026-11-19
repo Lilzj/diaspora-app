@@ -18,14 +18,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { apiClient } from '@/lib/apiClient';
-import { requestEmailChange, isEmailChangeError, type EmailChangeError } from '@/lib/auth-api';
+import { apiClient } from '@/lib/transport/apiClient';
+import { requestEmailChange, isEmailChangeError, type EmailChangeError } from '@/lib/api/auth-api';
 import {
   clearPendingEmailChange,
   isSettledBy,
   readPendingEmailChange,
   savePendingEmailChange,
-} from '@/lib/pending-email-change';
+} from '@/lib/domain/pending-email-change';
 import { useEmailChange, useEmailIdentity } from '@/hooks/integrations';
 import { useAuthStore } from '@/store/auth';
 

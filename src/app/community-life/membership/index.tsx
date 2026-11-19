@@ -24,7 +24,7 @@ import {
 } from '@/components/community';
 import { useMembershipDiscovery } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { OrgCategory } from '@/types/community-life';
 
 const CATEGORIES: { value: OrgCategory | 'All'; label: string }[] = [

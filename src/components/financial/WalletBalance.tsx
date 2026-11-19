@@ -25,8 +25,8 @@ import { useTheme } from '@/design-system';
 import { AmountDisplay, LabelledAmount } from './AmountDisplay';
 import { StatusBadge } from './StatusBadge';
 import { Skeleton } from '@/components/Skeleton';
-import { presentWalletStatus } from '@/lib/financial-status';
-import { describeMoney, isZero } from '@/lib/money';
+import { presentWalletStatus } from '@/lib/domain/financial-status';
+import { describeMoney, isZero } from '@/lib/domain/money';
 import type { Wallet } from '@/types/financial';
 
 interface WalletBalanceProps {

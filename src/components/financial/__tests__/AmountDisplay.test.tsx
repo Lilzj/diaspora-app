@@ -11,7 +11,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { ThemeProvider } from '@/design-system';
 import { AmountDisplay, CurrencyDisplay, LabelledAmount } from '../AmountDisplay';
-import { fromMinorUnits } from '@/lib/money';
+import { fromMinorUnits } from '@/lib/domain/money';
 
 const gbp = (minorUnits: number) => fromMinorUnits(minorUnits, 'GBP', 2, '£');
 const jpy = (minorUnits: number) => fromMinorUnits(minorUnits, 'JPY', 0, '¥');

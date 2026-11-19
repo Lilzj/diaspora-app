@@ -22,7 +22,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { resetTrustMocks, setupTrustMocks } from '@/mocks/handlers/trust';
 import { backendSourceRoot } from './support/backend-checkout';
 

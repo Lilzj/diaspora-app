@@ -49,7 +49,7 @@ import {
   fetchNotificationDevices,
   registerNotificationDevice,
   removeNotificationDevice,
-} from '@/lib/notifications-api';
+} from '@/lib/api/notifications-api';
 import type { NotificationDevice } from '@/types/notification-preferences';
 import type { IntegrationMode, PushRegistration } from '@/types/integrations';
 import { integrationError, isIntegrationError, toIntegrationError } from './errors';

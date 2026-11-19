@@ -11,19 +11,19 @@ import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { Ionicons } from '@expo/vector-icons';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import Svg, { Circle, Rect, Path, G } from 'react-native-svg';
-import { eventHost } from '@/lib/event-host';
+import { eventHost } from '@/lib/api/event-host';
 import {
   fetchCalendar,
   fetchEvents,
   fetchOrganizations,
-} from '@/lib/community-life-api';
-import { DEFAULT_EVENT_RADIUS_KM, EVENT_RADII_KM, eventDistanceLabel, nearbyPointOf } from '@/lib/events-nearby';
-import { useConnectivityStore } from '@/lib/connectivity';
+} from '@/lib/api/community-life-api';
+import { DEFAULT_EVENT_RADIUS_KM, EVENT_RADII_KM, eventDistanceLabel, nearbyPointOf } from '@/lib/domain/events-nearby';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { useSavedStore } from '@/store/saved';
 import { toDateString } from '@/utils/calendar-date';
 import type { Event, CommunityOrganization, CalendarEvent, EventCategory, OrgCategory } from '@/types/community-life';
-import { backOr } from '@/lib/navigation';
-import { describeEventPrice } from '@/lib/event-wire';
+import { backOr } from '@/lib/platform/navigation';
+import { describeEventPrice } from '@/lib/api/event-wire';
 import { TownPicker } from '@/components/forms/TownPicker';
 import { useAuthStore } from '@/store/auth';
 import { countryLocation, useLocationStore, type PlatformLocation } from '@/store/location';

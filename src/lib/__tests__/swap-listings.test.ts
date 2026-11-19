@@ -5,7 +5,7 @@
  * seller, and said "Swap Listed!" whatever happened. A swap is now a listing
  * type of its own; these pin the request it sends and what stops each step.
  */
-import { buildSwapListingRequest, parseTopUp, swapStepProblem, type SwapDraft } from '../swap-listings';
+import { buildSwapListingRequest, parseTopUp, swapStepProblem, type SwapDraft } from '../domain/swap-listings';
 
 function draft(overrides: Partial<SwapDraft> = {}): SwapDraft {
   return {

@@ -12,10 +12,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { setupFinancialGapMocks } from '@/mocks/handlers/financial-gaps';
 import { BACKEND_GAPS, GAP_ROUTE_PREFIX, areGapFeaturesEnabled } from '@/config/financial-gaps';
-import * as gapApi from '../financial-gap-api';
+import * as gapApi from '../api/financial-gap-api';
 // (No FinancialError import: the release-build tests re-require their own copy
 // after jest.resetModules(), so identity comparisons are meaningless here.)
 
@@ -213,7 +213,7 @@ describe('release build', () => {
 
   it('refuses a gap call before it reaches the network', async () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const api = require('../financial-gap-api') as typeof import('../financial-gap-api');
+    const api = require('../api/financial-gap-api') as typeof import('../api/financial-gap-api');
 
     // Nothing is registered and nothing should be attempted: the refusal comes
     // from the client, so a production binary cannot even try.
@@ -233,7 +233,7 @@ describe('release build', () => {
 
   it('refuses every gap capability, not just one', async () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const api = require('../financial-gap-api') as typeof import('../financial-gap-api');
+    const api = require('../api/financial-gap-api') as typeof import('../api/financial-gap-api');
 
     await expect(api.fetchDeposits()).rejects.toMatchObject({ code: 'frontend.gap.deposit' });
     await expect(api.fetchWithdrawals()).rejects.toMatchObject({ code: 'frontend.gap.withdrawal' });
@@ -244,7 +244,7 @@ describe('release build', () => {
 
   it('gives the refusal a sentence a member can read', async () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const api = require('../financial-gap-api') as typeof import('../financial-gap-api');
+    const api = require('../api/financial-gap-api') as typeof import('../api/financial-gap-api');
 
     try {
       await api.fetchWithdrawals();

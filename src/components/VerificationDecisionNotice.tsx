@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
-import { isAwaitingDecision } from '@/lib/access-state';
-import { getRealtimeClient } from '@/lib/realtime';
+import { isAwaitingDecision } from '@/lib/domain/access-state';
+import { getRealtimeClient } from '@/lib/transport/realtime';
 import { useAuthStore } from '@/store/auth';
 import { useNotification } from '@/providers/notification-provider';
 

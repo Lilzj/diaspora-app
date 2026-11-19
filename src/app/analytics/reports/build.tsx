@@ -58,7 +58,7 @@ import type {
   AnalyticsSubjectType,
   AnalyticsVisualization,
 } from '@/types/analytics';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** The subjects a member can build a report about. */
 const SUBJECT_OPTIONS: AnalyticsSubjectType[] = [

@@ -27,8 +27,8 @@ import {
   presentMilestoneState,
   grantCategoryLabel,
   grantWindowLabel,
-} from '@/lib/creator-economy';
-import { servedIcon } from '@/lib/served-icon';
+} from '@/lib/domain/creator-economy';
+import { servedIcon } from '@/lib/platform/served-icon';
 import { formatRelativeTime } from '@/utils/format';
 import { CreatorCard, CreatorProgressBar, CreatorStatusChip, useToneColours } from './CreatorPrimitives';
 import type {

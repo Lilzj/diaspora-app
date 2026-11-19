@@ -13,7 +13,7 @@ import MockAdapter from 'axios-mock-adapter';
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { useAuthStore } from '@/store/auth';
 import { useConversionPolicy } from '../financial-gaps';
 

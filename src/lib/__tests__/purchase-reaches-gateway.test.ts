@@ -187,7 +187,7 @@ const OPENERS = ['createDonation', 'createContribution', 'purchaseProduct', 'cre
  * is spelled.
  */
 function certifiedAlias(source: string): string | null {
-  const match = /import \* as (\w+) from '@\/lib\/financial-api';/.exec(source);
+  const match = /import \* as (\w+) from '@\/lib\/api\/financial-api';/.exec(source);
   return match ? match[1] : null;
 }
 

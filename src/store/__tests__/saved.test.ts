@@ -21,9 +21,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useSavedStore } from '../saved';
-import * as api from '@/lib/bookmarks-api';
+import * as api from '@/lib/api/bookmarks-api';
 
-jest.mock('@/lib/bookmarks-api', () => ({
+jest.mock('@/lib/api/bookmarks-api', () => ({
   fetchBookmarks: jest.fn(),
   createBookmark: jest.fn(),
   deleteBookmark: jest.fn(),

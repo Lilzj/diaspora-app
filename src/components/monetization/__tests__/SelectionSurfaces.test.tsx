@@ -18,7 +18,7 @@ import MockAdapter from 'axios-mock-adapter';
 import { ThemeProvider } from '@/design-system';
 import { PricingProvider } from '@/providers/pricing-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { PromotionPackageSelector, PromotionDurationSelector } from '../PromotionPackageSelector';
 import { PlanCard, AudiencePicker } from '../PlanCard';
 import { PlanComparisonTable } from '../PlanComparison';
@@ -34,9 +34,9 @@ import {
 } from '../CampaignBuilder';
 import { MonetizationEmpty, MonetizationRow, MonetizationSection } from '../MonetizationLayout';
 import { PromoteEntry } from '../PromoteEntry';
-import { groupIntoPackages } from '@/lib/monetization-catalog';
-import { buildPlanComparison } from '@/lib/entitlements';
-import { fromMinorUnits } from '@/lib/money';
+import { groupIntoPackages } from '@/lib/domain/monetization-catalog';
+import { buildPlanComparison } from '@/lib/domain/entitlements';
+import { fromMinorUnits } from '@/lib/domain/money';
 import {
   MOCK_CAMPAIGNS,
   MOCK_TARGETING_OPTIONS,

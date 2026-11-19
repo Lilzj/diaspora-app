@@ -13,7 +13,7 @@ import {
   offlineError,
   shouldRetryQuery,
   toFinancialError,
-} from '../financial-errors';
+} from '../transport/financial-errors';
 
 /** An axios error shaped the way the interceptor chain produces one. */
 function axiosFailure(status: number, body?: unknown): AxiosError {

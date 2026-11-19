@@ -37,7 +37,7 @@
 
 import { QueryClient } from '@tanstack/react-query';
 
-import { communityProgrammeKeys } from '../community-programme-api';
+import { communityProgrammeKeys } from '../api/community-programme-api';
 
 const COUNTRY = 'NG';
 const CITY = 'Lagos';

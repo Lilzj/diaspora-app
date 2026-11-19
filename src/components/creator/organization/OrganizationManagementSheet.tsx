@@ -47,8 +47,8 @@ import { router } from 'expo-router';
 import { Sheet } from '@/components/overlays/AppModal';
 import { useTheme } from '@/design-system';
 import { useOrganizationCapabilities } from '@/hooks/community-life';
-import { describeCreatorRole } from '@/lib/organization-permissions';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { describeCreatorRole } from '@/lib/domain/organization-permissions';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { CreatorOrganization } from '@/types/creator';
 
 import { EventsTab } from './EventsTab';

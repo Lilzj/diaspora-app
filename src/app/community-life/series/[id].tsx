@@ -35,9 +35,9 @@ import {
 } from '@/components/community';
 import { AmountDisplay } from '@/components/financial';
 import { useCancelSeries, useOccurrences, useSeries } from '@/hooks/community-life';
-import { describeSeries } from '@/lib/community-state';
-import { trackCommunityEvent } from '@/lib/community-analytics';
-import { publishEventSeries } from '@/lib/community-life-api';
+import { describeSeries } from '@/lib/domain/community-state';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
+import { publishEventSeries } from '@/lib/api/community-life-api';
 
 type Tab = 'upcoming' | 'past' | 'cancelled';
 

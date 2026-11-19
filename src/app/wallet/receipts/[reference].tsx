@@ -30,8 +30,8 @@ import {
   StatusBanner,
 } from '@/components/financial';
 import { useGivingHistory } from '@/hooks/financial';
-import { presentGivingStatus } from '@/lib/financial-status';
-import { FinancialError } from '@/lib/financial-errors';
+import { presentGivingStatus } from '@/lib/domain/financial-status';
+import { FinancialError } from '@/lib/transport/financial-errors';
 import { formatRelativeTime } from '@/utils/format';
 
 export default function ReceiptScreen() {

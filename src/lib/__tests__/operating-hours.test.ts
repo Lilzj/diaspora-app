@@ -24,7 +24,7 @@ const source = (...segments: string[]) =>
     .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
     .replace(new RegExp('//[^\\n]*', 'g'), ' ');
 
-const api = source('lib', 'community-life-api.ts');
+const api = source('lib', 'api', 'community-life-api.ts');
 
 /** A full week of blanks, which is what an organisation with no hours starts from. */
 const blank = () => toDrafts([]);

@@ -8,7 +8,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 
 import { usePublicTrustProfile } from '@/hooks/trust';
-import { TRUST_TIER_LABEL, isLowTrust } from '@/lib/trading-safety';
+import { TRUST_TIER_LABEL, isLowTrust } from '@/lib/domain/trading-safety';
 
 function sinceYear(iso: string | null | undefined): string | null {
   if (!iso) return null;

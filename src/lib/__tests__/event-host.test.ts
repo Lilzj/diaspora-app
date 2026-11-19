@@ -8,7 +8,7 @@
 // one. An empty table hid a process-killing crash.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { eventHost, eventHostOrgId, eventOrganiserUserId } from '../event-host';
+import { eventHost, eventHostOrgId, eventOrganiserUserId } from '../api/event-host';
 import type { Event } from '@/types/community-life';
 
 /** A personal event: no organisation, a host name, a real organiser. */

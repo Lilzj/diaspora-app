@@ -19,7 +19,7 @@ import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'rea
 import { router } from 'expo-router';
 
 import { useMyOrganizations } from '@/hooks/community-life';
-import type { MyProgrammeOrganization } from '@/lib/community-programme-api';
+import type { MyProgrammeOrganization } from '@/lib/api/community-programme-api';
 
 type RoleTab = 'all' | 'owner' | 'manager' | 'moderator' | 'member';
 

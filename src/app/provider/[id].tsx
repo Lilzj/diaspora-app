@@ -54,17 +54,17 @@ import { ReviewCard } from '@/components/ReviewCard';
 import { Button } from '@/components/Button';
 import { ReportModal } from '@/components/ReportModal';
 import { ProviderNotificationModal } from '@/components/ProviderNotificationModal';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 import { useNotification } from '@/providers/notification-provider';
 import { PromoteEntry } from '@/components/monetization';
 import { useMediaAsset } from '@/hooks/media';
 import { useProvider, useProviderReviews } from '@/hooks/providers';
-import { setProviderBookmark, type Provider, type ProviderMedia } from '@/lib/providers-api';
+import { setProviderBookmark, type Provider, type ProviderMedia } from '@/lib/api/providers-api';
 import { trackContentViewed } from '@/lib/analytics/content-events';
-import { backOr } from '@/lib/navigation';
-import { photoUriOf } from '@/lib/media-url';
+import { backOr } from '@/lib/platform/navigation';
+import { photoUriOf } from '@/lib/platform/media-url';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
-import { archiveProvider } from '@/lib/provider-registration-api';
+import { archiveProvider } from '@/lib/api/provider-registration-api';
 
 /**
  * One image, resolved from a Media reference.

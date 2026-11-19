@@ -14,7 +14,7 @@ import { ActivityIndicator, Text, TouchableOpacity } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useNotification } from '@/providers/notification-provider';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 interface OwnerRemoveButtonProps {
   /** What the member calls it: "listing", "event", "update", "guide". */

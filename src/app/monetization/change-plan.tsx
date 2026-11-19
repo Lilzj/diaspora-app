@@ -53,8 +53,8 @@ import {
 } from '@/hooks/monetization';
 import { useCanTransact, useMySubscription } from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
-import { describeEntitlement } from '@/lib/entitlements';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { describeEntitlement } from '@/lib/domain/entitlements';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
 
 export default function ChangePlanScreen() {

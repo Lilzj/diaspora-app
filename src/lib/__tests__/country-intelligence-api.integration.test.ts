@@ -18,8 +18,8 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
-import { readPage, resetBespokeEnvelopeWarnings } from '@/lib/platform-envelope';
+import { apiClient } from '@/lib/transport/apiClient';
+import { readPage, resetBespokeEnvelopeWarnings } from '@/lib/transport/platform-envelope';
 import {
   DEV_INTELLIGENCE_IDS,
   setupCountryIntelligenceMocks,
@@ -47,7 +47,7 @@ import {
   searchOfficialNotices,
   searchOfficialNoticesRaw,
   toNoticeSearchPage,
-} from '@/lib/country-intelligence-api';
+} from '@/lib/api/country-intelligence-api';
 import type { OfficialNoticeCardResponse } from '@/types/country-intelligence';
 
 let mock: MockAdapter;

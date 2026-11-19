@@ -18,7 +18,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   fetchAnalyticsInsights,
   fetchAnalyticsLeaderboard,
@@ -29,7 +29,7 @@ import {
   isCertifiedOwnerSubject,
   isLeaderboardMetric,
   PREMIUM_NOT_ENTITLED,
-} from '../analytics-api';
+} from '../api/analytics-api';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 
 const RANGE: AnalyticsTimeRange = {

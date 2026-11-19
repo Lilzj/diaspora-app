@@ -54,7 +54,7 @@ import {
 } from '@/components/community';
 import { useCommunitySearch } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { CommunityEntityType, CommunitySearchResult } from '@/types/community-advanced';
 
 const TYPE_FILTERS: { value: CommunityEntityType | 'all'; label: string }[] = [

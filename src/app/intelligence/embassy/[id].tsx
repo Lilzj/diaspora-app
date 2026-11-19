@@ -24,7 +24,7 @@ import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useEmbassy } from '@/hooks/country-intelligence';
 import { PLATFORM_ATTRIBUTION } from '@/components/intelligence/PostedBy';
 import { useMediaAsset } from '@/hooks/media';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function EmbassyDetailScreen() {
   const bottomInset = useBottomInset();

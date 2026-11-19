@@ -21,7 +21,7 @@ import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { usePricing } from '@/providers/pricing-provider';
-import { describeEntitlementValue } from '@/lib/entitlements';
+import { describeEntitlementValue } from '@/lib/domain/entitlements';
 import type { PlanComparisonRow, SubscriptionPlan } from '@/types/monetization';
 
 const FIRST_COLUMN = 148;

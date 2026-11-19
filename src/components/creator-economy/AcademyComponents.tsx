@@ -23,7 +23,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
-import { clampPercentage } from '@/lib/creator-economy';
+import { clampPercentage } from '@/lib/domain/creator-economy';
 import { CreatorCard, useToneColours } from './CreatorPrimitives';
 import type {
   CreatorCertificate,

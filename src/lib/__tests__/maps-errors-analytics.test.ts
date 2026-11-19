@@ -25,7 +25,7 @@ import {
   trackRoutePlanned,
   zoomBand,
 } from '@/lib/maps/analytics';
-import { drainCreatorEvents, resetCreatorEvents } from '@/lib/creator-analytics';
+import { drainCreatorEvents, resetCreatorEvents } from '@/lib/platform/creator-analytics';
 import type { MapErrorKind } from '@/types/maps';
 
 const ALL_ERRORS: MapErrorKind[] = [

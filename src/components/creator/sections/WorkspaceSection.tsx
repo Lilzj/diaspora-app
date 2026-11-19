@@ -52,7 +52,7 @@ import { TimelineItem } from '@/components/creator/TimelineItem';
 import { WorkspaceFilterBar } from '@/components/creator/WorkspaceFilterBar';
 import { useContentManagementStore } from '@/store/content-management';
 import { useCreatorDraftStore } from '@/store/creator-draft';
-import { useDeviceDrafts } from '@/lib/device-drafts';
+import { useDeviceDrafts } from '@/lib/platform/device-drafts';
 import { useCreatorTimelineStore } from '@/store/creator-timeline';
 import { useCreatorWorkspaceStore } from '@/store/creator-workspace';
 import type { UnifiedContentItem } from '@/types/creator';

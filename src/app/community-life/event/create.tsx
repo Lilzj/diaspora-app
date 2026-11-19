@@ -6,12 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { FeatureGate } from '@/components/FeatureGate';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
-import { coordinatesOf } from '@/lib/place-coordinates';
+import { coordinatesOf } from '@/lib/platform/place-coordinates';
 import type { EventFormState } from '@/types/community-life';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
 import { useAuthStore } from '@/store/auth';
 import { useLocationStore, getActiveLocation } from '@/store/location';
-import { toEventCategoryKey } from '@/lib/community-life-catalogue';
+import { toEventCategoryKey } from '@/lib/domain/community-life-catalogue';
 import { convertToInstant } from '@/lib/integrations/calendar';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { DatePickerInput } from '@/components/DatePickerInput';
@@ -25,13 +25,13 @@ import {
   createEventSeries,
   type CreateEventRequest,
   type CreateEventSeriesRequest,
-} from '@/lib/community-life-api';
+} from '@/lib/api/community-life-api';
 import {
   deviceTimeZone,
   isKnownTimeZone,
   suggestTimeZones,
-} from '@/lib/event-timezone';
-import { backOr } from '@/lib/navigation';
+} from '@/lib/platform/event-timezone';
+import { backOr } from '@/lib/platform/navigation';
 import { useCommunityContext } from '@/hooks/communities';
 import {
   eventCommunityRefusal,

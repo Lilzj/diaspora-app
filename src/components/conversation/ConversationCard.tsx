@@ -11,8 +11,8 @@ import { usePresenceStore } from '@/store/presence';
 import { OnlineIndicator } from './OnlineIndicator';
 import { ReadReceipt } from './ReadReceipt';
 import type { Conversation } from '@/types/conversation';
-import { conversationInitials, conversationTitle } from '@/lib/conversation-title';
-import { currentUserIdIn, isOwnMessage } from '@/lib/conversation-identity';
+import { conversationInitials, conversationTitle } from '@/lib/platform/conversation-title';
+import { currentUserIdIn, isOwnMessage } from '@/lib/domain/conversation-identity';
 
 interface Props {
   conversation: Conversation;

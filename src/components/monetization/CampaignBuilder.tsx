@@ -27,7 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { usePricing } from '@/providers/pricing-provider';
 import { AmountInput, useParsedAmount } from '@/components/financial';
-import { fromMinorUnits } from '@/lib/money';
+import { fromMinorUnits } from '@/lib/domain/money';
 import type { CurrencyFact, MonetizationProduct, Money } from '@/types/financial';
 import type {
   AudienceEstimate,

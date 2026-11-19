@@ -99,8 +99,8 @@ import {
   submitGuideVerification,
   updateGuide,
   type PublishNewGuideInput,
-} from '@/lib/guides-api';
-import type { Page } from '@/lib/platform-envelope';
+} from '@/lib/api/guides-api';
+import type { Page } from '@/lib/transport/platform-envelope';
 import type {
   GuideAnalyticsResponse,
   GuideCapabilitiesResponse,

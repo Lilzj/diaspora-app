@@ -33,13 +33,13 @@ import {
   useParsedAmount,
 } from '@/components/financial';
 import { useContributionFunds, useCreateContribution, useCurrencies } from '@/hooks/financial';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { progressRatio, toRequestAmount } from '@/lib/money';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
+import { progressRatio, toRequestAmount } from '@/lib/domain/money';
 import { useAuthStore } from '@/store/auth';
-import { useMemberCurrency } from '@/lib/member-currency';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 import { useLocationStore } from '@/store/location';
 import { useNotification } from '@/providers/notification-provider';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import type {
   ContributionFund,
   ContributionKind,

@@ -50,8 +50,8 @@ function emptyStores(): void {
   }
 }
 
-type Storage = typeof import('../auth-storage');
-type Analytics = typeof import('../creator-analytics');
+type Storage = typeof import('../platform/auth-storage');
+type Analytics = typeof import('../platform/creator-analytics');
 
 /**
  * A fresh module registry with `expo-secure-store` replaced.
@@ -67,8 +67,8 @@ function withKeystore(factory: () => unknown): { storage: Storage; analytics: An
   jest.resetModules();
   jest.doMock('expo-secure-store', factory);
 
-  const storage = require('../auth-storage') as Storage;
-  const analytics = require('../creator-analytics') as Analytics;
+  const storage = require('../platform/auth-storage') as Storage;
+  const analytics = require('../platform/creator-analytics') as Analytics;
 
   analytics.resetCreatorEvents();
   return { storage, analytics };

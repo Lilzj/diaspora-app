@@ -3,8 +3,8 @@
  * published grant, closed ones included; a closed grant still said "Closes 3
  * weeks ago"; and categories printed as keys ("community").
  */
-import { grantCategoryLabel, grantWindowLabel } from '@/lib/creator-economy';
-import { creatorGapKeys } from '@/lib/creator-gap-api';
+import { grantCategoryLabel, grantWindowLabel } from '@/lib/domain/creator-economy';
+import { creatorGapKeys } from '@/lib/api/creator-gap-api';
 
 declare const process: { cwd(): string };
 const fs: { readFileSync(path: string, encoding: string): string } = require('fs');

@@ -1,7 +1,7 @@
 // App Links rewrite, 5 Oct 2026. Every shape Expo Router may hand over (full URL,
 // host without scheme, bare path) lands on the same screen; foreign links pass through.
 
-import { rewriteAppLink } from '@/lib/app-links';
+import { rewriteAppLink } from '@/lib/platform/app-links';
 
 describe('rewriteAppLink', () => {
   it.each([

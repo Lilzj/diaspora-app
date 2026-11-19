@@ -34,7 +34,7 @@ import { communityTypeLabel } from '@/components/community-directory';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import { allCountries } from '@/lib/reference/countries';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 const TYPES: CommunityType[] = [
   'NationalDiaspora',

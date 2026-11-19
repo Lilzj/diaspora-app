@@ -38,9 +38,9 @@ import {
   onDiasporaSince,
   openJobsLabel,
   teamRoleSentence,
-} from '@/lib/employer-profile-api';
-import { employerKindLabel, employerResponsiveness } from '@/lib/job-detail-api';
-import { backOr } from '@/lib/navigation';
+} from '@/lib/api/employer-profile-api';
+import { employerKindLabel, employerResponsiveness } from '@/lib/api/job-detail-api';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function EmployerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

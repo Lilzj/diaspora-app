@@ -14,7 +14,7 @@ import {
   type HousingViewing,
   type UpdateViewingRequest,
   type ViewingSide,
-} from '@/lib/housing-viewings-api';
+} from '@/lib/api/housing-viewings-api';
 
 export const housingViewingKeys = {
   all: ['housing', 'viewings'] as const,

@@ -16,8 +16,8 @@ import {
   realtimeHubUrl,
   toPresenceStatus,
   DiasporaRealtimeClient,
-} from '../realtime';
-import { API_BASE_URL } from '../apiClient';
+} from '../transport/realtime';
+import { API_BASE_URL } from '../transport/apiClient';
 
 // ── The hub is not under the API version prefix ──────────────────────────────
 

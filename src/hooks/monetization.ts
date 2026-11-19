@@ -19,17 +19,17 @@
 import { useCallback, useMemo } from 'react';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import * as api from '@/lib/financial-api';
-import { financialKeys } from '@/lib/financial-api';
-import { FinancialError, shouldRetryQuery } from '@/lib/financial-errors';
-import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
+import * as api from '@/lib/api/financial-api';
+import { financialKeys } from '@/lib/api/financial-api';
+import { FinancialError, shouldRetryQuery } from '@/lib/transport/financial-errors';
+import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/domain/idempotency';
 import {
   EXPIRY_WINDOW_DAYS,
   daysUntil,
   filterPromotions,
   groupIntoPackages,
   toPromotions,
-} from '@/lib/monetization-catalog';
+} from '@/lib/domain/monetization-catalog';
 import {
   buildPlanComparison,
   canStartTrial,
@@ -39,7 +39,7 @@ import {
   getUsageLimit,
   lostEntitlements,
   planRelation,
-} from '@/lib/entitlements';
+} from '@/lib/domain/entitlements';
 import {
   useCatalog,
   useFinancialAccess,

@@ -64,7 +64,7 @@ import {
 } from '@/types/maps';
 import { MAPS_GAPS, areMapsGapsEnabled } from '@/config/maps-gaps';
 import { getMapFeatureFlags } from '@/config/map-config';
-import { getRealtimeClient, type ResourceChangedPayload } from '@/lib/realtime';
+import { getRealtimeClient, type ResourceChangedPayload } from '@/lib/transport/realtime';
 import { useAuthStore } from '@/store/auth';
 import { alertCellsForBounds, alertChannel } from '@/lib/maps/alert-cells';
 import {
@@ -80,14 +80,14 @@ import {
   mapKeys,
   neighborhoodIdFor,
   searchMap,
-} from '@/lib/maps-api';
+} from '@/lib/api/maps-api';
 import {
   compareNeighborhoods,
   fetchCostOfLiving,
   fetchNeighborhoodScore,
   fetchSafetyScore,
   mapsGapKeys,
-} from '@/lib/maps-gap-api';
+} from '@/lib/api/maps-gap-api';
 import {
   boundsToCircle,
   boundsCacheKey,

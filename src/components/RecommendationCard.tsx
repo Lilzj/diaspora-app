@@ -40,7 +40,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import {
   describeRecommendationLocation,
   routeForRecommendation,
-} from '@/lib/recommendations-api';
+} from '@/lib/api/recommendations-api';
 import type { Recommendation } from '@/types/recommendations';
 
 export interface RecommendationCardProps {

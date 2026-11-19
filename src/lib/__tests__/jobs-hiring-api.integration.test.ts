@@ -17,8 +17,8 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
-import { readPage } from '@/lib/platform-envelope';
+import { apiClient } from '@/lib/transport/apiClient';
+import { readPage } from '@/lib/transport/platform-envelope';
 import {
   DEV_CALLER_CANDIDATE_ID,
   DEV_EMPLOYER_MINE,
@@ -63,8 +63,8 @@ import {
   respondToOffer,
   scheduleInterview,
   withdrawApplication,
-} from '@/lib/jobs-hiring-api';
-import { fetchEmployerJobs, fetchEmployerProfile } from '@/lib/employer-profile-api';
+} from '@/lib/api/jobs-hiring-api';
+import { fetchEmployerJobs, fetchEmployerProfile } from '@/lib/api/employer-profile-api';
 import type { ApplicationCardResponse } from '@/types/jobs-hiring';
 
 let mock: MockAdapter;

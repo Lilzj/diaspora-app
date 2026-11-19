@@ -17,8 +17,8 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
-import { readPage } from '@/lib/platform-envelope';
+import { apiClient } from '@/lib/transport/apiClient';
+import { readPage } from '@/lib/transport/platform-envelope';
 import { resetTrustMocks, setTrustMockStaff, setupTrustMocks } from '@/mocks/handlers/trust';
 import {
   APPEAL_REASON_MIN_LENGTH,
@@ -61,7 +61,7 @@ import {
   trustErrorMessage,
   trustKeys,
   verificationStatusFor,
-} from '@/lib/trust-api';
+} from '@/lib/api/trust-api';
 import type { VerificationType } from '@/types/trust';
 
 /**

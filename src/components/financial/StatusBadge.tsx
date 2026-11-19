@@ -13,7 +13,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
-import type { StatusPresentation, StatusTone } from '@/lib/financial-status';
+import type { StatusPresentation, StatusTone } from '@/lib/domain/financial-status';
 
 interface StatusBadgeProps {
   status: StatusPresentation;

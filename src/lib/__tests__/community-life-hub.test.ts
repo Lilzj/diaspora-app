@@ -19,7 +19,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   composeCommunityLifeSummary,
   hasAnyHubRail,
@@ -27,14 +27,14 @@ import {
   toHubRecommendations,
   HUB_RAIL_LIMITS,
   type CommunityLifeHubParts,
-} from '@/lib/community-life-hub';
+} from '@/lib/domain/community-life-hub';
 import {
   COMMUNITIES_SURFACE,
   fetchCommunityRecommendationPage,
   recordDismiss,
-} from '@/lib/recommendations-api';
-import type { AreaActivityWire } from '@/lib/community-life-api';
-import type { MyProgrammeOrganization } from '@/lib/community-programme-api';
+} from '@/lib/api/recommendations-api';
+import type { AreaActivityWire } from '@/lib/api/community-life-api';
+import type { MyProgrammeOrganization } from '@/lib/api/community-programme-api';
 import type {
   CommunityPage,
   CommunityPoll,

@@ -28,7 +28,7 @@ import {
   CreatorScreen,
 } from '@/components/creator-economy';
 import { useCreatorDirectory } from '@/hooks/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import type { PublicCreator } from '@/types/creator-economy';
 
 const CATEGORIES = [

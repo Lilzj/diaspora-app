@@ -39,7 +39,7 @@ import {
   type UpdateViewingRequest,
   type ViewingMove,
   type ViewingSide,
-} from '@/lib/housing-viewings-api';
+} from '@/lib/api/housing-viewings-api';
 import { useNotification } from '@/providers/notification-provider';
 
 const OPEN_STATUSES = new Set(['Requested', 'Scheduled']);

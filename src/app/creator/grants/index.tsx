@@ -29,9 +29,9 @@ import {
   useCreatorAccess,
   useGrantApplications,
 } from '@/hooks/creator-economy';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
-import { grantCategoryLabel, OPEN_GRANT_STATES } from '@/lib/creator-economy';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
+import { grantCategoryLabel, OPEN_GRANT_STATES } from '@/lib/domain/creator-economy';
 import type { CommunityGrant, GrantApplication } from '@/types/creator-economy';
 
 type Tab = 'open' | 'mine';

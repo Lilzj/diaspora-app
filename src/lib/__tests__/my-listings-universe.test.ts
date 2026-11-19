@@ -13,8 +13,8 @@
  */
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
-import { fetchMyProviders } from '../providers-api';
+import { apiClient } from '../transport/apiClient';
+import { fetchMyProviders } from '../api/providers-api';
 
 let mock: MockAdapter;
 

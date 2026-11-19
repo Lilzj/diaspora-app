@@ -15,7 +15,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   resetRecommendationMocks,
   setupRecommendationMocks,
@@ -39,7 +39,7 @@ import {
   routeForRecommendation,
   toFeedbackRequest,
   HOME_FEED_SURFACE,
-} from '@/lib/recommendations-api';
+} from '@/lib/api/recommendations-api';
 import type { Recommendation } from '@/types/recommendations';
 
 let mock: MockAdapter;

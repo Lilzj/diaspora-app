@@ -13,7 +13,7 @@ import {
   viewingMoves,
   viewingStatusLabel,
   viewingUpdateRefusal,
-} from '../housing-viewings-api';
+} from '../api/housing-viewings-api';
 
 const NOW = new Date('2026-09-15T12:00:00Z');
 

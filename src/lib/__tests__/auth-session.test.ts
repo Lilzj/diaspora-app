@@ -13,12 +13,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
-import { authTransport } from '../auth-api';
-import * as authApi from '../auth-api';
+import { apiClient } from '../transport/apiClient';
+import { authTransport } from '../api/auth-api';
+import * as authApi from '../api/auth-api';
 import { useAuthStore, __setSessionForTests } from '@/store/auth';
 import { buildAuthenticationResult } from '@/mocks/auth-session';
-import { loadSession } from '../auth-storage';
+import { loadSession } from '../platform/auth-storage';
 
 // The two in-memory stores `jest.setup.js` installs. Declared rather than cast
 // so a test that clears the wrong one is a compile error.

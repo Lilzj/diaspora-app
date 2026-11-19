@@ -16,7 +16,7 @@ import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/design-system';
-import { PASSWORD_RULES } from '@/lib/password-policy';
+import { PASSWORD_RULES } from '@/lib/domain/password-policy';
 
 interface PasswordRequirementsProps {
   password: string;

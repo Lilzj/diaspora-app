@@ -4,7 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeTokens } from '@/design-system';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Tutorial reader

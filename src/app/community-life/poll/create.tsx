@@ -27,9 +27,9 @@ import {
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
 import { useCreatePoll, useMyOrganizations } from '@/hooks/community-life';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { PollAudience, PollVotingType } from '@/types/community-advanced';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 
 const VOTING_TYPES: { value: PollVotingType; label: string }[] = [
   { value: 'SingleChoice', label: 'Choose one' },

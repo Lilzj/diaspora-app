@@ -12,7 +12,7 @@
 // a green suite for as long as it did.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { describeEventPrice, toEvent, type EventWire } from '../event-wire';
+import { describeEventPrice, toEvent, type EventWire } from '../api/event-wire';
 
 /** `EventResponse`, as the detail route answers it. */
 function detailWire(overrides: Partial<EventWire> = {}): EventWire {
@@ -501,7 +501,7 @@ describe('the events api reads the wire shape, not the client shape', () => {
   const path = require('path') as { join(...s: string[]): string };
 
   const API = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'lib', 'community-life-api.ts'), 'utf8')
+    .readFileSync(path.join(process.cwd(), 'src', 'lib', 'api', 'community-life-api.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 

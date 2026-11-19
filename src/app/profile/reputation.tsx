@@ -23,14 +23,14 @@ import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useMyReputation, useMyReputationEvents, useReputationRules } from '@/hooks/trust';
-import { HOW_TO_EARN_WITHOUT_RULES, waysToEarn, waysToLose } from '@/lib/reputation-rules';
-import { XP_IS_NOT_MONEY } from '@/lib/reward-copy';
+import { HOW_TO_EARN_WITHOUT_RULES, waysToEarn, waysToLose } from '@/lib/domain/reputation-rules';
+import { XP_IS_NOT_MONEY } from '@/lib/platform/reward-copy';
 import { ReputationDimensionCard, type ReputationBreakdownRow } from '@/components/ReputationDimension';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { REPUTATION_LEVEL_LABELS, type ReputationLevel } from '@/types/reputation';
 import type { WireReputationDimension, WireReputationProfile } from '@/types/trust';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** A relative date for the ledger, without dragging in a formatting library. */
 function relativeDay(iso: string): string {

@@ -15,7 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { setupCreatorEconomyMocks } from '@/mocks/handlers/creator-economy';
 import {
   CREATOR_GAPS,
@@ -25,8 +25,8 @@ import {
 } from '@/config/creator-gaps';
 import { GAP_ROUTE_PREFIX } from '@/config/financial-gaps';
 import { MONETIZATION_GAPS, MONETIZATION_GAP_PREFIX } from '@/config/monetization-gaps';
-import * as gapApi from '../creator-gap-api';
-import { FinancialError } from '../financial-errors';
+import * as gapApi from '../api/creator-gap-api';
+import { FinancialError } from '../transport/financial-errors';
 
 /**
  * `MockAdapter.handlers` is not on the published typings, but it is the only

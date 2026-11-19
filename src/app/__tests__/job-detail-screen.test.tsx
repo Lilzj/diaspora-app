@@ -44,12 +44,12 @@ jest.mock('@/providers/notification-provider', () => ({
   useNotification: () => ({ showAlert: mockShowAlert }),
 }));
 
-jest.mock('@/lib/job-postings-api', () => ({
-  ...jest.requireActual('@/lib/job-postings-api'),
+jest.mock('@/lib/api/job-postings-api', () => ({
+  ...jest.requireActual('@/lib/api/job-postings-api'),
   fetchJobCategories: () => Promise.resolve([{ key: 'hospitality', name: 'Hospitality', order: 1, isActive: true }]),
 }));
 
-jest.mock('@/lib/conversation-hub', () => ({
+jest.mock('@/lib/transport/conversation-hub', () => ({
   ConversationHub: { openOrCreateConversation: (...args: unknown[]) => mockOpenConversation(...args) },
 }));
 

@@ -41,11 +41,11 @@ import {
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
 import { usePoll, usePollAction, usePollResult, useSubmitPollResponse } from '@/hooks/community-life';
-import { describePoll, pollAcceptsVotes } from '@/lib/community-state';
-import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { describePoll, pollAcceptsVotes } from '@/lib/domain/community-state';
+import { checkCommunityAccess, CommunityCapabilities } from '@/lib/domain/community-access';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import { useAuthStore } from '@/store/auth';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { PollResult } from '@/types/community-advanced';
 
 export default function PollScreen() {

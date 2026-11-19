@@ -24,12 +24,12 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   createAndPublishMarketplaceListing,
   fetchMySellerContact,
   updateSellerContact,
-} from '../marketplace-listings-api';
+} from '../api/marketplace-listings-api';
 
 let api: MockAdapter;
 

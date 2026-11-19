@@ -8,8 +8,8 @@
 
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
-import { fetchEmployerJobs, fetchEmployerProfile } from '@/lib/employer-profile-api';
-import { jobsHiringErrorMessage, jobsHiringKeys } from '@/lib/jobs-hiring-api';
+import { fetchEmployerJobs, fetchEmployerProfile } from '@/lib/api/employer-profile-api';
+import { jobsHiringErrorMessage, jobsHiringKeys } from '@/lib/api/jobs-hiring-api';
 import type { EmployerResponse, JobCardResponse } from '@/types/jobs-hiring';
 
 /** Refusals are answers; only a failure that might pass is worth a second try. */

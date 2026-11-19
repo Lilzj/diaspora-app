@@ -23,12 +23,12 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   fetchOwnerAnalytics,
   isCertifiedContentSubject,
   isCertifiedOwnerSubject,
-} from '@/lib/analytics-api';
+} from '@/lib/api/analytics-api';
 import { catalogueKeyFor } from '@/lib/analytics/catalogue-keys';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 

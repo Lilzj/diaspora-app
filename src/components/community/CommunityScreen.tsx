@@ -41,13 +41,13 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design-system';
 import { AccessGate, FinancialErrorView } from '@/components/financial';
-import type { AccessRefusal } from '@/lib/financial-access';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { AccessRefusal } from '@/lib/domain/financial-access';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import { CommunityGapNotice, CommunityGapUnavailable } from './CommunityGapNotice';
 import { COMMUNITY_GAPS } from '@/config/community-gaps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function CommunityHeader({

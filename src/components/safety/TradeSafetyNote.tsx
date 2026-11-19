@@ -7,7 +7,7 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { SAFETY_LINE, TRADING_SAFETY_ROUTE } from '@/lib/trading-safety';
+import { SAFETY_LINE, TRADING_SAFETY_ROUTE } from '@/lib/domain/trading-safety';
 
 export function TradeSafetyNote({ compact = false }: { compact?: boolean }) {
   return (

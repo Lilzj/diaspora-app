@@ -18,7 +18,7 @@ import {
   isRestricted,
   resolveFinancialAccess,
   toAccessTier,
-} from '../financial-access';
+} from '../domain/financial-access';
 import type { AccountState } from '@/types/trust';
 
 const WRITE_PERMISSIONS = [

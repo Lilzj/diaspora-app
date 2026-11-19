@@ -17,7 +17,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   editErrorMessage,
   eventEditFormFrom,
@@ -28,8 +28,8 @@ import {
   planPhotoChanges,
   saveEventEdits,
   saveOrganizationEdits,
-} from '../community-life-api';
-import type { EventWire } from '../event-wire';
+} from '../api/community-life-api';
+import type { EventWire } from '../api/event-wire';
 import type { OrganizationWire } from '@/types/community-life';
 
 const EVENT_ID = '0b6d2f4e-4f1c-4d1a-9a55-2b7c1e0f9a01';

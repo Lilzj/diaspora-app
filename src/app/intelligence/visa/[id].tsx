@@ -23,7 +23,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useVisaAdvisory } from '@/hooks/country-intelligence';
 import { PostedBy } from '@/components/intelligence/PostedBy';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function VisaAdvisoryScreen() {
   const bottomInset = useBottomInset();

@@ -30,9 +30,9 @@ import {
   StatusBanner,
 } from '@/components/financial';
 import { usePaymentReconciliation } from '@/hooks/financial';
-import { describePaymentMethod, describeSubjectType, presentPaymentStatus } from '@/lib/financial-status';
-import { formatMoney, isZero } from '@/lib/money';
-import { shareReceipt } from '@/lib/receipt-document';
+import { describePaymentMethod, describeSubjectType, presentPaymentStatus } from '@/lib/domain/financial-status';
+import { formatMoney, isZero } from '@/lib/domain/money';
+import { shareReceipt } from '@/lib/platform/receipt-document';
 import { Button } from '@/components/Button';
 import { formatRelativeTime } from '@/utils/format';
 import { useNotification } from '@/providers/notification-provider';

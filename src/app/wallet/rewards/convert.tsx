@@ -38,14 +38,14 @@ import {
   usePreviewConversion,
   useRewardBalance,
 } from '@/hooks/financial-gaps';
-import { formatMoney } from '@/lib/money';
-import { conversionReasonText } from '@/lib/reward-conversion-text';
-import { isRewardHold, rewardHoldReviewRoute } from '@/lib/reward-hold';
+import { formatMoney } from '@/lib/domain/money';
+import { conversionReasonText } from '@/lib/platform/reward-conversion-text';
+import { isRewardHold, rewardHoldReviewRoute } from '@/lib/domain/reward-hold';
 import { useAuthStore } from '@/store/auth';
-import { CREDIT_IS_ONE_WAY, creditHoldSentence } from '@/lib/reward-copy';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { CREDIT_IS_ONE_WAY, creditHoldSentence } from '@/lib/platform/reward-copy';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
-import type { StatusPresentation } from '@/lib/financial-status';
+import type { StatusPresentation } from '@/lib/domain/financial-status';
 import type { RewardConversionPreview } from '@/types/financial-gaps';
 
 /**

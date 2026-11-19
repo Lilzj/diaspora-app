@@ -17,15 +17,15 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { API_BASE_URL, apiClient } from '../apiClient';
-import { fetchAnalyticsFunnel, fetchOwnerAnalytics, isCertifiedOwnerSubject } from '../analytics-api';
+import { API_BASE_URL, apiClient } from '../transport/apiClient';
+import { fetchAnalyticsFunnel, fetchOwnerAnalytics, isCertifiedOwnerSubject } from '../api/analytics-api';
 import {
   absoluteExportUrl,
   createAnalyticsReport,
   fetchAnalyticsExport,
   fetchAnalyticsReports,
   requestAnalyticsExport,
-} from '../analytics-reports-api';
+} from '../api/analytics-reports-api';
 import type { AnalyticsQuery, AnalyticsTimeRange } from '@/types/analytics';
 
 const RANGE: AnalyticsTimeRange = {

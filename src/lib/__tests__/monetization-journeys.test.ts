@@ -18,14 +18,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { setupFinancialMocks } from '@/mocks/handlers/financial';
 import { setupMonetizationGapMocks } from '@/mocks/handlers/monetization-gaps';
-import * as financial from '../financial-api';
-import * as monetization from '../monetization-gap-api';
-import { groupIntoPackages, toPromotion, presentCampaignStatus } from '../monetization-catalog';
-import { effectiveEntitlements, hasEntitlement, planRelation } from '../entitlements';
-import { presentPaymentStatus, presentPlacementStatus } from '../financial-status';
+import * as financial from '../api/financial-api';
+import * as monetization from '../api/monetization-gap-api';
+import { groupIntoPackages, toPromotion, presentCampaignStatus } from '../domain/monetization-catalog';
+import { effectiveEntitlements, hasEntitlement, planRelation } from '../domain/entitlements';
+import { presentPaymentStatus, presentPlacementStatus } from '../domain/financial-status';
 import { useAuthStore } from '@/store/auth';
 import { buildAuthenticationResult } from '@/mocks/auth-session';
 import type { CampaignAudience } from '@/types/monetization-gaps';

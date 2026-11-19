@@ -32,8 +32,8 @@ import {
   POST_BODY_MAX_LENGTH,
   POST_TITLE_MAX_LENGTH,
   postEditRequest,
-} from '@/lib/community-social-api';
-import { backOr } from '@/lib/navigation';
+} from '@/lib/api/community-social-api';
+import { backOr } from '@/lib/platform/navigation';
 import { useNotification } from '@/providers/notification-provider';
 import type { CommunityPostUrgency } from '@/types/community-social';
 

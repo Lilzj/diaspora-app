@@ -27,15 +27,15 @@
 import { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import * as gapApi from '@/lib/monetization-gap-api';
-import * as adApi from '@/lib/advertising-api';
-import * as analyticsApi from '@/lib/analytics-api';
-import * as recommendationsApi from '@/lib/recommendations-api';
-import { monetizationGapKeys } from '@/lib/monetization-gap-api';
+import * as gapApi from '@/lib/api/monetization-gap-api';
+import * as adApi from '@/lib/api/advertising-api';
+import * as analyticsApi from '@/lib/api/analytics-api';
+import * as recommendationsApi from '@/lib/api/recommendations-api';
+import { monetizationGapKeys } from '@/lib/api/monetization-gap-api';
 import { areMonetizationGapsEnabled, isGapServedByBackend } from '@/config/monetization-gaps';
-import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
-import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
-import { financialKeys } from '@/lib/financial-api';
+import { shouldRetryQuery, type FinancialError } from '@/lib/transport/financial-errors';
+import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/domain/idempotency';
+import { financialKeys } from '@/lib/api/financial-api';
 import { useFinancialAccess } from './financial';
 import type {
   CampaignAudience,

@@ -26,7 +26,7 @@ import {
   LessonCard,
 } from '@/components/creator-economy';
 import { useAcademyActions, useCreatorAcademy, useCreatorCourse } from '@/hooks/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import type { CreatorLesson } from '@/types/creator-economy';
 
 const LEVEL_LABELS: Record<string, string> = {

@@ -9,7 +9,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   applyHousingPhotoChanges,
   diffHousingEdit,
@@ -20,7 +20,7 @@ import {
   toHousingEditValues,
   updateHousingListing,
   type HousingListingWire,
-} from '../housing-listings-api';
+} from '../api/housing-listings-api';
 
 const LISTING_ID = '7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f';
 const COVER = '11111111-1111-4111-8111-111111111111';

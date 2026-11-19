@@ -10,7 +10,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
-import { EmailChangeError, type EmailChangeRefusal } from '@/lib/auth-api';
+import { EmailChangeError, type EmailChangeRefusal } from '@/lib/api/auth-api';
 import { integrationError } from '@/lib/integrations/errors';
 import type { IntegrationErrorKind } from '@/types/integrations';
 
@@ -21,7 +21,7 @@ jest.mock('@/hooks/integrations', () => ({
   useEmailIdentity: () => mockIdentity(),
   useEmailChange: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }));
-jest.mock('@/lib/navigation', () => ({ backOr: jest.fn() }));
+jest.mock('@/lib/platform/navigation', () => ({ backOr: jest.fn() }));
 
 // eslint-disable-next-line import/first
 import ChangeEmailScreen from '../profile/change-email';

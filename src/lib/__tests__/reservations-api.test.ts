@@ -22,10 +22,10 @@ import {
   sortBySettledThenTitle,
   RATEABLE_STATUS,
   type MemberReservation,
-} from '../reservations-api';
-import { apiClient } from '../apiClient';
+} from '../api/reservations-api';
+import { apiClient } from '../transport/apiClient';
 
-jest.mock('../apiClient', () => ({ apiClient: { get: jest.fn() } }));
+jest.mock('../transport/apiClient', () => ({ apiClient: { get: jest.fn() } }));
 
 const mockGet = apiClient.get as jest.Mock;
 

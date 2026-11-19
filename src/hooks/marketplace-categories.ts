@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { fetchMarketplaceCategories, type MarketplaceCategory } from '@/lib/marketplace-categories';
+import { fetchMarketplaceCategories, type MarketplaceCategory } from '@/lib/domain/marketplace-categories';
 
 /**
  * The served commerce taxonomy, split the way the create screens pick from it:

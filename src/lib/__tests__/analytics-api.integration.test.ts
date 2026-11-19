@@ -13,15 +13,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { setupHousingMocks } from '@/mocks/handlers/housing';
 import { setupJobsMocks } from '@/mocks/handlers/jobs';
 import { setupMarketplaceMocks } from '@/mocks/handlers/marketplace';
 import { setupDiscoveryMocks } from '@/mocks/handlers/discovery';
 import { setupLocationMocks } from '@/mocks/handlers/location';
 import { setupCommunityLifeMocks } from '@/mocks/handlers/community-life';
-import * as analyticsApi from '@/lib/analytics-api';
-import { fetchInventoryCounts } from '@/lib/analytics-api';
+import * as analyticsApi from '@/lib/api/analytics-api';
+import { fetchInventoryCounts } from '@/lib/api/analytics-api';
 
 let mock: MockAdapter;
 

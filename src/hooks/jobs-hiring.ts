@@ -69,7 +69,7 @@ import {
   updateCandidateProfile,
   updateEmployer,
   withdrawApplication,
-} from '@/lib/jobs-hiring-api';
+} from '@/lib/api/jobs-hiring-api';
 import type {
   ApplicationCardResponse,
   ApplicationListQuery,

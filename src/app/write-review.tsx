@@ -15,7 +15,7 @@ import {
   submitReview,
   type ReviewSubject,
 } from '@/lib/reviews/write-target';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 const MAX_LENGTH = 500;
 

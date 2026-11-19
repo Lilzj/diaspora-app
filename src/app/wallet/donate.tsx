@@ -32,12 +32,12 @@ import {
   useParsedAmount,
 } from '@/components/financial';
 import { useCreateDonation, useCurrencies, useDonationCauses } from '@/hooks/financial';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { progressRatio, toRequestAmount, zeroLike } from '@/lib/money';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
+import { progressRatio, toRequestAmount, zeroLike } from '@/lib/domain/money';
 import { useAuthStore } from '@/store/auth';
-import { useMemberCurrency } from '@/lib/member-currency';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 import { useLocationStore } from '@/store/location';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import type { DonationCause, PaymentIntent, PaymentMethodKind } from '@/types/financial';
 
 const SUGGESTED = [5, 10, 25, 50];

@@ -31,8 +31,8 @@ import { View, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
-import { register } from '@/lib/auth-api';
-import { clearRegistrationDraft, getRegistrationDraft } from '@/lib/registration-draft';
+import { register } from '@/lib/api/auth-api';
+import { clearRegistrationDraft, getRegistrationDraft } from '@/lib/platform/registration-draft';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { trackIntegrationEvent } from '@/lib/integrations/events';
 

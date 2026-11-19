@@ -52,9 +52,9 @@ import {
 import { usePlacementPerformance } from '@/hooks/monetization-gaps';
 import { useCancelPlacement } from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
-import { presentPlacementStatus, presentPurchaseStatus } from '@/lib/financial-status';
-import { describePlacementKind } from '@/lib/monetization-catalog';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { presentPlacementStatus, presentPurchaseStatus } from '@/lib/domain/financial-status';
+import { describePlacementKind } from '@/lib/domain/monetization-catalog';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
 
 export default function PromotionDetailScreen() {

@@ -26,7 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import type { StatisticsPeriod } from '@/types/community-directory';
 import { useCommunity, useCommunityStatistics } from '@/hooks/communities';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { trackCommunityEvent } from '@/lib/community/analytics';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import {
@@ -36,7 +36,7 @@ import {
   StatisticsPeriodSelector,
   communityOriginLabel,
 } from '@/components/community-directory';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function CommunityStatisticsScreen() {
   // The guard rail: the phone's gesture area plus breathing room.

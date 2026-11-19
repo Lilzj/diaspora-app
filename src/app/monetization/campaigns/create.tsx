@@ -59,10 +59,10 @@ import {
 import { usePricing } from '@/providers/pricing-provider';
 import { useMonetizationCatalog } from '@/hooks/monetization';
 import type { MonetizationProduct } from '@/types/financial';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import { useAuthStore } from '@/store/auth';
-import { useMemberCurrency } from '@/lib/member-currency';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 import { useLocationStore } from '@/store/location';
 import type { PaymentIntent, PaymentMethodKind } from '@/types/financial';
 import type {

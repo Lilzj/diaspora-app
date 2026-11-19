@@ -46,7 +46,7 @@ import {
   COMMENT_BODY_MAX_LENGTH,
   commentBodyText,
   isFlaggedContent,
-} from '@/lib/community-social-api';
+} from '@/lib/api/community-social-api';
 import {
   useCommunityCapabilities,
   useCreateComment,

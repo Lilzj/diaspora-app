@@ -63,7 +63,7 @@ import {
   registerAllowedProperties,
   trackPlatformEvent,
   type EventProperties,
-} from '@/lib/creator-analytics';
+} from '@/lib/platform/creator-analytics';
 import type {
   AnalyticsComparisonBasis,
   AnalyticsDataStatus,

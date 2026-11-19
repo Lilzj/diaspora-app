@@ -47,14 +47,14 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design-system';
 import { FinancialErrorView } from '@/components/financial';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { AnalyticsDataset } from '@/types/analytics';
 import type { AnalyticsVerdict } from '@/lib/analytics/access';
 import { AnalyticsGapUnavailable, AnalyticsProvenanceHeader, hasSuppressedMetrics } from './AnalyticsNotices';
 import { AnalyticsRefusal, AnalyticsSkeleton } from './AnalyticsPrimitives';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function AnalyticsHeader({

@@ -21,16 +21,16 @@ import { WizardFooter } from '@/components/forms/WizardFooter';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
-import { coordinatesOf } from '@/lib/place-coordinates';
+import { coordinatesOf } from '@/lib/platform/place-coordinates';
 import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
-import { countryLabel } from '@/lib/job-detail-api';
-import { currencyForCountry } from '@/lib/job-postings-api';
+import { countryLabel } from '@/lib/api/job-detail-api';
+import { currencyForCountry } from '@/lib/api/job-postings-api';
 import {
   createAndPublishMarketplaceListing,
   problemDetail,
-} from '@/lib/marketplace-listings-api';
+} from '@/lib/api/marketplace-listings-api';
 import {
   buildSwapListingRequest,
   parseTopUp,
@@ -38,13 +38,13 @@ import {
   swapStepRequirements,
   type SwapDraft,
   type SwapStep,
-} from '@/lib/swap-listings';
+} from '@/lib/domain/swap-listings';
 import type { SwapTopUp } from '@/types/marketplace';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { CurrencyNote } from '@/components/CurrencyNote';
-import { currencyForResidence } from '@/lib/member-currency';
+import { currencyForResidence } from '@/lib/domain/member-currency';
 import { useMarketplaceCategories } from '@/hooks/marketplace-categories';
-import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/marketplace-categories';
+import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/domain/marketplace-categories';
 
 const CONDITIONS = ['New', 'Like New', 'Very Good', 'Good', 'Fair'];
 

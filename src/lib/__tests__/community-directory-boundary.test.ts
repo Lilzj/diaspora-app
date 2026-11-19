@@ -119,8 +119,8 @@ describe('every adapter function refuses in a release build', () => {
   });
 
   it('rejects before touching the network', async () => {
-    const api = require('@/lib/community-gap-directory-api');
-    const { apiClient } = require('@/lib/apiClient');
+    const api = require('@/lib/api/community-gap-directory-api');
+    const { apiClient } = require('@/lib/transport/apiClient');
 
     const get = jest.spyOn(apiClient, 'get');
     const post = jest.spyOn(apiClient, 'post');
@@ -160,7 +160,7 @@ describe('every adapter function refuses in a release build', () => {
   });
 
   it('names the gap in the refusal, so the UI can explain rather than error', async () => {
-    const api = require('@/lib/community-gap-directory-api');
+    const api = require('@/lib/api/community-gap-directory-api');
 
     const error = await api.fetchCommunityDirectory().catch((e: Error) => e);
 
@@ -233,7 +233,7 @@ describe('the handler registers nothing in a release build', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('§51 — the adapter cannot create a community wallet', () => {
-  const adapter = source('lib/community-gap-directory-api.ts');
+  const adapter = source('lib/api/community-gap-directory-api.ts');
 
   it('exports no function whose name touches money', () => {
     const exported = [...adapter.matchAll(/export (?:async )?function (\w+)/g)].map((m) => m[1]);
@@ -262,7 +262,7 @@ describe('§51 — the adapter cannot create a community wallet', () => {
 });
 
 describe('§62 — the adapter cannot mint authority', () => {
-  const adapter = source('lib/community-gap-directory-api.ts');
+  const adapter = source('lib/api/community-gap-directory-api.ts');
   const access = source('lib/community/access.ts');
 
   it('exports no function that grants a role or sets a capability', () => {
@@ -299,7 +299,7 @@ describe('§62 — the adapter cannot mint authority', () => {
 });
 
 describe('§3 / §14 — the adapter duplicates no discovery system', () => {
-  const adapter = source('lib/community-gap-directory-api.ts');
+  const adapter = source('lib/api/community-gap-directory-api.ts');
 
   it('fetches no content', () => {
     const exported = [...adapter.matchAll(/export (?:async )?function (\w+)/g)].map((m) => m[1]);

@@ -18,7 +18,7 @@
 // stopped being displayed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { describeRsvp, isLiveRsvp, joinRsvpsToEvents } from '../my-rsvps';
+import { describeRsvp, isLiveRsvp, joinRsvpsToEvents } from '../domain/my-rsvps';
 import type { EventSummary, MyRsvpPage, RsvpRecord } from '@/types/community-life';
 
 function rsvp(overrides: Partial<RsvpRecord> = {}): RsvpRecord {

@@ -16,7 +16,7 @@ import {
   followNotificationRoute,
   isFinancialNotification,
   isResolvableRoute,
-} from '../notification-routes';
+} from '../platform/notification-routes';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -103,7 +103,7 @@ import {
   COMMUNITY_NOTIFICATION_TYPES,
   communityNotificationRoute,
   isCommunityNotification,
-} from '../notification-routes';
+} from '../platform/notification-routes';
 
 describe('Community Life notification routing', () => {
   it('registers the sixteen types the gap register proposes', () => {

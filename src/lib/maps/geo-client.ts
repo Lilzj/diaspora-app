@@ -85,7 +85,7 @@
 // spelled a band differently.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import type {
   CostOfLivingIndex,
   DataFreshness,

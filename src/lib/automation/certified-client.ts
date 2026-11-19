@@ -41,10 +41,10 @@
 // `lib/platform-envelope.ts` already knows both, which is why it exists.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '../apiClient';
-import { readPage } from '../platform-envelope';
+import { apiClient } from '../transport/apiClient';
+import { readPage } from '../transport/platform-envelope';
 import { toAutomationError } from './errors';
-import type { ReminderRecord } from '../automation-gap-api';
+import type { ReminderRecord } from '../api/automation-gap-api';
 import type {
   AutomationAccess,
   AutomationAudience,

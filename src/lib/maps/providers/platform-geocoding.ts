@@ -35,7 +35,7 @@ import { locationLabel } from '@/store/location';
 // this heuristic can be deleted.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import type { PlatformLocation } from '@/store/location';
 import { MAPS_GAPS, areMapsGapsEnabled } from '@/config/maps-gaps';
 import type {

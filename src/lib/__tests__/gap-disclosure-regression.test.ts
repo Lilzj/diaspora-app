@@ -27,10 +27,10 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { fetchWorkspaceArchive, fetchWorkspaceContent, workspaceCoverageNote } from '../creator/workspace';
 import { canPerform, performWorkspaceAction } from '../creator/workspace-actions';
-import { fetchCertifiedAutomationSupport } from '../automation-api';
+import { fetchCertifiedAutomationSupport } from '../api/automation-api';
 import type { UnifiedContentItem } from '@/types/creator';
 
 const IDENTITY: UnifiedContentItem['publishingIdentity'] = {

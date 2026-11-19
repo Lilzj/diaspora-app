@@ -6,7 +6,7 @@
 // author), 30 and 2. These rows come from `GET /trust/reputation/rules` now.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { waysToEarn, waysToLose } from '../reputation-rules';
+import { waysToEarn, waysToLose } from '../domain/reputation-rules';
 import type { WireReputationRule } from '@/types/trust';
 
 function rule(

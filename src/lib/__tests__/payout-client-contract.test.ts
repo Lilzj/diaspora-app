@@ -17,15 +17,15 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   cancelWithdrawal,
   createWithdrawal,
   fetchPayoutDestinations,
   fetchWithdrawalLimits,
   fetchWithdrawals,
-} from '../financial-api';
-import { estimateWithdrawalFee, fromMinorUnits } from '../money';
+} from '../api/financial-api';
+import { estimateWithdrawalFee, fromMinorUnits } from '../domain/money';
 import { isWithdrawalSettled } from '@/hooks/financial';
 import { BACKEND_GAPS } from '@/config/financial-gaps';
 

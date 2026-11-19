@@ -7,7 +7,7 @@
 // sentence names, with plain rules. These pin the rules.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { readSearch, searchWords } from '../search-intent';
+import { readSearch, searchWords } from '../platform/search-intent';
 
 describe("readSearch: the owner's sentences", () => {
   it('"providers near me" searches services around the member', () => {

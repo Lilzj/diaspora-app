@@ -35,7 +35,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 import type { BlockedUser } from '@/types/conversation';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 

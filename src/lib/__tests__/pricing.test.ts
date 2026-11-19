@@ -20,8 +20,8 @@ import {
   pricePerMonth,
   resolvePrice,
   type PricingContextValue,
-} from '../pricing';
-import { fromMinorUnits } from '../money';
+} from '../domain/pricing';
+import { fromMinorUnits } from '../domain/money';
 import type { PromotionQuote, SubscriptionPlan } from '@/types/financial';
 
 const gbp = (minor: number) => fromMinorUnits(minor, 'GBP', 2, '£');

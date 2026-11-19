@@ -26,7 +26,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 
-import { readReactionSummary } from '@/lib/community-social-api';
+import { readReactionSummary } from '@/lib/api/community-social-api';
 import { useCommunityCapabilities } from '@/hooks/community-social';
 import type {
   CommentResponse,

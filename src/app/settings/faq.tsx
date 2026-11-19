@@ -26,7 +26,7 @@ import {
   POINTS_ARE_NOT_XP,
   POINTS_CAN_CONVERT,
   XP_IS_NOT_MONEY,
-} from '@/lib/reward-copy';
+} from '@/lib/platform/reward-copy';
 
 interface Question {
   q: string;

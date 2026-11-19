@@ -17,10 +17,10 @@ import {
   isOnEmployerTeam,
   jobManagementErrorMessage,
   type CloseOutcome,
-} from '@/lib/job-detail-api';
-import { publishJobPosting } from '@/lib/job-postings-api';
-import { expressInterest } from '@/lib/job-interest';
-import { jobsHiringErrorMessage, jobsHiringKeys } from '@/lib/jobs-hiring-api';
+} from '@/lib/api/job-detail-api';
+import { publishJobPosting } from '@/lib/api/job-postings-api';
+import { expressInterest } from '@/lib/domain/job-interest';
+import { jobsHiringErrorMessage, jobsHiringKeys } from '@/lib/api/jobs-hiring-api';
 import type { JobCardResponse, JobResponse } from '@/types/jobs-hiring';
 
 /** Refusals are answers; only a failure that might pass is worth a second try. */

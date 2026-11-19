@@ -9,7 +9,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { ThemeProvider } from '@/design-system';
-import type { HousingViewing } from '@/lib/housing-viewings-api';
+import type { HousingViewing } from '@/lib/api/housing-viewings-api';
 
 const mockViewings = jest.fn();
 const mockMutateAsync = jest.fn();

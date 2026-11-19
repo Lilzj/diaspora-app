@@ -9,7 +9,7 @@ import { FEATURE_TOURS } from '@/config/featureRegistry';
 import { WelcomeModal } from '@/components/explore/WelcomeModal';
 import { useLaunchTour } from '@/components/explore/useLaunchTour';
 import { useThemeTokens } from '@/design-system';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Explore hub

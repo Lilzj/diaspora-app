@@ -7,10 +7,10 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { Button } from '@/components/Button';
 import { useTheme } from '@/design-system';
 import { Ionicons } from '@expo/vector-icons';
-import { loginWithPassword } from '@/lib/auth-api';
+import { loginWithPassword } from '@/lib/api/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { useAuthStore } from '@/store/auth';
-import { routeForAccess } from '@/lib/auth-destination';
+import { routeForAccess } from '@/lib/platform/auth-destination';
 
 /**
  * Sign in with an email address and a password.

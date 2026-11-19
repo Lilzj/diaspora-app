@@ -39,9 +39,9 @@ import {
   toUpdateJobRequest,
   updateJob,
   type JobEditForm,
-} from '@/lib/job-detail-api';
-import { useMemberCurrency } from '@/lib/member-currency';
-import { backOr } from '@/lib/navigation';
+} from '@/lib/api/job-detail-api';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
+import { backOr } from '@/lib/platform/navigation';
 import { useNotification } from '@/providers/notification-provider';
 import type { JobResponse } from '@/types/jobs-hiring';
 

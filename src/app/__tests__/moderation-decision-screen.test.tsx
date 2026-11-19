@@ -6,7 +6,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
-import type { MyModerationCase } from '@/lib/trust-api';
+import type { MyModerationCase } from '@/lib/api/trust-api';
 
 const mockRequestReview = jest.fn();
 const mockPush = jest.fn();
@@ -35,7 +35,7 @@ jest.mock('@/providers/notification-provider', () => ({
 
 // eslint-disable-next-line import/first
 import ModerationDecisionScreen from '../profile/moderation/[caseId]';
-import { canAppeal, decisionHeadline } from '@/lib/moderation-case';
+import { canAppeal, decisionHeadline } from '@/lib/domain/moderation-case';
 
 const METRICS = {
   frame: { x: 0, y: 0, width: 390, height: 844 },

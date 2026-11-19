@@ -93,7 +93,7 @@
 // CONNECTED — indistinguishable at the wire from a real grant."
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { toIntegrationError } from './errors';
 import type {
   CalendarEventDraft,
