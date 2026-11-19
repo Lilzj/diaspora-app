@@ -34,7 +34,17 @@ import { conditionDefinition } from './conditions';
 import { triggerDefinition } from './triggers';
 import { validateSchedule } from './schedule';
 
-/** Longer than any sensible name and short enough to render in a list row. */
+/**
+ * Longer than any sensible name and short enough to render in a list row.
+ *
+ * **These are this client's choices and mirror nothing on the server**, which is
+ * worth saying because FBL-004 lists them among "backend validation limits
+ * duplicated as client constants". They are not: the Automation module has no
+ * length rule for a rule's name or description, and a draft that exceeds either
+ * is refused here for how it would look, not for how it would bind. So they are
+ * deliberately absent from `__tests__/validation-limits-drift.test.ts` — adding
+ * them would mean inventing a server limit to check against.
+ */
 const MAX_NAME_LENGTH = 80;
 const MAX_DESCRIPTION_LENGTH = 280;
 

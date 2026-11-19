@@ -192,5 +192,10 @@ export function formatE164(phoneNumber: string | null | undefined): string {
  * there is something plausible to send, which is the difference between a member
  * being told "that is not a number" by the server and never being able to tell
  * whether the button is broken.
+ *
+ * FBL-004 lists this among "backend validation limits duplicated as client
+ * constants". It is not one, for the reason above, and it is deliberately absent
+ * from `__tests__/validation-limits-drift.test.ts`: there is no single server
+ * number to check it against, because the authoritative rule is per country.
  */
 export const MIN_NATIONAL_DIGITS = 6;
