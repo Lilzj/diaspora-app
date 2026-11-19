@@ -55,11 +55,29 @@ const {
   readdirSync(path: string, options: { withFileTypes: true }): DirectoryEntry[];
   existsSync(path: string): boolean;
 } = require('fs');
-const { join }: { join(...parts: string[]): string } = require('path');
+const {
+  join,
+  relative,
+}: {
+  join(...parts: string[]): string;
+  relative(from: string, to: string): string;
+} = require('path');
 
 /** `src/`, from `src/config/__tests__`. */
 const SOURCE_ROOT = join(__dirname, '..', '..');
 const CONFIG_ROOT = join(SOURCE_ROOT, 'config');
+const REPO_ROOT = join(SOURCE_ROOT, '..');
+
+/**
+ * Scanned alongside `src/config`, added 19 Nov 2026 with FSEC-009.
+ *
+ * `app.config.js` is the one file outside `src/config` whose whole purpose is
+ * reading the environment and describing build profiles, so it is exactly where
+ * a claim about `eas.json` goes stale. It earned its place immediately: the
+ * FSEC-009 change states there that no profile sets the cleartext variable, and
+ * that sentence is only worth anything because a test asserts it.
+ */
+const ALSO_SCANNED = ['app.config.js'];
 
 /** A comment line, which is the only place this rule looks. */
 const COMMENT = /^\s*(?:\/\/|\*|\/\*)/;
@@ -73,6 +91,13 @@ const COMMENT = /^\s*(?:\/\/|\*|\/\*)/;
  * exponentially, and this runs over every comment line in `src/config`.
  */
 const TEST_REFERENCE = /([\w./-]*__tests__\/[\w.-]+\.test\.tsx?)/g;
+
+function scannedFiles(): string[] {
+  return [
+    ...configFiles(CONFIG_ROOT),
+    ...ALSO_SCANNED.map((name) => join(REPO_ROOT, name)).filter((path) => existsSync(path)),
+  ];
+}
 
 function configFiles(directory: string): string[] {
   const found: string[] = [];
@@ -94,6 +119,23 @@ function configFiles(directory: string): string[] {
   return found;
 }
 
+/**
+ * A cited test path, resolved.
+ *
+ * Accepts both spellings, because the natural one depends on where the citing
+ * file lives: a module under `src/config` writes `lib/__tests__/x.test.ts`, and
+ * `app.config.js` at the repository root writes `src/config/__tests__/x.test.ts`.
+ * Demanding one of them would make the rule reject a correct citation for being
+ * written from the wrong place, which is how a guard gets switched off.
+ */
+function resolveTest(reference: string): string | null {
+  for (const base of [SOURCE_ROOT, REPO_ROOT]) {
+    const candidate = join(base, reference);
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
 interface Claimant {
   readonly file: string;
   readonly lines: number;
@@ -103,7 +145,7 @@ interface Claimant {
 function claimants(): Claimant[] {
   const found: Claimant[] = [];
 
-  for (const path of configFiles(CONFIG_ROOT)) {
+  for (const path of scannedFiles()) {
     const source = readFileSync(path, 'utf8');
     const commented = source.split('\n').filter((line) => COMMENT.test(line));
     const mentions = commented.filter((line) => line.includes('eas.json'));
@@ -116,7 +158,7 @@ function claimants(): Claimant[] {
     }
 
     found.push({
-      file: path.slice(SOURCE_ROOT.length + 1).replace(/\\/g, '/'),
+      file: relative(REPO_ROOT, path).replace(/\\/g, '/'),
       lines: mentions.length,
       tests: [...tests],
     });
@@ -136,8 +178,15 @@ describe('prose about eas.json names the test that checks it', () => {
     // The canary. A sweep that matches nothing reports a clean codebase, and
     // this one is asserting that a set is empty — so it says out loud which
     // file it did find, and fails if the scan stops seeing it.
-    expect(found.map((c) => c.file)).toContain('config/gap-preview.ts');
-    expect(found.find((c) => c.file === 'config/gap-preview.ts')?.lines).toBeGreaterThan(0);
+    const files = found.map((c) => c.file);
+
+    expect(files).toContain('src/config/gap-preview.ts');
+    expect(found.find((c) => c.file === 'src/config/gap-preview.ts')?.lines).toBeGreaterThan(0);
+
+    // And the file added to the scan on 19 Nov 2026, which describes which
+    // build profile sets what and is therefore the other place a claim about
+    // `eas.json` goes stale.
+    expect(files).toContain('app.config.js');
   });
 
   it('every test it points at exists', () => {
@@ -145,7 +194,7 @@ describe('prose about eas.json names the test that checks it', () => {
 
     for (const claimant of found) {
       for (const test of claimant.tests) {
-        if (!existsSync(join(SOURCE_ROOT, test))) {
+        if (resolveTest(test) === null) {
           missing.push(`${claimant.file} names ${test}, which does not exist`);
         }
       }
@@ -164,8 +213,8 @@ describe('prose about eas.json names the test that checks it', () => {
       .filter(
         (claimant) =>
           !claimant.tests.some((test) => {
-            const path = join(SOURCE_ROOT, test);
-            return existsSync(path) && readFileSync(path, 'utf8').includes('eas.json');
+            const path = resolveTest(test);
+            return path !== null && readFileSync(path, 'utf8').includes('eas.json');
           })
       )
       .map((claimant) => claimant.file);
@@ -180,7 +229,9 @@ describe('prose about eas.json names the test that checks it', () => {
     // chain from prose to guarantee has no decorative link in it.
     const referenced = found.flatMap((c) => c.tests);
     const asserting = referenced.filter((test) => {
-      const source = readFileSync(join(SOURCE_ROOT, test), 'utf8');
+      const path = resolveTest(test);
+      if (path === null) return false;
+      const source = readFileSync(path, 'utf8');
       return (
         source.includes('EXPO_PUBLIC_ENABLE_GAP_PREVIEW') && source.includes('build.production')
       );
