@@ -2,9 +2,13 @@
 // A real route gated on the preview flag does not ship
 //
 // `areSimulatedFeaturesEnabled()` is true under `__DEV__`, and in a release build
-// only when EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1. `eas.json` sets that on the
-// `preview` profile and **not** on `production`. Every gap flag in this codebase
-// (`areMultiCommunityGapsEnabled`, `areAnalyticsGapsEnabled`, …) is that one.
+// only when EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1. **No `eas.json` profile sets it**
+// — `preview` did until 20 Oct 2026 — which the last describe in this file
+// asserts. Every gap flag in this codebase (`areMultiCommunityGapsEnabled`,
+// `areAnalyticsGapsEnabled`, …) is that one.
+//
+// This header said `eas.json` "sets that on the `preview` profile" for four
+// weeks after the test 200 lines below stopped agreeing with it (FSEC-005).
 //
 // So a query that reads a REAL route but keeps a gap flag in its `enabled` works
 // in every development build and every preview APK anybody tests — and never runs

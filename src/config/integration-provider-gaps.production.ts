@@ -45,9 +45,17 @@
 //
 // ── What the audit found, precisely ──────────────────────────────────────────
 //
-// The application is a managed Expo project (`expo ~57.0.4`) with **no native
-// integration module of any kind installed**. Verified by inspection rather than
-// assumed:
+// **This block is the Phase 16 audit's record, and it is out of date on
+// purpose — read the "since then" note after it before relying on a line.**
+// It is kept because the entries below only make sense against the state they
+// were written for, and because a register whose history is edited in place is
+// one nobody can check. What it must not do is read as current, which it did
+// until 19 November 2026 (FSEC-005): five of the eight bullets had quietly
+// become false, under a sentence claiming they were "verified by inspection".
+//
+// As the audit found it, the application was a managed Expo project
+// (`expo ~57.0.4`) with **no native integration module of any kind installed**.
+// Verified by inspection rather than assumed:
 //
 //   * `expo-calendar` — not in `package.json`. No calendar capability exists.
 //   * `expo-notifications` — not in `package.json`. Zero occurrences of the
@@ -65,6 +73,30 @@
 // `app.json` declares three plugins — `expo-router`, `expo-status-bar`,
 // `expo-image` — and no permission strings, no associated domains and no intent
 // filters beyond the `diaspora` scheme.
+//
+// ── Since then (19 Nov 2026) ─────────────────────────────────────────────────
+//
+// The project is on `expo ~58`, and four of those bullets have closed. Each
+// entry below carries its own current state; this is the index:
+//
+//   * **`expo-secure-store` is installed and in use.** It is an `app.json`
+//     plugin and `lib/auth-storage.ts` keeps the token pair in it. The
+//     `secureStorage` entry below is the one FSEC-005 named, and its
+//     `currentBehaviour` described a world with no session persistence long
+//     after Remediation Wave A added it.
+//   * **`expo-notifications` and `expo-calendar` are installed**, both with
+//     permission strings in `app.json`, so the "three plugins and no permission
+//     strings" sentence above is a record of the past and not of this build.
+//   * **Push is live over FCM**, without `@react-native-firebase`. (This line
+//     cited the build profile that selects it until the rule in
+//     `config/__tests__/eas-json-claims.test.ts` refused the citation: nothing
+//     asserts that value, and the whole of FSEC-005 is prose describing a file
+//     no test reads. Stating the capability without describing the file is the
+//     honest half.)
+//
+// Still absent, and still correctly described above: `expo-auth-session`,
+// `expo-apple-authentication`, `@react-native-google-signin`, and any payment
+// gateway SDK.
 //
 // ── Why this is not a blocker, and where the line is ─────────────────────────
 //
@@ -260,7 +292,7 @@ export const INTEGRATION_PROVIDER_GAPS: Record<string, IntegrationProviderGap> =
     status: 'frontend-complete',
     currentBehaviour:
       '',
-    requiredDependencies: ['expo-secure-store, when session persistence is introduced'],
+    requiredDependencies: ['expo-secure-store (installed)'],
     integrationWork: [],
     permissionsIntroduced: ['None.'],
     considerations: [],

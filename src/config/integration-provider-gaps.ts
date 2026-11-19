@@ -19,9 +19,17 @@
 //
 // ── What the audit found, precisely ──────────────────────────────────────────
 //
-// The application is a managed Expo project (`expo ~57.0.4`) with **no native
-// integration module of any kind installed**. Verified by inspection rather than
-// assumed:
+// **This block is the Phase 16 audit's record, and it is out of date on
+// purpose — read the "since then" note after it before relying on a line.**
+// It is kept because the entries below only make sense against the state they
+// were written for, and because a register whose history is edited in place is
+// one nobody can check. What it must not do is read as current, which it did
+// until 19 November 2026 (FSEC-005): five of the eight bullets had quietly
+// become false, under a sentence claiming they were "verified by inspection".
+//
+// As the audit found it, the application was a managed Expo project
+// (`expo ~57.0.4`) with **no native integration module of any kind installed**.
+// Verified by inspection rather than assumed:
 //
 //   * `expo-calendar` — not in `package.json`. No calendar capability exists.
 //   * `expo-notifications` — not in `package.json`. Zero occurrences of the
@@ -39,6 +47,30 @@
 // `app.json` declares three plugins — `expo-router`, `expo-status-bar`,
 // `expo-image` — and no permission strings, no associated domains and no intent
 // filters beyond the `diaspora` scheme.
+//
+// ── Since then (19 Nov 2026) ─────────────────────────────────────────────────
+//
+// The project is on `expo ~58`, and four of those bullets have closed. Each
+// entry below carries its own current state; this is the index:
+//
+//   * **`expo-secure-store` is installed and in use.** It is an `app.json`
+//     plugin and `lib/auth-storage.ts` keeps the token pair in it. The
+//     `secureStorage` entry below is the one FSEC-005 named, and its
+//     `currentBehaviour` described a world with no session persistence long
+//     after Remediation Wave A added it.
+//   * **`expo-notifications` and `expo-calendar` are installed**, both with
+//     permission strings in `app.json`, so the "three plugins and no permission
+//     strings" sentence above is a record of the past and not of this build.
+//   * **Push is live over FCM**, without `@react-native-firebase`. (This line
+//     cited the build profile that selects it until the rule in
+//     `config/__tests__/eas-json-claims.test.ts` refused the citation: nothing
+//     asserts that value, and the whole of FSEC-005 is prose describing a file
+//     no test reads. Stating the capability without describing the file is the
+//     honest half.)
+//
+// Still absent, and still correctly described above: `expo-auth-session`,
+// `expo-apple-authentication`, `@react-native-google-signin`, and any payment
+// gateway SDK.
 //
 // ── Why this is not a blocker, and where the line is ─────────────────────────
 //
@@ -279,17 +311,17 @@ export const INTEGRATION_PROVIDER_GAPS: Record<string, IntegrationProviderGap> =
     feature: '§38 Token Security',
     status: 'frontend-complete',
     currentBehaviour:
-      'Nothing sensitive is persisted, so nothing needs encrypting today — which is a design choice rather than luck. The session token lives in the in-memory zustand store and is gone on restart; no provider token is ever held (§38 and the domain model that has no field for one); the push token goes from the OS to B13 without being stored; and the only integration data written to disk is preference-shaped — a default calendar id, a consent acknowledgement — under member-scoped keys cleared on sign-out. `expo-secure-store` becomes **required** the moment session persistence ("stay signed in") is added, and this entry exists so that change is not made without it.',
-    requiredDependencies: ['expo-secure-store, when session persistence is introduced'],
+      'Closed, and kept as the record. `expo-secure-store` is installed, is an `app.json` plugin, and `lib/auth-storage.ts` keeps the token pair in it. That module is the authority on what is stored where and under which conditions, and this field deliberately does not restate its policy: restating it is how this entry came to describe a session that "lives in the in-memory zustand store and is gone on restart" for the whole year after Remediation Wave A made that false (FSEC-005). The non-credential half is unchanged — no provider token is ever held (§38 and a domain model with no field for one), the push token goes from the OS to B13 without being stored, and the only other integration data on disk is preference-shaped under member-scoped keys cleared on sign-out.',
+    requiredDependencies: ['expo-secure-store (installed)'],
     integrationWork: [
-      'Move the session token to SecureStore at the same time as introducing persistence, not afterwards',
-      'Keychain accessibility on iOS should be `WHEN_UNLOCKED_THIS_DEVICE_ONLY`, so a token does not travel in an iCloud backup',
-      'Android: StrongBox where available',
+      'DONE: the token pair moved to SecureStore with session persistence rather than after it (Remediation Wave A)',
+      'STILL OPEN: keychain accessibility on iOS should be `WHEN_UNLOCKED_THIS_DEVICE_ONLY`, so a token does not travel in an iCloud backup. `auth-storage.ts` calls `setItemAsync(key, value)` with no options, so the default class applies and the item is backed up',
+      'STILL OPEN: Android StrongBox where available',
     ],
     permissionsIntroduced: ['None.'],
     considerations: [
       'AsyncStorage is unencrypted and readable on a rooted or jailbroken device, and its contents are included in device backups. It is fine for a default calendar id and wrong for a credential.',
-      'The current in-memory-only session is genuinely more secure than the usual alternative; the cost is that members sign in on every cold start. Whoever changes that should read this entry first.',
+      'The session was in-memory only until Remediation Wave A, which was genuinely more secure and cost members a sign-in on every cold start. That trade has been made: the pair persists, in the keystore. What is left of the entry is the two open items above — the iOS accessibility class and Android StrongBox — and they are the reason it stays in the register rather than being deleted.',
     ],
     priority: 'medium',
   },

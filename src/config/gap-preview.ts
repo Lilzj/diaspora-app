@@ -13,8 +13,12 @@
 //   1. `__DEV__` — React Native's build-time flag. True under Metro and in a
 //      debug binary. This is the everyday path and needs no configuration.
 //
-//   2. `EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1` — an **explicit, named opt-in** for
-//      internal test builds, set in `eas.json` on the `preview` profile only.
+//   2. `EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1` — an **explicit, named opt-in**.
+//      **No build profile sets it.** `preview` did until 20 October 2026, when
+//      it was removed deliberately: testers were seeing simulated balances and
+//      organisations and reporting them as bugs, so test builds now show
+//      exactly what production shows. It is set by hand, for a one-off build
+//      somebody wants to review a simulated surface in.
 //
 // ── Why (2) exists, and what it costs ────────────────────────────────────────
 //
@@ -41,10 +45,20 @@
 //     flag and no debug menu — a simulated financial capability a support
 //     engineer could switch on in production is one that will one day be
 //     switched on.
-//   * **The production profile does not set it.** `eas.json` gives `production`
-//     an explicit empty `env` block so its absence is visible rather than
-//     inferred. (`eas.json` is strict JSON and takes no comments, which is why
-//     the reasoning lives here.)
+//   * **No profile sets it, production least of all** — and that absence is
+//     held by tests rather than by the file. `lib/__tests__/gap-preview.test.ts`
+//     ("the eas.json contract") and
+//     `lib/__tests__/real-routes-ship-enabled.test.ts` both read `eas.json`
+//     and fail if any profile gains the flag.
+//
+//     This bullet used to say `production` had "an explicit empty `env` block
+//     so its absence is visible rather than inferred". That was true when it
+//     was written. The profile later gained an API base URL and a push
+//     provider, and the sentence quietly became false: a reader of `eas.json`
+//     now has to already know the flag exists in order to notice it is
+//     missing. Nothing caught it, because prose has no test — which is the
+//     whole of FSEC-005, and the reason this bullet now names the assertions
+//     instead of restating what they check.
 //   * **It is loud.** With the flag on, every gap-backed screen renders
 //     `<CommunityGapNotice>` / `<GapNotice>` exactly as it does under Metro, so
 //     no simulated figure appears unmarked; and `initMocks()` logs which
