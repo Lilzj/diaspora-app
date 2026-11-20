@@ -44,24 +44,31 @@
 //     `backend-request-binding-drift.test.ts` does.
 //   · **parameters** — 827 of 1,092 operations describe their path and query
 //     parameters, with `in`, `required` and a type. Same limitation as bodies.
-//   · **responses** — every operation lists status codes, but only **82 of the
-//     1,093 2xx responses** name a schema for the body. 1,003 carry no `content`
-//     key at all and 8 name a media type with nothing under it. **Response-shape
-//     checking against this document is therefore not worth doing**, and an
-//     attempt at it would assert almost nothing while looking thorough. Recorded
-//     here so the next reader does not try it and conclude the client is fine.
+//   · **responses** — **1,076 of the 1,093 2xx responses name a schema for the
+//     body**, and the seventeen that do not are pinned by name in the backend's
+//     `PublishedContractArchitectureTests`: eight bodiless `204`s, two media byte
+//     streams, a file download, three provider webhooks, a telemetry
+//     acknowledgement and the host's own two checkout pages. None of them answers
+//     the platform envelope. **Response-shape checking against this document is
+//     therefore possible.** It is not done here; RMD-005 is the row for it.
 //
-//     **The cause is not what this paragraph used to give.** It said the
-//     minimal-API endpoints return `IResult` without `.Produces<T>()` "so the
-//     generator has nothing to describe" — but the MVC controllers return
-//     `Task<IActionResult>`, exactly as untyped, and they *are* described.
-//     `ProducesResponseType` is written 200 times in `src/Diaspora.Api` and zero
-//     times across the backend's 29 module projects. The document describes a
-//     response body wherever somebody typed the type by hand, and nowhere else.
-//     Closing that is tracked as **RMD-003**; it was measured at 902 of 1,093 for
-//     one 22-line type. If it lands, the conclusion above is false, and
-//     `still describes too few response bodies to check shapes against` below is
-//     what will say so.
+//     **This paragraph said the opposite until 20 November 2026**, and the
+//     reversal is worth keeping rather than overwriting. It read: only 54 of 885
+//     operations attach a typed schema, the minimal-API endpoints return
+//     `IResult` without `.Produces<T>()` "so the generator has nothing to
+//     describe", and response-shape checking "is therefore not possible". That
+//     last clause followed from a cause which was a symptom. The MVC controllers
+//     return `Task<IActionResult>`, exactly as untyped, and they *were* described
+//     — because `ProducesResponseType` had been written 200 times in
+//     `src/Diaspora.Api` and zero times across the backend's 29 module projects.
+//     One 22-line type carrying `T` into endpoint metadata took the count from 82
+//     to 1,076 without editing a single endpoint (RMD-003).
+//
+//     It also corrected something worse than silence. A generator with nothing to
+//     read emits a default success response, and the default is `200` — so all
+//     **89 `Created` endpoints were documented as answering 200 when they answer
+//     201**. A route-and-verb comparison, which is what this file does, cannot
+//     see a status code, so nothing here would ever have noticed.
 //   · **security** — `components.securitySchemes` is empty. The document cannot
 //     say which routes need a bearer token.
 //
@@ -996,40 +1003,37 @@ describeAgainstContract('the contract the backend publishes', () => {
     expect(contract.schemasDeclaringRequired).toBeGreaterThanOrEqual(300);
   });
 
-  it('still describes too few response bodies to check shapes against', () => {
-    // **This test is RMD-004, and the row is worth reading before changing it.**
+  it('describes almost every response body, which it did not before', () => {
+    // **RMD-004 wrote this test and RMD-003 inverted it. Both halves matter.**
     //
     // Until 20 November 2026 the test above claimed the header's numbers were
     // "asserted rather than left as prose that ages", and asserted the request
     // body and parameter counts — the two that are incidental. The response
-    // count, the one the whole "not worth doing" conclusion rests on, was left as
+    // count, the one the whole "not possible" conclusion rested on, was left as
     // prose and was not even computed. It aged from 54 of 885 to 82 of 1,093 with
-    // nothing reporting it, inside the test written to stop exactly that.
+    // nothing reporting it, inside the test written to stop exactly that. RMD-004
+    // computed it and asserted it as a **band**, 60 to 120, reasoning that
+    // `described2xx` did not grow with the backend: a new module endpoint added to
+    // `responses2xx` and not to `described2xx`, because only a hand-written
+    // `[ProducesResponseType]` moved it.
     //
-    // So this one is a **band, not a floor**, and it fails in both directions.
-    // The counts above grow as the backend gains routes, which is what makes a
-    // floor right for them. This one does not grow with the backend: a new module
-    // endpoint adds to `responses2xx` and not to `described2xx`, because
-    // `described2xx` moves only when somebody writes a `[ProducesResponseType]` by
-    // hand or changes how endpoints declare their result.
+    // That band fired the same day, reporting `Expected: <= 120, Received: 1076`,
+    // which is RMD-003 landing. A floor would have passed in silence and left this
+    // file asserting a blind spot that had closed.
     //
-    // Below 60 — the 82 come from 13 MVC controllers' hand-written attributes, so
-    // losing a quarter of them means the attributes went, or the generator stopped
-    // reading them, and the document is quietly worse than this file says it is.
+    // **The instrument inverts with it.** Every module endpoint now describes
+    // itself, so the count grows with the backend again and a floor is right once
+    // more — but on the **gap**, not the total. 17 responses name no body today,
+    // every one of them a route that does not answer the platform envelope, and
+    // the backend pins all seventeen by name. A ceiling on the gap tolerates a new
+    // byte stream or webhook and fails loudly if `PlatformResults` ever stops
+    // carrying `T`, which would send about a thousand responses back to silence.
     //
-    // Above 120 — something has begun describing module endpoints systematically.
-    // That is RMD-003, and it was measured at 902 of 1,093 for one 22-line type,
-    // far past any plausible growth in hand-written controller annotations. If
-    // this fails upwards the fix is to rewrite this file's conclusion and give it
-    // a real response-shape check, **not** to raise the ceiling.
-    //
-    // `responses2xx` carries its own floor because the band below is an absolute
-    // count, and an absolute count says nothing about the document it came from:
-    // 82 of 90 sits inside it exactly as comfortably as 82 of 1,093, while
-    // describing a document that had fallen apart.
+    // `responses2xx` keeps its own floor: a gap of 17 says nothing on its own, and
+    // 17 of 20 would satisfy the ceiling below while describing a document that
+    // had fallen apart.
     expect(contract.responses2xx).toBeGreaterThanOrEqual(1000);
-    expect(contract.described2xx).toBeGreaterThanOrEqual(60);
-    expect(contract.described2xx).toBeLessThanOrEqual(120);
+    expect(contract.responses2xx - contract.described2xx).toBeLessThanOrEqual(25);
   });
 
   it('includes the MVC controllers the source parsers cannot see', () => {
