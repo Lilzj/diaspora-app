@@ -29,28 +29,39 @@
 //
 // ── What the document contains, measured rather than assumed ─────────────────
 //
-// At the time of writing the emitted document holds 768 paths / 885 operations
-// and 469 component schemas, and:
+// Measured 20 November 2026 against backend master `439d863`: 938 paths / 1,092
+// operations and 562 component schemas, and:
 //
 //   · **routes and methods** — complete, and that is what this file uses. It
 //     includes the Identity MVC controllers (`POST /api/v1/auth/login` is a
 //     `[HttpPost]` action, not a minimal API), which is a whole class of route
 //     the gap-register parser cannot see.
-//   · **request bodies** — 352 of 885 operations carry a `requestBody` with a
-//     `$ref` to a named schema, and 334 of the 469 schemas declare `required`.
+//   · **request bodies** — 420 of 1,092 operations carry a `requestBody` with a
+//     `$ref` to a named schema, and 377 of the 562 schemas declare `required`.
 //     Usable, but not by *this* file: a static sweep knows which route a call
 //     site targets, not what object it will send at run time. Comparing bodies
 //     needs the client actually driven, which is what
 //     `backend-request-binding-drift.test.ts` does.
-//   · **parameters** — 666 of 885 operations describe their path and query
+//   · **parameters** — 827 of 1,092 operations describe their path and query
 //     parameters, with `in`, `required` and a type. Same limitation as bodies.
-//   · **responses** — every operation lists status codes, but only **54 of 885**
-//     attach a typed JSON schema to a 2xx. The minimal-API endpoints return
-//     `IResult` without `.Produces<T>()`, so the generator has nothing to
-//     describe. **Response-shape checking against this document is therefore not
-//     possible**, and an attempt at it would assert almost nothing while looking
-//     thorough. Recorded here so the next reader does not try it and conclude the
-//     client is fine.
+//   · **responses** — every operation lists status codes, but only **82 of the
+//     1,093 2xx responses** name a schema for the body. 1,003 carry no `content`
+//     key at all and 8 name a media type with nothing under it. **Response-shape
+//     checking against this document is therefore not worth doing**, and an
+//     attempt at it would assert almost nothing while looking thorough. Recorded
+//     here so the next reader does not try it and conclude the client is fine.
+//
+//     **The cause is not what this paragraph used to give.** It said the
+//     minimal-API endpoints return `IResult` without `.Produces<T>()` "so the
+//     generator has nothing to describe" — but the MVC controllers return
+//     `Task<IActionResult>`, exactly as untyped, and they *are* described.
+//     `ProducesResponseType` is written 200 times in `src/Diaspora.Api` and zero
+//     times across the backend's 29 module projects. The document describes a
+//     response body wherever somebody typed the type by hand, and nowhere else.
+//     Closing that is tracked as **RMD-003**; it was measured at 902 of 1,093 for
+//     one 22-line type. If it lands, the conclusion above is false, and
+//     `still describes too few response bodies to check shapes against` below is
+//     what will say so.
 //   · **security** — `components.securitySchemes` is empty. The document cannot
 //     say which routes need a bearer token.
 //
@@ -153,17 +164,23 @@ function isHttpMethod(value: string): value is HttpMethod {
  * JSON and every field below is one this file actually looks at, so a reader can
  * see the whole of what is being trusted without opening another dependency.
  */
+interface PublishedResponse {
+  readonly content?: Readonly<Record<string, { readonly schema?: unknown }>>;
+}
+
 interface PublishedOperation {
   readonly requestBody?: { readonly required?: boolean };
   readonly parameters?: readonly { readonly name?: string; readonly in?: string }[];
-  readonly responses?: Readonly<Record<string, unknown>>;
+  readonly responses?: Readonly<Record<string, PublishedResponse>>;
 }
 
 interface PublishedDocument {
   readonly openapi?: string;
   readonly info?: { readonly title?: string; readonly version?: string };
   readonly paths?: Readonly<Record<string, Readonly<Record<string, PublishedOperation>>>>;
-  readonly components?: { readonly schemas?: Readonly<Record<string, unknown>> };
+  readonly components?: {
+    readonly schemas?: Readonly<Record<string, { readonly required?: readonly string[] }>>;
+  };
 }
 
 interface PublishedContract {
@@ -177,6 +194,17 @@ interface PublishedContract {
   readonly withRequestBody: number;
   /** Operations describing path/query parameters — reported by the floor test. */
   readonly withParameters: number;
+  /** Schemas declaring a non-empty `required` — reported by the floor test. */
+  readonly schemasDeclaringRequired: number;
+  /** 2xx responses across every operation. The denominator for the next one. */
+  readonly responses2xx: number;
+  /**
+   * 2xx responses naming a schema for their body.
+   *
+   * The number this file's whole conclusion rests on, which is why it is counted
+   * here rather than asserted from the header's prose. See RMD-004.
+   */
+  readonly described2xx: number;
 }
 
 /**
@@ -209,6 +237,8 @@ function readPublishedContract(path: string): PublishedContract {
   let operationCount = 0;
   let withRequestBody = 0;
   let withParameters = 0;
+  let responses2xx = 0;
+  let described2xx = 0;
 
   const paths = document.paths ?? {};
   for (const routePath of Object.keys(paths)) {
@@ -225,6 +255,17 @@ function readPublishedContract(path: string): PublishedContract {
       if (operation.parameters !== undefined && operation.parameters.length > 0) {
         withParameters += 1;
       }
+
+      // "Described" is a schema, not a `content` block. Eight responses in the
+      // document carry a media type with nothing under it, and counting those
+      // would report 90 where 82 bodies are actually named — which is the
+      // difference between a measurement and a number that looks like one.
+      for (const [status, response] of Object.entries(operation.responses ?? {})) {
+        if (!status.startsWith('2')) continue;
+        responses2xx += 1;
+        const bodies = Object.values(response.content ?? {});
+        if (bodies.some((body) => body.schema !== undefined)) described2xx += 1;
+      }
     }
 
     operations.set(key, methods);
@@ -238,6 +279,11 @@ function readPublishedContract(path: string): PublishedContract {
     schemaCount: Object.keys(document.components?.schemas ?? {}).length,
     withRequestBody,
     withParameters,
+    schemasDeclaringRequired: Object.values(document.components?.schemas ?? {}).filter(
+      (schema) => (schema.required?.length ?? 0) > 0,
+    ).length,
+    responses2xx,
+    described2xx,
   };
 }
 
@@ -811,6 +857,9 @@ function publishedContract(): PublishedContract {
       schemaCount: 0,
       withRequestBody: 0,
       withParameters: 0,
+      schemasDeclaringRequired: 0,
+      responses2xx: 0,
+      described2xx: 0,
     };
   }
   if (cachedContract === null) cachedContract = readPublishedContract(CONTRACT_PATH);
@@ -938,12 +987,49 @@ describeAgainstContract('the contract the backend publishes', () => {
 
   it('describes the shapes this file claims it does', () => {
     // The header states what the document contains and therefore what can and
-    // cannot be checked against it. Those numbers are load-bearing — the reason
-    // this file does not assert response shapes is that only 54 of 885
-    // operations describe one — so they are asserted rather than left as prose
-    // that ages.
+    // cannot be checked against it. Those numbers are load-bearing, so they are
+    // asserted rather than left as prose that ages.
+    //
+    // Floors, for the same reason as the test above: these grow with the backend.
     expect(contract.withRequestBody).toBeGreaterThanOrEqual(300);
     expect(contract.withParameters).toBeGreaterThanOrEqual(600);
+    expect(contract.schemasDeclaringRequired).toBeGreaterThanOrEqual(300);
+  });
+
+  it('still describes too few response bodies to check shapes against', () => {
+    // **This test is RMD-004, and the row is worth reading before changing it.**
+    //
+    // Until 20 November 2026 the test above claimed the header's numbers were
+    // "asserted rather than left as prose that ages", and asserted the request
+    // body and parameter counts — the two that are incidental. The response
+    // count, the one the whole "not worth doing" conclusion rests on, was left as
+    // prose and was not even computed. It aged from 54 of 885 to 82 of 1,093 with
+    // nothing reporting it, inside the test written to stop exactly that.
+    //
+    // So this one is a **band, not a floor**, and it fails in both directions.
+    // The counts above grow as the backend gains routes, which is what makes a
+    // floor right for them. This one does not grow with the backend: a new module
+    // endpoint adds to `responses2xx` and not to `described2xx`, because
+    // `described2xx` moves only when somebody writes a `[ProducesResponseType]` by
+    // hand or changes how endpoints declare their result.
+    //
+    // Below 60 — the 82 come from 13 MVC controllers' hand-written attributes, so
+    // losing a quarter of them means the attributes went, or the generator stopped
+    // reading them, and the document is quietly worse than this file says it is.
+    //
+    // Above 120 — something has begun describing module endpoints systematically.
+    // That is RMD-003, and it was measured at 902 of 1,093 for one 22-line type,
+    // far past any plausible growth in hand-written controller annotations. If
+    // this fails upwards the fix is to rewrite this file's conclusion and give it
+    // a real response-shape check, **not** to raise the ceiling.
+    //
+    // `responses2xx` carries its own floor because the band below is an absolute
+    // count, and an absolute count says nothing about the document it came from:
+    // 82 of 90 sits inside it exactly as comfortably as 82 of 1,093, while
+    // describing a document that had fallen apart.
+    expect(contract.responses2xx).toBeGreaterThanOrEqual(1000);
+    expect(contract.described2xx).toBeGreaterThanOrEqual(60);
+    expect(contract.described2xx).toBeLessThanOrEqual(120);
   });
 
   it('includes the MVC controllers the source parsers cannot see', () => {
