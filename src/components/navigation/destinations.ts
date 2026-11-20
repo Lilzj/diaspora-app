@@ -9,16 +9,28 @@
  * here, so a change to the navigation model can only be made in one place.
  */
 
+import type { ComponentProps } from 'react';
+import type { Ionicons } from '@expo/vector-icons';
+
+/**
+ * The glyphs Ionicons actually has.
+ *
+ * These were `string`, and both surfaces cast them to `any` at the `<Ionicons>`
+ * call. A misspelt glyph renders as nothing at all -- no warning, no fallback
+ * -- so it survives review and shows up as a missing icon on a device.
+ */
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 export type TabKey = 'home' | 'discover' | 'create' | 'messages' | 'knowledge' | 'profile';
 
 export interface NavDestination {
   key: TabKey;
   label: string;
   /** Icon shown when the destination is selected. */
-  icon: string;
+  icon: IoniconName;
   /** Icon shown when it is not — the shape change is what carries the state
    *  for members who cannot distinguish the active tint. */
-  iconOutline: string;
+  iconOutline: IoniconName;
   route: string;
   /** Create is the primary action, so it renders slightly larger. */
   iconSize: number;

@@ -669,7 +669,10 @@ export async function fetchProvidersNear(params: {
   radiusKm?: number;
   sort?: string;
   limit?: number;
-}): Promise<unknown[]> {
+}): Promise<ProviderSummary[]> {
+  // `toList` is generic and this call did not use it, so the result was
+  // `unknown[]` and the one screen that reads it used `any[]` to get past
+  // that. `/providers` is typed by `searchProviders` above for the same route.
   const response = await apiClient.get('/providers', { params });
-  return toList(response.data);
+  return toList<ProviderSummary>(response.data);
 }

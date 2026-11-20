@@ -11,6 +11,7 @@ import { ContactActionRow } from '@/components/ContactActionRow';
 import { HousingCard } from '@/components/HousingCard';
 import { JobCard } from '@/components/JobCard';
 import { ProviderCard } from '@/components/ProviderCard';
+import { photoUriOf } from '@/lib/platform/media-url';
 import { GuideResultCard } from '@/components/guides/GuideResultCard';
 import { ListingPhoto } from '@/components/ListingPhoto';
 import { ReportModal } from '@/components/ReportModal';
@@ -92,10 +93,18 @@ export default function HousingDetailScreen() {
   const hostRating = listing?.host?.rating ?? null;
   const [similarListings, setSimilarListings] = useState<HousingListing[]>([]);
   
-  // Nearby platform elements
-  const [nearbyJobs, setNearbyJobs] = useState<any[]>([]);
-  const [nearbyProviders, setNearbyProviders] = useState<any[]>([]);
-  const [nearbyGuides, setNearbyGuides] = useState<any[]>([]);
+  // Nearby platform elements.
+  //
+  // Typed from the three fetches that fill them rather than by hand: these
+  // were `any[]`, directly beneath a `useState<HousingListing[]>`, so a card
+  // could be handed the wrong shape and only fail on a device.
+  const [nearbyJobs, setNearbyJobs] = useState<Awaited<ReturnType<typeof fetchJobsNear>>>([]);
+  const [nearbyProviders, setNearbyProviders] = useState<
+    Awaited<ReturnType<typeof fetchProvidersNear>>
+  >([]);
+  const [nearbyGuides, setNearbyGuides] = useState<Awaited<ReturnType<typeof fetchGuidesFor>>>(
+    []
+  );
   
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -1102,18 +1111,29 @@ export default function HousingDetailScreen() {
               <View className="mb-6">
                 <Text className="text-xs font-extrabold text-content-tertiary mb-3.5">📍 Nearby Service Providers</Text>
                 {nearbyProviders.map((item) => (
+                  // `ProviderSummary`, which is what `GET /providers` actually
+                  // returns and what `(tabs)/search.tsx` already renders into
+                  // this same card.
+                  //
+                  // This block read `listingId`, `title`, `rating`,
+                  // `coverImageUrl` and `verificationStatus` -- the development
+                  // fixture's names, none of which the real response carries.
+                  // `item.rating` is undefined against a real server, so
+                  // `item.rating.average` threw rather than rendering empty.
+                  // The state was `any[]`, so nothing checked it.
                   <ProviderCard
-                    key={item.listingId}
-                    listingId={item.listingId}
-                    title={item.title}
+                    key={item.providerId}
+                    listingId={item.providerId}
+                    title={item.name}
                     category={item.category.name}
-                    areaName={item.location?.areaName}
-                    distanceKm={item.location?.distanceKm}
-                    rating={item.rating.average}
-                    reviewCount={item.rating.totalReviews}
-                    coverImageUrl={item.coverImageUrl}
-                    isVerified={item.verificationStatus === 'Verified'}
-                    isOpenNow={item.isOpenNow}
+                    areaName={item.location.areaName ?? undefined}
+                    distanceKm={item.location.distanceKm ?? undefined}
+                    rating={item.reviewSummary.average}
+                    reviewCount={item.reviewSummary.totalReviews}
+                    // The anonymous image route, from the cover's id.
+                    coverImageUrl={photoUriOf(item.coverMedia) ?? undefined}
+                    isVerified={item.isVerified}
+                    isOpenNow={item.isOpenNow ?? undefined}
                     variant="list"
                   />
                 ))}

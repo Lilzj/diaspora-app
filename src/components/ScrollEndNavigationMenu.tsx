@@ -9,7 +9,7 @@ import {
   ScrollView,
   ScrollViewProps,
 } from 'react-native';
-import type { FlatListProps } from 'react-native';
+import type { FlatListProps, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -109,7 +109,7 @@ export function ScrollEndNavigationMenu({ visible, activeTab }: ScrollEndNavigat
         return (
           <TouchableOpacity
             key={item.key}
-            onPress={() => router.replace(item.route as any)}
+            onPress={() => router.replace(item.route as never)}
             accessibilityRole="tab"
             accessibilityLabel={
               showBadge ? `${item.label}, ${totalUnread} unread` : item.label
@@ -127,7 +127,7 @@ export function ScrollEndNavigationMenu({ visible, activeTab }: ScrollEndNavigat
           >
             <View style={{ position: 'relative' }}>
               <Ionicons
-                name={iconName as any}
+                name={iconName}
                 size={item.iconSize}
                 color={isActive ? nav.activeIcon : nav.inactive}
               />
@@ -160,7 +160,7 @@ export function ScrollEndNavigationMenu({ visible, activeTab }: ScrollEndNavigat
   );
 }
 
-export const isCloseToBottom = (event: any, threshold = 60) => {
+export const isCloseToBottom = (event: NativeSyntheticEvent<NativeScrollEvent>, threshold = 60) => {
   const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
   return layoutMeasurement.height + contentOffset.y >= contentSize.height - threshold;
 };
@@ -222,7 +222,7 @@ export const ScrollEndScrollView = React.forwardRef<React.ComponentRef<typeof Sc
     const fitsWithoutScrolling =
       viewportHeight > 0 && contentHeight > 0 && contentHeight - bottomInset <= viewportHeight;
 
-    const handleScroll = (event: any) => {
+    const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const isClose = isCloseToBottom(event, 80);
       if (isClose !== showBottomNav) {
         setShowBottomNav(isClose);
@@ -336,7 +336,7 @@ export function ScrollEndFlatList<T>({
   const fitsWithoutScrolling =
     viewportHeight > 0 && contentHeight > 0 && contentHeight - bottomInset <= viewportHeight;
 
-  const handleScroll = (event: any) => {
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const isClose = isCloseToBottom(event, 80);
     if (isClose !== showBottomNav) {
       setShowBottomNav(isClose);

@@ -86,6 +86,15 @@ export function openingHoursLabel(row: {
   return 'Hours not published';
 }
 
+/**
+ * One entry of an organisation's `services`.
+ *
+ * `OrganizationWire.services` is `string[]`. This screen also renders an object
+ * form it was written against before the wire settled, and keeps doing so --
+ * the union is stated here rather than left to `any`.
+ */
+type OrgService = string | { name?: string; label?: string; description?: string };
+
 export default function OrgProfileScreen() {
   const { tokens } = useTheme();
   const { showAlert } = useNotification();
@@ -144,14 +153,14 @@ export default function OrgProfileScreen() {
   // The two fields the screen used to invent. Both read from the names the
   // route actually serves, and both default to an empty array so a payload
   // missing either renders nothing rather than taking the application down.
-  const operatingHours: any[] = Array.isArray(org?.operatingHours) ? org.operatingHours : [];
+  const operatingHours = Array.isArray(org?.operatingHours) ? org.operatingHours : [];
 
   const galleryUris: string[] = useMemo(
     () =>
       (Array.isArray(org?.media) ? org.media : [])
         .slice()
-        .sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0))
-        .map((m: any) => m?.mediaId)
+        .sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0))
+        .map((m) => m?.mediaId)
         .filter((mediaId: unknown): mediaId is string => typeof mediaId === 'string')
         // `GET /media/{mediaId}/content` serves the bytes and answers without a
         // bearer token (404 rather than 401 for an unknown id), which is what
@@ -548,7 +557,9 @@ export default function OrgProfileScreen() {
   // Events now come from `GET /community-life/events?organizationId=…`, which is
   // a real filter the route binds. Guides and services come off the profile
   // response, which carries both.
-  const [orgEvents, setOrgEvents] = useState<any[]>([]);
+  const [orgEvents, setOrgEvents] = useState<Awaited<ReturnType<typeof fetchEvents>>['items']>(
+    []
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -582,12 +593,12 @@ export default function OrgProfileScreen() {
       // collections. Empty is now *empty*, not "we could not find a mock whose
       // title contains the first word of your name".
       guides: Array.isArray(org?.guides) ? org.guides : [],
-      providers: Array.isArray(org?.services) ? org.services : [],
+      providers: (Array.isArray(org?.services) ? org.services : []) as OrgService[],
       // Community updates have no organisation link on the platform at all —
       // no route filters them by organisation and no field on this response
       // carries them. Rather than keyword-match mock content and call it this
       // organisation's, the tab shows its empty state and says so.
-      updates: [] as any[],
+      updates: [],
     }),
     [orgEvents, org?.guides, org?.services]
   );
@@ -860,12 +871,12 @@ export default function OrgProfileScreen() {
 
         {/* Tab Row Navigation */}
         <View className="bg-surface-card border-b border-faint flex-row px-4 justify-between mb-3">
-          {['About', 'Events', 'Updates', 'Guides', 'Providers', 'Gallery'].map((tabName) => {
+          {(['About', 'Events', 'Updates', 'Guides', 'Providers', 'Gallery'] as const).map((tabName) => {
             const isActive = activeTab === tabName;
             return (
               <TouchableOpacity
                 key={tabName}
-                onPress={() => setActiveTab(tabName as any)}
+                onPress={() => setActiveTab(tabName)}
                 className={`py-3.5 px-2 border-b-2 ${
                   isActive ? 'border-primary-500' : 'border-transparent'
                 }`}
@@ -955,7 +966,7 @@ export default function OrgProfileScreen() {
                   </View>
                   <View className="bg-surface-card border border-subtle rounded-2xl p-4 gap-2 shadow-sm">
                     {operatingHours.length > 0 ? (
-                      operatingHours.map((oh: any, idx: number) => (
+                      operatingHours.map((oh, idx) => (
                         <View key={oh.id ?? idx} className="flex-row justify-between py-1 border-b border-faint last:border-0">
                           <Text className="text-xs font-bold text-content-secondary">{oh.day}</Text>
                           <Text className="text-xs text-content-muted font-semibold">{openingHoursLabel(oh)}</Text>
@@ -977,7 +988,7 @@ export default function OrgProfileScreen() {
                 <View>
                   <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Leadership / Organizers</Text>
                   <View className="flex-row gap-4">
-                    {org.leaders.map((leader: any, idx: number) => (
+                    {org.leaders.map((leader, idx) => (
                       <View key={idx} className="flex-row items-center bg-surface-card border border-subtle p-3 rounded-2xl flex-1 shadow-sm">
                         <View className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center mr-3 overflow-hidden">
                           <Ionicons name="person" size={16} color="#6B7280" />
@@ -1090,23 +1101,28 @@ export default function OrgProfileScreen() {
               {associatedData.events.length > 0 ? (
                 associatedData.events.map((evt) => (
                   <TouchableOpacity
-                    key={evt.eventId}
-                    onPress={() => router.push(`/community-life/event/${evt.eventId}`)}
+                    key={evt.id}
+                    onPress={() => router.push(`/community-life/event/${evt.id}`)}
                     className="bg-surface-card border border-subtle rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
                   >
                     <View className="flex-1 mr-2">
-                      {/* Four more fields the route does not serve. It sends
-                        * `eventId`, `categoryKey`, `startsAt` and a `location`
-                        * whose readable form is `displayName` — the card read
-                        * `id`, `category`, `date` and `location.areaName`, so
-                        * the category and date rendered blank and the row
-                        * navigated to `/community-life/event/undefined`. */}
-                      <Text className="text-[9px] font-black text-primary-500 uppercase">{evt.categoryKey}</Text>
+                      {/* `fetchEvents` maps every row through `toEvent`, so these
+                        * are client `Event`s: `id`, `category`, `date`,
+                        * `location.areaName`.
+                        *
+                        * This card read the wire's `eventId`, `categoryKey`,
+                        * `startsAt` and `location.displayName` instead — the same
+                        * bug `community-life-api.ts` records fixing at the other
+                        * end, fixed here in the opposite direction. The two could
+                        * not meet while `orgEvents` was `any[]`: the category and
+                        * date rendered blank and every row opened
+                        * `/community-life/event/undefined`. */}
+                      <Text className="text-[9px] font-black text-primary-500 uppercase">{evt.category}</Text>
                       <Text className="text-sm font-black text-content-primary mt-0.5">{evt.title}</Text>
                       <Text className="text-xs text-content-muted font-bold mt-1">
-                        🗓 {eventWhen(evt.startsAt)}
-                        {evt.venueName || evt.location?.displayName
-                          ? ` · ${evt.venueName ?? evt.location?.displayName}`
+                        🗓 {eventWhen(evt.date)}
+                        {evt.venueName || evt.location?.areaName
+                          ? ` · ${evt.venueName ?? evt.location?.areaName}`
                           : ''}
                       </Text>
                     </View>
@@ -1149,7 +1165,7 @@ export default function OrgProfileScreen() {
                 * renders what the reference has and links to the guide, where
                 * the real author is served. */}
               {associatedData.guides.length > 0 ? (
-                associatedData.guides.map((item: any) => (
+                associatedData.guides.map((item) => (
                   <TouchableOpacity
                     key={item.guideId}
                     onPress={() => router.push(`/guide/${item.guideId}` as never)}
@@ -1185,7 +1201,7 @@ export default function OrgProfileScreen() {
                   <Text className="text-[10px] font-bold text-content-muted uppercase mb-3.5">
                     What this organisation offers:
                   </Text>
-                  {associatedData.providers.map((service: any, idx: number) => (
+                  {associatedData.providers.map((service, idx) => (
                     <View
                       key={idx}
                       className="bg-surface-card border border-subtle rounded-2xl p-4 mb-2"

@@ -39,6 +39,7 @@ import type {
   SalaryPeriod,
   WorkplaceType,
 } from '@/types/jobs-hiring';
+import type { JobOpportunity } from '@/types/job';
 
 interface Envelope<T> {
   data: T;
@@ -486,7 +487,10 @@ export async function fetchJobsNear(params: {
   latitude?: number | null;
   longitude?: number | null;
   limit?: number;
-}): Promise<unknown[]> {
+}): Promise<JobOpportunity[]> {
+  // `toList` is generic and this call did not use it, so the result was
+  // `unknown[]` and the one screen that reads it used `any[]` to get past
+  // that. `/jobs` is typed in `maps-api.ts` for the same route.
   const response = await apiClient.get('/jobs', { params });
-  return toList(response.data);
+  return toList<JobOpportunity>(response.data);
 }

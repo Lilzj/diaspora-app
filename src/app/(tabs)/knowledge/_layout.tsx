@@ -136,17 +136,17 @@ export default function KnowledgeLayout() {
           </TouchableOpacity>
 
           {/* Sort selection Chips */}
-          {[
+          {([
             { label: '🔥 Trending', value: 'trending' },
             { label: '🕒 Newest', value: 'newest' },
             { label: '👍 Most Helpful', value: 'helpful' },
             { label: '🔄 Updated', value: 'updated' },
-          ].map((opt) => {
+          ] as const).map((opt) => {
             const isSelected = sortBy === opt.value;
             return (
               <TouchableOpacity
                 key={opt.value}
-                onPress={() => setSortBy(opt.value as any)}
+                onPress={() => setSortBy(opt.value)}
                 className={`px-3 py-1.5 rounded-full border mr-2 ${
                   isSelected ? 'bg-surface-inverse border-line' : 'bg-surface-background border-subtle'
                 }`}
@@ -199,7 +199,7 @@ export default function KnowledgeLayout() {
           return (
             <TouchableOpacity
               key={tab.name}
-              onPress={() => router.push(tab.path as any)}
+              onPress={() => router.push(tab.path as never)}
               className={`flex-1 items-center justify-center py-3 border-b-2 ${
                 isActive ? 'border-primary-500' : 'border-transparent'
               }`}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Share, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Share, Alert, Platform, type GestureResponderEvent } from 'react-native';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { HousingListing } from '@/types/housing';
@@ -28,7 +28,7 @@ export function HousingCard({ listing: given, variant = 'list' }: HousingCardPro
     router.push(`/housing/${id}`);
   };
 
-  const handleSaveToggle = (e: any) => {
+  const handleSaveToggle = (e: GestureResponderEvent) => {
     e.stopPropagation();
     if (saved) {
       unsave(id);
@@ -37,7 +37,7 @@ export function HousingCard({ listing: given, variant = 'list' }: HousingCardPro
     }
   };
 
-  const handleShare = (e: any) => {
+  const handleShare = (e: GestureResponderEvent) => {
     e.stopPropagation();
     Share.share({
       message: `Check out this housing option on Diaspora: "${title}" in ${placeLabel}! Rent: ${rentText()}.`,

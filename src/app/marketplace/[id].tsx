@@ -227,7 +227,7 @@ export default function ListingDetailScreen() {
         });
         setNearbyAlternatives(alts);
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching marketplace details', err);
         // 404 is the platform saying the item is gone; anything else answered
         // nothing, and the screen says so rather than claiming it was sold.
@@ -535,7 +535,7 @@ export default function ListingDetailScreen() {
           {/* Dots Indicator */}
           {gallery.length > 1 && (
             <View className="absolute bottom-4 left-0 right-0 flex-row justify-center gap-1.5">
-              {gallery.map((_: any, idx: number) => (
+              {gallery.map((_, idx) => (
                 <View
                   key={idx}
                   className={`h-1.5 rounded-full ${
@@ -828,17 +828,17 @@ export default function ListingDetailScreen() {
 
           {/* Ecosystem Segment Tabs */}
           <View className="flex-row bg-surface-muted p-1 rounded-2xl mb-4 border border-subtle">
-            {[
+            {([
               { key: 'Updates', label: '📢 Updates', count: nearbyUpdates.length },
               { key: 'Jobs', label: '💼 Jobs', count: nearbyJobs.length },
               { key: 'Housing', label: '🏠 Housing', count: nearbyHousing.length },
-              { key: 'Services', label: '📍 Services', count: nearbyProviders.length }
-            ].map((tab) => {
+              { key: 'Services', label: '📍 Services', count: nearbyProviders.length },
+            ] as const).map((tab) => {
               const isActive = activeEcosystemTab === tab.key;
               return (
                 <TouchableOpacity
                   key={tab.key}
-                  onPress={() => setActiveEcosystemTab(tab.key as any)}
+                  onPress={() => setActiveEcosystemTab(tab.key)}
                   className={`flex-1 py-2.5 rounded-xl items-center justify-center ${
                     isActive ? 'bg-surface-card shadow-sm' : 'bg-transparent'
                   }`}

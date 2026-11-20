@@ -40,7 +40,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useState } from 'react';
-import { ScrollView, View, type ScrollViewProps, type ViewStyle } from 'react-native';
+import { ScrollView, View, type LayoutChangeEvent, type ScrollViewProps, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NAV_BAR_HEIGHT } from '@/components/navigation/destinations';
 
@@ -139,7 +139,7 @@ export function useFloatingFooter(chrome: BottomChrome = 'none') {
 export interface FloatingFooterProps {
   children: React.ReactNode;
   chrome?: BottomChrome;
-  onLayout?: (event: any) => void;
+  onLayout?: (event: LayoutChangeEvent) => void;
   /** Extra lift above the chrome. Defaults to the standard gutter. */
   gutter?: number;
   style?: ViewStyle;

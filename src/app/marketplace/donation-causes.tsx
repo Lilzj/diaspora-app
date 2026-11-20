@@ -122,7 +122,7 @@ export default function DonationCausesScreen() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [postCauseVisible, setPostCauseVisible] = useState(false);
-  const [selectedCause, setSelectedCause] = useState<any>(null);
+  const [selectedCause, setSelectedCause] = useState<CauseView | null>(null);
 
   // The "Post a Cause" draft state is gone with the form it fed. It held a
   // title, a description, a phone number and a support type, none of which any
@@ -526,10 +526,11 @@ export default function DonationCausesScreen() {
                     <Text className="text-xs text-content-muted font-semibold">⚡ Urgency Level</Text>
                     <Text className="text-xs text-content-strong font-bold">{selectedCause.urgency}</Text>
                   </View>
-                  <View className="flex-row justify-between">
-                    <Text className="text-xs text-content-muted font-semibold">📅 Posted</Text>
-                    <Text className="text-xs text-content-strong font-bold">{selectedCause.postedAt}</Text>
-                  </View>
+                  {/* A "📅 Posted" row stood here. `DonationCauseResponse` has
+                    * no posted or created date -- it was a `MOCK_CAUSES` field
+                    * that the real route does not carry -- so the row rendered
+                    * its label beside an empty value. `useState<any>` is what
+                    * let it survive the swap. */}
                 </View>
               </View>
 

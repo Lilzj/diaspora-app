@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { View, Text, TouchableOpacity, Modal, FlatList, Share, ScrollView, TouchableWithoutFeedback, KeyboardAvoidingView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, Share, ScrollView, TouchableWithoutFeedback, KeyboardAvoidingView, ActivityIndicator, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -182,7 +182,7 @@ export default function GuideReaderScreen() {
     if (guide) recordView(guide.guideId, { isUniqueView: true });
   }, [guide, recordView]);
 
-  const handleScroll = (event: any) => {
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset } = event.nativeEvent;
     const { contentTop, top, height } = bodyFrame.current;
     if (height <= 0) return;
@@ -493,10 +493,10 @@ export default function GuideReaderScreen() {
         }`}>
           <View className="flex-row items-center gap-1">
             <Text className="text-xs font-bold text-content-muted mr-2">Fonts:</Text>
-            {['S', 'M', 'L', 'XL'].map((sz) => (
+            {(['S', 'M', 'L', 'XL'] as const).map((sz) => (
               <TouchableOpacity
                 key={sz}
-                onPress={() => setTextSize(sz as any)}
+                onPress={() => setTextSize(sz)}
                 className={`w-7 h-7 rounded items-center justify-center ${textSize === sz ? 'bg-surface-card shadow border border-subtle' : ''}`}
               >
                 <Text className="text-[10px] font-bold text-content-secondary">{sz}</Text>

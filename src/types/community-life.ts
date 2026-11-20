@@ -424,12 +424,18 @@ export interface OrganizationWire {
     photoMediaId?: string | null;
     order?: number;
   }>;
+  /**
+   * The same rows `OperatingHourWire` describes in
+   * `lib/api/community-life-api.ts`, which documents `day` and `isClosed`
+   * as always present. They were optional only here, and the organisation
+   * screen's `any[]` is what kept the two declarations from meeting.
+   */
   operatingHours?: Array<{
     id?: string;
-    day?: string;
+    day: string;
     opensAt?: string | null;
     closesAt?: string | null;
-    isClosed?: boolean;
+    isClosed: boolean;
     note?: string | null;
   }>;
   media?: Array<{ mediaId?: string; role?: string; order?: number; caption?: string | null }>;
@@ -579,7 +585,13 @@ export interface EventFormState {
    */
   summary: string;
   description: string;
-  coverImage: string;
+  /**
+   * Null when the member clears the picker, which is what
+   * `ImagePickerInput.onChangeImage` hands back. This was `string`, and the
+   * generic `updateField` is what made the difference visible; every reader
+   * already tests it for truth before using it.
+   */
+  coverImage: string | null;
   gallery: string[];
   date: string;
   time: string;
@@ -664,8 +676,14 @@ export interface OrgFormState {
   summary: string;
   description: string;
   mission: string;
-  logo: string;
-  coverImage: string;
+  /**
+   * Null when the member clears the picker, which is what
+   * `ImagePickerInput.onChangeImage` hands back. This was `string`, and the
+   * generic `updateField` is what made the difference visible; every reader
+   * already tests it for truth before using it.
+   */
+  logo: string | null;
+  coverImage: string | null;
   services: string[];
   cityName: string;
   areaName: string;

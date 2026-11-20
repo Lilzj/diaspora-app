@@ -142,7 +142,7 @@ export function ContextCard({ context }: Props) {
           {/* Deep link */}
           {context.deepLink && (
             <TouchableOpacity
-              onPress={() => router.push(context.deepLink as any)}
+              onPress={() => router.push(context.deepLink as never)}
               className="mx-3 mb-3 flex-row items-center"
             >
               <Text className="text-[11px] font-bold text-success-default">View Original Listing →</Text>

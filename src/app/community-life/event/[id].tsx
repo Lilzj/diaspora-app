@@ -165,7 +165,7 @@ export default function EventDetailScreen() {
         // gave `undefined` every time, so the screen never showed a member the
         // answer they had already given.
         setRsvpStatus(data.rsvpStatus);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching event details', err);
 
         // **A request that never arrived is not a missing event.** No answer at
@@ -588,7 +588,7 @@ export default function EventDetailScreen() {
           {/* Dots Indicator */}
           {gallery.length > 1 && (
             <View className="absolute bottom-4 left-0 right-0 flex-row justify-center gap-1.5">
-              {gallery.map((_: any, idx: number) => (
+              {gallery.map((_, idx) => (
                 <View
                   key={idx}
                   className={`h-1.5 rounded-full ${
@@ -903,8 +903,8 @@ export default function EventDetailScreen() {
               // "Maybe" was a third button that could never be stored — the
               // server's `RsvpStatus` has no such member, so tapping it recorded
               // nothing while looking exactly like the other two.
-              { status: 'Going' as const, label: 'Going', icon: 'checkmark-circle' },
-              { status: 'Interested' as const, label: 'Interested', icon: 'star' }
+              { status: 'Going' as const, label: 'Going', icon: 'checkmark-circle' as const },
+              { status: 'Interested' as const, label: 'Interested', icon: 'star' as const }
             ].map((option) => {
               const isSelected = rsvpStatus === option.status;
               return (
@@ -917,7 +917,7 @@ export default function EventDetailScreen() {
                   activeOpacity={0.8}
                 >
                   <Ionicons
-                    name={option.icon as any}
+                    name={option.icon}
                     size={14}
                     color={isSelected ? '#FFFFFF' : tokens.color.text.secondary}
                     className="mr-1.5"
@@ -990,7 +990,7 @@ export default function EventDetailScreen() {
             <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Event Agenda</Text>
             
             <View className="border-l-2 border-subtle pl-4 ml-2 gap-4">
-              {event.agenda.map((item: any, idx: number) => (
+              {event.agenda.map((item, idx) => (
                 <View key={item.id || idx} className="relative">
                   <View className="absolute -left-[23px] top-1.5 w-3 h-3 rounded-full bg-primary-500 border-2 border-white" />
                   <Text className="text-[10px] font-black text-primary-500">{item.time}</Text>

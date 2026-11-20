@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Animated, Pressable, TouchableOpacity, Share } from 'react-native';
+import { View, Text, Animated, Pressable, TouchableOpacity, Share, type GestureResponderEvent } from 'react-native';
 import { router } from 'expo-router';
 import type { GuideSummary } from '@/types/guide';
 import type { AuthorSummary } from '@/types/social';
@@ -37,7 +37,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
     }).start();
   };
 
-  const handleBookmarkToggle = (e: any) => {
+  const handleBookmarkToggle = (e: GestureResponderEvent) => {
     e.stopPropagation();
     if (bookmarked) {
       unsave(guide.guideId);
@@ -46,7 +46,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
     }
   };
 
-  const handleShare = (e: any) => {
+  const handleShare = (e: GestureResponderEvent) => {
     e.stopPropagation();
     Share.share({
       message: `Check out this helpful guide on Diaspora: "${guide.title}" by ${author.name}`,

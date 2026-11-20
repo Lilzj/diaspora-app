@@ -32,6 +32,16 @@ interface ElementLayout {
   pageY: number;
 }
 
+/**
+ * Something that can take accessibility focus back when a tour ends.
+ *
+ * Held as `any` before, which said nothing about what the store does with it:
+ * it calls `focus()` and nothing else.
+ */
+interface FocusableElement {
+  focus?: () => void;
+}
+
 interface ExploreState {
   // Long-lived (Persisted) State
   completedTutorials: string[];
@@ -51,7 +61,8 @@ interface ExploreState {
   registeredElements: Record<string, ElementLayout>;
   unlockedFeatures: string[];
   hasLoadedPersistedState: boolean;
-  tourInitiatorElementRef: any | null; // For accessibility focus return
+  /** Where focus goes when a tour ends. See `FocusableElement`. */
+  tourInitiatorElementRef: FocusableElement | null;
 
   // Actions - Persistence
   loadPersistedState: () => Promise<void>;
@@ -61,7 +72,7 @@ interface ExploreState {
   registerElementLayout: (key: string, layout: ElementLayout | null) => void;
 
   // Actions - Guided Tour
-  startTour: (tourId: TourId, initiatorRef?: any) => void;
+  startTour: (tourId: TourId, initiatorRef?: FocusableElement | null) => void;
   nextStep: () => void;
   prevStep: () => void;
   pauseTour: () => void;
@@ -73,7 +84,7 @@ interface ExploreState {
    * started. Separate from `skipTour` on purpose — see its implementation.
    */
   completeOnboarding: () => void;
-  replayTour: (tourId: TourId, initiatorRef?: any) => void;
+  replayTour: (tourId: TourId, initiatorRef?: FocusableElement | null) => void;
 
   // Actions - Tutorials & Bookmarks
   toggleSaveTutorial: (tutorialId: string) => Promise<void>;
