@@ -4,7 +4,7 @@
 // It must never throw: a crash here happens before any screen exists to show an
 // error, so a link the rewrite cannot read goes through unchanged.
 
-import { rewriteAppLink } from '@/lib/app-links';
+import { rewriteAppLink } from '@/lib/platform/app-links';
 
 export function redirectSystemPath({ path }: { path: string; initial: boolean }): string {
   try {

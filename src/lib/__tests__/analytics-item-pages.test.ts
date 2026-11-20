@@ -8,7 +8,7 @@
 // "nothing to report on here" would be a fix that moved the dead end.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { isCertifiedContentSubject } from '@/lib/analytics-api';
+import { isCertifiedContentSubject } from '@/lib/api/analytics-api';
 import { ITEM_PAGE_SEGMENT_VALUES, itemAnalyticsRoute } from '@/lib/analytics/item-pages';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };

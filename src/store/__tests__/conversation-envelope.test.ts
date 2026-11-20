@@ -27,10 +27,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { selectTotalUnread, useConversationStore } from '../conversation';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import type { Conversation } from '@/types/conversation';
 
-jest.mock('@/lib/apiClient', () => ({
+jest.mock('@/lib/transport/apiClient', () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 

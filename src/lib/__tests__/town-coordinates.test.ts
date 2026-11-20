@@ -11,9 +11,9 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
-import { createEventSeries } from '../community-programme-api';
-import { coordinatesOf, ownPinOrTown } from '../place-coordinates';
+import { apiClient } from '../transport/apiClient';
+import { createEventSeries } from '../api/community-programme-api';
+import { coordinatesOf, ownPinOrTown } from '../platform/place-coordinates';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };

@@ -42,7 +42,7 @@
 // source.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import type { CreatorTimelineEvent, ContentType, TimelineEventType } from '@/types/creator';
 
 /**

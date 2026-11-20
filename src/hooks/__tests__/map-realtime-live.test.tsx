@@ -12,7 +12,7 @@ import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import type { ResourceChangedPayload } from '@/lib/realtime';
+import type { ResourceChangedPayload } from '@/lib/transport/realtime';
 
 type FrameHandler = (change: ResourceChangedPayload) => void;
 
@@ -47,7 +47,7 @@ const mockFakeClient = {
 
 let mockClientPresent = true;
 
-jest.mock('@/lib/realtime', () => ({
+jest.mock('@/lib/transport/realtime', () => ({
   getRealtimeClient: () => mockFakeClient,
 }));
 

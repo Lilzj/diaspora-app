@@ -5,9 +5,9 @@ import { useSavedStore } from '@/store/saved';
 import type { JobOpportunity } from '@/types/job';
 import type { JobSalaryResponse, JobType } from '@/types/jobs-hiring';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
-import { placeOf } from '@/lib/listing-place';
-import { JOB_TYPE_LABELS, describeSalary, describeSchedule, lastOpenDay, placesLeftLabel } from '@/lib/job-detail-api';
-import { currencySymbol as symbolFor } from '@/lib/money';
+import { placeOf } from '@/lib/platform/listing-place';
+import { JOB_TYPE_LABELS, describeSalary, describeSchedule, lastOpenDay, placesLeftLabel } from '@/lib/api/job-detail-api';
+import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 interface JobCardProps {
   job: JobOpportunity;

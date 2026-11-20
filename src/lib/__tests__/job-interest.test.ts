@@ -2,17 +2,17 @@
  * "I'm interested" on a simple job (owner's request, 4 Nov 2026): it records
  * the interest on the job and messages the poster, with no CV or profile.
  */
-import { expressInterest, interestMessage } from '@/lib/job-interest';
+import { expressInterest, interestMessage } from '@/lib/domain/job-interest';
 import type { JobResponse } from '@/types/jobs-hiring';
 
 const mockApply = jest.fn();
 const mockOpenWithMessage = jest.fn();
 
-jest.mock('@/lib/jobs-hiring-api', () => ({
-  ...jest.requireActual('@/lib/jobs-hiring-api'),
+jest.mock('@/lib/api/jobs-hiring-api', () => ({
+  ...jest.requireActual('@/lib/api/jobs-hiring-api'),
   applyToJob: (...args: unknown[]) => mockApply(...args),
 }));
-jest.mock('@/lib/conversation-hub', () => ({
+jest.mock('@/lib/transport/conversation-hub', () => ({
   ConversationHub: { openWithMessage: (...args: unknown[]) => mockOpenWithMessage(...args) },
 }));
 

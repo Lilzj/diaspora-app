@@ -10,7 +10,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   jobEditFormFrom,
   jobEditMissing,
@@ -18,7 +18,7 @@ import {
   toUpdateJobRequest,
   updateJob,
   type UpdateJobRequest,
-} from '../job-detail-api';
+} from '../api/job-detail-api';
 import type { JobResponse } from '@/types/jobs-hiring';
 
 const JOB_ID = '7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f';

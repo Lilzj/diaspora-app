@@ -43,7 +43,7 @@
 // property that made completeness the choice.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import type {
   HealthRecommendation,
   HealthStatusLevel,

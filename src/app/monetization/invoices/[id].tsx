@@ -36,10 +36,10 @@ import { MonetizationEmpty } from '@/components/monetization';
 import { useInvoice } from '@/hooks/monetization';
 import { usePricing } from '@/providers/pricing-provider';
 import { useNotification } from '@/providers/notification-provider';
-import { fetchInvoiceDocument } from '@/lib/financial-api';
-import { shareHtmlAsPdf } from '@/lib/receipt-document';
-import { isZero } from '@/lib/money';
-import { describeInvoiceKind, presentInvoiceStatus } from '@/lib/financial-status';
+import { fetchInvoiceDocument } from '@/lib/api/financial-api';
+import { shareHtmlAsPdf } from '@/lib/platform/receipt-document';
+import { isZero } from '@/lib/domain/money';
+import { describeInvoiceKind, presentInvoiceStatus } from '@/lib/domain/financial-status';
 
 export default function InvoiceScreen() {
   const { tokens } = useTheme();

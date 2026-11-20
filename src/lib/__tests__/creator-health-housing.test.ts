@@ -14,7 +14,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { fetchWorkspaceContent } from '../creator/workspace';
 import { assess, type HealthRubric } from '../creator/health';
 import { editorRouteFor } from '../creator/editor-route';

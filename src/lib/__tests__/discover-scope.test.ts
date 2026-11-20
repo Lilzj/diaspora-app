@@ -15,7 +15,7 @@ import {
   providerScopeParams,
   resolveDiscoverScope,
   tabSearchesByDistance,
-} from '../discover-scope';
+} from '../domain/discover-scope';
 
 const MAURITIUS: PlatformLocation = {
   countryCode: 'MU',

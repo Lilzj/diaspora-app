@@ -17,7 +17,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 
 import { EmptyState, InlineRefusal } from '@/components/community';
 import { useTheme } from '@/design-system';
-import type { FinancialFailureKind } from '@/lib/financial-errors';
+import type { FinancialFailureKind } from '@/lib/transport/financial-errors';
 
 // ─────────────────────────────────────────────────────────────────────────────
 

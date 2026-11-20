@@ -6,7 +6,7 @@
  * the app's routes, but rows it stored before keep the old ones, so every place
  * that follows a served route rewrites them first.
  */
-import { appRouteFor } from '@/lib/server-route';
+import { appRouteFor } from '@/lib/platform/server-route';
 
 declare const process: { cwd(): string };
 const fs: { readFileSync(path: string, encoding: string): string } = require('fs');

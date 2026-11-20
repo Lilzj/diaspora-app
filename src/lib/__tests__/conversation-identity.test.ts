@@ -15,7 +15,7 @@ import {
   isOwnMessage,
   sameUser,
   withAuthors,
-} from '@/lib/conversation-identity';
+} from '@/lib/domain/conversation-identity';
 import type { ConversationParticipant, Message } from '@/types/conversation';
 
 const AISHA = '01a0576f-2c1d-7f00-8000-0000000000a1';

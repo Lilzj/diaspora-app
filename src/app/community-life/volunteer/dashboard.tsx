@@ -32,7 +32,7 @@ import {
   useMyVolunteerApplications,
   useVolunteerHours,
 } from '@/hooks/community-life';
-import { describeVolunteerApplication, describeVolunteerAssignment } from '@/lib/community-state';
+import { describeVolunteerApplication, describeVolunteerAssignment } from '@/lib/domain/community-state';
 
 type Tab = 'applications' | 'assignments' | 'impact';
 

@@ -30,7 +30,7 @@ import {
   formatCount,
   type StatusPresentation,
   type StatusTone,
-} from '@/lib/creator-economy';
+} from '@/lib/domain/creator-economy';
 import type { CreatorMetric, CreatorProgress, CreatorRequirement } from '@/types/creator-economy';
 
 // ─────────────────────────────────────────────────────────────────────────────

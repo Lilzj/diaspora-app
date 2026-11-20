@@ -32,7 +32,7 @@ import {
 } from '@/components/community';
 import { AmountDisplay } from '@/components/financial';
 import { useCommunityImpact, useGivingHistory } from '@/hooks/community-life';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { AnalyticsPeriod } from '@/types/community-advanced';
 import type { Money } from '@/types/financial';
 

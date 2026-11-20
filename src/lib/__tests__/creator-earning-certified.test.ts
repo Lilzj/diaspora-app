@@ -42,10 +42,10 @@
 //   none rather than offering a link the server will refuse.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { fetchEarnings, fetchRevenueSummary } from '../creator-earning-api';
-import { apiClient } from '../apiClient';
+import { fetchEarnings, fetchRevenueSummary } from '../api/creator-earning-api';
+import { apiClient } from '../transport/apiClient';
 
-jest.mock('../apiClient', () => ({
+jest.mock('../transport/apiClient', () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
 }));
 

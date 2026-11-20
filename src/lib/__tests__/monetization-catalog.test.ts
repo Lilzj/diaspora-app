@@ -23,8 +23,8 @@ import {
   promotionBucket,
   toPromotion,
   toPromotions,
-} from '../monetization-catalog';
-import { fromMinorUnits } from '../money';
+} from '../domain/monetization-catalog';
+import { fromMinorUnits } from '../domain/money';
 import { targetForKey, targetForSubjectType } from '@/types/monetization';
 import type { MonetizationProduct, MonetizationPurchase, Placement } from '@/types/financial';
 

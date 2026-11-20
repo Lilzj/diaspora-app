@@ -22,7 +22,7 @@ import {
   followNotificationRoute,
   isFinancialNotification,
   isMultiCommunityNotification,
-} from '@/lib/notification-routes';
+} from '@/lib/platform/notification-routes';
 import { invalidateAfterMoneyMoved } from '@/hooks/financial';
 
 // Frontend Phase 13 — Multi-Community Expansion (§26, §48, GAP-013).

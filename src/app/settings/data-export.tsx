@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { exportMyData, type PersonalDataExport } from '@/lib/privacy-api';
+import { exportMyData, type PersonalDataExport } from '@/lib/api/privacy-api';
 
 /**
  * Download My Data.

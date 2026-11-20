@@ -45,7 +45,7 @@ import {
   canChangeRole,
   canRemoveMember,
   describeRole,
-} from '@/lib/organization-permissions';
+} from '@/lib/domain/organization-permissions';
 import type {
   OrganizationCapabilities,
   OrganizationMember,

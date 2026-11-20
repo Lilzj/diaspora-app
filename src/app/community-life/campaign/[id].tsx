@@ -53,10 +53,10 @@ import {
   useCommunityAccess,
   useMyCampaignDonations,
 } from '@/hooks/community-life';
-import { presentGivingStatus } from '@/lib/financial-status';
-import { describeCampaign , isOrganiserOnlyCampaignState} from '@/lib/community-state';
+import { presentGivingStatus } from '@/lib/domain/financial-status';
+import { describeCampaign , isOrganiserOnlyCampaignState} from '@/lib/domain/community-state';
 import { CommunityCover } from '@/components/community';
-import { bucketProgress, moneyProps, trackCommunityEvent } from '@/lib/community-analytics';
+import { bucketProgress, moneyProps, trackCommunityEvent } from '@/lib/platform/community-analytics';
 
 type Tab = 'story' | 'updates' | 'supporters' | 'transparency';
 

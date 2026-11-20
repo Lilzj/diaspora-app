@@ -20,8 +20,8 @@ import {
   CreatorScreen,
 } from '@/components/creator-economy';
 import { useCreatorAccess, useCreatorChallenges } from '@/hooks/creator-economy';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import type { CreatorChallenge } from '@/types/creator-economy';
 
 type Group = 'active' | 'open' | 'finished';

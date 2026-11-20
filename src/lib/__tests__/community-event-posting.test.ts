@@ -10,13 +10,13 @@ import {
   isEventCommunityForbidden,
   postableCommunities,
 } from '../community/event-posting';
-import { fetchEvents, toEventBrowseQuery } from '../community-life-api';
-import { toEvent } from '../event-wire';
-import { apiClient } from '../apiClient';
+import { fetchEvents, toEventBrowseQuery } from '../api/community-life-api';
+import { toEvent } from '../api/event-wire';
+import { apiClient } from '../transport/apiClient';
 import type { CommunityMembership } from '@/types/community-directory';
 import { noCommunityCapabilities } from '@/types/community-directory';
 
-jest.mock('../apiClient', () => ({
+jest.mock('../transport/apiClient', () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 

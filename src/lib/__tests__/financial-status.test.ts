@@ -29,7 +29,7 @@ import {
   presentSubscriptionStatus,
   presentTransactionStatus,
   presentWalletStatus,
-} from '../financial-status';
+} from '../domain/financial-status';
 import { PAYMENT_STATUSES, TRANSACTION_STATUSES } from '@/types/financial';
 
 describe('every declared status is mapped', () => {

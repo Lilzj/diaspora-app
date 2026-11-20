@@ -15,7 +15,7 @@
 // different zones and disagreed with each other near midnight.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { partsInZone } from '../event-wire';
+import { partsInZone } from '../api/event-wire';
 
 describe('the parts of an instant in a named zone', () => {
   it('shows a Mauritius evening as an evening', () => {
@@ -86,7 +86,7 @@ describe('the mapper uses it', () => {
   const path = require('path') as { join(...s: string[]): string };
 
   const api = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'lib', 'community-programme-api.ts'), 'utf8')
+    .readFileSync(path.join(process.cwd(), 'src', 'lib', 'api', 'community-programme-api.ts'), 'utf8')
     .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
     .replace(new RegExp('//[^\\n]*', 'g'), ' ');
 

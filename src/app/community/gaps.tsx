@@ -26,7 +26,7 @@ import { useMultiCommunityGaps } from '@/hooks/communities';
 import { trackCommunityEvent } from '@/lib/community/analytics';
 import { CommunityUnavailablePanel } from '@/components/community-directory';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 const PRIORITY_ORDER: Record<CommunityGapPriority, number> = {
   critical: 0,

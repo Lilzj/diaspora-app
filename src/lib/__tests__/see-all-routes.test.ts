@@ -1,4 +1,4 @@
-import { SEE_ALL_BY_KEY, seeAllDestination } from '../see-all-routes';
+import { SEE_ALL_BY_KEY, seeAllDestination } from '../platform/see-all-routes';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const fs = require('fs') as { existsSync(path: string): boolean };

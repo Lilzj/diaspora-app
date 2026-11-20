@@ -26,7 +26,7 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { HousingCard } from '@/components/HousingCard';
 import { Button } from '@/components/Button';
-import { searchHousing } from '@/lib/housing-listings-api';
+import { searchHousing } from '@/lib/api/housing-listings-api';
 import {
   fetchLandlordProfile,
   landlordHomesParams,
@@ -34,12 +34,12 @@ import {
   landlordResponseLabel,
   memberSinceLabel,
   type LandlordProfile,
-} from '@/lib/housing-landlord';
-import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
+} from '@/lib/domain/housing-landlord';
+import { readOutcome, type ReadOutcome } from '@/lib/transport/read-outcome';
 import type { HousingListing } from '@/types/housing';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function LandlordProfileScreen() {
   // The guard rail: the phone's gesture area plus breathing room.

@@ -35,7 +35,7 @@ import {
   withError,
   withSync,
 } from '@/lib/integrations/status';
-import { FinancialError } from '@/lib/financial-errors';
+import { FinancialError } from '@/lib/transport/financial-errors';
 import { INTEGRATION_ERROR_KINDS, INTEGRATION_STATUSES } from '@/types/integrations';
 import type { IdentityLink, IntegrationConnection } from '@/types/integrations';
 

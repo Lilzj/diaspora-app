@@ -21,8 +21,8 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
-import { fetchOwnerAnalytics, isCertifiedContentSubject } from '@/lib/analytics-api';
+import { apiClient } from '@/lib/transport/apiClient';
+import { fetchOwnerAnalytics, isCertifiedContentSubject } from '@/lib/api/analytics-api';
 import { formatMetricValue } from '@/lib/analytics/format';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 

@@ -39,9 +39,9 @@ import {
   canApplyForMembership,
   canPayForMembership,
   describeMembership,
-} from '@/lib/community-state';
-import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
-import { moneyProps, trackCommunityEvent } from '@/lib/community-analytics';
+} from '@/lib/domain/community-state';
+import { checkCommunityAccess, CommunityCapabilities } from '@/lib/domain/community-access';
+import { moneyProps, trackCommunityEvent } from '@/lib/platform/community-analytics';
 import { useAuthStore } from '@/store/auth';
 
 export default function MembershipProgrammeScreen() {

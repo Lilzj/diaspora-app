@@ -33,11 +33,11 @@ import { Chips, SectionLabel } from '@/components/jobs/JobFormParts';
 import { EmptyState } from '@/components/EmptyState';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
-import { coordinatesOf } from '@/lib/place-coordinates';
+import { coordinatesOf } from '@/lib/platform/place-coordinates';
 import { Input } from '@/components/Input';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { formatPay } from '@/lib/job-detail-api';
+import { formatPay } from '@/lib/api/job-detail-api';
 import {
   currencyForCountry,
   fetchJobCategories,
@@ -49,13 +49,13 @@ import {
   resolvePostingEmployer,
   toPostJobInput,
   type JobPostingForm,
-} from '@/lib/job-postings-api';
+} from '@/lib/api/job-postings-api';
 import { useNotification } from '@/providers/notification-provider';
 import { useAuthStore } from '@/store/auth';
 import type { ExperienceLevel, JobType, SalaryPeriod, WorkplaceType } from '@/types/jobs-hiring';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 import { CurrencyNote } from '@/components/CurrencyNote';
-import { currencyForResidence } from '@/lib/member-currency';
+import { currencyForResidence } from '@/lib/domain/member-currency';
 import { SimpleJobForm } from '@/components/jobs/SimpleJobForm';
 import {
   emptySimpleJobForm,
@@ -65,8 +65,8 @@ import {
   simpleJobRequirements,
   simpleToFullForm,
   type SimpleJobForm as SimpleJobFormValues,
-} from '@/lib/simple-job-posting';
-import { jobsHiringKeys } from '@/lib/jobs-hiring-api';
+} from '@/lib/domain/simple-job-posting';
+import { jobsHiringKeys } from '@/lib/api/jobs-hiring-api';
 
 const STEPS = ['The role', 'Details and pay', 'Where the work is', 'Review and publish'] as const;
 

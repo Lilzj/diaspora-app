@@ -26,7 +26,7 @@ import {
   RefundStatusList,
 } from '../PaymentResult';
 import { AmountInput, MethodPicker } from '../PaymentInputs';
-import { fromMinorUnits } from '@/lib/money';
+import { fromMinorUnits } from '@/lib/domain/money';
 import type { CurrencyFact, PaymentIntent, PaymentStatus, Refund } from '@/types/financial';
 
 const CURRENCIES: CurrencyFact[] = [

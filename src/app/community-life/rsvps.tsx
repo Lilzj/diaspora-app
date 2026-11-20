@@ -31,7 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { useMyRsvps } from '@/hooks/community-life';
-import { describeRsvp, isLiveRsvp } from '@/lib/my-rsvps';
+import { describeRsvp, isLiveRsvp } from '@/lib/domain/my-rsvps';
 import { formatRelativeTime } from '@/utils/format';
 import type { MyRsvp } from '@/types/community-life';
 

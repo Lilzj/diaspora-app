@@ -66,8 +66,8 @@ import type {
   ListingIntent,
   ListingCondition,
 } from '@/types/marketplace';
-import { searchMarketplace } from '@/lib/marketplace-listings-api';
-import { searchHousing } from '@/lib/housing-listings-api';
+import { searchMarketplace } from '@/lib/api/marketplace-listings-api';
+import { searchHousing } from '@/lib/api/housing-listings-api';
 import {
   describeDiscoverScope,
   guideScopeParams,
@@ -75,9 +75,9 @@ import {
   providerScopeParams,
   resolveDiscoverScope,
   tabSearchesByDistance,
-} from '@/lib/discover-scope';
-import { describeSentence, sentenceFromParams, sentenceScope } from '@/lib/search-sentence';
-import type { SentenceSearch } from '@/lib/search-place';
+} from '@/lib/domain/discover-scope';
+import { describeSentence, sentenceFromParams, sentenceScope } from '@/lib/platform/search-sentence';
+import type { SentenceSearch } from '@/lib/platform/search-place';
 import {
   amountInputText,
   appendPage,
@@ -94,7 +94,7 @@ import {
   type DiscoverSort,
   type HousingSheetFilters,
   type MarketplaceSheetFilters,
-} from '@/lib/discover-filters';
+} from '@/lib/platform/discover-filters';
 
 // Certified clients for the four tabs that used to render fixtures. See the
 // remediation note above the card imports for what each route actually is.
@@ -112,7 +112,7 @@ import { MapPreviewCard } from '@/components/MapPreviewCard';
 import { useExploreStore } from '@/store/explore';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { DiscoverPlaceHeader } from '@/components/explore/DiscoverPlaceHeader';
-import { pinPlaceOf, providerPlaceLine } from '@/lib/listing-place';
+import { pinPlaceOf, providerPlaceLine } from '@/lib/platform/listing-place';
 import { FeatureGate } from '@/components/FeatureGate';
 import type { DiscoveryCategory } from '@/types/maps';
 
@@ -138,8 +138,8 @@ import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useThemeTokens } from '@/design-system';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
-import { photoUriOf } from '@/lib/media-url';
-import { useMemberCurrency } from '@/lib/member-currency';
+import { photoUriOf } from '@/lib/platform/media-url';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 import { Image as ExpoImage } from 'expo-image';
 
 /**

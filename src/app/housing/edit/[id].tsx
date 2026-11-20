@@ -33,10 +33,10 @@ import { Input } from '@/components/Input';
 import { DatePickerInput } from '@/components/DatePickerInput';
 import { useNotification } from '@/providers/notification-provider';
 import { useMediaUpload, toLocalFile } from '@/hooks/media';
-import { photoUriOf } from '@/lib/media-url';
-import { backOr } from '@/lib/navigation';
+import { photoUriOf } from '@/lib/platform/media-url';
+import { backOr } from '@/lib/platform/navigation';
 import { useAuthStore } from '@/store/auth';
-import { hostFromLandlord, isHostedBy, type LandlordSummaryWire } from '@/lib/housing-host';
+import { hostFromLandlord, isHostedBy, type LandlordSummaryWire } from '@/lib/api/housing-host';
 import {
   applyHousingPhotoChanges,
   diffHousingEdit,
@@ -47,7 +47,7 @@ import {
   toHousingEditValues,
   updateHousingListing,
   type HousingEditValues,
-} from '@/lib/housing-listings-api';
+} from '@/lib/api/housing-listings-api';
 
 /** The form's own copy: text fields stay text until save, so "1." is not rejected mid-typing. */
 interface FormState {

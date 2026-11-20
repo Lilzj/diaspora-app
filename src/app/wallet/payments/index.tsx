@@ -27,12 +27,12 @@ import {
   TransactionListSkeleton,
 } from '@/components/financial';
 import { usePaymentHistory } from '@/hooks/financial';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { describePaymentMethod, presentPaymentStatus } from '@/lib/financial-status';
-import { describeMoney, isZero } from '@/lib/money';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
+import { describePaymentMethod, presentPaymentStatus } from '@/lib/domain/financial-status';
+import { describeMoney, isZero } from '@/lib/domain/money';
 import { useAuthStore } from '@/store/auth';
 import { formatRelativeTime } from '@/utils/format';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { PaymentIntent } from '@/types/financial';
 
 const FILTERS: { key: string | undefined; label: string }[] = [

@@ -7,7 +7,7 @@
 // and its terms actually produce.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { conversionReasonText } from '../reward-conversion-text';
+import { conversionReasonText } from '../platform/reward-conversion-text';
 
 const SERVED_CODES = [
   'financial.rewards.conversion_not_supported',

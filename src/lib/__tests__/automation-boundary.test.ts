@@ -39,15 +39,15 @@
 //   function that takes a role, an account state or a tier.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import * as gapApi from '@/lib/automation-gap-api';
-import * as certifiedApi from '@/lib/automation-api';
+import * as gapApi from '@/lib/api/automation-gap-api';
+import * as certifiedApi from '@/lib/api/automation-api';
 import * as access from '@/lib/automation/access';
 import { AUTOMATION_GAPS, AUTOMATION_GAP_PREFIX } from '@/config/automation-gaps';
 import { ACTION_CATALOG } from '@/lib/automation/actions';
 import { TRIGGER_CATALOG } from '@/lib/automation/triggers';
 import { CONDITION_CATALOG } from '@/lib/automation/conditions';
 import { TEMPLATE_CATALOG } from '@/lib/automation/templates';
-import { sanitise } from '@/lib/creator-analytics';
+import { sanitise } from '@/lib/platform/creator-analytics';
 // Imported for its side effect: the allow-list extension is registered at
 // module load, exactly as Phases 8, 12, 13, 15 and 16 do it. Without this
 // import `sanitise` would drop every automation property and the assertions
@@ -283,7 +283,7 @@ describe('§48 · nothing in this phase moves money', () => {
   });
 
   it('the development arm never imports the financial client', () => {
-    const source = readSource('src', 'lib', 'automation-gap-api.ts');
+    const source = readSource('src', 'lib', 'api', 'automation-gap-api.ts');
 
     // The strongest available form of this assertion: a module that cannot
     // reach `financial-api` cannot move money however it is called.
@@ -708,7 +708,7 @@ describe('the gap register is internally consistent', () => {
     expect(AUTOMATION_GAP_PREFIX).toBe('/automation-gap/v0');
     expect(AUTOMATION_GAP_PREFIX).not.toBe('/automations');
 
-    const source = readSource('src', 'lib', 'automation-gap-api.ts');
+    const source = readSource('src', 'lib', 'api', 'automation-gap-api.ts');
     // Every route in the development arm goes through `PREFIX`. A literal
     // `/automations` path would be a call that collides with the namespace a
     // real backend would claim.
@@ -790,7 +790,7 @@ describe('Wave C-02 · the hooks are on the certified arm', () => {
     // `Diaspora.Modules.Automation` serves the twenty routes these hooks need.
     // A surviving import is a hook still pointed at a prefix that 404s at the
     // gateway in any real deployment.
-    expect(hooks).not.toContain("from '@/lib/automation-gap-api'");
+    expect(hooks).not.toContain("from '@/lib/api/automation-gap-api'");
     expect(hooks).not.toContain('automation-gap-api');
   });
 

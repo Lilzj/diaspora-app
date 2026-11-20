@@ -11,7 +11,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   employerContactLinks,
   employerStatusNotice,
@@ -21,7 +21,7 @@ import {
   onDiasporaSince,
   openJobsLabel,
   teamRoleSentence,
-} from '@/lib/employer-profile-api';
+} from '@/lib/api/employer-profile-api';
 import type { EmployerResponse } from '@/types/jobs-hiring';
 
 const EMPLOYER = '01a05770-33f2-7637-af0e-2e1ccb4f5890';

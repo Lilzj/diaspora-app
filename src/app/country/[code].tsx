@@ -3,8 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
-import { countryByCode } from '@/lib/calling-code';
-import { countryFlagEmoji } from '@/lib/knowledge-countries-api';
+import { countryByCode } from '@/lib/platform/calling-code';
+import { countryFlagEmoji } from '@/lib/api/knowledge-countries-api';
 import { useGuideCategories } from '@/hooks/guides';
 import { ContributorDirectory } from '@/components/knowledge/ContributorDirectory';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -38,7 +38,7 @@ import { useCountryIntelligence } from '@/hooks/country-intelligence';
 import { CommunityPostCard } from '@/components/community-social';
 import { Skeleton } from '@/components/Skeleton';
 import { useCommunityFeed } from '@/hooks/community-social';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function CountryPageScreen() {
   // The guard rail: the phone's gesture area plus breathing room.

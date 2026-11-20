@@ -11,7 +11,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   createJobPosting,
   currencyForCountry,
@@ -24,7 +24,7 @@ import {
   toPostJobInput,
   type JobPostingForm,
   type PostJobInput,
-} from '@/lib/job-postings-api';
+} from '@/lib/api/job-postings-api';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };

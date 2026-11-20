@@ -21,7 +21,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   decideCommunityDeletion,
   decideCommunityOwnership,
@@ -33,7 +33,7 @@ import {
   requestCommunityDeletion,
   withdrawCommunityDeletion,
   withdrawCommunityOwnershipOffer,
-} from '../community-entity-api';
+} from '../api/community-entity-api';
 
 // ── The platform's side ─────────────────────────────────────────────────────
 

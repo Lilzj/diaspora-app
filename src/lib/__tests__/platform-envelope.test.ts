@@ -13,7 +13,7 @@ import {
   toList,
   toPage,
   unwrapEnvelope,
-} from '../platform-envelope';
+} from '../transport/platform-envelope';
 
 function envelope<T>(data: T) {
   return { data, meta: { requestId: 'r', correlationId: 'c', timestamp: 'now' } };

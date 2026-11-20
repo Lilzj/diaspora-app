@@ -16,10 +16,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { setupFinancialMocks } from '@/mocks/handlers/financial';
-import { FinancialError } from '../financial-errors';
-import * as api from '../financial-api';
+import { FinancialError } from '../transport/financial-errors';
+import * as api from '../api/financial-api';
 import { useAuthStore } from '@/store/auth';
 import { buildAuthenticationResult } from '@/mocks/auth-session';
 

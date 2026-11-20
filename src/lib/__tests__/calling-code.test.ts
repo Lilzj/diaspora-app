@@ -16,7 +16,7 @@ import {
   matchCallingCode,
   matchesCountry,
   splitE164,
-} from '@/lib/calling-code';
+} from '@/lib/platform/calling-code';
 
 describe('callingCodeForCountry', () => {
   it.each([

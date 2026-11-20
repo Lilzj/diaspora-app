@@ -21,7 +21,7 @@ import {
   type HousingAmenity,
   type HousingChoice,
   type LandlordContact,
-} from '@/lib/housing-listings-api';
+} from '@/lib/api/housing-listings-api';
 import {
   resolveDeviceLocationProvider,
   resolveLocationPermissionProvider,
@@ -37,11 +37,11 @@ import { useNotification } from '@/providers/notification-provider';
 import type { AlertOptions } from '@/providers/notification-provider';
 import { useMediaUpload, toLocalFile } from '@/hooks/media';
 import type { ChosenPhoto } from '@/types/media';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 import { CurrencyNote } from '@/components/CurrencyNote';
-import { useMemberCurrency } from '@/lib/member-currency';
-import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/device-drafts';
-import { currencySymbol as symbolFor } from '@/lib/money';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
+import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/platform/device-drafts';
+import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;

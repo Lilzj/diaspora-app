@@ -28,7 +28,7 @@ import { ActivityIndicator, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router, useLocalSearchParams } from 'expo-router';
-import { confirmEmailLink, type EmailConfirmOutcome } from '@/lib/auth-api';
+import { confirmEmailLink, type EmailConfirmOutcome } from '@/lib/api/auth-api';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/design-system';

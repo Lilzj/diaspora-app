@@ -58,8 +58,8 @@ import {
 import { useCommunityAccess, useCommunityLifeSummary, useDismissRecommendation } from '@/hooks/community-life';
 import { useMyMemberships } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
-import { trackCommunityEvent } from '@/lib/community-analytics';
-import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
+import { checkCommunityAccess, CommunityCapabilities } from '@/lib/domain/community-access';
 import { useAuthStore } from '@/store/auth';
 import type { Event } from '@/types/community-life';
 

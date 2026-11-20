@@ -134,7 +134,7 @@ describe('`response.data.data` is never treated as a list', () => {
         : `${offences.length} call site(s) treat \`response.data.data\` as an array.\n` +
             `A paged route puts the list at \`data.items\`, so this is an empty screen ` +
             `or a crash, not a wrong number.\nUse \`readPage\`/\`toList\` from ` +
-            `'@/lib/platform-envelope' — both accept a bare array too.\n\n${report}`,
+            `'@/lib/transport/platform-envelope' — both accept a bare array too.\n\n${report}`,
     ).toBe('');
   });
 

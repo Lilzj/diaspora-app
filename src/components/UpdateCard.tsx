@@ -37,7 +37,7 @@ import type { AuthorSummary } from '@/types/social';
 import { UPDATE_CATEGORY_ICONS } from '@/types/update';
 import { ReputationBadge } from './ReputationBadge';
 import { useCommunityCapabilities, useReact } from '@/hooks/community-social';
-import { corroboratingReactionFor, toReactionSummary } from '@/lib/community-social-api';
+import { corroboratingReactionFor, toReactionSummary } from '@/lib/api/community-social-api';
 import { useThemeTokens } from '@/design-system';
 
 interface UpdateCardProps {

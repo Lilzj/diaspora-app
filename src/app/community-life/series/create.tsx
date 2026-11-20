@@ -25,17 +25,17 @@ import {
 import { FinancialErrorInline } from '@/components/financial';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
-import { coordinatesOf } from '@/lib/place-coordinates';
+import { coordinatesOf } from '@/lib/platform/place-coordinates';
 import { useCommunityAccess, useCreateSeries, useMyOrganizations } from '@/hooks/community-life';
-import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { checkCommunityAccess, CommunityCapabilities } from '@/lib/domain/community-access';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import { useAuthStore } from '@/store/auth';
 import { useLocationStore } from '@/store/location';
 import type { RecurrenceRule } from '@/types/community-advanced';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
-import type { FinancialError } from '@/lib/financial-errors';
-import { deviceTimeZone } from '@/lib/event-timezone';
-import { useMemberCurrency } from '@/lib/member-currency';
+import type { FinancialError } from '@/lib/transport/financial-errors';
+import { deviceTimeZone } from '@/lib/platform/event-timezone';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 
 // Kinds of event are the server's since 13 Oct 2026 (`useCommunityLifeCatalogue`);
 // this screen kept twelve of its own, folded onto the server's keys.

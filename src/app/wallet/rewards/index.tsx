@@ -7,9 +7,9 @@
 // working routes.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { conversionReasonText } from '@/lib/reward-conversion-text';
-import { describeRewardSource } from '@/lib/reward-source';
-import { POINTS_ARE_NOT_XP, POINTS_CAN_CONVERT } from '@/lib/reward-copy';
+import { conversionReasonText } from '@/lib/platform/reward-conversion-text';
+import { describeRewardSource } from '@/lib/domain/reward-source';
+import { POINTS_ARE_NOT_XP, POINTS_CAN_CONVERT } from '@/lib/platform/reward-copy';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,10 +28,10 @@ import {
   useRewardBalance,
   useRewardHistory,
 } from '@/hooks/financial-gaps';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
 import { useAuthStore } from '@/store/auth';
 import { formatRelativeTime } from '@/utils/format';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { RewardHistoryEntry } from '@/types/financial-gaps';
 
 /**

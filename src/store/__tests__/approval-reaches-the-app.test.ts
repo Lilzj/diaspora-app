@@ -11,8 +11,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { authTransport } from '@/lib/auth-api';
-import { isAwaitingDecision } from '@/lib/access-state';
+import { authTransport } from '@/lib/api/auth-api';
+import { isAwaitingDecision } from '@/lib/domain/access-state';
 import { useAuthStore, __setSessionForTests } from '@/store/auth';
 import { buildAuthenticationResult } from '@/mocks/auth-session';
 

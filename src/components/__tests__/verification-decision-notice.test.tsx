@@ -15,7 +15,7 @@ jest.mock('@/providers/notification-provider', () => ({
 // The member's socket: frames are delivered by calling the captured handler.
 const mockFrameHandlers: Array<(change: { resourceType: string; changeKind: string }) => void> = [];
 const mockConnect = jest.fn().mockResolvedValue(undefined);
-jest.mock('@/lib/realtime', () => ({
+jest.mock('@/lib/transport/realtime', () => ({
   getRealtimeClient: () => ({
     connect: mockConnect,
     getConnectionState: () => 'connected',

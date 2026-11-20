@@ -33,9 +33,9 @@ import {
   useDecideVolunteerApplication,
   useOpportunity,
 } from '@/hooks/community-life';
-import { describeVolunteerApplication } from '@/lib/community-state';
-import { trackCommunityEvent } from '@/lib/community-analytics';
-import type { FinancialError } from '@/lib/financial-errors';
+import { describeVolunteerApplication } from '@/lib/domain/community-state';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 
 type Filter = '' | 'Pending' | 'Approved' | 'Waitlisted' | 'Rejected';
 

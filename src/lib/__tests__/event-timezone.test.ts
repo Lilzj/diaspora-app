@@ -17,7 +17,7 @@ import {
   isKnownTimeZone,
   knownTimeZones,
   suggestTimeZones,
-} from '../event-timezone';
+} from '../platform/event-timezone';
 
 describe('validating a typed zone', () => {
   it('accepts an identifier this runtime knows', () => {

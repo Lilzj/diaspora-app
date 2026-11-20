@@ -9,7 +9,7 @@
 // conversation cut the socket: no live messages, no typing, no receipts.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { destroyRealtimeClient, getRealtimeClient } from '../realtime';
+import { destroyRealtimeClient, getRealtimeClient } from '../transport/realtime';
 
 const AISHA = '01a0576f-2c1d-7f00-8000-0000000000a1';
 const DAVID = '01a05770-33f2-7600-8000-0000000000da';

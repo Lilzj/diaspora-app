@@ -41,7 +41,7 @@ function read(...segments: string[]): string {
     .join(String.fromCharCode(10));
 }
 
-const AUTH_API = read('src', 'lib', 'auth-api.ts');
+const AUTH_API = read('src', 'lib', 'api', 'auth-api.ts');
 const AUTH_TYPES = read('src', 'types', 'auth.ts');
 const LOGIN = read('src', 'app', '(auth)', 'login.tsx');
 const FORGOT = read('src', 'app', '(auth)', 'forgot-password.tsx');
@@ -208,14 +208,14 @@ describe('change-password protects the account from the handset', () => {
 
 describe('one password rule, not four', () => {
   it('every screen reads the shared policy', () => {
-    const policy = read('src', 'lib', 'password-policy.ts');
+    const policy = read('src', 'lib', 'domain', 'password-policy.ts');
     expect(policy).toMatch(/export const MIN_PASSWORD_LENGTH/);
 
     // The import, not one exported name. Screens validate through
     // `meetsPasswordRules` now — length is no longer the only rule — and pinning
     // the old symbol would have failed a change that made them *more* correct.
     for (const screen of [RESET, CHANGE, read('src', 'app', '(auth)', 'register.tsx')]) {
-      expect(screen).toMatch(/from '@\/lib\/password-policy'/);
+      expect(screen).toMatch(/from '@\/lib\/domain\/password-policy'/);
     }
   });
 

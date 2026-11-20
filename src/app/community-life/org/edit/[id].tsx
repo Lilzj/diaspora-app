@@ -46,13 +46,13 @@ import {
   organizationEditProblem,
   saveOrganizationEdits,
   type OrganizationEditForm,
-} from '@/lib/community-life-api';
-import { uploadDirect } from '@/lib/media-api';
-import { photoUriOf } from '@/lib/media-url';
-import { backOr } from '@/lib/navigation';
+} from '@/lib/api/community-life-api';
+import { uploadDirect } from '@/lib/api/media-api';
+import { photoUriOf } from '@/lib/platform/media-url';
+import { backOr } from '@/lib/platform/navigation';
 import { useNotification } from '@/providers/notification-provider';
 import type { OrganizationWire } from '@/types/community-life';
-import { communityLifeKeys } from '@/lib/community-life-api';
+import { communityLifeKeys } from '@/lib/api/community-life-api';
 
 export default function EditOrganizationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

@@ -23,16 +23,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
-import type { CommunityContentDomain } from '@/lib/community-directory-api';
+import type { CommunityContentDomain } from '@/lib/api/community-directory-api';
 import { useCommunity, useCommunityContext } from '@/hooks/communities';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { trackCommunityEvent } from '@/lib/community/analytics';
 import { CommunityContentSection, DOMAIN_LABELS } from './CommunityContentSection';
 import { CommunityFilterBar } from './CommunitySelector';
 import { CommunityOfflineBanner, CommunityUnavailablePanel } from './CommunityStatePanels';
 import { CommunityAvatar, communityOriginLabel } from './CommunityIdentity';
 import { MultiCommunityGapNotice } from './MultiCommunityGapNotice';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** Which §63 event each domain emits when its list is opened. */
 const DOMAIN_EVENTS: Record<CommunityContentDomain, Parameters<typeof trackCommunityEvent>[0]> = {

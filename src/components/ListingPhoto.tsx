@@ -44,7 +44,7 @@ import { View, Text } from 'react-native';
 import { Image } from 'expo-image';
 import type { ImageStyle, StyleProp, ViewStyle } from 'react-native';
 
-import { photoUriOf, type MediaImageVariant } from '@/lib/media-url';
+import { photoUriOf, type MediaImageVariant } from '@/lib/platform/media-url';
 
 interface ListingPhotoProps {
   /**

@@ -27,7 +27,7 @@ import {
   toSaveGrantRequest,
   type GrantForm,
 } from '@/lib/creator/grant-admin-form';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 function Field({
   label,

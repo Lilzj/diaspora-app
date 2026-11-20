@@ -10,13 +10,13 @@ import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { useAuthStore } from '@/store/auth';
 import { useMyVerifications, useSubmitVerification } from '@/hooks/trust';
 import type { VerificationStatus } from '@/types/trust';
-import { mediaDocumentReference, SUPPORTING_NOTES_MAX_LENGTH } from '@/lib/trust-api';
+import { mediaDocumentReference, SUPPORTING_NOTES_MAX_LENGTH } from '@/lib/api/trust-api';
 import type { WireVerificationDocumentType } from '@/types/trust';
 import { useNotification } from '@/providers/notification-provider';
 import { allCountries } from '@/lib/reference/countries';
 import { formatDocumentType } from '@/utils/format';
 import { useThemeTokens } from '@/design-system';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 // ── Where this wizard's data goes, after Wave D-4 ────────────────────────────
 //

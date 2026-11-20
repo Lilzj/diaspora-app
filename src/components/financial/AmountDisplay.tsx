@@ -19,7 +19,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { useTheme } from '@/design-system';
-import { describeMoney, formatMoney, isNegative, isZero } from '@/lib/money';
+import { describeMoney, formatMoney, isNegative, isZero } from '@/lib/domain/money';
 import type { Money } from '@/types/financial';
 
 export type AmountSize = 'hero' | 'large' | 'medium' | 'small';

@@ -32,8 +32,8 @@ import {
   useOrganizationCapabilities,
   useOrganizationMembers,
 } from '@/hooks/community-life';
-import { describeMembership } from '@/lib/community-state';
-import type { FinancialError } from '@/lib/financial-errors';
+import { describeMembership } from '@/lib/domain/community-state';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { MembershipStatus } from '@/types/community-advanced';
 
 type Filter = '' | 'Pending' | 'Active' | 'Suspended' | 'Expired';

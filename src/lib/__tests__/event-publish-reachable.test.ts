@@ -25,7 +25,7 @@
 // of reach.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { communityLifeKeys } from '../community-life-api';
+import { communityLifeKeys } from '../api/community-life-api';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...parts: string[]): string };
@@ -38,7 +38,7 @@ function code(...segments: string[]): string {
     .replace(new RegExp('//[^\\n]*', 'g'), ' ');
 }
 
-const API = code('lib', 'community-life-api.ts');
+const API = code('lib', 'api', 'community-life-api.ts');
 const HOOKS = code('hooks', 'community-life.ts');
 const SCREEN = code('app', 'community-life', 'event', '[id].tsx');
 const CREATE = code('app', 'community-life', 'event', 'create.tsx');

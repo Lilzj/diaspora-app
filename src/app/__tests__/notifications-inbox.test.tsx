@@ -29,8 +29,8 @@ jest.mock('@/hooks/notifications', () => ({
   useRecordNotificationClick: () => ({ mutate: mockRecordClick, isPending: false }),
 }));
 
-jest.mock('@/lib/notification-routes', () => ({
-  ...jest.requireActual('@/lib/notification-routes'),
+jest.mock('@/lib/platform/notification-routes', () => ({
+  ...jest.requireActual('@/lib/platform/notification-routes'),
   followNotificationRoute: (route: string) => mockFollowRoute(route),
 }));
 

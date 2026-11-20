@@ -29,9 +29,9 @@ import {
   TransactionListSkeleton,
 } from '@/components/financial';
 import { useLedger, usePrimaryWallet } from '@/hooks/financial';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
 import { useAuthStore } from '@/store/auth';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { Wallet } from '@/types/financial';
 
 const ENTRY_FILTERS: { key: string | undefined; label: string }[] = [

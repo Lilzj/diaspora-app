@@ -23,7 +23,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   createAndPublishMarketplaceListing,
   ensureSellerProfile,
@@ -33,7 +33,7 @@ import {
   problemDetail,
   toMarketplaceListing,
   toMarketplaceListings,
-} from '../marketplace-listings-api';
+} from '../api/marketplace-listings-api';
 import type { MarketplaceListingCardResponse } from '@/types/marketplace';
 
 let api: MockAdapter;

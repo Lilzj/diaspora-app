@@ -21,8 +21,8 @@ import {
   resetCreatorEvents,
   sanitise,
   trackCreatorEvent,
-} from '../creator-analytics';
-import { fromMinorUnits } from '../money';
+} from '../platform/creator-analytics';
+import { fromMinorUnits } from '../domain/money';
 
 beforeEach(() => {
   resetCreatorEvents();

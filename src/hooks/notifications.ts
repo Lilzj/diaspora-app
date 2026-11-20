@@ -34,7 +34,7 @@ import {
   notificationKeys,
   recordNotificationClick,
   type InboxParams,
-} from '@/lib/notifications-api';
+} from '@/lib/api/notifications-api';
 import { useAuthStore } from '@/store/auth';
 import type { NotificationResponse } from '@/types/notification';
 

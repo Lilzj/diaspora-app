@@ -18,7 +18,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
-import { PERIOD_LABELS, isRangeQueryable } from '@/lib/creator-economy';
+import { PERIOD_LABELS, isRangeQueryable } from '@/lib/domain/creator-economy';
 import { ANALYTICS_PERIODS, type AnalyticsPeriod, type AnalyticsRange } from '@/types/creator-economy';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

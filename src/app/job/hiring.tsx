@@ -46,7 +46,7 @@ import {
   useEmployerApplications,
   useEmployerDashboard,
 } from '@/hooks/jobs-hiring';
-import { hasResponsivenessEvidence } from '@/lib/jobs-hiring-api';
+import { hasResponsivenessEvidence } from '@/lib/api/jobs-hiring-api';
 import type {
   ApplicationCardResponse,
   EmployerDecisionStatus,

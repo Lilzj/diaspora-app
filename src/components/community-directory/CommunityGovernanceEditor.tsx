@@ -21,7 +21,7 @@ import { ActivityIndicator, Switch, Text, TextInput, TouchableOpacity, View } fr
 import { useTheme } from '@/design-system';
 import type { CommunityId, CommunityNotice, CommunityRule } from '@/types/community-directory';
 import { useCommunityGovernanceMutations } from '@/hooks/communities';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 
 /** What a failed write says. The server's own sentence where it sent one. */
 export function governanceWriteError(error: unknown): string | null {

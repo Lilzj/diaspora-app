@@ -15,14 +15,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { setupCommunityDirectoryMocks } from '@/mocks/handlers/community-directory';
 import { setupHousingMocks } from '@/mocks/handlers/housing';
 import { setupJobsMocks } from '@/mocks/handlers/jobs';
 import { setupMarketplaceMocks } from '@/mocks/handlers/marketplace';
 import { setupDiscoveryMocks } from '@/mocks/handlers/discovery';
-import * as api from '../community-gap-directory-api';
-import { fetchScopedContent } from '../community-directory-api';
+import * as api from '../api/community-gap-directory-api';
+import { fetchScopedContent } from '../api/community-directory-api';
 import {
   communityScopeToken,
   isEmptyScope,

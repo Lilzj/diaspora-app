@@ -42,7 +42,7 @@ import { useNotification } from '@/providers/notification-provider';
 import type { CommunityDeletionRequest } from '@/types/community-directory';
 import { useCommunityDeletionQueue, useDecideCommunityDeletion } from '@/hooks/communities';
 import { daysUntil } from '@/lib/community/closure';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 const MAX_REASON = 1000;
 

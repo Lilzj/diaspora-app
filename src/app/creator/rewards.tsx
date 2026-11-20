@@ -21,7 +21,7 @@
 // posts, then re-reads.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { conversionReasonText } from '@/lib/reward-conversion-text';
+import { conversionReasonText } from '@/lib/platform/reward-conversion-text';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -46,11 +46,11 @@ import {
   useRewardRedemptions,
 } from '@/hooks/creator-economy';
 import { useReputationRules } from '@/hooks/trust';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { formatPoints } from '@/lib/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { formatPoints } from '@/lib/domain/creator-economy';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import { formatRelativeTime } from '@/utils/format';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { CreatorReward } from '@/types/creator-economy';
 
 type Tab = 'spend' | 'earn' | 'history';

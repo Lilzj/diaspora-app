@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useLocalSearchParams } from 'expo-router';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import type { ConversationMediaGallery } from '@/types/conversation';
 

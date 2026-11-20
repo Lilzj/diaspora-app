@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { countryByCode } from '@/lib/calling-code';
+import { countryByCode } from '@/lib/platform/calling-code';
 import { countryCentroid } from '@/lib/location/country-centroids';
 import { detectCountry } from '@/lib/location/detect-country';
 

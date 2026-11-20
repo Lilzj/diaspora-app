@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, ActivityIndicator } from 'react-native';
-import { placeLabelOf, distanceKmOf } from '@/lib/listing-place';
+import { placeLabelOf, distanceKmOf } from '@/lib/platform/listing-place';
 import {
   describeListingPrice,
   describeSwapTopUp,
   isPurchasable,
-} from '@/lib/marketplace-wire';
-import { fetchMarketplaceListingDetail } from '@/lib/marketplace-listings-api';
+} from '@/lib/api/marketplace-wire';
+import { fetchMarketplaceListingDetail } from '@/lib/api/marketplace-listings-api';
 import type { MarketplaceListing } from '@/types/marketplace';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
-import { createSignedUrl } from '@/lib/media-api';
+import { createSignedUrl } from '@/lib/api/media-api';
 import type { SellerRating } from '@/types/marketplace';
 import { useSavedStore } from '@/store/saved';
 import { CommunityTrustBadge } from '@/components/CommunityTrustBadge';
@@ -24,7 +24,7 @@ import { HousingCard } from '@/components/HousingCard';
 import { ProviderCard } from '@/components/ProviderCard';
 import { MarketplaceCard } from '@/components/MarketplaceCard';
 import { ListingPhoto } from '@/components/ListingPhoto';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 
 // Hyperlocal integrations
 import { useLocationStore, getActiveLocation } from '@/store/location';
@@ -38,21 +38,21 @@ import { useTheme } from '@/design-system';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
-import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
+import { readOutcome, type ReadOutcome } from '@/lib/transport/read-outcome';
 import { useAuthStore } from '@/store/auth';
 import {
   NoEscrowDisclosure,
   PromotedBadge,
   SubjectPaymentButton,
 } from '@/components/financial';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { MemberTrustLine } from '@/components/safety/MemberTrustLine';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 import { ContactActionRow } from '@/components/ContactActionRow';
 import { Button } from '@/components/Button';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
-import { currencySymbol as symbolFor } from '@/lib/money';
+import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 export default function ListingDetailScreen() {
   const { tokens } = useTheme();

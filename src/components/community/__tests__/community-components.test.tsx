@@ -30,7 +30,7 @@ import {
   describeDraft,
 } from '..';
 import { COMMUNITY_GAPS } from '@/config/community-gaps';
-import { describeMembership, describeCampaign } from '@/lib/community-state';
+import { describeMembership, describeCampaign } from '@/lib/domain/community-state';
 import { money } from '@/mocks/financial-data';
 import type { CommunityPoll, PollResult } from '@/types/community-advanced';
 

@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   communityLifeCatalogueKeys,
   fetchCommunityLifeCatalogue,
-} from '@/lib/community-life-catalogue';
+} from '@/lib/domain/community-life-catalogue';
 
 export function useCommunityLifeCatalogue() {
   const query = useQuery({

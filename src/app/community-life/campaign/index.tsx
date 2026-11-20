@@ -16,7 +16,7 @@ import {
   SecondaryButton,
 } from '@/components/community';
 import { useCampaigns, useCommunityAccess } from '@/hooks/community-life';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { CampaignCategory } from '@/types/community-advanced';
 
 const CATEGORIES: { value: CampaignCategory | ''; label: string }[] = [

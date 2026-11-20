@@ -36,7 +36,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { useAuthStore } from '@/store/auth';
-import { sendOtp, type OtpChallengeState } from '@/lib/integrations-api';
+import { sendOtp, type OtpChallengeState } from '@/lib/api/integrations-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { trackIntegrationEvent } from '@/lib/integrations/events';
 import { IntegrationErrorNotice, IntegrationGapNotice } from '@/components/integrations';

@@ -29,10 +29,10 @@
 // automation catalogue.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { fetchCreatorSummary } from '../analytics-api';
-import { apiClient } from '../apiClient';
+import { fetchCreatorSummary } from '../api/analytics-api';
+import { apiClient } from '../transport/apiClient';
 
-jest.mock('../apiClient', () => ({
+jest.mock('../transport/apiClient', () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
 }));
 

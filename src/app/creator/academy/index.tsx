@@ -34,7 +34,7 @@ import {
   useCreatorAcademy,
   useCreatorCertificates,
 } from '@/hooks/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import type { CreatorCourse } from '@/types/creator-economy';
 
 export default function CreatorAcademyScreen() {

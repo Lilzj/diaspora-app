@@ -3,8 +3,8 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
-import { resolveTown, searchTowns } from '../town-search';
+import { apiClient } from '../transport/apiClient';
+import { resolveTown, searchTowns } from '../platform/town-search';
 
 let api: MockAdapter;
 beforeEach(() => {

@@ -34,11 +34,11 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { setupAutomationGapMocks } from '@/mocks/handlers/automation-gaps';
 import { setupNotificationMocks } from '@/mocks/handlers/notifications';
-import * as gapApi from '@/lib/automation-gap-api';
-import { fetchCertifiedAutomationSupport } from '@/lib/automation-api';
+import * as gapApi from '@/lib/api/automation-gap-api';
+import { fetchCertifiedAutomationSupport } from '@/lib/api/automation-api';
 import { resetAutomationState } from '@/mocks/automation-gap-data';
 import type {
   AutomationListFilters,

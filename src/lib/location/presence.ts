@@ -18,8 +18,8 @@
 // the foreground loop in `presence-loop.ts`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '@/lib/apiClient';
-import { unwrapEnvelope } from '@/lib/platform-envelope';
+import { apiClient } from '@/lib/transport/apiClient';
+import { unwrapEnvelope } from '@/lib/transport/platform-envelope';
 
 const ROOT = '/location/me/presence';
 

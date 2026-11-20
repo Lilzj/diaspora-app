@@ -17,7 +17,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   fetchPlaceAnalytics,
   fetchPlaceAnalyticsAccess,
@@ -25,7 +25,7 @@ import {
   neighborhoodSubjectId,
   parseNeighborhoodSubjectId,
   programmePeriodFor,
-} from '@/lib/analytics-api';
+} from '@/lib/api/analytics-api';
 import type { AnalyticsMetricKey, AnalyticsTimeRange } from '@/types/analytics';
 
 const RANGE_30D: AnalyticsTimeRange = {

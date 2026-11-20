@@ -43,7 +43,7 @@ import {
   isPaymentSuccessful,
   membershipGrantsBenefits,
   pollAcceptsVotes,
-} from '../community-state';
+} from '../domain/community-state';
 import type {
   CampaignStatus,
   EventSeriesStatus,

@@ -8,7 +8,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { ThemeProvider } from '@/design-system';
 import { HousingCard } from '../HousingCard';
-import { toHousingCardListing } from '@/lib/housing-cards';
+import { toHousingCardListing } from '@/lib/platform/housing-cards';
 
 jest.mock('@/store/saved', () => ({
   useSavedStore: () => ({ save: jest.fn(), unsave: jest.fn(), isSaved: () => false }),

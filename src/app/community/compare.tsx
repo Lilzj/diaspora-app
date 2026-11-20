@@ -41,7 +41,7 @@ import {
   StatisticsPeriodSelector,
   communityOriginLabel,
 } from '@/components/community-directory';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** Three. See the header. */
 const MAX_COMPARED = 3;

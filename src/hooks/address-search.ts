@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { newIdempotencyKey } from '@/lib/idempotency';
+import { newIdempotencyKey } from '@/lib/domain/idempotency';
 import {
   MINIMUM_ADDRESS_INPUT,
   resolveAddress,

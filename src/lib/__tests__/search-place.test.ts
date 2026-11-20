@@ -10,9 +10,9 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
-import { readSearch } from '../search-intent';
-import { closeness, resolveSearch, townRadiusKm, type SearchContext } from '../search-place';
+import { apiClient } from '../transport/apiClient';
+import { readSearch } from '../platform/search-intent';
+import { closeness, resolveSearch, townRadiusKm, type SearchContext } from '../platform/search-place';
 import type { PlatformLocation } from '@/store/location';
 
 let api: MockAdapter;

@@ -30,7 +30,7 @@ import { Button } from '@/components/Button';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { useAuthStore } from '@/store/auth';
 import { useSubmitVerification } from '@/hooks/trust';
-import { mediaDocumentReference } from '@/lib/trust-api';
+import { mediaDocumentReference } from '@/lib/api/trust-api';
 import { formatDocumentType } from '@/utils/format';
 
 /** Exactly `IdentityVerificationHandler.AcceptedDocuments`. */

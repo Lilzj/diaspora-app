@@ -11,7 +11,7 @@ import {
   composeE164,
   countryByCode,
   MIN_NATIONAL_DIGITS,
-} from '@/lib/calling-code';
+} from '@/lib/platform/calling-code';
 
 /**
  * The phone number a member registers with.

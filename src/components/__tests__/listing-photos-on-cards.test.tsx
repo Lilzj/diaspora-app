@@ -10,11 +10,11 @@ import React from 'react';
 import { act, render, screen } from '@testing-library/react-native';
 import { Image } from 'expo-image';
 import { ThemeProvider } from '@/design-system';
-import { API_BASE_URL } from '@/lib/apiClient';
+import { API_BASE_URL } from '@/lib/transport/apiClient';
 import { ListingPhoto } from '../ListingPhoto';
 import { HousingCard } from '../HousingCard';
 import { MarketplaceCard } from '../MarketplaceCard';
-import type { HousingCardWire } from '@/lib/housing-cards';
+import type { HousingCardWire } from '@/lib/platform/housing-cards';
 import type { MarketplaceListingCardResponse } from '@/types/marketplace';
 
 jest.mock('@/store/saved', () => ({

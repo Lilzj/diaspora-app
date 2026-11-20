@@ -59,11 +59,11 @@ import {
   useRecordGuideView,
   useSetGuideBookmark,
 } from '@/hooks/guides';
-import { GUIDE_WORDS_PER_MINUTE, guideErrorMessage } from '@/lib/guides-api';
-import { saveControlFor, viewerStateOf } from '@/lib/guide-viewer';
+import { GUIDE_WORDS_PER_MINUTE, guideErrorMessage } from '@/lib/api/guides-api';
+import { saveControlFor, viewerStateOf } from '@/lib/domain/guide-viewer';
 import { trustBadgeLabel } from '@/config/badges';
 import { trackContentViewed } from '@/lib/analytics/content-events';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 import { Avatar } from '@/components/Avatar';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';

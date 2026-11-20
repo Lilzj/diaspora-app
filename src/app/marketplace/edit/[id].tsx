@@ -48,9 +48,9 @@ import { useNotification } from '@/providers/notification-provider';
 import { useMediaUpload, toLocalFile } from '@/hooks/media';
 import type { ChosenPhoto } from '@/types/media';
 import { useAuthStore } from '@/store/auth';
-import { useMemberCurrency, currencyForResidence } from '@/lib/member-currency';
-import { photoUriOf } from '@/lib/media-url';
-import { backOr } from '@/lib/navigation';
+import { useMemberCurrency, currencyForResidence } from '@/lib/domain/member-currency';
+import { photoUriOf } from '@/lib/platform/media-url';
+import { backOr } from '@/lib/platform/navigation';
 import {
   MAX_MARKETPLACE_LISTING_MEDIA,
   applyMarketplaceListingPhotoChanges,
@@ -60,7 +60,7 @@ import {
   toUpdateRequest,
   updateMarketplaceListing,
   type MarketplaceListingForEdit,
-} from '@/lib/marketplace-listings-api';
+} from '@/lib/api/marketplace-listings-api';
 
 /** `ProductCondition`, by its wire name, in the words a seller uses. */
 const CONDITIONS: { value: string; label: string }[] = [

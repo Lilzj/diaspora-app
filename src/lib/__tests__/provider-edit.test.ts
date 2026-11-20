@@ -3,14 +3,14 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   removeProviderPhoto,
   removeProviderService,
   updateProviderDetails,
   updateProviderIdentity,
   updateProviderService,
-} from '../provider-registration-api';
+} from '../api/provider-registration-api';
 
 const ID = '01a13811-a1d9-7b6a-8a42-7a6ca85058a9';
 let mock: MockAdapter;

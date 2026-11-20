@@ -23,7 +23,7 @@ import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import { useAdminGrants, useGrantAdminActions } from '@/hooks/grant-admin';
 import { isGrantAdminRefusal, type AdminGrant, type GrantWindowAction } from '@/lib/creator/grant-admin-api';
-import { grantCategoryLabel } from '@/lib/creator-economy';
+import { grantCategoryLabel } from '@/lib/domain/creator-economy';
 
 /** "₦500,000", or "NGN 500,000" where the phone cannot format the currency. */
 function formatGrantAmount(money: AdminGrant['fundingAmount']): string {

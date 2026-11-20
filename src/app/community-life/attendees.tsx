@@ -26,7 +26,7 @@ import {
   SecondaryButton,
 } from '@/components/community';
 import { useCheckIn, useEventAttendees } from '@/hooks/community-life';
-import { describeRegistration } from '@/lib/community-state';
+import { describeRegistration } from '@/lib/domain/community-state';
 import type { RegistrationStatus } from '@/types/community-advanced';
 import { useNotification } from '@/providers/notification-provider';
 import type { EventAttendee } from '@/types/community-advanced';

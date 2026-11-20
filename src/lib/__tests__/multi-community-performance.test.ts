@@ -28,7 +28,7 @@ import {
   projectScope,
   resolveScope,
 } from '@/lib/community/scope';
-import { narrowToScope } from '@/lib/community-directory-api';
+import { narrowToScope } from '@/lib/api/community-directory-api';
 import { getPerformanceCommunitySet, PERFORMANCE_SET_SIZE } from '@/mocks/community-directory-data';
 import { useCommunityContextStore } from '@/store/community-context';
 import type { Community, CommunityMembershipSet } from '@/types/community-directory';

@@ -31,15 +31,15 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 
-import * as api from '@/lib/financial-api';
-import { financialKeys } from '@/lib/financial-api';
-import { FinancialError, offlineError, shouldRetryQuery } from '@/lib/financial-errors';
-import { paymentNeedsReconciliation, presentPaymentStatus } from '@/lib/financial-status';
-import { resolveFinancialAccess, type FinancialAccess } from '@/lib/financial-access';
-import { useConnectivityStore } from '@/lib/connectivity';
-import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
+import * as api from '@/lib/api/financial-api';
+import { financialKeys } from '@/lib/api/financial-api';
+import { FinancialError, offlineError, shouldRetryQuery } from '@/lib/transport/financial-errors';
+import { paymentNeedsReconciliation, presentPaymentStatus } from '@/lib/domain/financial-status';
+import { resolveFinancialAccess, type FinancialAccess } from '@/lib/domain/financial-access';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
+import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/domain/idempotency';
 import { useAuthStore } from '@/store/auth';
-import { resolveCurrency } from '@/lib/money';
+import { resolveCurrency } from '@/lib/domain/money';
 import type {
   ActivateSubscriptionRequest,
   CreateContributionRequest,

@@ -47,8 +47,8 @@ import { DatePickerInput } from '@/components/DatePickerInput';
 import { CommunityUnavailablePanel } from '@/components/community-directory/CommunityStatePanels';
 import { governanceWriteError } from '@/components/community-directory/CommunityGovernanceEditor';
 import type { CommunityInitiative, CommunityInitiativeStatus } from '@/types/community-directory';
-import type { UpdateCommunityInitiativeInput } from '@/lib/community-entity-api';
-import { backOr } from '@/lib/navigation';
+import type { UpdateCommunityInitiativeInput } from '@/lib/api/community-entity-api';
+import { backOr } from '@/lib/platform/navigation';
 
 /** Where an initiative may go from where it is. Completed and Cancelled are final. */
 const NEXT_STATUSES: Record<CommunityInitiativeStatus, CommunityInitiativeStatus[]> = {

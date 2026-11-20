@@ -16,8 +16,8 @@
 // that is what the function is given.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { routeForAccess } from '@/lib/auth-destination';
-import { KNOWN_ACCESS_STATES, grantsCommunityAccess, toAccountState } from '@/lib/access-state';
+import { routeForAccess } from '@/lib/platform/auth-destination';
+import { KNOWN_ACCESS_STATES, grantsCommunityAccess, toAccountState } from '@/lib/domain/access-state';
 import type { AccessDecision } from '@/types/auth';
 
 const GATEWAY = '/access-gateway';

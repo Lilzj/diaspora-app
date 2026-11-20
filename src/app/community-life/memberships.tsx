@@ -18,7 +18,7 @@ import {
   Section,
 } from '@/components/community';
 import { useMyMemberships } from '@/hooks/community-life';
-import { membershipGrantsBenefits } from '@/lib/community-state';
+import { membershipGrantsBenefits } from '@/lib/domain/community-state';
 
 export default function MyMembershipsScreen() {
   const { tokens } = useTheme();

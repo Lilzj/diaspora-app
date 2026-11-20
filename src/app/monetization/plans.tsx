@@ -39,8 +39,8 @@ import {
 import { useMonetizationPlans } from '@/hooks/monetization';
 import { useActivateSubscription, useCanTransact, useMySubscription } from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import { useAuthStore } from '@/store/auth';
 import { useNotification } from '@/providers/notification-provider';
 import { audienceForKey, type SubscriptionAudienceKey } from '@/types/monetization';

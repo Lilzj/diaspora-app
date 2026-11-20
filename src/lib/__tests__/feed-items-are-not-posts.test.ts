@@ -1,7 +1,7 @@
 // A feed page holds feed items, not posts (14 Oct 2026). The Updates list read
 // each item AS the post and crashed on `visibility` the first time it held one.
 
-import { toFeedPost } from '../community-social-api';
+import { toFeedPost } from '../api/community-social-api';
 
 const SERVER_ITEM = {
   contentType: 'post',

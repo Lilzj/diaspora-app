@@ -33,7 +33,7 @@
 // catch.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { MIN_PASSWORD_LENGTH, PASSWORD_RULES } from '../password-policy';
+import { MIN_PASSWORD_LENGTH, PASSWORD_RULES } from '../domain/password-policy';
 import { backendSourceRoot } from './support/backend-checkout';
 
 // Required locally with narrow signatures, exactly as the sibling drift checks

@@ -28,7 +28,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import { useMyApplications, useWithdrawApplication } from '@/hooks/jobs-hiring';
-import { isAwaitingFirstView } from '@/lib/jobs-hiring-api';
+import { isAwaitingFirstView } from '@/lib/api/jobs-hiring-api';
 import type { ApplicationCardResponse, ApplicationStatus } from '@/types/jobs-hiring';
 
 /**

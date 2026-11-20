@@ -16,9 +16,9 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { RECORDED_COMMUNITY_CAPABILITIES } from '@/mocks/recorded/community-capabilities';
-import { readPage, resetBespokeEnvelopeWarnings } from '@/lib/platform-envelope';
+import { readPage, resetBespokeEnvelopeWarnings } from '@/lib/transport/platform-envelope';
 import {
   resetCommunitySocialMocks,
   setupCommunitySocialMocks,
@@ -75,7 +75,7 @@ import {
   unreactToPost,
   updatePost,
   votePoll,
-} from '@/lib/community-social-api';
+} from '@/lib/api/community-social-api';
 import type {
   CommentResponse,
   CommunityCapabilitiesResponse,

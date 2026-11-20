@@ -15,7 +15,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   createCommunityInitiative,
   fetchCommunityInitiative,
@@ -26,7 +26,7 @@ import {
   leaveCommunityInitiative,
   postCommunityInitiativeUpdate,
   updateCommunityInitiative,
-} from '../community-entity-api';
+} from '../api/community-entity-api';
 import type { CommunityId } from '@/types/community-directory';
 
 const ID = '2f1c9a30-0d5e-4c1a-9f21-5b6a7c8d9e01' as CommunityId;

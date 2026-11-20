@@ -36,7 +36,7 @@ import {
   describeRole,
   isReadOnly,
   splitCapabilities,
-} from '@/lib/organization-permissions';
+} from '@/lib/domain/organization-permissions';
 import type { OrganizationCapabilities } from '@/types/community-advanced';
 
 import { TabHeading, TabLoading, TabUnavailable } from './OrganizationTabShared';

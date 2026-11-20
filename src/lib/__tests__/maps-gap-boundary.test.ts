@@ -106,7 +106,7 @@ describe('the API layer refuses before it requests', () => {
     delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
     jest.resetModules();
 
-    const api = require('@/lib/maps-gap-api');
+    const api = require('@/lib/api/maps-gap-api');
 
     const calls: [string, () => Promise<unknown>][] = [
       ['fetchNeighborhoodScore', () => api.fetchNeighborhoodScore('peckham')],
@@ -136,7 +136,7 @@ describe('the API layer refuses before it requests', () => {
     // the post and becomes `CommunityAlert.area`. A simulated area beside the real
     // one would be the client inventing the scope of an emergency again.
     jest.resetModules();
-    const api = require('@/lib/maps-gap-api') as Record<string, unknown>;
+    const api = require('@/lib/api/maps-gap-api') as Record<string, unknown>;
 
     expect(api.fetchAlertArea).toBeUndefined();
   });
@@ -147,7 +147,7 @@ describe('the API layer refuses before it requests', () => {
     // in every build. A simulated layer beside the real one would be a test
     // build showing what production does not.
     jest.resetModules();
-    const api = require('@/lib/maps-gap-api') as Record<string, unknown>;
+    const api = require('@/lib/api/maps-gap-api') as Record<string, unknown>;
 
     expect(api.fetchHeatLayer).toBeUndefined();
   });
@@ -248,7 +248,7 @@ function readSource(relativePath: string): string {
 }
 
 describe('the development arm carries no discovery capability — §2, §31–§37', () => {
-  const gapApi = readSource('lib/maps-gap-api.ts');
+  const gapApi = readSource('lib/api/maps-gap-api.ts');
 
   it('exports nothing that returns a listing, job, event, organization or alert', () => {
     // The claim §2 rests on: maps are a presentation layer over what already
@@ -286,7 +286,7 @@ describe('the development arm carries no discovery capability — §2, §31–§
 });
 
 describe('the certified arm talks to certified routes — §2', () => {
-  const api = readSource('lib/maps-api.ts');
+  const api = readSource('lib/api/maps-api.ts');
 
   it('never reaches the gap prefix', () => {
     expect(api).not.toContain('maps-gap');

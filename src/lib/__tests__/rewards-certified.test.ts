@@ -15,12 +15,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   fetchRewardConversionTerms,
   fetchRewardPointsBalance,
   fetchRewardPointsHistory,
-} from '../financial-api';
+} from '../api/financial-api';
 
 let api: MockAdapter;
 

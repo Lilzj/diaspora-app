@@ -51,9 +51,9 @@ import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/Button';
 import { router } from 'expo-router';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { fetchMyProviders } from '@/lib/providers-api';
-import { fetchMyMarketplaceListings } from '@/lib/marketplace-listings-api';
-import { fetchMyHousingListings } from '@/lib/housing-listings-api';
+import { fetchMyProviders } from '@/lib/api/providers-api';
+import { fetchMyMarketplaceListings } from '@/lib/api/marketplace-listings-api';
+import { fetchMyHousingListings } from '@/lib/api/housing-listings-api';
 import { holdingsFromFailure } from '@/lib/analytics/owner-holdings';
 
 // `MyMarketplaceListing` and `MyHousingListing` moved to the two modules that

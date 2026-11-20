@@ -18,7 +18,7 @@ import {
   selectSortedConversations,
   selectTotalUnread,
 } from '@/store/conversation';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 import { ConversationCard } from '@/components/conversation/ConversationCard';
 import { InboxFilterBar } from '@/components/conversation/InboxFilterBar';
 import { ConversationEmptyState } from '@/components/conversation/ConversationEmptyState';

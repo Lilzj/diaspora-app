@@ -87,19 +87,19 @@ declare const __dirname: string;
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient, registerAuthBridge } from '@/lib/apiClient';
-import { authTransport } from '@/lib/auth-api';
-import * as auth from '@/lib/auth-api';
-import * as discoverFilters from '@/lib/discover-filters';
-import * as housingLandlord from '@/lib/housing-landlord';
-import * as housingListings from '@/lib/housing-listings-api';
-import * as housingViewings from '@/lib/housing-viewings-api';
-import * as jobs from '@/lib/jobs-hiring-api';
-import * as media from '@/lib/media-api';
-import * as notifications from '@/lib/notifications-api';
-import * as providers from '@/lib/providers-api';
-import * as providerRegistration from '@/lib/provider-registration-api';
-import * as recommendations from '@/lib/recommendations-api';
+import { apiClient, registerAuthBridge } from '@/lib/transport/apiClient';
+import { authTransport } from '@/lib/api/auth-api';
+import * as auth from '@/lib/api/auth-api';
+import * as discoverFilters from '@/lib/platform/discover-filters';
+import * as housingLandlord from '@/lib/domain/housing-landlord';
+import * as housingListings from '@/lib/api/housing-listings-api';
+import * as housingViewings from '@/lib/api/housing-viewings-api';
+import * as jobs from '@/lib/api/jobs-hiring-api';
+import * as media from '@/lib/api/media-api';
+import * as notifications from '@/lib/api/notifications-api';
+import * as providers from '@/lib/api/providers-api';
+import * as providerRegistration from '@/lib/api/provider-registration-api';
+import * as recommendations from '@/lib/api/recommendations-api';
 import { backendSourceRoot } from './support/backend-checkout';
 
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
@@ -1912,7 +1912,7 @@ const SCREEN_PAYLOADS: ScreenPayload[] = [
     // nested `location` and a `seller` block naming "Amara Kone" — none of which
     // the DTO declares — without a category key or a country. Rebuilt on the
     // real contract; the payload lives in the lib the screen calls.
-    file: 'src/lib/swap-listings.ts',
+    file: 'src/lib/domain/swap-listings.ts',
     variable: 'payload',
     verb: 'POST',
     path: '/api/v1/marketplace/listings',

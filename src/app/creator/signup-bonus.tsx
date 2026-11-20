@@ -33,12 +33,12 @@ import {
 } from '@/components/creator-economy';
 import { FinancialErrorInline } from '@/components/financial';
 import { useAcknowledgeSignupBonus, useSignupBonus } from '@/hooks/creator-economy';
-import { formatPoints, presentSignupBonusState } from '@/lib/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { formatPoints, presentSignupBonusState } from '@/lib/domain/creator-economy';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import { formatRelativeTime } from '@/utils/format';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { CreatorRequirement } from '@/types/creator-economy';
-import { appRouteFor } from '@/lib/server-route';
+import { appRouteFor } from '@/lib/platform/server-route';
 
 export default function SignupBonusScreen() {
   const { tokens } = useTheme();

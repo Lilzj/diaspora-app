@@ -17,15 +17,15 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import * as gapApi from '@/lib/financial-gap-api';
-import * as certified from '@/lib/financial-api';
-import { financialGapKeys } from '@/lib/financial-gap-api';
-import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
+import * as gapApi from '@/lib/api/financial-gap-api';
+import * as certified from '@/lib/api/financial-api';
+import { financialGapKeys } from '@/lib/api/financial-gap-api';
+import { shouldRetryQuery, type FinancialError } from '@/lib/transport/financial-errors';
 import { areGapFeaturesEnabled } from '@/config/financial-gaps';
-import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
+import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/domain/idempotency';
 import { invalidateAfterMoneyMoved, useFinancialAccess, usePrimaryWallet } from './financial';
-import { useMemberCurrency } from '@/lib/member-currency';
-import { pointsPerMajorUnit } from '@/lib/money';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
+import { pointsPerMajorUnit } from '@/lib/domain/money';
 import type {
   CreateDepositRequest,
   CreateWithdrawalRequest,

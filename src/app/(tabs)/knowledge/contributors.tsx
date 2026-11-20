@@ -13,7 +13,7 @@ import {
   fetchKnowledgeStatistics,
   knowledgeCountryKeys,
   type KnowledgeCountrySummary,
-} from '@/lib/knowledge-countries-api';
+} from '@/lib/api/knowledge-countries-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Knowledge Hub, "Contributors" tab

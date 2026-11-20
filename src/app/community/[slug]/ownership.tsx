@@ -52,7 +52,7 @@ import {
   useOfferCommunityOwnership,
   useWithdrawCommunityOwnershipOffer,
 } from '@/hooks/communities';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 const MAX_MESSAGE = 500;
 

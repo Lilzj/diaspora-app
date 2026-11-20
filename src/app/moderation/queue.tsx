@@ -60,7 +60,7 @@ import { Skeleton } from '@/components/Skeleton';
 import { humanise, relativeTime } from '@/components/community-social';
 import { useModerationQueue } from '@/hooks/community-social';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** The literal the server sends for content that has already gone. */
 const REMOVED_TITLE = '(removed)';

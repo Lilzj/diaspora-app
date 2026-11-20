@@ -13,7 +13,7 @@
 // dropped without a word (4 Nov 2026). It now asks for the one it keeps.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { listingFieldsFor, listingPricePayload } from '@/lib/marketplace-listing-fields';
+import { listingFieldsFor, listingPricePayload } from '@/lib/domain/marketplace-listing-fields';
 
 describe('the fields each kind of listing shows', () => {
   it('asks a seller everything', () => {

@@ -5,7 +5,7 @@
  * emoji ("📱 Phone Verified"), so adding an icon in front drew two.
  */
 import { toBadgeItem, trustBadgeLabel } from '@/config/badges';
-import { servedIcon } from '@/lib/served-icon';
+import { servedIcon } from '@/lib/platform/served-icon';
 import type { CreatorReputationBadge } from '@/types/creator-economy';
 
 declare const process: { cwd(): string };

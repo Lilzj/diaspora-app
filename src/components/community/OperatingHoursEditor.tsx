@@ -28,7 +28,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '@/design-system';
-import type { OperatingHourWire } from '@/lib/community-life-api';
+import type { OperatingHourWire } from '@/lib/api/community-life-api';
 
 /**
  * The days the platform accepts.

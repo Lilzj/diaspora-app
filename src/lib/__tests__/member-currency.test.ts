@@ -7,7 +7,7 @@
 // it published rents and menus in pounds.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { currencyForResidence, FALLBACK_CURRENCY } from '@/lib/member-currency';
+import { currencyForResidence, FALLBACK_CURRENCY } from '@/lib/domain/member-currency';
 
 const fs = require('fs') as {
   readFileSync(p: string, e: string): string;

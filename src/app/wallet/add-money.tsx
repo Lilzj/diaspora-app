@@ -51,13 +51,13 @@ import {
   useFinancialCapabilities,
   usePrimaryWallet,
 } from '@/hooks/financial';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { formatMoney, isGreaterThan, isLessThan, toRequestAmount } from '@/lib/money';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
+import { formatMoney, isGreaterThan, isLessThan, toRequestAmount } from '@/lib/domain/money';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import { useAuthStore } from '@/store/auth';
-import { useMemberCurrency } from '@/lib/member-currency';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 import type { PaymentMethodKind, PaymentStatus } from '@/types/financial';
-import type { StatusPresentation } from '@/lib/financial-status';
+import type { StatusPresentation } from '@/lib/domain/financial-status';
 
 /**
  * How a payment intent reads to somebody adding money.

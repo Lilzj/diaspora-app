@@ -6,8 +6,8 @@
 // showing an empty list.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '@/lib/apiClient';
-import { unwrapEnvelope } from '@/lib/platform-envelope';
+import { apiClient } from '@/lib/transport/apiClient';
+import { unwrapEnvelope } from '@/lib/transport/platform-envelope';
 import type { SaveGrantRequest } from '@/lib/creator/grant-admin-form';
 
 const ROOT = '/grants/admin';

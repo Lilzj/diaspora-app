@@ -20,13 +20,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { setupCommunityGapMocks } from '@/mocks/handlers/community-gaps';
 import { setupCommunityLifeMocks } from '@/mocks/handlers/community-life';
 import { setupFinancialMocks } from '@/mocks/handlers/financial';
-import { FinancialError } from '../financial-errors';
-import * as gapApi from '../community-gap-api';
-import * as b12 from '../community-life-api';
+import { FinancialError } from '../transport/financial-errors';
+import * as gapApi from '../api/community-gap-api';
+import * as b12 from '../api/community-life-api';
 import { MOCK_CAUSES } from '@/mocks/financial-data';
 
 /** The platform's RSVP routes, answered the way the server does (20 Oct 2026). */

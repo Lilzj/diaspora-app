@@ -16,7 +16,7 @@
 // `community-programme-api` the whole time, under the same names.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { conversionReasonText } from '../reward-conversion-text';
+import { conversionReasonText } from '../platform/reward-conversion-text';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };

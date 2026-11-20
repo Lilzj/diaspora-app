@@ -6,7 +6,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { TradeSafetyNote } from '../TradeSafetyNote';
 import { MemberTrustLine } from '../MemberTrustLine';
-import { IN_APP_TIPS, IN_PERSON_TIPS, SAFETY_LINE, TRADING_SAFETY_ROUTE } from '@/lib/trading-safety';
+import { IN_APP_TIPS, IN_PERSON_TIPS, SAFETY_LINE, TRADING_SAFETY_ROUTE } from '@/lib/domain/trading-safety';
 
 let mockProfile: unknown = null;
 jest.mock('@/hooks/trust', () => ({

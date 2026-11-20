@@ -55,7 +55,7 @@ import {
 import { useMapSessionStore } from '@/store/map-session';
 import { getActiveLocation, useLocationStore } from '@/store/location';
 import { useAuthStore } from '@/store/auth';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { classifyError } from '@/lib/maps/errors';
 import { heatLayerNeedsCountry, heatLayerProblem } from '@/lib/maps/geo-client';
 import { trackMapsEvent } from '@/lib/maps/analytics';
@@ -68,7 +68,7 @@ import {
   type MapCluster,
   type MapSearchResult,
 } from '@/types/maps';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /**
  * How far around the member the discovery map opens, in kilometres. The same

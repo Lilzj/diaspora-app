@@ -15,7 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import { setupMonetizationGapMocks } from '@/mocks/handlers/monetization-gaps';
 import {
   MONETIZATION_GAPS,
@@ -26,7 +26,7 @@ import {
 } from '@/config/monetization-gaps';
 import * as featureFlags from '@/config/gap-preview';
 import { GAP_ROUTE_PREFIX } from '@/config/financial-gaps';
-import * as gapApi from '../monetization-gap-api';
+import * as gapApi from '../api/monetization-gap-api';
 
 /**
  * `MockAdapter.handlers` is not on the published typings, but it is the only way
@@ -131,7 +131,7 @@ describe('a release build ships no simulation', () => {
     (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     jest.resetModules();
 
-    const api = require('../monetization-gap-api') as typeof import('../monetization-gap-api');
+    const api = require('../api/monetization-gap-api') as typeof import('../api/monetization-gap-api');
 
     // No adapter is registered at all, so anything that reached the network
     // would fail with a transport error rather than the refusal asserted here.
@@ -148,7 +148,7 @@ describe('a release build ships no simulation', () => {
     (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     jest.resetModules();
 
-    const api = require('../monetization-gap-api') as typeof import('../monetization-gap-api');
+    const api = require('../api/monetization-gap-api') as typeof import('../api/monetization-gap-api');
 
     await expect(
       api.createCampaign({
@@ -181,7 +181,7 @@ describe('a release build ships no simulation', () => {
     (globalThis as { __DEV__?: boolean }).__DEV__ = false;
     jest.resetModules();
 
-    const api = require('../monetization-gap-api') as typeof import('../monetization-gap-api');
+    const api = require('../api/monetization-gap-api') as typeof import('../api/monetization-gap-api');
 
     await expect(api.fetchCampaigns()).rejects.toMatchObject({
       code: 'frontend.monetization-gap.campaigns',

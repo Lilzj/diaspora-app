@@ -62,7 +62,7 @@ import { formatRelativeTime } from '@/utils/format';
 import { useAuthStore } from '@/store/auth';
 import { useNotification } from '@/providers/notification-provider';
 import type { CommunityContentType } from '@/types/community-social';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 
 export default function UpdateDetailScreen() {

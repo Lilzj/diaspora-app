@@ -33,9 +33,9 @@ import {
   TransactionRow,
 } from '@/components/financial';
 import { useTransactions } from '@/hooks/financial';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
 import { useAuthStore } from '@/store/auth';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 
 /**
  * The filters worth offering.

@@ -1,4 +1,4 @@
-import { meetsPasswordRules } from '@/lib/password-policy';
+import { meetsPasswordRules } from '@/lib/domain/password-policy';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
 import React, { useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Modal, Pressable, StyleSheet } from 'react-native';
@@ -7,9 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { setRegistrationDraft } from '@/lib/registration-draft';
-import { checkPassword } from '@/lib/auth-api';
-import { normaliseReferralCode, REFERRAL_CODE_MAX_LENGTH } from '@/lib/referral-code';
+import { setRegistrationDraft } from '@/lib/platform/registration-draft';
+import { checkPassword } from '@/lib/api/auth-api';
+import { normaliseReferralCode, REFERRAL_CODE_MAX_LENGTH } from '@/lib/domain/referral-code';
 
 /**
  * The server's floor, mirrored so the member is told before the round trip.

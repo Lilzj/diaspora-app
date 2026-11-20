@@ -27,7 +27,7 @@ import {
   describeDoor,
   isEventFull,
   rsvpActionLabel,
-} from '../event-capacity';
+} from '../domain/event-capacity';
 import type { EventCapacity } from '@/types/community-life';
 
 function capacity(overrides: Partial<EventCapacity> = {}): EventCapacity {

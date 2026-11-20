@@ -15,19 +15,19 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { backOr } from '@/lib/navigation';
-import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/event-capacity';
-import { eventHost, eventHostOrgId, eventOrganiserUserId } from '@/lib/event-host';
-import { describeEventPrice } from '@/lib/event-wire';
-import { formatPrice } from '@/lib/money';
-import { useMemberCurrency } from '@/lib/member-currency';
-import { parseCapacity } from '@/lib/event-capacity-prompt';
+import { backOr } from '@/lib/platform/navigation';
+import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/domain/event-capacity';
+import { eventHost, eventHostOrgId, eventOrganiserUserId } from '@/lib/api/event-host';
+import { describeEventPrice } from '@/lib/api/event-wire';
+import { formatPrice } from '@/lib/domain/money';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
+import { parseCapacity } from '@/lib/platform/event-capacity-prompt';
 import { usePublishEvent, useSetEventCapacity, useSetRsvp } from '@/hooks/community-life';
 import { useAuthStore } from '@/store/auth';
 import { useSavedStore } from '@/store/saved';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ReportModal } from '@/components/ReportModal';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 
 // B15 — CommunityLife owns the event and the RSVP; Financial owns the money.
 import { SubjectPaymentButton } from '@/components/financial';
@@ -46,8 +46,8 @@ import { useTheme } from '@/design-system';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
-import { deleteEvent, fetchEvent } from '@/lib/community-life-api';
-import { FinancialError } from '@/lib/financial-errors';
+import { deleteEvent, fetchEvent } from '@/lib/api/community-life-api';
+import { FinancialError } from '@/lib/transport/financial-errors';
 import { EventCommunityLink } from '@/components/EventCommunityLink';
 
 export default function EventDetailScreen() {

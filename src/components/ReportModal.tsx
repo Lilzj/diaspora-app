@@ -101,7 +101,7 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useThemeTokens } from '@/design-system';
 import { Sheet } from '@/components/overlays/AppModal';
 import { Button } from '@/components/Button';
-import { communityErrorMessage, reportContent } from '@/lib/community-social-api';
+import { communityErrorMessage, reportContent } from '@/lib/api/community-social-api';
 import type { CommunityContentType } from '@/types/community-social';
 
 export interface ReportData {

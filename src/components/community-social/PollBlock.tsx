@@ -20,7 +20,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 
-import { arePollResultsHidden } from '@/lib/community-social-api';
+import { arePollResultsHidden } from '@/lib/api/community-social-api';
 import type { PollResponse } from '@/types/community-social';
 
 interface PollBlockProps {

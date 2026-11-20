@@ -24,7 +24,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { usePricing } from '@/providers/pricing-provider';
-import { canStartTrial, describeEntitlement } from '@/lib/entitlements';
+import { canStartTrial, describeEntitlement } from '@/lib/domain/entitlements';
 import { GATED_FEATURES, type EntitlementDecision, type GatedFeature } from '@/types/monetization';
 import type { Subscription } from '@/types/financial';
 

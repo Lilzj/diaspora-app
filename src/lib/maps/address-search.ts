@@ -15,7 +15,7 @@
 // there were none. `useAddressSearch` owns that lifecycle so no screen has to.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import type { GeoCoordinate } from '@/types/maps';
 
 interface Envelope<T> {

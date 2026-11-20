@@ -92,8 +92,8 @@ import {
 // The query keys stay in the adapter's module because the cache namespace is
 // shared by every hook below. Nothing governance-related is simulated any more:
 // initiatives (FRONTEND-PHASE13-GAP-019) became real on 20 Oct 2026.
-import { communityDirectoryGapKeys } from '@/lib/community-gap-directory-api';
-import { mapKeys } from '@/lib/maps-api';
+import { communityDirectoryGapKeys } from '@/lib/api/community-gap-directory-api';
+import { mapKeys } from '@/lib/api/maps-api';
 
 // ── The six that are real now ───────────────────────────────────────────────
 //
@@ -149,7 +149,7 @@ import {
   type SaveCommunityNoticeInput,
   type UpdateCommunityInitiativeInput,
   type SaveCommunityRuleInput,
-} from '@/lib/community-entity-api';
+} from '@/lib/api/community-entity-api';
 
 import {
   communityScopedKeys,
@@ -159,7 +159,7 @@ import {
   type CertifiedContentParams,
   type CommunityContentDomain,
   type CommunityScopedResult,
-} from '@/lib/community-directory-api';
+} from '@/lib/api/community-directory-api';
 
 import {
   ALL_COMMUNITIES_SCOPE,
@@ -183,7 +183,7 @@ import { mergeCommunityMetadata, readCommunityMetadata } from '@/lib/community/p
 // `getState()`, where allocation is harmless.
 import { useCommunityContextStore } from '@/store/community-context';
 import { trackCommunityEvent } from '@/lib/community/analytics';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { useAuthStore } from '@/store/auth';
 
 /** How many communities the switcher and the projection lookup hold at once. */
@@ -1489,7 +1489,7 @@ import {
   requestCommunityDeletion,
   withdrawCommunityDeletion,
   withdrawCommunityOwnershipOffer,
-} from '@/lib/community-entity-api';
+} from '@/lib/api/community-entity-api';
 import type {
   OfferCommunityOwnershipInput,
   RequestCommunityDeletionInput,

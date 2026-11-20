@@ -26,7 +26,7 @@ import {
   placeOf,
   providerPlaceLine,
   pinPlaceOf,
-} from '@/lib/listing-place';
+} from '@/lib/platform/listing-place';
 
 /** `GET /jobs` — flat, no `location`, no distance. This is what crashed. */
 const JOB_ROW = {
@@ -264,7 +264,7 @@ describe('the marketplace detail screen reads the wire shape', () => {
   // assertions follow it to `lib/marketplace-wire.ts` rather than pinning it
   // back into the screen.
   const SCREEN = code('app', 'marketplace', '[id].tsx');
-  const SEAM = code('lib', 'marketplace-wire.ts');
+  const SEAM = code('lib', 'api', 'marketplace-wire.ts');
 
   it('maps seller.displayName onto the name the render wants', () => {
     expect(SEAM).toContain('seller.displayName');

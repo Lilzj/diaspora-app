@@ -19,8 +19,8 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
-import { fetchContentAnalytics, fetchCreatorContentPerformance } from '@/lib/analytics-api';
+import { apiClient } from '@/lib/transport/apiClient';
+import { fetchContentAnalytics, fetchCreatorContentPerformance } from '@/lib/api/analytics-api';
 import { ANALYTICS_DEFINITIONS } from '@/lib/analytics/definitions';
 import type { AnalyticsSubjectType, AnalyticsTimeRange } from '@/types/analytics';
 

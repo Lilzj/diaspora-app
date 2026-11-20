@@ -88,9 +88,9 @@
 // off.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from '../apiClient';
-import { toFinancialError } from '../financial-errors';
-import { fromMinorUnits } from '../money';
+import { apiClient } from '../transport/apiClient';
+import { toFinancialError } from '../transport/financial-errors';
+import { fromMinorUnits } from '../domain/money';
 import type { Money } from '@/types/financial';
 import type {
   CommunityGrant,
@@ -122,7 +122,7 @@ import type {
   SubmitCreatorVerificationRequest,
   SubmitGrantApplicationRequest,
 } from '@/types/creator-economy';
-import type { CreatorDirectoryPage, UpdateCreatorProfileRequest } from '../creator-gap-api';
+import type { CreatorDirectoryPage, UpdateCreatorProfileRequest } from '../api/creator-gap-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Transport
@@ -1012,7 +1012,7 @@ export function fetchLeaderboard(params: {
 // each the shape they are.
 // ═════════════════════════════════════════════════════════════════════════════
 
-export { fetchEarnings, fetchRevenueSummary } from '../creator-earning-api';
+export { fetchEarnings, fetchRevenueSummary } from '../api/creator-earning-api';
 
 // ── Real since 20 Oct 2026: recommendations and sponsored content ───────────
 

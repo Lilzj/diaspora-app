@@ -5,7 +5,7 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useThemeTokens } from '@/design-system';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Release notes

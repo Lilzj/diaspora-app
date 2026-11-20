@@ -29,7 +29,7 @@
 
 import { create } from 'zustand';
 import type { SavedContentType } from '@/types/saved';
-import { createBookmark, deleteBookmark, fetchBookmarks } from '@/lib/bookmarks-api';
+import { createBookmark, deleteBookmark, fetchBookmarks } from '@/lib/api/bookmarks-api';
 
 interface SavedState {
   /** contentId → contentType, for the screens that only ask "is this saved?". */

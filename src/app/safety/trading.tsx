@@ -12,7 +12,7 @@ import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { IN_APP_TIPS, IN_PERSON_TIPS, type SafetyTip } from '@/lib/trading-safety';
+import { IN_APP_TIPS, IN_PERSON_TIPS, type SafetyTip } from '@/lib/domain/trading-safety';
 
 function Section({ title, lead, tips }: { title: string; lead: string; tips: SafetyTip[] }) {
   return (

@@ -26,7 +26,7 @@
 // a timeout or a lapsed session establishes nothing.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { readPage } from '@/lib/platform-envelope';
+import { readPage } from '@/lib/transport/platform-envelope';
 
 /** The four dashboards that are about a member's own things. */
 export type OwnerRole = 'landlord' | 'seller' | 'provider' | 'employer';

@@ -21,7 +21,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
-import type { PriceView } from '@/lib/pricing';
+import type { PriceView } from '@/lib/domain/pricing';
 
 export type PriceTagSize = 'small' | 'medium' | 'large' | 'hero';
 

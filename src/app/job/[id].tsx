@@ -43,7 +43,7 @@ import { useApplyToJob } from '@/hooks/jobs-hiring';
 import { useRefreshControl } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 import {
   JOB_TYPE_LABELS,
   WORKPLACE_LABELS,
@@ -67,13 +67,13 @@ import {
   workArrangementFacts,
   type CloseOutcome,
   type JobStanding,
-} from '@/lib/job-detail-api';
-import { fetchJobCategories } from '@/lib/job-postings-api';
-import { jobsHiringErrorMessage } from '@/lib/jobs-hiring-api';
+} from '@/lib/api/job-detail-api';
+import { fetchJobCategories } from '@/lib/api/job-postings-api';
+import { jobsHiringErrorMessage } from '@/lib/api/jobs-hiring-api';
 import { useNotification } from '@/providers/notification-provider';
 import { useSavedStore } from '@/store/saved';
 import type { JobDetailLineResponse, JobResponse } from '@/types/jobs-hiring';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** Statuses a promotion could still send anybody to. */
 const PROMOTABLE = new Set<JobResponse['status']>(['Published', 'Open', 'ReceivingApplications', 'Interviewing', 'OfferMade']);

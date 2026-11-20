@@ -38,7 +38,7 @@ import {
   isVerificationInFlight,
   latestVerificationOfType,
   needsMemberAction,
-} from '@/lib/trust-api';
+} from '@/lib/api/trust-api';
 import type { VerificationStatus } from '@/types/trust';
 import { ACCOUNT_HEALTH_LABELS } from '@/types/trust';
 import { TourSpotlight } from '@/components/explore/TourProvider';

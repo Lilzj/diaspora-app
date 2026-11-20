@@ -31,7 +31,7 @@ function read(...segments: string[]): string {
 }
 
 const SCREEN = read('src', 'app', 'wallet', 'add-money.tsx');
-const API = read('src', 'lib', 'financial-api.ts');
+const API = read('src', 'lib', 'api', 'financial-api.ts');
 const HOOKS = read('src', 'hooks', 'financial.ts');
 
 describe('the deposit flow calls the real platform', () => {

@@ -42,13 +42,13 @@ import {
   useCreatorVerification,
   useCreatorVerificationActions,
 } from '@/hooks/creator-economy';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { presentVerificationState } from '@/lib/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { presentVerificationState } from '@/lib/domain/creator-economy';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import { formatRelativeTime } from '@/utils/format';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { CreatorRequirement } from '@/types/creator-economy';
-import { appRouteFor } from '@/lib/server-route';
+import { appRouteFor } from '@/lib/platform/server-route';
 
 const APPEAL_MINIMUM = 20;
 

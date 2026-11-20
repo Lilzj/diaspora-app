@@ -66,7 +66,7 @@ import { Button } from '@/components/Button';
 import { FeatureGate } from '@/components/FeatureGate';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { useNotification } from '@/providers/notification-provider';
-import { createPost, POST_BODY_MAX_LENGTH } from '@/lib/community-social-api';
+import { createPost, POST_BODY_MAX_LENGTH } from '@/lib/api/community-social-api';
 import { useAlertCapabilities, usePostCategories } from '@/hooks/community-social';
 import type { CommunityPostCategory, CommunityPostUrgency } from '@/types/community-social';
 import { useThemeTokens } from '@/design-system';

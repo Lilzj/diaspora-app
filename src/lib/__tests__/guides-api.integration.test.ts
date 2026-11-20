@@ -16,8 +16,8 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '@/lib/apiClient';
-import { readPage } from '@/lib/platform-envelope';
+import { apiClient } from '@/lib/transport/apiClient';
+import { readPage } from '@/lib/transport/platform-envelope';
 import { DEV_GUIDE_IDS, resetGuideMocks, setupGuideMocks } from '@/mocks/handlers/guides';
 import {
   GUIDE_BLOCK_MAX_LENGTH,
@@ -58,13 +58,13 @@ import {
   setGuideTags,
   submitGuideVerification,
   updateGuide,
-} from '@/lib/guides-api';
+} from '@/lib/api/guides-api';
 import {
   composeGuideDocument,
   documentWordCount,
   exceedsBlockLimit,
   parseEditorMarkup,
-} from '@/lib/guide-composer';
+} from '@/lib/platform/guide-composer';
 import type { GuideSectionInput } from '@/types/guides';
 
 let mock: MockAdapter;

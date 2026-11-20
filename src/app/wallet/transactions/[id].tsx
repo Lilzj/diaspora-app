@@ -37,8 +37,8 @@ import {
   describeSubjectType,
   describeTransactionType,
   presentTransactionStatus,
-} from '@/lib/financial-status';
-import { FinancialError } from '@/lib/financial-errors';
+} from '@/lib/domain/financial-status';
+import { FinancialError } from '@/lib/transport/financial-errors';
 import { formatRelativeTime } from '@/utils/format';
 
 /** How many statement pages to walk looking for a transaction's entries. */

@@ -13,7 +13,7 @@
 // real data for the first time.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { toAttendee, type AttendeeWire } from '../event-attendees';
+import { toAttendee, type AttendeeWire } from '../api/event-attendees';
 
 function wire(overrides: Partial<AttendeeWire> = {}): AttendeeWire {
   return {
@@ -120,7 +120,7 @@ describe('whether the door is open', () => {
       .replace(new RegExp('//[^\\n]*', 'g'), ' ');
 
   it('takes the answer off the page rather than computing one', () => {
-    const adapter = source('lib', 'event-attendees.ts');
+    const adapter = source('lib', 'api', 'event-attendees.ts');
 
     expect(adapter).toMatch(/acceptsCheckIn: Boolean\(page\.acceptsCheckIn\)/);
     // No arithmetic on the schedule anywhere in the client's attendee path.

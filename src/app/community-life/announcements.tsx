@@ -32,9 +32,9 @@ import {
   useOrganizationCapabilities,
   usePublishAnnouncement,
 } from '@/hooks/community-life';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { AnnouncementScope } from '@/types/community-advanced';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 
 export default function AnnouncementsScreen() {
   const { scope, scopeId } = useLocalSearchParams<{ scope?: AnnouncementScope; scopeId?: string }>();

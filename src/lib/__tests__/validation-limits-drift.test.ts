@@ -42,8 +42,8 @@
 // this is what makes them avoidable.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { MAX_SUMMARY, MIN_TITLE } from '../community-life-api';
-import { AREA_INSIGHT_MAX_LENGTH } from '../area-insights-api';
+import { MAX_SUMMARY, MIN_TITLE } from '../api/community-life-api';
+import { AREA_INSIGHT_MAX_LENGTH } from '../api/area-insights-api';
 import { MAX_PARAMETER_JSON } from '../automation/certified-client';
 import { backendSourceRoot } from './support/backend-checkout';
 

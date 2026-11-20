@@ -35,7 +35,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { coverImageUri, housingMediaIds, type HousingMediaRef } from '@/types/housing';
-import { toHousingListingDetail } from '@/lib/housing-listings-api';
+import { toHousingListingDetail } from '@/lib/api/housing-listings-api';
 
 /** Exactly what `GET /housing/listings/{id}` returned for a seeded listing. */
 const WIRE = {

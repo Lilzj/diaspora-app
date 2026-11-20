@@ -44,7 +44,7 @@ import {
   type StraightLineDistance,
 } from '@/types/maps';
 import { formatDistance } from '@/utils/geo';
-import { currencySymbol } from '@/lib/money';
+import { currencySymbol } from '@/lib/domain/money';
 import { distanceBetween, isValidCoordinate, toKm } from './geo';
 import { markerCoordinate } from './privacy';
 

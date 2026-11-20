@@ -49,7 +49,7 @@ import {
   recordDismiss,
   recordView,
   type FeedbackInput,
-} from '@/lib/recommendations-api';
+} from '@/lib/api/recommendations-api';
 import { getActiveLocation, useLocationStore } from '@/store/location';
 import type {
   FeedSection,

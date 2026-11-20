@@ -18,7 +18,7 @@ import {
   CommunityEventsSection,
   CommunityUnavailablePanel,
 } from '@/components/community-directory';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 export default function CommunityEventsRoute() {
   const { tokens } = useTheme();

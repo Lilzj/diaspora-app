@@ -7,7 +7,7 @@
 // them fell through to the fallback, so a milestone read "Milestone:first-guide".
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { describeRewardSource } from '../reward-source';
+import { describeRewardSource } from '../domain/reward-source';
 
 describe('describeRewardSource', () => {
   it.each([

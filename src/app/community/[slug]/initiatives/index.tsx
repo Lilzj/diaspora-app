@@ -34,7 +34,7 @@ import { CommunityAvatar, communityOriginLabel } from '@/components/community-di
 import { CommunityInitiativeCard } from '@/components/community-directory/CommunityPanels';
 import { CommunityUnavailablePanel } from '@/components/community-directory/CommunityStatePanels';
 import type { CommunityInitiativeStatus } from '@/types/community-directory';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 const FILTERS: { value: CommunityInitiativeStatus | undefined; label: string }[] = [
   { value: undefined, label: 'All' },

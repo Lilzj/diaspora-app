@@ -36,14 +36,14 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import { useCandidateProfile } from '@/hooks/jobs-hiring';
-import { isCandidateProfileExistsError, jobsHiringErrorMessage } from '@/lib/jobs-hiring-api';
+import { isCandidateProfileExistsError, jobsHiringErrorMessage } from '@/lib/api/jobs-hiring-api';
 import type {
   CandidateProfileResponse,
   CandidateVisibility,
   ExperienceLevel,
   RemotePreference,
 } from '@/types/jobs-hiring';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 import { useAuthStore } from '@/store/auth';
 
 /** The server's own ceiling on a headline (`JobLimits.MaxHeadline`). */

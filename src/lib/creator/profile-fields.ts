@@ -6,7 +6,7 @@
  * "Edit profile" can take the member to it and open it (Android UAT,
  * 3 Nov 2026), rather than to whichever section a substring matched.
  */
-import { appRouteFor } from '@/lib/server-route';
+import { appRouteFor } from '@/lib/platform/server-route';
 
 export type ProfileField = 'cover' | 'bio' | 'categories' | 'expertise' | 'languages';
 

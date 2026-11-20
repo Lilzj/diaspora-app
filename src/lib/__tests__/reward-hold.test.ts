@@ -8,7 +8,7 @@
 // the appeals screen reads what it was opened with.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { appealPrefill, isRewardHold, rewardHoldReviewRoute } from '../reward-hold';
+import { appealPrefill, isRewardHold, rewardHoldReviewRoute } from '../domain/reward-hold';
 
 describe('isRewardHold', () => {
   it('is the code the server sends only for a held account', () => {

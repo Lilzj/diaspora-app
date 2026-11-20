@@ -67,10 +67,10 @@ import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { Input } from '@/components/Input';
 import { useTrustStore } from '@/store/trust';
 import { useTrustProfile } from '@/hooks/trust';
-import { TrustEngine } from '@/lib/trustEngine';
+import { TrustEngine } from '@/lib/domain/trustEngine';
 import { useAuthStore } from '@/store/auth';
-import { countryByCode } from '@/lib/calling-code';
-import { guideCountryOptions } from '@/lib/guide-countries';
+import { countryByCode } from '@/lib/platform/calling-code';
+import { guideCountryOptions } from '@/lib/domain/guide-countries';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeTokens } from '@/design-system';
@@ -83,13 +83,13 @@ import {
   GuidePublishError,
   guideErrorMessage,
   hasPublishableContent,
-} from '@/lib/guides-api';
+} from '@/lib/api/guides-api';
 import {
   composeGuideDocument,
   documentWordCount,
   exceedsBlockLimit,
   newDocumentId,
-} from '@/lib/guide-composer';
+} from '@/lib/platform/guide-composer';
 
 // Module-level global storage for guide drafts
 let globalGuideDraft: any = null;

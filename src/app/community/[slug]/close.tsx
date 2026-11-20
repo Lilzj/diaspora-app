@@ -54,7 +54,7 @@ import {
   useRequestCommunityDeletion,
   useWithdrawCommunityDeletion,
 } from '@/hooks/communities';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** The platform's own bounds, echoed so the field can say so before the server does. */
 const MIN_REASON = 10;

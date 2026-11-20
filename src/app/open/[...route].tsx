@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { isResolvableRoute } from '@/lib/notification-routes';
+import { isResolvableRoute } from '@/lib/platform/notification-routes';
 
 /**
  * `https://diaspora-api.fly.dev/open/<route>`: an email's button, opened by the app.

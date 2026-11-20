@@ -23,7 +23,7 @@ const handlers: {
   created?: Handler<{ conversationId: string }>;
 } = {};
 
-jest.mock('@/lib/realtime', () => ({
+jest.mock('@/lib/transport/realtime', () => ({
   conversationGroup: (id: string) => `conversation:${id}`,
   getRealtimeClient: () => ({
     connect: jest.fn(async () => {}),
@@ -50,14 +50,14 @@ jest.mock('@/store/auth', () => ({
   useAuthStore: { getState: () => ({ user: { userId: '01a0576f-2c1d-7f00-8000-0000000000a1', fullName: 'Aisha Okonkwo' } }) },
 }));
 
-jest.mock('@/lib/apiClient', () => ({
+jest.mock('@/lib/transport/apiClient', () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
 }));
 
 jest.mock('@/providers/notification-provider', () => ({ showAlertOutsideReact: jest.fn() }));
 
 // eslint-disable-next-line import/first
-import { ConversationHub } from '@/lib/conversation-hub';
+import { ConversationHub } from '@/lib/transport/conversation-hub';
 
 const CONVERSATION = '01a0a1b2-0000-7000-8000-00000000c001';
 const AISHA = '01a0576f-2c1d-7f00-8000-0000000000a1';

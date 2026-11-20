@@ -30,7 +30,7 @@ import {
   describeSeries,
   describeVolunteerApplication,
   isOrganiserOnlyCampaignState,
-} from '@/lib/community-state';
+} from '@/lib/domain/community-state';
 import type {
   CommunityAnnouncement,
   CommunityMembership,

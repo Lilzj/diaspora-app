@@ -27,8 +27,8 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useMyAppeals, useSubmitAppeal } from '@/hooks/trust';
-import { APPEAL_REASON_MIN_LENGTH, appealTrackerIndex } from '@/lib/trust-api';
-import { appealPrefill } from '@/lib/reward-hold';
+import { APPEAL_REASON_MIN_LENGTH, appealTrackerIndex } from '@/lib/api/trust-api';
+import { appealPrefill } from '@/lib/domain/reward-hold';
 import { useAuthStore } from '@/store/auth';
 import { usePrimaryWallet } from '@/hooks/financial';
 import type { AppealStatus, AppealType } from '@/types/trust';

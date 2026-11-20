@@ -6,8 +6,8 @@
  * `/saved` screen listed hand-written folders, a second one on the same route
  * read a field the server never sends, and Profile linked to neither.
  */
-import { saveControlFor, viewerStateOf } from '@/lib/guide-viewer';
-import { savedContentTypeOf } from '@/lib/bookmarks-api';
+import { saveControlFor, viewerStateOf } from '@/lib/domain/guide-viewer';
+import { savedContentTypeOf } from '@/lib/api/bookmarks-api';
 
 declare const process: { cwd(): string };
 const fs: { readFileSync(path: string, encoding: string): string; existsSync(path: string): boolean } =

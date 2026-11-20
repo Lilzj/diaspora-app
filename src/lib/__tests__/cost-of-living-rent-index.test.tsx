@@ -15,7 +15,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import MockAdapter from 'axios-mock-adapter';
 import { ThemeProvider } from '@/design-system';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { CostOfLivingPanel } from '@/components/maps';
 import { fetchAreaReport } from '@/lib/maps/geo-client';
 import { costOfLivingUnavailableText } from '@/lib/maps/area-copy';

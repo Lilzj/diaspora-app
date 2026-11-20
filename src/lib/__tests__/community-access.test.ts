@@ -22,8 +22,8 @@ import {
   membershipOpensMemberSurfaces,
   noOrganizationCapabilities,
   resolveCommunityAccess,
-} from '../community-access';
-import { AccessTier } from '../financial-access';
+} from '../domain/community-access';
+import { AccessTier } from '../domain/financial-access';
 import type { AccountState } from '@/types/trust';
 import type { OrganizationCapabilities } from '@/types/community-advanced';
 

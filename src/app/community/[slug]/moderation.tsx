@@ -51,7 +51,7 @@ import type {
   CommunityModerationDecision,
   CommunityReportStatus,
 } from '@/types/community-directory';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import {
   useCommunity,
   useCommunityCapabilities,
@@ -66,7 +66,7 @@ import {
   CommunityReportCard,
   CommunityUnavailablePanel,
 } from '@/components/community-directory';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 const STATUS_TABS: (CommunityReportStatus | 'All')[] = [
   'Open',

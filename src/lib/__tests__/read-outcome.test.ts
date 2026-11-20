@@ -5,7 +5,7 @@
  * expired, or archived" whenever the read failed, including when the phone never
  * reached Diaspora at all.
  */
-import { readOutcome, readOutcomeMessage } from '../read-outcome';
+import { readOutcome, readOutcomeMessage } from '../transport/read-outcome';
 
 describe('what a failed read established', () => {
   it('is "gone" only when the platform said so', () => {

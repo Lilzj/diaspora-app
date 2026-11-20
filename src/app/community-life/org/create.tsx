@@ -6,12 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { FeatureGate } from '@/components/FeatureGate';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
-import { coordinatesOf } from '@/lib/place-coordinates';
+import { coordinatesOf } from '@/lib/platform/place-coordinates';
 import {
   createOrganization,
   type CreateOrganizationRequest,
-} from '@/lib/community-life-api';
-import { FinancialError } from '@/lib/financial-errors';
+} from '@/lib/api/community-life-api';
+import { FinancialError } from '@/lib/transport/financial-errors';
 import type { OrgFormState } from '@/types/community-life';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
@@ -21,8 +21,8 @@ import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { useLocationStore, getActiveLocation } from '@/store/location';
 import { useAuthStore } from '@/store/auth';
-import { toOrganizationTypeKey } from '@/lib/community-life-catalogue';
-import { backOr } from '@/lib/navigation';
+import { toOrganizationTypeKey } from '@/lib/domain/community-life-catalogue';
+import { backOr } from '@/lib/platform/navigation';
 
 // Organisation types are the server's since 13 Oct 2026 (`useCommunityLifeCatalogue`).
 // The form offered "Doctors", "Lawyers", "Restaurants", "Embassies" and more that are

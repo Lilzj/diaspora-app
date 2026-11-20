@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { backOr } from '../navigation';
+import { backOr } from '../platform/navigation';
 
 const mocked = router as jest.Mocked<typeof router>;
 

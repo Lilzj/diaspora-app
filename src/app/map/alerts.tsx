@@ -54,7 +54,7 @@ import { useCommunityAlerts, useMapRealtime } from '@/hooks/maps';
 import { useMapSessionStore } from '@/store/map-session';
 import { getActiveLocation, hasCoordinate, locationLabel, useLocationStore } from '@/store/location';
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { alertMarker } from '@/lib/maps/markers';
 import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';

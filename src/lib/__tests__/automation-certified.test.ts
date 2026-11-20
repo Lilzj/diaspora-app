@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import * as automation from '../automation/certified-client';
 import { serializeParameters } from '../automation/certified-client';
 import type { AutomationDraft, AutomationScope } from '@/types/automation';

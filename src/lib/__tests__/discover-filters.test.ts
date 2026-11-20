@@ -15,7 +15,7 @@
  * routes ignored. The server orders both across every page now, and each tab
  * offers only what it can honour.
  */
-import type { DiscoverScope } from '../discover-scope';
+import type { DiscoverScope } from '../domain/discover-scope';
 import {
   amountFromInput,
   amountInputText,
@@ -35,7 +35,7 @@ import {
   unratedSortNote,
   type HousingSheetFilters,
   type MarketplaceSheetFilters,
-} from '../discover-filters';
+} from '../platform/discover-filters';
 
 const MAURITIUS: DiscoverScope = { kind: 'country', countryCode: 'MU' };
 const ROSE_HILL: DiscoverScope = { kind: 'town', countryCode: 'MU', cityName: 'Rose Hill' };

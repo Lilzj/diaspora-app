@@ -44,16 +44,16 @@ import {
   useDonateToCampaign,
   useMyRecurringDonations,
 } from '@/hooks/community-life';
-import { describeGiving } from '@/lib/community-state';
-import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { describeGiving } from '@/lib/domain/community-state';
+import { checkCommunityAccess, CommunityCapabilities } from '@/lib/domain/community-access';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import { useAuthStore } from '@/store/auth';
-import { useMemberCurrency } from '@/lib/member-currency';
-import { currencySymbol } from '@/lib/money';
-import type { FinancialError } from '@/lib/financial-errors';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
+import { currencySymbol } from '@/lib/domain/money';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import { parseNextAction } from '@/lib/integrations/payments';
 import type { Donation } from '@/types/financial';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** Preset amounts in major units. §12 asks for presets plus a custom amount. */
 const PRESETS = [5, 10, 25, 50, 100];

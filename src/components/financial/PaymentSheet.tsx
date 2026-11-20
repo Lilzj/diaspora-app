@@ -38,8 +38,8 @@ import {
   usePaymentReconciliation,
   usePrimaryWallet,
 } from '@/hooks/financial';
-import { FinancialError, toFinancialError } from '@/lib/financial-errors';
-import { presentPaymentStatus } from '@/lib/financial-status';
+import { FinancialError, toFinancialError } from '@/lib/transport/financial-errors';
+import { presentPaymentStatus } from '@/lib/domain/financial-status';
 import type { Money, PaymentIntent, PaymentMethodKind } from '@/types/financial';
 import { parseNextAction } from '@/lib/integrations/payments';
 

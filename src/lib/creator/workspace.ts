@@ -63,8 +63,8 @@
 
 import axios from 'axios';
 
-import { apiClient } from '../apiClient';
-import { readPage } from '../platform-envelope';
+import { apiClient } from '../transport/apiClient';
+import { readPage } from '../transport/platform-envelope';
 import { assessAll, fetchHealthRubric } from './health';
 import type {
   ContentStatus,

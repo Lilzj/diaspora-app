@@ -15,9 +15,9 @@ import MockAdapter from 'axios-mock-adapter';
 import { act, renderHook } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { apiClient } from '@/lib/apiClient';
-import { financialKeys } from '@/lib/financial-api';
-import { clearIdempotencyKeys } from '@/lib/idempotency';
+import { apiClient } from '@/lib/transport/apiClient';
+import { financialKeys } from '@/lib/api/financial-api';
+import { clearIdempotencyKeys } from '@/lib/domain/idempotency';
 import { useAuthStore } from '@/store/auth';
 import { useCreateConversion } from '../financial-gaps';
 

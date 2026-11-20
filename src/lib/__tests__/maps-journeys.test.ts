@@ -14,7 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import { setupHousingMocks } from '@/mocks/handlers/housing';
 import { setupMarketplaceMocks } from '@/mocks/handlers/marketplace';
 import { setupJobsMocks } from '@/mocks/handlers/jobs';
@@ -22,7 +22,7 @@ import { setupDiscoveryMocks } from '@/mocks/handlers/discovery';
 import { setupCommunityLifeMocks } from '@/mocks/handlers/community-life';
 import { setupLocationMocks } from '@/mocks/handlers/location';
 import { setupMapsGapMocks } from '@/mocks/handlers/maps-gaps';
-import { fetchAlertsNear, searchMap } from '@/lib/maps-api';
+import { fetchAlertsNear, searchMap } from '@/lib/api/maps-api';
 import { fetchHeatLayer, heatLayerDefinition } from '@/lib/maps/geo-client';
 import { heatLayerPolygons } from '@/lib/maps/heat-shapes';
 import { adapterRoutingProvider } from '@/lib/maps/providers/adapter-routing';

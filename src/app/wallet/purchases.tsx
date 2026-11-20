@@ -28,15 +28,15 @@ import {
   TransactionListSkeleton,
 } from '@/components/financial';
 import { useMyPlacements, usePurchases } from '@/hooks/financial';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
 import {
   describeSubjectType,
   presentPlacementStatus,
   presentPurchaseStatus,
-} from '@/lib/financial-status';
+} from '@/lib/domain/financial-status';
 import { useAuthStore } from '@/store/auth';
 import { formatRelativeTime } from '@/utils/format';
-import type { FinancialError } from '@/lib/financial-errors';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { MonetizationPurchase, Placement } from '@/types/financial';
 
 export default function PurchasesScreen() {

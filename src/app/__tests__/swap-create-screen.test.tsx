@@ -17,8 +17,8 @@ import { useAuthStore } from '@/store/auth';
 const mockCreateAndPublish = jest.fn();
 const mockShowAlert = jest.fn();
 
-jest.mock('@/lib/marketplace-listings-api', () => ({
-  ...jest.requireActual('@/lib/marketplace-listings-api'),
+jest.mock('@/lib/api/marketplace-listings-api', () => ({
+  ...jest.requireActual('@/lib/api/marketplace-listings-api'),
   createAndPublishMarketplaceListing: (...args: unknown[]) => mockCreateAndPublish(...args),
 }));
 
@@ -35,7 +35,7 @@ jest.mock('@/hooks/marketplace-categories', () => ({
 
 // The shared town search (14 Oct 2026: Google, then the place catalogue); here
 // it knows no towns, so the member uses the one they type, as the picker offers.
-jest.mock('@/lib/town-search', () => ({
+jest.mock('@/lib/platform/town-search', () => ({
   searchTowns: jest.fn().mockResolvedValue({ towns: [], attribution: null, unavailable: false }),
   resolveTown: jest.fn((town: unknown) => Promise.resolve(town)),
 }));

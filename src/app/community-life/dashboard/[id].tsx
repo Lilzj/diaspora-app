@@ -30,7 +30,7 @@ import {
   useOrganizationCapabilities,
   useOrganizationDashboard,
 } from '@/hooks/community-life';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 
 interface DashboardLink {
   key: string;

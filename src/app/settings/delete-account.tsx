@@ -12,7 +12,7 @@ import {
   describeErasureResult,
   previewAccountDeletion,
   type AccountErasureReceipt,
-} from '@/lib/privacy-api';
+} from '@/lib/api/privacy-api';
 
 /**
  * Delete Account.

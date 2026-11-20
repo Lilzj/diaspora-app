@@ -12,7 +12,7 @@ import {
   landlordProfileFromWire,
   landlordResponseLabel,
   memberSinceLabel,
-} from '../housing-landlord';
+} from '../domain/housing-landlord';
 
 const WIRE = {
   id: '01a05770-2d93-7e65-99ff-d16c25bb0182',
@@ -113,7 +113,7 @@ describe('where it is used', () => {
   const profile = read('src', 'app', 'housing', 'host', '[id].tsx');
   const home = read('src', 'app', 'housing', '[id].tsx');
   const item = read('src', 'app', 'marketplace', '[id].tsx');
-  const module = read('src', 'lib', 'housing-landlord.ts');
+  const module = read('src', 'lib', 'domain', 'housing-landlord.ts');
 
   it('reads the landlord route through the mapper, not through fields it does not send', () => {
     // The mapper moved behind `fetchLandlordProfile` for FSOLID-002, so the
@@ -135,7 +135,7 @@ describe('where it is used', () => {
 
   it('tells a failed read from a listing that is gone, on both item screens', () => {
     for (const screen of [home, item, profile]) {
-      expect(screen).toContain("from '@/lib/read-outcome'");
+      expect(screen).toContain("from '@/lib/transport/read-outcome'");
       expect(screen).toContain('readOutcome(');
     }
     // The sentences that told members a listing had gone when the phone never asked.

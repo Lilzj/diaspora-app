@@ -27,8 +27,8 @@ import {
 import { MilestoneCard, RewardPill } from '../ProgrammeCards';
 import { PointsBalanceCard, RevenueHeadline, ReferralStats } from '../EconomyPanels';
 import { CourseProgressBar, LessonViewer } from '../AcademyComponents';
-import { presentCreatorStatus, presentEarningState } from '@/lib/creator-economy';
-import { fromMinorUnits } from '@/lib/money';
+import { presentCreatorStatus, presentEarningState } from '@/lib/domain/creator-economy';
+import { fromMinorUnits } from '@/lib/domain/money';
 import type {
   CreatorMetric,
   CreatorMilestone,

@@ -16,7 +16,7 @@ import {
   SecondaryButton,
 } from '@/components/community';
 import { useMyOrganizations, usePolls } from '@/hooks/community-life';
-import { trackCommunityEvent } from '@/lib/community-analytics';
+import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 
 export default function PollListScreen() {
   const { tokens } = useTheme();

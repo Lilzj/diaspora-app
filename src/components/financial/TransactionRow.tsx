@@ -28,8 +28,8 @@ import {
   describeLedgerEntryType,
   describeTransactionType,
   presentTransactionStatus,
-} from '@/lib/financial-status';
-import { describeMoney } from '@/lib/money';
+} from '@/lib/domain/financial-status';
+import { describeMoney } from '@/lib/domain/money';
 import { formatRelativeTime } from '@/utils/format';
 import type { LedgerEntry, Transaction } from '@/types/financial';
 

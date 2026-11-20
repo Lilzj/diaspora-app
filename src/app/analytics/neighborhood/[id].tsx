@@ -26,7 +26,7 @@
 import React from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { SubjectDashboard } from '@/components/analytics';
-import { neighborhoodSubjectId } from '@/lib/analytics-api';
+import { neighborhoodSubjectId } from '@/lib/api/analytics-api';
 
 export default function NeighborhoodAnalyticsScreen() {
   const params = useLocalSearchParams<{

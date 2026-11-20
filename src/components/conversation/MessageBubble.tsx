@@ -9,7 +9,7 @@ import { View, Text, TouchableOpacity, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { ReadReceipt } from './ReadReceipt';
 import { ReplyBubble } from './ReplyBubble';
-import { initialsOf } from '@/lib/conversation-identity';
+import { initialsOf } from '@/lib/domain/conversation-identity';
 import type { Message } from '@/types/conversation';
 import { useThemeTokens } from '@/design-system';
 

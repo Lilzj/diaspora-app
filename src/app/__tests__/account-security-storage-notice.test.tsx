@@ -17,7 +17,7 @@ import { render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
-import type { SessionPersistence } from '@/lib/auth-storage';
+import type { SessionPersistence } from '@/lib/platform/auth-storage';
 // Below the mocks only by convention elsewhere in this directory; `jest.mock`
 // is hoisted above every import by the Babel transform, so the order of these
 // two groups changes nothing and the linter prefers this one.
@@ -32,8 +32,8 @@ jest.mock('@/providers/notification-provider', () => ({
 
 jest.mock('@/components/layout/bottom-inset', () => ({ useBottomInset: () => 0 }));
 
-jest.mock('@/lib/auth-api', () => ({
-  ...jest.requireActual('@/lib/auth-api'),
+jest.mock('@/lib/api/auth-api', () => ({
+  ...jest.requireActual('@/lib/api/auth-api'),
   fetchSessions: jest.fn(() => Promise.resolve([])),
   revokeSession: jest.fn(() => Promise.resolve()),
   revokeOtherSessions: jest.fn(() => Promise.resolve()),

@@ -30,13 +30,13 @@ jest.mock('@/hooks/creator-economy', () => ({
   useCreatorAccess: () => ({ creatorStatus: 'Active', isLoading: false }),
 }));
 
-jest.mock('@/lib/creator-access', () => ({
-  ...jest.requireActual('@/lib/creator-access'),
+jest.mock('@/lib/domain/creator-access', () => ({
+  ...jest.requireActual('@/lib/domain/creator-access'),
   checkCreatorAccess: () => null,
 }));
 
-jest.mock('@/lib/creator-analytics', () => ({
-  ...jest.requireActual('@/lib/creator-analytics'),
+jest.mock('@/lib/platform/creator-analytics', () => ({
+  ...jest.requireActual('@/lib/platform/creator-analytics'),
   trackCreatorEvent: (...args: unknown[]) => mockTrack(...args),
 }));
 

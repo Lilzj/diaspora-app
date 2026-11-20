@@ -56,8 +56,8 @@ import {
 import { usePromotionPackages, useSubjectPromotion } from '@/hooks/monetization';
 import { useCanTransact, usePurchaseProduct, useRedeemPromotion } from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
-import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
+import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import {
   PROMOTION_TARGETS,
   PROMOTION_TARGET_ORDER,

@@ -51,8 +51,8 @@ import {
   capturePayment,
   createPaymentIntent,
   fetchPaymentIntent,
-} from '@/lib/financial-api';
-import { FinancialError } from '@/lib/financial-errors';
+} from '@/lib/api/financial-api';
+import { FinancialError } from '@/lib/transport/financial-errors';
 import type { CreatePaymentIntentRequest, PaymentIntent, PaymentStatus } from '@/types/financial';
 import type { PaymentNextAction, PaymentPhase, PaymentState } from '@/types/integrations';
 import { fromFinancialError, integrationError, type IntegrationError } from './errors';

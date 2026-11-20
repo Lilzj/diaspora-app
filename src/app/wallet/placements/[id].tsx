@@ -28,8 +28,8 @@ import {
   StatusBanner,
 } from '@/components/financial';
 import { useCancelPlacement, useMyPlacements } from '@/hooks/financial';
-import { describeSubjectType, presentPlacementStatus } from '@/lib/financial-status';
-import { FinancialError, toFinancialError } from '@/lib/financial-errors';
+import { describeSubjectType, presentPlacementStatus } from '@/lib/domain/financial-status';
+import { FinancialError, toFinancialError } from '@/lib/transport/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
 import { formatRelativeTime } from '@/utils/format';
 

@@ -7,9 +7,9 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/design-system';
-import { forgotPassword, resetPassword } from '@/lib/auth-api';
+import { forgotPassword, resetPassword } from '@/lib/api/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
-import { meetsPasswordRules } from '@/lib/password-policy';
+import { meetsPasswordRules } from '@/lib/domain/password-policy';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
 
 /**

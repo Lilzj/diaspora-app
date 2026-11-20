@@ -23,16 +23,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   fetchAnalyticsAccess,
   fetchAnalyticsDefinitions,
   fetchContentAnalytics,
   isCertifiedContentSubject,
-} from '@/lib/analytics-api';
+} from '@/lib/api/analytics-api';
 import { catalogueKeyFor, translateMetricKeys } from '@/lib/analytics/catalogue-keys';
-import { partitionForDelivery } from '@/lib/telemetry-api';
-import type { CreatorAnalyticsRecord } from '@/lib/creator-analytics';
+import { partitionForDelivery } from '@/lib/api/telemetry-api';
+import type { CreatorAnalyticsRecord } from '@/lib/platform/creator-analytics';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 
 let mock: MockAdapter;

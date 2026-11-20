@@ -28,11 +28,11 @@
 //   reviewer that the marker is noise.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import * as certifiedApi from '@/lib/analytics-api';
+import * as certifiedApi from '@/lib/api/analytics-api';
 import { ANALYTICS_GAPS, ANALYTICS_GAP_PREFIX } from '@/config/analytics-gaps';
-import { sanitise, drainCreatorEvents, resetCreatorEvents } from '@/lib/creator-analytics';
+import { sanitise, drainCreatorEvents, resetCreatorEvents } from '@/lib/platform/creator-analytics';
 import { trackAnalyticsEvent, trackDashboardViewed } from '@/lib/analytics/events';
-import { aggregateLedgerActivity } from '@/lib/analytics-api';
+import { aggregateLedgerActivity } from '@/lib/api/analytics-api';
 import type { LedgerEntry, Money } from '@/types/financial';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 
@@ -59,10 +59,36 @@ describe('§64 · no build reaches simulated analytics', () => {
   });
 
   it('the simulated client and its handlers no longer exist', () => {
-    const exists = (relative: string): boolean =>
-      require('fs').existsSync(require('path').join(process.cwd(), relative));
-    expect(exists('src/lib/analytics-gap-api.ts')).toBe(false);
-    expect(exists('src/mocks/handlers/analytics.ts')).toBe(false);
+    const fs = require('fs') as {
+      existsSync(p: string): boolean;
+      readdirSync(
+        p: string,
+        o: { withFileTypes: true }
+      ): { name: string; isDirectory(): boolean }[];
+    };
+    const path = require('path') as { join(...parts: string[]): string };
+
+    /**
+     * The name, anywhere under a root — not one path.
+     *
+     * This was `exists('src/lib/analytics-gap-api.ts')` until FARCH-002 moved
+     * every top-level module into a concern directory. At that point the old
+     * path was absent whatever the tree actually held, and the assertion would
+     * have gone on passing while proving nothing. The *name* is what this test
+     * is about; where such a file would sit is not.
+     */
+    const anywhereUnder = (root: string, name: string): boolean => {
+      const walk = (directory: string): boolean =>
+        fs
+          .readdirSync(directory, { withFileTypes: true })
+          .some((entry) =>
+            entry.isDirectory() ? walk(path.join(directory, entry.name)) : entry.name === name
+          );
+      return walk(path.join(process.cwd(), root));
+    };
+
+    expect(anywhereUnder('src/lib', 'analytics-gap-api.ts')).toBe(false);
+    expect(anywhereUnder('src/mocks', 'analytics.ts')).toBe(false);
   });
 
   it('the gap prefix stays distinct from the served namespace', () => {

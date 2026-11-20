@@ -106,12 +106,12 @@ import {
   useCreatorVerification,
   useDismissRecommendation,
 } from '@/hooks/creator-economy';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { formatPoints, presentCreatorStatus, presentVerificationState } from '@/lib/creator-economy';
-import { formatMoney } from '@/lib/money';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { formatPoints, presentCreatorStatus, presentVerificationState } from '@/lib/domain/creator-economy';
+import { formatMoney } from '@/lib/domain/money';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import type { CreatorRecommendation } from '@/types/creator-economy';
-import { appRouteFor } from '@/lib/server-route';
+import { appRouteFor } from '@/lib/platform/server-route';
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'overview', label: '📊 Overview' },

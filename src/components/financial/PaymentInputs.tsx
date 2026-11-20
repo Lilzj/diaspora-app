@@ -20,8 +20,8 @@ import React, { useMemo } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
-import { describePaymentMethod } from '@/lib/financial-status';
-import { amountPlaceholder, formatMoney, parseAmountInput, resolveCurrency } from '@/lib/money';
+import { describePaymentMethod } from '@/lib/domain/financial-status';
+import { amountPlaceholder, formatMoney, parseAmountInput, resolveCurrency } from '@/lib/domain/money';
 import type { CurrencyFact, Money, PaymentMethodKind, Wallet } from '@/types/financial';
 
 // ── Amount field ─────────────────────────────────────────────────────────────

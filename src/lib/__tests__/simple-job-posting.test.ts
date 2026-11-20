@@ -13,20 +13,20 @@ import {
   simpleToFullForm,
   toSimplePostInput,
   type SimpleJobForm,
-} from '@/lib/simple-job-posting';
-import { describeSchedule, placesLeftLabel } from '@/lib/job-detail-api';
+} from '@/lib/domain/simple-job-posting';
+import { describeSchedule, placesLeftLabel } from '@/lib/api/job-detail-api';
 
 const mockResolveEmployer = jest.fn();
 const mockPostJob = jest.fn();
 const mockRegisterEmployer = jest.fn();
 
-jest.mock('@/lib/job-postings-api', () => ({
-  ...jest.requireActual('@/lib/job-postings-api'),
+jest.mock('@/lib/api/job-postings-api', () => ({
+  ...jest.requireActual('@/lib/api/job-postings-api'),
   resolvePostingEmployer: () => mockResolveEmployer(),
   postJob: (...args: unknown[]) => mockPostJob(...args),
 }));
-jest.mock('@/lib/jobs-hiring-api', () => ({
-  ...jest.requireActual('@/lib/jobs-hiring-api'),
+jest.mock('@/lib/api/jobs-hiring-api', () => ({
+  ...jest.requireActual('@/lib/api/jobs-hiring-api'),
   registerEmployer: (...args: unknown[]) => mockRegisterEmployer(...args),
 }));
 

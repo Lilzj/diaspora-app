@@ -5,7 +5,7 @@
 // the end of a five-screen flow. The field keeps to that shape as it is typed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { normaliseReferralCode, REFERRAL_CODE_MAX_LENGTH } from '../referral-code';
+import { normaliseReferralCode, REFERRAL_CODE_MAX_LENGTH } from '../domain/referral-code';
 
 describe('normaliseReferralCode', () => {
   it('upper-cases a code and keeps only letters and digits', () => {

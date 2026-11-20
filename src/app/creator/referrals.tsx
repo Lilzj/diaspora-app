@@ -35,9 +35,9 @@ import {
   useCreatorReferrals,
   useReferralHistory,
 } from '@/hooks/creator-economy';
-import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { formatPoints } from '@/lib/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
+import { formatPoints } from '@/lib/domain/creator-economy';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 
 export default function CreatorReferralsScreen() {
   const { tokens } = useTheme();

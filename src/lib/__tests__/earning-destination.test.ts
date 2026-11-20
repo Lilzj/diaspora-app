@@ -29,7 +29,7 @@
 // pushing something that fails on arrival.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { earningDestination } from '../creator-economy';
+import { earningDestination } from '../domain/creator-economy';
 
 const ID = 'c9d8e7f6-0000-4000-8000-000000000004';
 

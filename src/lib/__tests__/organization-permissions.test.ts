@@ -21,7 +21,7 @@ import {
   describeRole,
   isReadOnly,
   splitCapabilities,
-} from '../organization-permissions';
+} from '../domain/organization-permissions';
 import type { OrganizationCapabilities, OrganizationRole } from '@/types/community-advanced';
 
 function caps(overrides: Partial<OrganizationCapabilities> = {}): OrganizationCapabilities {

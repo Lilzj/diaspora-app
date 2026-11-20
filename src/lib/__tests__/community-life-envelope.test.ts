@@ -20,10 +20,10 @@
 // keys above.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { fetchEvents, fetchOrganizations } from '../community-life-api';
-import { apiClient } from '../apiClient';
+import { fetchEvents, fetchOrganizations } from '../api/community-life-api';
+import { apiClient } from '../transport/apiClient';
 
-jest.mock('../apiClient', () => ({
+jest.mock('../transport/apiClient', () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 

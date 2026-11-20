@@ -9,10 +9,10 @@ import { Button } from '@/components/Button';
 import { WizardFooter } from '@/components/forms/WizardFooter';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
-import { coordinatesOf, ownPinOrTown } from '@/lib/place-coordinates';
+import { coordinatesOf, ownPinOrTown } from '@/lib/platform/place-coordinates';
 import { providerCategoryIcon, providerCategoryKey } from '@/lib/reference/provider-categories';
 import { CurrencyNote } from '@/components/CurrencyNote';
-import { useMemberCurrency } from '@/lib/member-currency';
+import { useMemberCurrency } from '@/lib/domain/member-currency';
 import { Image } from 'expo-image';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
@@ -25,7 +25,7 @@ import {
   createAndPublishProvider,
   type ProviderHoursDay,
   type ProviderServiceRequest,
-} from '@/lib/provider-registration-api';
+} from '@/lib/api/provider-registration-api';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { useServiceCategories } from '@/hooks/providers';
 import { AddressSearchField } from '@/components/maps/AddressSearchField';
@@ -33,8 +33,8 @@ import {
   resolveDeviceLocationProvider,
   resolveLocationPermissionProvider,
 } from '@/lib/maps/providers/device-location';
-import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/device-drafts';
-import { currencySymbol as symbolFor } from '@/lib/money';
+import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/platform/device-drafts';
+import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 // Global variable for self-contained draft storage
 let globalDraftStorage: any = null;

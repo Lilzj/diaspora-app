@@ -35,11 +35,11 @@ import {
 } from '@/components/community';
 import { AmountDisplay, FinancialErrorInline } from '@/components/financial';
 import { useMembershipProgramme, useSubmitMembershipApplication } from '@/hooks/community-life';
-import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
-import { moneyProps, trackCommunityEvent } from '@/lib/community-analytics';
+import { checkCommunityAccess, CommunityCapabilities } from '@/lib/domain/community-access';
+import { moneyProps, trackCommunityEvent } from '@/lib/platform/community-analytics';
 import { useAuthStore } from '@/store/auth';
-import type { FinancialError } from '@/lib/financial-errors';
-import { backOr } from '@/lib/navigation';
+import type { FinancialError } from '@/lib/transport/financial-errors';
+import { backOr } from '@/lib/platform/navigation';
 
 /**
  * The application questions.

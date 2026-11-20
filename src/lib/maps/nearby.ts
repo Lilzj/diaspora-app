@@ -30,7 +30,7 @@
 // partial-failure handling leaves that category's count absent rather than nought.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { unwrapEnvelope } from '@/lib/platform-envelope';
+import { unwrapEnvelope } from '@/lib/transport/platform-envelope';
 import { toAlertKind, toAlertSeverity } from '@/types/maps';
 import type { CommunityAlert } from '@/types/maps';
 import { toUpdateCategory, toUrgencyLevel } from '@/types/update';

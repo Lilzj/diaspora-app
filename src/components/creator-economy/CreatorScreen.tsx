@@ -42,12 +42,12 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design-system';
 import { AccessGate, FinancialErrorView } from '@/components/financial';
-import type { FinancialError } from '@/lib/financial-errors';
-import type { CreatorRefusal } from '@/lib/creator-access';
+import type { FinancialError } from '@/lib/transport/financial-errors';
+import type { CreatorRefusal } from '@/lib/domain/creator-access';
 import { CreatorGapNotice, CreatorGapUnavailable } from './CreatorGapNotice';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function CreatorHeader({

@@ -18,7 +18,7 @@ import {
   newIdempotencyKey,
   releaseIdempotencyKey,
   type OperationScope,
-} from '../idempotency';
+} from '../domain/idempotency';
 
 const scope: OperationScope = { operation: 'payment', subject: 'MarketplaceListing:listing-1' };
 
@@ -59,7 +59,7 @@ describe('the same operation reuses its key', () => {
     // relaunching the app: module state is discarded, storage is not.
     jest.resetModules();
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const reloaded = require('../idempotency') as typeof import('../idempotency');
+    const reloaded = require('../domain/idempotency') as typeof import('../domain/idempotency');
     const second = await reloaded.acquireIdempotencyKey(scope);
 
     expect(second).toBe(first);

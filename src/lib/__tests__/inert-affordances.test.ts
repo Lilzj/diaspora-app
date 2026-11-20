@@ -10,21 +10,21 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   createAndPublishListing,
   isNotPublishableError,
   isSuspectedFraudError,
-} from '../housing-listings-api';
-import { createPost } from '../community-social-api';
-import { fetchSessions, revokeOtherSessions, revokeSession } from '../auth-api';
+} from '../api/housing-listings-api';
+import { createPost } from '../api/community-social-api';
+import { fetchSessions, revokeOtherSessions, revokeSession } from '../api/auth-api';
 import {
   isViewingAlreadyOpenError,
   isViewingNotPermittedError,
   requestViewing,
   viewingRefusal,
-} from '../housing-viewings-api';
-import { reportContent } from '../community-social-api';
+} from '../api/housing-viewings-api';
+import { reportContent } from '../api/community-social-api';
 import { useAuthStore, __setSessionForTests } from '@/store/auth';
 import { buildAuthenticationResult } from '@/mocks/auth-session';
 

@@ -55,7 +55,7 @@ import {
   grantsCommunityAccess,
   requiresAccessGateway,
   toAccountState,
-} from '@/lib/access-state';
+} from '@/lib/domain/access-state';
 import type { AccountState } from '@/types/trust';
 
 import { backendSourceRoot } from './support/backend-checkout';

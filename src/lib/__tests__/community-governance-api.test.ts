@@ -17,7 +17,7 @@
 
 import MockAdapter from 'axios-mock-adapter';
 
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   decideCommunityReport,
   deleteCommunityRule,
@@ -30,7 +30,7 @@ import {
   fetchCommunityStatistics,
   publishCommunityNotice,
   saveCommunityPreferences,
-} from '../community-entity-api';
+} from '../api/community-entity-api';
 import type { CommunityId } from '@/types/community-directory';
 import { defaultCommunityPreferences } from '@/types/community-directory';
 

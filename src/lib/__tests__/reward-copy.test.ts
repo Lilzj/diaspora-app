@@ -18,7 +18,7 @@ import {
   POINTS_ARE_NOT_XP,
   POINTS_CAN_CONVERT,
   XP_IS_NOT_MONEY,
-} from '../reward-copy';
+} from '../platform/reward-copy';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
@@ -39,7 +39,7 @@ const SURFACES = {
   convert: code('app', 'wallet', 'rewards', 'convert.tsx'),
   faq: code('app', 'settings', 'faq.tsx'),
   wallet: code('app', 'wallet', 'index.tsx'),
-  errors: code('lib', 'financial-errors.ts'),
+  errors: code('lib', 'transport', 'financial-errors.ts'),
 };
 
 describe('each surface says it in the shared words', () => {

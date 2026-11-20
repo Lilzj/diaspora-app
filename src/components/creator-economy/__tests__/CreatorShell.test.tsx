@@ -22,8 +22,8 @@ import { QuizView } from '../AcademyComponents';
 import { ChallengeCard, GrantCard, GrantApplicationCard } from '../ProgrammeCards';
 import { RewardCard, LeaderboardRow, RecommendationCard } from '../EconomyPanels';
 import { CreatorEmptyState, QuickAction, CreatorSection } from '../CreatorPrimitives';
-import { FinancialError } from '@/lib/financial-errors';
-import { fromMinorUnits } from '@/lib/money';
+import { FinancialError } from '@/lib/transport/financial-errors';
+import { fromMinorUnits } from '@/lib/domain/money';
 import type {
   AnalyticsRange,
   CommunityGrant,

@@ -28,7 +28,7 @@ import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
 import { PaymentSheet } from './PaymentSheet';
 import { useCanTransact, useCreatePaymentIntent, useCurrencies } from '@/hooks/financial';
-import { moneyFromMajor, toRequestAmount } from '@/lib/money';
+import { moneyFromMajor, toRequestAmount } from '@/lib/domain/money';
 import type { MonetizationSubjectType, PaymentIntent, PaymentMethodKind } from '@/types/financial';
 
 export interface SubjectPaymentProps {

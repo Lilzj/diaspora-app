@@ -16,7 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient } from '../transport/apiClient';
 import {
   addMarketplaceListingPhoto,
   applyMarketplaceListingPhotoChanges,
@@ -26,7 +26,7 @@ import {
   toUpdateRequest,
   updateMarketplaceListing,
   type MarketplaceListingForEdit,
-} from '../marketplace-listings-api';
+} from '../api/marketplace-listings-api';
 
 const ID = '01a01b2b-6366-7875-a231-4d587b064772';
 const COVER = '11111111-1111-4111-8111-111111111111';

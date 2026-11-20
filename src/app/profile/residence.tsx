@@ -32,7 +32,7 @@ import { useResidenceEditor, useResidenceTimeline } from '@/hooks/residence';
 import { toIsoDay, type ResidenceWire } from '@/lib/location/residence';
 import { allCountries } from '@/lib/reference/countries';
 import { clearSightings, dismissSuggestion, suggestRelocation } from '@/lib/location/relocation-hint';
-import { backOr } from '@/lib/navigation';
+import { backOr } from '@/lib/platform/navigation';
 
 type Mode = 'idle' | 'moving' | 'adding' | 'leaving';
 

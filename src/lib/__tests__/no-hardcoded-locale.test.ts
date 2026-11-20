@@ -73,8 +73,8 @@ describe('no hard-coded British defaults in runtime code', () => {
         'src/app/community-life/volunteer/create.tsx',
         'src/app/community-life/series/create.tsx',
         'src/app/wallet/payout-accounts.tsx',
-        'src/lib/event-wire.ts',
-        'src/lib/trustEngine.ts',
+        'src/lib/api/event-wire.ts',
+        'src/lib/domain/trustEngine.ts',
       ])
     );
     expect(files.some((file) => file.includes('/mocks/') || file.includes('__tests__'))).toBe(false);

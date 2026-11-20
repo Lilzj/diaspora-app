@@ -26,7 +26,7 @@
 // on that basis is a claim it cannot support.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { DiasporaRealtimeClient } from '@/lib/realtime';
+import { DiasporaRealtimeClient } from '@/lib/transport/realtime';
 import { NO_REALTIME_CAPABILITIES } from '@/types/conversation';
 
 /**

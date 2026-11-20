@@ -38,8 +38,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { create } from 'zustand';
-import { toAccountState } from '@/lib/access-state';
-import { clearActivity, hasExpired, persistActivity, readStoredActivity, recordActivity } from '@/lib/inactivity';
+import { toAccountState } from '@/lib/domain/access-state';
+import { clearActivity, hasExpired, persistActivity, readStoredActivity, recordActivity } from '@/lib/platform/inactivity';
 import type { AccountState } from '@/types/trust';
 import type {
   AccessDecision,
@@ -48,13 +48,13 @@ import type {
   StoredSession,
   UserProfile,
 } from '@/types/auth';
-import { clearIdempotencyKeys } from '@/lib/idempotency';
+import { clearIdempotencyKeys } from '@/lib/domain/idempotency';
 import { clearCommunityPersistence } from '@/lib/community/persistence';
 import { useCommunityContextStore } from '@/store/community-context';
 import { deactivatePushToken } from '@/lib/integrations/push-lifecycle';
 import { clearPendingFlows } from '@/lib/integrations/deep-links';
 import { areSimulatedFeaturesEnabled } from '@/config/gap-preview';
-import { registerAuthBridge } from '@/lib/apiClient';
+import { registerAuthBridge } from '@/lib/transport/apiClient';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import {
   clearProfileCache,
@@ -65,8 +65,8 @@ import {
   saveProfileCache,
   saveSession,
   type SessionPersistence,
-} from '@/lib/auth-storage';
-import { fetchCurrentUser, logout as logoutRequest, refreshSession } from '@/lib/auth-api';
+} from '@/lib/platform/auth-storage';
+import { fetchCurrentUser, logout as logoutRequest, refreshSession } from '@/lib/api/auth-api';
 
 /**
  * Refresh this far ahead of expiry.

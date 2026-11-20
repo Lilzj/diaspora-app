@@ -27,7 +27,7 @@ import {
   presentSignupBonusState,
   presentSponsoredState,
   presentVerificationState,
-} from '../creator-economy';
+} from '../domain/creator-economy';
 import {
   ANALYTICS_PERIODS,
   CREATOR_CHALLENGE_STATES,

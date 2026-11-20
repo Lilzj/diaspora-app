@@ -30,11 +30,11 @@ import {
 } from '@/components/creator-economy';
 import { FinancialErrorInline } from '@/components/financial';
 import { useAcademyActions, useCreatorCourse, useCreatorLesson } from '@/hooks/creator-economy';
-import { trackCreatorEvent } from '@/lib/creator-analytics';
-import type { FinancialError } from '@/lib/financial-errors';
+import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { LessonQuizResult } from '@/types/creator-economy';
-import { backOr } from '@/lib/navigation';
-import { appRouteFor } from '@/lib/server-route';
+import { backOr } from '@/lib/platform/navigation';
+import { appRouteFor } from '@/lib/platform/server-route';
 
 export default function LessonViewerScreen() {
   const { tokens } = useTheme();

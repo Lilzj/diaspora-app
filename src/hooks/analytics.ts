@@ -36,13 +36,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import * as certifiedApi from '@/lib/analytics-api';
-import * as reportsApi from '@/lib/analytics-reports-api';
+import * as certifiedApi from '@/lib/api/analytics-api';
+import * as reportsApi from '@/lib/api/analytics-reports-api';
 import { ANALYTICS_GAPS, areAnalyticsGapsEnabled } from '@/config/analytics-gaps';
-import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
-import { useConnectivityStore } from '@/lib/connectivity';
+import { shouldRetryQuery, type FinancialError } from '@/lib/transport/financial-errors';
+import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { analyticsKeys } from '@/lib/analytics/query-keys';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/transport/apiClient';
 import {
   holdingsFromFailure,
   holdsAnything,
