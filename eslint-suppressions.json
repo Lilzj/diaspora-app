@@ -50,6 +50,9 @@
     }
   },
   "src/app/(tabs)/post.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
@@ -177,6 +180,9 @@
     }
   },
   "src/app/guide/create.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
     "react-hooks/refs": {
       "count": 4
     },
@@ -190,6 +196,9 @@
     }
   },
   "src/app/housing/create.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
     "react-hooks/set-state-in-effect": {
       "count": 2
     }
@@ -238,11 +247,17 @@
     }
   },
   "src/app/marketplace/[id].tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 13
+    },
     "react-hooks/purity": {
       "count": 1
     }
   },
   "src/app/marketplace/create.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
     "react-hooks/set-state-in-effect": {
       "count": 2
     }
@@ -298,6 +313,9 @@
     }
   },
   "src/app/update/create.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
     "react-hooks/set-state-in-effect": {
       "count": 3
     }
@@ -343,6 +361,11 @@
   "src/components/GuideCard.tsx": {
     "react-hooks/refs": {
       "count": 12
+    }
+  },
+  "src/components/JobCard.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
     }
   },
   "src/components/ListingPhoto.tsx": {
@@ -509,11 +532,36 @@
       "count": 1
     }
   },
+  "src/lib/api/bookmarks-api.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/lib/api/community-social-api.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/lib/api/reservations-api.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
   "src/lib/maps/providers/canvas-map.tsx": {
     "react-hooks/purity": {
       "count": 2
     },
     "react-hooks/refs": {
+      "count": 1
+    }
+  },
+  "src/lib/platform/saved-resolver.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/mocks/handlers/community-life.ts": {
+    "@typescript-eslint/no-explicit-any": {
       "count": 1
     }
   },
@@ -529,6 +577,11 @@
   },
   "src/providers/pricing-provider.tsx": {
     "react-hooks/use-memo": {
+      "count": 1
+    }
+  },
+  "src/store/creator-workspace.ts": {
+    "@typescript-eslint/no-explicit-any": {
       "count": 1
     }
   }

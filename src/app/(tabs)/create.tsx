@@ -204,7 +204,7 @@ export default function CreateSelectorScreen() {
         {options.map((opt) => (
           <TouchableOpacity
             key={opt.id}
-            onPress={() => router.push(opt.route as any)}
+            onPress={() => router.push(opt.route as never)}
             activeOpacity={0.9}
             className="flex-row items-start p-5 mb-5 bg-surface-card rounded-3xl border border-faint shadow-sm shadow-neutral-100"
           >

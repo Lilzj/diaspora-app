@@ -8,14 +8,35 @@ import {
   TouchableWithoutFeedback,
   Platform,
   LayoutChangeEvent,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { useExploreStore, ElementLayout } from '@/store/explore';
 import { getTourConfig } from '@/config/featureRegistry';
 import { CoachMark } from './CoachMark';
 
+/**
+ * The part of a native view this provider needs: its box on screen.
+ *
+ * `any` before, which hid that `measure` is the whole contract -- and that a
+ * ref without it is simply skipped.
+ */
+interface MeasurableElement {
+  measure?: (
+    callback: (
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      pageX: number,
+      pageY: number
+    ) => void
+  ) => void;
+}
+
 interface TourContextType {
-  measureElement: (key: string, ref: any) => void;
+  measureElement: (key: string, ref: MeasurableElement | null) => void;
 }
 
 const TourContext = createContext<TourContextType | null>(null);
@@ -36,7 +57,7 @@ export const useTourContext = () => {
 export const TourSpotlight: React.FC<{
   spotlightKey: string;
   children: React.ReactElement;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }> = ({ spotlightKey, children, style }) => {
   const viewRef = useRef<React.ComponentRef<typeof View>>(null);
   const registerElementLayout = useExploreStore((state) => state.registerElementLayout);
@@ -327,9 +348,9 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const activeTour = useExploreStore((state) => state.activeTour);
   const registerElementLayout = useExploreStore((state) => state.registerElementLayout);
 
-  const measureElement = (key: string, ref: any) => {
+  const measureElement = (key: string, ref: MeasurableElement | null) => {
     if (ref && ref.measure) {
-      ref.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+      ref.measure((x, y, width, height, pageX, pageY) => {
         registerElementLayout(key, { x, y, width, height, pageX, pageY });
       });
     }

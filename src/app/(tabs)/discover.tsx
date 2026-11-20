@@ -143,13 +143,58 @@ import { useMemberCurrency } from '@/lib/domain/member-currency';
 import { Image as ExpoImage } from 'expo-image';
 
 /**
+ * The seven Discover tabs, written once.
+ *
+ * They used to be written three times -- the `useState` union, the deep-link
+ * guard and the tab row -- and kept in step by hand, with `as any` at the two
+ * call sites to stop the compiler minding. Derived from this list, they cannot
+ * drift.
+ */
+const DISCOVER_TABS = [
+  'Providers',
+  'Jobs',
+  'Housing',
+  'Marketplace',
+  'Guides',
+  'Updates',
+  'Community',
+] as const;
+
+type DiscoverTab = (typeof DISCOVER_TABS)[number];
+
+/** Narrows a deep-link parameter, which arrives as an arbitrary string. */
+const isDiscoverTab = (value: string): value is DiscoverTab =>
+  (DISCOVER_TABS as readonly string[]).includes(value);
+
+/**
+ * The marketplace filter chips. Typed as their unions rather than cast at the
+ * setter, so a listing kind the backend does not have fails to compile. Both
+ * lists are deliberately partial: the four intents are the ones a member
+ * filters by, out of the six the type carries.
+ */
+const MARKET_INTENTS: readonly ListingIntent[] = [
+  'Selling',
+  'Wanted',
+  'Giving Away',
+  'Exchange / Swap',
+];
+
+const MARKET_CONDITIONS: readonly ListingCondition[] = [
+  'New',
+  'Like New',
+  'Very Good',
+  'Good',
+  'Fair',
+];
+
+/**
  * Frontend Phase 8. Which map category each Discover tab opens onto.
  *
  * Guides and Updates map to `guide` and `alert` respectively — a community
  * update *is* a community alert on the map, translated rather than duplicated
  * (§27). `Community` opens on events, which is what that tab is mostly about.
  */
-const DISCOVER_TAB_TO_MAP_CATEGORY: Record<string, DiscoveryCategory> = {
+const DISCOVER_TAB_TO_MAP_CATEGORY: Record<DiscoverTab, DiscoveryCategory> = {
   Providers: 'provider',
   Jobs: 'job',
   Housing: 'housing',
@@ -181,7 +226,7 @@ interface MapPin {
 
 
 /** Which first-visit tour belongs to which Discover tab. */
-const TOUR_FOR_TAB: Partial<Record<string, TourId>> = {
+const TOUR_FOR_TAB: Partial<Record<DiscoverTab, TourId>> = {
   Marketplace: 'marketplace',
   Jobs: 'jobs',
   Housing: 'housing',
@@ -236,7 +281,7 @@ export default function DiscoverScreen() {
   const params = useLocalSearchParams<Record<string, string>>();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'Providers' | 'Jobs' | 'Housing' | 'Marketplace' | 'Guides' | 'Updates' | 'Community'>('Providers');
+  const [activeTab, setActiveTab] = useState<DiscoverTab>('Providers');
 
   const exploreStore = useExploreStore();
 
@@ -290,8 +335,8 @@ export default function DiscoverScreen() {
   );
 
   useEffect(() => {
-    if (params.tab && ['Providers', 'Jobs', 'Housing', 'Marketplace', 'Guides', 'Updates', 'Community'].includes(params.tab)) {
-      setActiveTab(params.tab as any);
+    if (params.tab && isDiscoverTab(params.tab)) {
+      setActiveTab(params.tab);
     }
     if (params.query) {
       setSearchQuery(params.query);
@@ -1208,13 +1253,13 @@ export default function DiscoverScreen() {
           className="bg-surface-card border-b border-faint mb-2 max-h-[50px]"
           contentContainerStyle={{ paddingHorizontal: 16 }}
         >
-          {['Providers', 'Jobs', 'Housing', 'Marketplace', 'Guides', 'Updates', 'Community'].map((tab) => {
+          {DISCOVER_TABS.map((tab) => {
             const isActive = activeTab === tab;
             return (
               <TouchableOpacity
                 key={tab}
                 onPress={() => {
-                  setActiveTab(tab as any);
+                  setActiveTab(tab);
                   setSelectedCategory(null);
                 }}
                 className={`items-center justify-center py-3 px-4 border-b-2 ${
@@ -1812,12 +1857,12 @@ export default function DiscoverScreen() {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-5">
                   {/* The four kinds of listing the platform has. "Buying Request" and
                       "Donation" were the same two types under other names. */}
-                  {['Selling', 'Wanted', 'Giving Away', 'Exchange / Swap'].map((intent) => {
+                  {MARKET_INTENTS.map((intent) => {
                     const isSel = marketIntent === intent;
                     return (
                       <TouchableOpacity
                         key={intent}
-                        onPress={() => setMarketIntent(isSel ? '' : intent as any)}
+                        onPress={() => setMarketIntent(isSel ? '' : intent)}
                         className={`px-4 py-2 rounded-full mr-2.5 ${
                           isSel ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
                         }`}
@@ -1865,12 +1910,12 @@ export default function DiscoverScreen() {
                 {/* Item Condition */}
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Condition</Text>
                 <View className="flex-row mb-5 flex-wrap gap-2">
-                  {['New', 'Like New', 'Very Good', 'Good', 'Fair'].map((cond) => {
+                  {MARKET_CONDITIONS.map((cond) => {
                     const isSel = marketCondition === cond;
                     return (
                       <TouchableOpacity
                         key={cond}
-                        onPress={() => setMarketCondition(isSel ? '' : cond as any)}
+                        onPress={() => setMarketCondition(isSel ? '' : cond)}
                         className={`px-3 py-2 rounded-full mr-2 ${
                           isSel ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
                         }`}

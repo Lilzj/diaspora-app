@@ -425,7 +425,11 @@ export default function PostScreen() {
     );
   };
 
-  const updateDayHour = (idx: number, field: 'open' | 'close' | 'closed', val: any) => {
+  const updateDayHour = <K extends 'open' | 'close' | 'closed'>(
+    idx: number,
+    field: K,
+    val: (typeof businessHours)[number][K]
+  ) => {
     const next = [...businessHours];
     next[idx] = { ...next[idx], [field]: val };
     setBusinessHours(next);

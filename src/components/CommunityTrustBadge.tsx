@@ -17,7 +17,8 @@ interface ProfileLike {
   reputationLevel?: string;
   yearsOnPlatform?: number;
   responseTime?: string;
-  countryVerifications?: any[];
+  /** Only its length is read here, so the element type is nobody's business. */
+  countryVerifications?: unknown[];
   countryVerificationsCount?: number;
   totalHelpfulVotes?: number;
   guidesPublished?: number;

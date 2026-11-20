@@ -1352,7 +1352,10 @@ export async function saveGuideEdits(
 export async function fetchGuidesFor(params: {
   countryCode?: string | null;
   limit?: number;
-}): Promise<unknown[]> {
+}): Promise<GuideCardResponse[]> {
+  // `toList` is generic and this call did not use it, so the result was
+  // `unknown[]` and the one screen that reads it used `any[]` to get past
+  // that. `/guides` is typed by `searchGuides` above for the same route.
   const response = await apiClient.get('/guides', { params });
-  return toList(response.data);
+  return toList<GuideCardResponse>(response.data);
 }

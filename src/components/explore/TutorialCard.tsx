@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Pressable, StyleSheet, type GestureResponderEvent } from 'react-native';
 import { useExploreStore } from '@/store/explore';
 import { Tutorial } from '@/types/explore';
 import { router } from 'expo-router';
@@ -27,7 +27,7 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
     router.push(`/explore/tutorial/${tutorial.id}`);
   };
 
-  const handleBookmark = (e: any) => {
+  const handleBookmark = (e: GestureResponderEvent) => {
     e.stopPropagation();
     void toggleSaveTutorial(tutorial.id);
   };

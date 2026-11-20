@@ -244,16 +244,16 @@ export default function TrustCenterScreen() {
 
         {/* Tab Selector */}
         <View className="flex-row bg-surface-card border-b border-faint">
-          {[
+          {([
             { id: 'overview', label: 'Verifications' },
             { id: 'unlocks', label: 'Feature Gates' },
             { id: 'journey', label: 'Trust Journey' },
-          ].map((tab) => {
+          ] as const).map((tab) => {
             const active = activeTab === tab.id;
             return (
               <TouchableOpacity
                 key={tab.id}
-                onPress={() => setActiveTab(tab.id as any)}
+                onPress={() => setActiveTab(tab.id)}
                 className={`flex-1 items-center py-4 border-b-2 ${active ? 'border-primary-500' : 'border-transparent'}`}
               >
                 <Text className={`text-xs font-bold ${active ? 'text-primary-500' : 'text-content-muted'}`}>{tab.label}</Text>
@@ -296,7 +296,7 @@ export default function TrustCenterScreen() {
                         </View>
 
                         <TouchableOpacity
-                          onPress={() => router.push(v.route as any)}
+                          onPress={() => router.push(v.route as never)}
                           accessibilityRole="button"
                           accessibilityLabel={`${v.label}: ${state.label}`}
                           className={`px-3 py-1.5 rounded-xl border ${state.boxClass}`}

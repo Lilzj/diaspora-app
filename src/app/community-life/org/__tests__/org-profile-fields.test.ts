@@ -31,6 +31,12 @@
 // which is why this asserts on the rendered values, not on the field names.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// `tsconfig` declares only jest's types, so these come in the way
+// `suppression-ceilings.test.ts` brings them in.
+declare const __dirname: string;
+const { readFileSync }: { readFileSync(p: string, e: string): string } = require('fs');
+const { join }: { join(...parts: string[]): string } = require('path');
+
 import { eventWhen, mediaUri, openingHoursLabel } from '../[id]';
 import { API_BASE_URL } from '@/lib/transport/apiClient';
 
@@ -105,13 +111,54 @@ describe('an image comes from the media id the route sends', () => {
 });
 
 describe('an event row shows when it starts', () => {
-  // The card read `evt.date`, `evt.category`, `evt.id` and
-  // `evt.location.areaName`. The list route serves `startsAt`, `categoryKey`,
-  // `eventId` and a `location` whose readable form is `displayName` — so the
-  // date and category rendered blank and the row navigated to
-  // `/community-life/event/undefined`.
+  // ── What this section used to claim ───────────────────────────────────────
+  //
+  // That the list route serves `startsAt`, `categoryKey`, `eventId` and a
+  // `location` whose readable form is `displayName`, and that reading `date`,
+  // `category`, `id` and `location.areaName` was the bug.
+  //
+  // It is the other way round. `fetchEvents` maps every row through `toEvent`
+  // — `community-life-api.ts` says why, in the same words, about the same
+  // symptom — so `page.items` are client `Event`s and the wire names are gone
+  // by the time this screen sees them. The card had been fixed in the opposite
+  // direction, so the date and category rendered blank and every row navigated
+  // to `/community-life/event/undefined`.
+  //
+  // Both halves of that contradiction were invisible because `orgEvents` was
+  // `useState<any[]>` (FSOLID-006). The two tests below only ever exercised
+  // `eventWhen` as a formatter, so they passed whichever field was handed to
+  // it; the third is the one that would have failed.
   it('formats the instant the route sends', () => {
     expect(eventWhen('2026-09-05T11:29:35.666+00:00')).toMatch(/2026/);
+  });
+
+  it('formats the date-only form a mapped Event carries', () => {
+    // `Event.date` is `YYYY-MM-DD`, which is what the card now passes.
+    expect(eventWhen('2026-09-05')).toMatch(/2026/);
+  });
+
+  it('reads the mapped Event, not the wire row', () => {
+    const screen = readFileSync(
+      join(__dirname, '..', '[id].tsx'),
+      'utf8'
+    );
+
+    // The block between the Events tab and its empty state.
+    const card = screen.slice(
+      screen.indexOf('{/* EVENTS TAB */}'),
+      screen.indexOf('{/* EVENTS TAB */}') + 2000
+    );
+
+    expect(card).toContain('key={evt.id}');
+    expect(card).toContain('event/${evt.id}');
+    expect(card).toContain('{evt.category}');
+    expect(card).toContain('eventWhen(evt.date)');
+    expect(card).toContain('evt.location?.areaName');
+
+    // And none of the wire names, which is the half a rename would miss.
+    for (const wire of ['evt.eventId', 'evt.categoryKey', 'evt.startsAt', 'evt.location?.displayName']) {
+      expect(card).not.toContain(wire);
+    }
   });
 
   it('renders nothing rather than "Invalid Date"', () => {

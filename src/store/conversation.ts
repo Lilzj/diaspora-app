@@ -252,9 +252,14 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       // `readPage` is the shared reader for exactly this and accepts a bare
       // array too, so a route that changes shape cannot reintroduce it.
       set({ conversations: readPage<Conversation>(res.data).items, isLoadingConversations: false });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      // Narrowed the way `read-outcome.ts` does rather than typed `any`: the
+      // server's own message when there is one, this module's wording when
+      // the failure never reached the server at all.
+      const served = (err as { response?: { data?: { message?: string } } } | null)?.response
+        ?.data?.message;
       set({
-        conversationsError: err?.response?.data?.message || 'Failed to load conversations',
+        conversationsError: served || 'Failed to load conversations',
         isLoadingConversations: false,
       });
     }

@@ -183,7 +183,7 @@ export default function CreateEventScreen() {
 
   const { eventCategories, eventCategoryName, isLoading: catalogueLoading, isUnavailable: catalogueUnavailable } = useCommunityLifeCatalogue();
 
-  const updateField = (key: keyof EventFormState, value: any) => {
+  const updateField = <K extends keyof EventFormState>(key: K, value: EventFormState[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 

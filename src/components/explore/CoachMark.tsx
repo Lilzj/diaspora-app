@@ -7,6 +7,7 @@ import {
   AccessibilityInfo,
   findNodeHandle,
   Platform,
+  type DimensionValue,
 } from 'react-native';
 import { useExploreStore, ElementLayout } from '@/store/explore';
 import { TourStep } from '@/types/explore';
@@ -52,7 +53,9 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
         }
       } else if (Platform.OS === 'web' && containerRef.current) {
         try {
-          const domNode = containerRef.current as any;
+          // Web only: a React Native view is a DOM node there, and the
+          // one thing wanted from it is focus.
+          const domNode = containerRef.current as unknown as { focus?: () => void } | null;
           if (domNode && domNode.focus) {
             domNode.focus();
           }
@@ -67,8 +70,8 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
 
   // Position calculations
   const padding = 12;
-  let top = 'auto' as any;
-  let bottom = 'auto' as any;
+  let top: DimensionValue = 'auto';
+  let bottom: DimensionValue = 'auto';
   let left = 16;
   const cardWidth = screenWidth - 32; // Default horizontal sizing with safe margins
 

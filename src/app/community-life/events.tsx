@@ -651,17 +651,17 @@ export default function CommunityLifeScreen() {
 
       {/* 3. Horizontal Tab Navigation */}
       <View className="bg-surface-card border-b border-faint flex-row px-4 justify-between">
-        {[
+        {([
           { key: 'events', label: 'Events', icon: '🎉' },
           { key: 'directory', label: 'Directory', icon: '🏛' },
           { key: 'calendar', label: 'Calendar', icon: '📅' },
-          { key: 'saved', label: 'Saved', icon: '⭐' }
-        ].map((tab) => {
+          { key: 'saved', label: 'Saved', icon: '⭐' },
+        ] as const).map((tab) => {
           const isActive = activeTab === tab.key;
           return (
             <TouchableOpacity
               key={tab.key}
-              onPress={() => setActiveTab(tab.key as any)}
+              onPress={() => setActiveTab(tab.key)}
               className={`flex-row items-center py-3.5 px-3 border-b-2 ${
                 isActive ? 'border-primary-500' : 'border-transparent'
               }`}
@@ -1235,10 +1235,10 @@ export default function CommunityLifeScreen() {
 
                 {/* View toggles */}
                 <View className="flex-row bg-surface-card border border-subtle rounded-xl p-1">
-                  {['month', 'week', 'agenda'].map((mode) => (
+                  {(['month', 'week', 'agenda'] as const).map((mode) => (
                     <TouchableOpacity
                       key={mode}
-                      onPress={() => setCalendarView(mode as any)}
+                      onPress={() => setCalendarView(mode)}
                       className={`px-2.5 py-1 rounded-lg ${
                         calendarView === mode ? 'bg-primary-500' : 'transparent'
                       }`}

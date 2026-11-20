@@ -73,7 +73,7 @@ export default function TabLayout() {
               tabBarIcon: ({ color, focused }) => {
                 const icon = (
                   <Ionicons
-                    name={(focused ? dest.icon : dest.iconOutline) as any}
+                    name={focused ? dest.icon : dest.iconOutline}
                     size={dest.iconSize}
                     // `color` is the active/inactive tint resolved by the
                     // navigator, so the icon follows the same tokens.

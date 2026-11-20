@@ -572,7 +572,7 @@ export default function ConversationScreen() {
                     style={{
                       fontSize: 15,
                       fontWeight: '600',
-                      color: (opt as any).danger ? '#EF4444' : tokens.color.text.primary,
+                      color: 'danger' in opt && opt.danger ? '#EF4444' : tokens.color.text.primary,
                       flex: 1,
                     }}
                   >

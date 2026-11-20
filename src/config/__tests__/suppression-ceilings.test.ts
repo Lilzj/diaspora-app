@@ -105,6 +105,42 @@ const CEILING: Record<string, number> = {
   // FSEC-007 and FARCH-001 asked for, and this file is what keeps them.
   '@typescript-eslint/no-floating-promises': 0,
   'react-hooks/exhaustive-deps': 0,
+  // ── FSOLID-006, the third rule the audit named ──────────────────────────
+  //
+  // 105 `any` usages, reviewed one at a time on 20 Nov 2026. 71 went; these
+  // are the 34 that stayed, and why:
+  //
+  //   13  app/marketplace/[id].tsx     the six companion lists. The API types
+  //                                    them `unknown[]` on purpose -- the
+  //                                    published contract has no such members
+  //                                    and only the development fixture fills
+  //                                    them -- so typing this screen would
+  //                                    assert the fixture's shape as if it
+  //                                    were the contract. Removing the six
+  //                                    sections is the real fix and it is a
+  //                                    product decision, which the API module
+  //                                    says in as many words.
+  //
+  //   13  four API row mappers and     `(row: any) => Typed` at a wire the
+  //       `saved-resolver`             platform does not describe. The honest
+  //                                    form is `unknown` plus a declared
+  //                                    shape per mapper; that is work, not a
+  //                                    judgement, and it is the next bite.
+  //
+  //    5  the create screens'          a draft restored from device storage,
+  //       draft singletons             which may predate the current shape --
+  //                                    `marketplace/create.tsx` carries a
+  //                                    comment about a field that changed
+  //                                    meaning in October. The stored value
+  //                                    genuinely is not the current type.
+  //
+  //    3  one each in `JobCard`,       a wire read defensively, a fixture
+  //       `creator-workspace`,         builder, and a mock handler.
+  //       and a mock handler
+  //
+  // The rule is an error, so a new one fails the build. This number may only
+  // go down, and the test below is what makes that true.
+  '@typescript-eslint/no-explicit-any': 34,
   // Debt that came with the linter rather than from the audit, recorded so it
   // cannot grow. Not named by any finding.
   'react-hooks/refs': 81,

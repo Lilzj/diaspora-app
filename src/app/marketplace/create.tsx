@@ -111,16 +111,16 @@ const INTENTS = [
   { label: 'Buying request', value: 'Buying Request', desc: 'Ask the community for something you want to buy', icon: '🙋' },
   { label: 'Giving away', value: 'Giving Away', desc: 'Give an item away for free', icon: '🎁' },
   { label: 'Exchange / swap', value: 'Exchange / Swap', desc: 'Swap your item for something you want', icon: '🔄' },
-  { label: 'Donation', value: 'Donation', desc: 'Give goods or services to a community cause', icon: '🤝' }
-];
+  { label: 'Donation', value: 'Donation', desc: 'Give goods or services to a community cause', icon: '🤝' },
+] as const;
 
 const CONDITIONS = [
   { label: 'New', desc: 'Brand new, never opened, in original packaging' },
   { label: 'Like New', desc: 'Looks and functions like new, minimal or no signs of wear' },
   { label: 'Very Good', desc: 'Minor cosmetic wear, fully operational and clean' },
   { label: 'Good', desc: 'Some wear and tear, but works perfectly' },
-  { label: 'Fair', desc: 'Visible wear, scratches or issues, but still usable' }
-];
+  { label: 'Fair', desc: 'Visible wear, scratches or issues, but still usable' },
+] as const;
 
 
 // Remediation Wave E: `MOCK_COVER_PHOTOS` and `MOCK_GALLERY_PHOTOS` stood here —
@@ -895,7 +895,7 @@ export default function CreateListingScreen() {
   const handleNext = () => {
     // Special routing for Exchange/Swap — go to dedicated swap flow screen
     if (currentStep === 0 && intent === 'Exchange / Swap') {
-      router.push('/marketplace/swap-create' as any);
+      router.push('/marketplace/swap-create' as never);
       return;
     }
     // No popups here any more. Every rule these seven `showAlert` calls
@@ -992,7 +992,7 @@ export default function CreateListingScreen() {
                 return (
                   <TouchableOpacity
                     key={item.value}
-                    onPress={() => setIntent(item.value as any)}
+                    onPress={() => setIntent(item.value)}
                     className={`p-4 mb-3 border rounded-2xl flex-row items-center justify-between active:scale-[0.99] ${
                       isSel ? 'bg-surface-muted border-primary-500' : 'bg-surface-card border-subtle'
                     }`}
@@ -1118,7 +1118,7 @@ export default function CreateListingScreen() {
                 return (
                   <TouchableOpacity
                     key={cond.label}
-                    onPress={() => setCondition(cond.label as any)}
+                    onPress={() => setCondition(cond.label)}
                     className={`p-3.5 mb-3 border rounded-2xl flex-row items-center justify-between ${
                       isSel ? 'bg-surface-muted border-primary-500' : 'bg-surface-card border-subtle'
                     }`}

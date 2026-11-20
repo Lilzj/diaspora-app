@@ -79,6 +79,22 @@ module.exports = tseslint.config(
       // An unawaited promise on a security path completes after the screen
       // that started it has gone. Type-aware; see the header.
       '@typescript-eslint/no-floating-promises': 'error',
+
+      // ── The third, since FSOLID-006 ─────────────────────────────────────
+      //
+      // `any` is the one annotation that gets an unchecked value through a
+      // checked door, and the row that reviewed all 105 of them found two
+      // live defects doing exactly that: the housing page's nearby-providers
+      // section read the development fixture's field names off a real
+      // `ProviderSummary` and threw on `item.rating.average`, and the
+      // organisation page's events tab read wire names off rows that
+      // `fetchEvents` had already mapped, so every one of them navigated to
+      // `/community-life/event/undefined`.
+      //
+      // 34 remain, suppressed by rule rather than silenced here, so a new one
+      // fails the build and a stale suppression fails it too. What they are
+      // and why they stay is in `suppression-ceilings.test.ts`.
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-misused-promises': [
         'error',
         // An async handler passed to `onPress` is the React Native idiom and
@@ -89,10 +105,9 @@ module.exports = tseslint.config(
 
       // ── The backlog ─────────────────────────────────────────────────────
       //
-      // Warnings, not because they do not matter but because 117 `any` usages
-      // cannot be reviewed in the change that turns the linter on. FSOLID-006
-      // is the row that works them down.
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // `no-explicit-any` used to be here, with a note saying 117 of them
+      // could not be reviewed in the change that turned the linter on. They
+      // have been (FSOLID-006) and it is an error above.
       '@typescript-eslint/no-unused-vars': [
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },

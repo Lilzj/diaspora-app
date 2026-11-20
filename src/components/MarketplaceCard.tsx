@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Share, Platform, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Share, Platform, Alert, type GestureResponderEvent } from 'react-native';
 import { placeOf } from '@/lib/platform/listing-place';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
@@ -52,7 +52,7 @@ export function MarketplaceCard({ listing: given, variant = 'list' }: Marketplac
     router.push(`/marketplace/${id}`);
   };
 
-  const handleSaveToggle = (e: any) => {
+  const handleSaveToggle = (e: GestureResponderEvent) => {
     e.stopPropagation();
     if (saved) {
       unsave(id);
@@ -61,7 +61,7 @@ export function MarketplaceCard({ listing: given, variant = 'list' }: Marketplac
     }
   };
 
-  const handleShare = (e: any) => {
+  const handleShare = (e: GestureResponderEvent) => {
     e.stopPropagation();
     const priceText = priceLine();
     Share.share({

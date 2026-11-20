@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Share } from 'react-native';
+import { View, Text, TouchableOpacity, Share, type GestureResponderEvent } from 'react-native';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { JobOpportunity } from '@/types/job';
@@ -74,7 +74,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
     router.push(`/job/${jobId}`);
   };
 
-  const handleSaveToggle = (e: any) => {
+  const handleSaveToggle = (e: GestureResponderEvent) => {
     e.stopPropagation();
     if (saved) {
       unsave(jobId);
@@ -83,7 +83,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
     }
   };
 
-  const handleShare = (e: any) => {
+  const handleShare = (e: GestureResponderEvent) => {
     e.stopPropagation();
     Share.share({
       message: `Check out this opportunity: "${title}"${placeLabel ? ` in ${placeLabel}` : ''} on Diaspora!`,
@@ -142,7 +142,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
         ? "I'm interested"
         : 'Apply';
 
-  const handleQuickApply = (e: any) => {
+  const handleQuickApply = (e: GestureResponderEvent) => {
     e.stopPropagation();
     router.push(`/job/${jobId}`);
   };

@@ -134,7 +134,7 @@ export default function CreateOrgScreen() {
     }));
   }, [activeLocation]);
 
-  const updateField = (key: keyof OrgFormState, value: any) => {
+  const updateField = <K extends keyof OrgFormState>(key: K, value: OrgFormState[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
