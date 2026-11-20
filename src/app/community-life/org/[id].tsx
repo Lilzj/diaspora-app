@@ -61,14 +61,24 @@ export function mediaUri(mediaId?: string | null): string | undefined {
 /**
  * When an event starts, in the reader's locale.
  *
- * The card previously read `evt.date`, which no route has ever sent — the list
- * serves `startsAt` as an ISO instant. An unparseable or absent value renders
- * nothing rather than "Invalid Date", which is the only thing worse than a
- * blank where a date should be.
+ * **Takes the mapped client field, not the wire's.** `fetchEvents` maps every
+ * row through `toEvent`, which resolves the wire's `startsAt` instant into
+ * `date` as `YYYY-MM-DD`, and that is what the card hands over.
+ *
+ * The note that stood here argued the other way — that the list "serves
+ * `startsAt`", so reading `evt.date` was the mistake. That is true of the route
+ * and false of what this card receives, and it is the half-truth that had the
+ * card reading wire field names off mapped rows until FSOLID-006: every row
+ * rendered a blank date and navigated to `/community-life/event/undefined`.
+ * `openingHoursLabel` below genuinely does read wire fields, because operating
+ * hours are the one list on this screen that is not mapped.
+ *
+ * An unparseable or absent value renders nothing rather than "Invalid Date",
+ * which is the only thing worse than a blank where a date should be.
  */
-export function eventWhen(startsAt?: string | null): string {
-  if (!startsAt) return '';
-  const when = new Date(startsAt);
+export function eventWhen(date?: string | null): string {
+  if (!date) return '';
+  const when = new Date(date);
   if (Number.isNaN(when.getTime())) return '';
   return when.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
