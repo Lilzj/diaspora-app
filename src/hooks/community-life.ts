@@ -51,6 +51,7 @@ import {
 } from '@tanstack/react-query';
 
 import { joinRsvpsToEvents } from '@/lib/domain/my-rsvps';
+import { organizationSearchResult } from '@/lib/domain/organization-summary';
 import * as gapApi from '@/lib/api/community-gap-api';
 import { communityGapKeys } from '@/lib/api/community-gap-api';
 // Remediation Wave C-04. `Diaspora.Modules.CommunityProgramme` shipped the
@@ -636,18 +637,7 @@ export function useCommunitySearch(params: CommunitySearchParams, isActive = tru
     }
 
     for (const org of orgsQuery.data?.items ?? []) {
-      rows.push({
-        entityType: 'organization',
-        entityId: org.id,
-        title: org.name,
-        subtitle: org.category,
-        imageUrl: org.logo,
-        locationLabel: org.location.cityName,
-        distanceKm: org.location.distanceKm ?? null,
-        badge: org.isVerified ? 'Verified' : null,
-        actionRoute: `/community-life/org/${org.id}`,
-        source: 'backend',
-      });
+      rows.push(organizationSearchResult(org));
     }
 
     // Appended, not interleaved. These four types arrive in the server's own
@@ -773,48 +763,6 @@ export function useEvent(eventId: string | undefined) {
 
   return {
     event: query.data ?? null,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    error: (query.error as FinancialError) ?? null,
-    refetch: query.refetch,
-    isSimulated: false,
-  };
-}
-
-export function useOrganizations(params: b12.OrganizationQueryParams = {}, isActive = true) {
-  // Frontend Phase 13, §23/§43. Same reasoning as `useEvents` above.
-  const { scope } = useCommunityScope();
-  const scopeToken = communityScopeToken(scope);
-
-  const query = useQuery({
-    queryKey: communityLifeKeys.organizations(params, scopeToken),
-    queryFn: () => b12.fetchOrganizations(params),
-    enabled: isActive,
-    ...readOptions,
-    staleTime: DISCOVERY_STALE_MS,
-  });
-
-  return {
-    organizations: query.data?.items ?? [],
-    totalCount: query.data?.totalCount ?? 0,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    error: (query.error as FinancialError) ?? null,
-    refetch: query.refetch,
-    isSimulated: false,
-  };
-}
-
-export function useOrganization(organizationId: string | undefined) {
-  const query = useQuery({
-    queryKey: communityLifeKeys.organization(organizationId ?? ''),
-    queryFn: () => b12.fetchOrganization(organizationId as string),
-    enabled: Boolean(organizationId),
-    ...readOptions,
-  });
-
-  return {
-    organization: query.data ?? null,
     isLoading: query.isLoading,
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,

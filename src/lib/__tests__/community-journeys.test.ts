@@ -109,7 +109,7 @@ describe('Journey 1 — discover an organisation, view membership, apply, pendin
     expect(target).toBeDefined();
 
     // The organisation itself is a REAL B12 record.
-    const organization = await b12.fetchOrganization('org-1');
+    const organization = await b12.fetchOrganizationWire('org-1');
     expect(organization.name).toBeTruthy();
 
     // View membership

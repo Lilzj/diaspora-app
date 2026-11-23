@@ -46,7 +46,7 @@ function event(overrides: Partial<EventSummary> = {}): EventSummary {
     endsAt: '2026-10-01T20:00:00Z',
     timeZoneId: 'Europe/London',
     attendanceMode: 'InPerson',
-    location: { cityName: 'London', areaName: 'Peckham', addressLine: '1 Rye Lane' },
+    location: { countryCode: 'GB', cityName: 'London', neighborhoodName: 'Peckham' },
     isFree: true,
     isFamilyFriendly: true,
     ...overrides,

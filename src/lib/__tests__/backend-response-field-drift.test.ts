@@ -739,16 +739,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: "`reactions.counts` and `myReactionKey` are read through `readReactionSummary`, which accepts the server's shape too (`reaction-bar-server-shape.test.tsx`). `postId` and `reviewStatus` are not traced.",
   },
-  'CommunityOrganization <- OrganizationResponse': {
-    fields: ['category', 'contact.facebook', 'contact.instagram', 'coverImage', 'followersCount', 'id', 'location.addressLine', 'location.areaName', 'location.distanceKm', 'location.landmark', 'logo', 'rating'],
-    row: 'RMD-009',
-    why: 'Read by the Community Life screens. Whether those reads see this body or the mapped organisation is not established; the profile screen itself is clean (`screen-response-field-drift`).',
-  },
-  'CommunityOrganization <- OrganizationSummaryResponse': {
-    fields: ['category', 'contact', 'coverImage', 'createdAt', 'description', 'followersCount', 'id', 'leaders', 'location.addressLine', 'location.areaName', 'location.distanceKm', 'location.landmark', 'logo', 'mission', 'rating', 'services'],
-    row: 'RMD-009',
-    why: 'The organisations browse reads rows as the full organisation type; the summary row sends none of these 16. Read by the Community Life screens; not traced.',
-  },
   'CommunityPostResponse <- CommunityPostResponse': {
     fields: ['areaId', 'areaName', 'attachments[].url', 'authorId', 'cityName', 'countryCode', 'isBookmarked', 'latitude', 'longitude', 'organizationId', 'poll.isClosed', 'poll.selectedOptionIds', 'reactions.counts', 'reactions.myReactionKey', 'reviewStatus'],
     row: 'RMD-009',
@@ -888,11 +878,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     fields: ['location.areaName', 'price.displayText'],
     row: 'RMD-009',
     why: NO_TYPED_READ,
-  },
-  'MyRsvpPage <- RsvpPageResponse': {
-    fields: ['events[].location.addressLine', 'events[].location.areaName', 'events[].location.distanceKm', 'events[].location.landmark'],
-    row: 'RMD-009',
-    why: "The RSVP page's event locations are read as the full location type; the summary sends none of these four. Read by the Community Life screens; not traced.",
   },
   'Partial<ConversationMediaGallery> <- ConversationMediaResponse': {
     fields: ['voice[].waveformData'],
