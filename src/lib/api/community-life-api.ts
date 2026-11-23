@@ -78,7 +78,9 @@ import { apiClient } from '../transport/apiClient';
 import { toEventCategoryKey, toOrganizationTypeKey } from '../domain/community-life-catalogue';
 import { toFinancialError } from '../transport/financial-errors';
 import type {
+  CalendarEntryWire,
   CalendarEvent,
+  CommunityCalendarWire,
   CommunityOrganization,
   Event,
   EventCategory,
@@ -88,7 +90,7 @@ import type {
   RsvpRecord,
 } from '@/types/community-life';
 import { readPage } from '@/lib/transport/platform-envelope';
-import { toEvent, type EventWire } from '@/lib/api/event-wire';
+import { partsInZone, toEvent, type EventWire } from '@/lib/api/event-wire';
 import type { OrganizationWire } from '@/types/community-life';
 
 const ROOT = '/community-life';
@@ -1324,13 +1326,55 @@ export interface CalendarQueryParams {
   neighborhoodAreaId?: string;
 }
 
-export function fetchCalendar(params: CalendarQueryParams = {}): Promise<CalendarEvent[]> {
-  return read<CalendarEvent[]>('/calendar', {
+/**
+ * RMD-008. This read the calendar as `CalendarEvent[]`. The route answers one
+ * `CommunityCalendarResponse` — a window, the sources that answered, and the
+ * entries inside it — and the Events screen spread that object into an array,
+ * which threw inside the promise's own `catch`. The calendar tab had never
+ * shown a platform entry: only the member's own reminders.
+ */
+export async function fetchCalendar(params: CalendarQueryParams = {}): Promise<CalendarEvent[]> {
+  const calendar = await read<CommunityCalendarWire>('/calendar', {
     from: params.from || undefined,
     to: params.to || undefined,
     countryCode: params.countryCode || undefined,
     neighborhoodAreaId: params.neighborhoodAreaId || undefined,
   });
+  return (calendar?.entries ?? []).flatMap((entry) => {
+    const event = toCalendarEvent(entry);
+    return event ? [event] : [];
+  });
+}
+
+/**
+ * One calendar row, as the calendar screen draws it.
+ *
+ * **The day and the time are the entry's own zone's** — for an event, its
+ * venue's, which is what the event's page shows — so a Lagos meeting at 7pm
+ * reads 7pm to a member in London, and an all-day entry stays on its own day.
+ * A source that names no zone is read in the device's, the only clock left.
+ *
+ * **An entry is an `Event` because it has an `eventId`, not because of its
+ * `entryType`**: the event source sends the category key there. Anything else
+ * is drawn as a `Holiday` — the screen's word for a dated thing that is not an
+ * event — which the screen does not open, because there is nothing to open.
+ *
+ * Null for an entry whose instant does not parse, rather than a row on no day.
+ */
+export function toCalendarEvent(entry: CalendarEntryWire): CalendarEvent | null {
+  const parts = partsInZone(entry.startsAt, entry.timeZoneId ?? '');
+  if (!parts) return null;
+
+  const eventId = typeof entry.eventId === 'string' && entry.eventId.length > 0 ? entry.eventId : null;
+
+  return {
+    id: entry.id,
+    title: entry.title,
+    date: parts.date,
+    time: entry.isAllDay ? undefined : parts.time,
+    type: eventId ? 'Event' : 'Holiday',
+    associatedId: eventId ?? undefined,
+  };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -579,6 +579,44 @@ export interface CalendarEvent {
   color?: string;
 }
 
+/**
+ * `CalendarEntryResponse` — one row of `GET /community-life/calendar`.
+ *
+ * Not the `CalendarEvent` the screen draws, and never was: the screen's type
+ * is a date string and a time, and this is an instant, the zone it is local
+ * to, and the source that contributed it. `toCalendarEvent` is the one place
+ * that turns one into the other (RMD-008).
+ */
+export interface CalendarEntryWire {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt?: string | null;
+  /** The IANA zone the times are local to: an event's venue's. Null when the source has none. */
+  timeZoneId?: string | null;
+  isAllDay: boolean;
+  /** The source's own word for the row. For an event it is the category key, never "Event". */
+  entryType: string;
+  description?: string | null;
+  countryCode?: string | null;
+  /** Set when the row is one of the platform's events, so a tap can open it. */
+  eventId?: string | null;
+  sourceKey: string;
+}
+
+/**
+ * `CommunityCalendarResponse`. The entries sit inside it, beside the window
+ * and the sources that answered; it is not a list.
+ */
+export interface CommunityCalendarWire {
+  from: string;
+  to: string;
+  countryCode?: string | null;
+  neighborhoodAreaId?: string | null;
+  entries: CalendarEntryWire[];
+  sources: string[];
+}
+
 // Creation Wizard Form states
 /**
  * The event wizard's local state.

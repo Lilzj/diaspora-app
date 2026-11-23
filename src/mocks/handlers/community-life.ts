@@ -1,6 +1,12 @@
 import type MockAdapter from 'axios-mock-adapter';
 import { mockEvents, mockOrganizations, mockHolidays } from '../community-life-data';
-import type { Event, CommunityOrganization, Holiday } from '@/types/community-life';
+import type {
+  CalendarEntryWire,
+  CommunityCalendarWire,
+  CommunityOrganization,
+  Event,
+  Holiday,
+} from '@/types/community-life';
 import { eventHost } from '@/lib/api/event-host';
 // `getDistanceKm` is deliberately no longer imported. Wave J removed every
 // distance this handler used to compute: the two browse routes accept no point
@@ -641,34 +647,62 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
       (h) => inWindow(h.date) && (!countryCode || h.countryCode === countryCode)
     );
 
-    // Merge into calendar events
-    const calendarItems: any[] = [];
+    // RMD-008. The route answers one `CommunityCalendarResponse` — the window,
+    // the sources that answered, and the entries inside it — and each entry is
+    // an instant with the zone it is local to, not the screen's date and time.
+    // This handler answered the screen's own `CalendarEvent[]`, which is why
+    // `fetchCalendar` could read the route wrongly for as long as it did with
+    // every test here agreeing. The entries are typed as the wire type the drift
+    // suite checks against the contract.
+    //
+    // The event fixtures carry a date, an `HH:mm` time and no IANA zone, so
+    // their instants are written in UTC and say so, and read back as the same
+    // date and time. The holidays stand in for a contributed source: the
+    // backend registers none today, only `community-events`, and the seam is
+    // there for one. They are what a calendar row that is not an event looks
+    // like.
+    const categoryKey = (label: string | undefined) =>
+      (label ?? 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-    localEvents.forEach(evt => {
-      calendarItems.push({
-        id: `cal-evt-${evt.id}`,
+    const entries: CalendarEntryWire[] = [
+      ...localEvents.map((evt) => ({
+        id: evt.id,
         title: evt.title,
-        date: evt.date,
-        time: evt.time,
-        type: 'Event',
-        associatedId: evt.id,
-        color: evt.category === 'Church Program' || evt.category === 'Mosque Event' ? '#4F46E5' : '#FF6B00'
-      });
-    });
-
-    localHolidays.forEach(hol => {
-      calendarItems.push({
-        id: `cal-hol-${hol.id}`,
+        startsAt: `${evt.date}T${evt.time || '00:00'}:00Z`,
+        endsAt: null,
+        timeZoneId: 'UTC',
+        isAllDay: !evt.time,
+        // The real source sends the category key here, never "Event".
+        entryType: categoryKey(evt.category),
+        description: null,
+        countryCode: evt.location.countryCode ?? null,
+        eventId: evt.id,
+        sourceKey: 'community-events',
+      })),
+      ...localHolidays.map((hol) => ({
+        id: hol.id,
         title: hol.name,
-        date: hol.date,
-        type: 'Holiday',
-        associatedId: hol.id,
-        color: hol.type === 'National' ? '#EF4444' : '#10B981'
-      });
-    });
+        startsAt: `${hol.date}T00:00:00Z`,
+        endsAt: null,
+        timeZoneId: 'UTC',
+        isAllDay: true,
+        entryType: 'public-holiday',
+        description: hol.description ?? null,
+        countryCode: hol.countryCode,
+        eventId: null,
+        sourceKey: 'public-holidays',
+      })),
+    ];
 
-    return [200, {
-      data: calendarItems
-    }];
+    const calendar: CommunityCalendarWire = {
+      from: from || new Date().toISOString(),
+      to: to || new Date(Date.now() + 90 * 86_400_000).toISOString(),
+      countryCode: countryCode || null,
+      neighborhoodAreaId: null,
+      entries,
+      sources: ['community-events', 'public-holidays'],
+    };
+
+    return [200, { data: calendar }];
   });
 }

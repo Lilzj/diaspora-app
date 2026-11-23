@@ -107,8 +107,8 @@ const CEILING: Record<string, number> = {
   'react-hooks/exhaustive-deps': 0,
   // ── FSOLID-006, the third rule the audit named ──────────────────────────
   //
-  // 105 `any` usages, reviewed one at a time on 20 Nov 2026. 71 went; these
-  // are the 34 that stayed, and why:
+  // 105 `any` usages, reviewed one at a time on 20 Nov 2026. 71 went and 34
+  // stayed; these are the 33 still here, and why:
   //
   //   13  app/marketplace/[id].tsx     the six companion lists. The API types
   //                                    them `unknown[]` on purpose -- the
@@ -134,13 +134,17 @@ const CEILING: Record<string, number> = {
   //                                    meaning in October. The stored value
   //                                    genuinely is not the current type.
   //
-  //    3  one each in `JobCard`,       a wire read defensively, a fixture
-  //       `creator-workspace`,         builder, and a mock handler.
-  //       and a mock handler
+  //    2  one each in `JobCard`        a wire read defensively and a fixture
+  //       and `creator-workspace`      builder. The third, in the community
+  //                                    life mock handler, was
+  //                                    `const calendarItems: any[]`; it went
+  //                                    on 23 Nov 2026, when the calendar
+  //                                    mock was rebuilt from the wire type
+  //                                    (RMD-008).
   //
   // The rule is an error, so a new one fails the build. This number may only
   // go down, and the test below is what makes that true.
-  '@typescript-eslint/no-explicit-any': 34,
+  '@typescript-eslint/no-explicit-any': 33,
   // Debt that came with the linter rather than from the audit, recorded so it
   // cannot grow. Not named by any finding.
   'react-hooks/refs': 81,

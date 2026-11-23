@@ -97,11 +97,63 @@ function toPlace(location: PlatformLocation, near?: GeoCoordinate): Place {
   };
 }
 
+/**
+ * `LocationReferenceResponse` — one place `GET /location/search` found. A town
+ * has no neighbourhood and a country has neither, and either may have no pin.
+ */
+export interface LocationReferenceWire {
+  countryCode: string;
+  countryName: string;
+  flag: string;
+  state?: string | null;
+  cityName?: string | null;
+  neighborhood?: string | null;
+  street?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  displayName: string;
+}
+
+/** `LocationSearchResponse`: the results sit inside it, beside the term searched for. */
+export interface LocationSearchWire {
+  term: string;
+  results: LocationReferenceWire[];
+}
+
+/**
+ * RMD-008. This read the search as `PlatformLocation[]` where the route answers
+ * `{ term, results }`, so both providers' `.filter` and `.map` threw inside
+ * their own `try` and every platform place search answered "unavailable". No
+ * screen asks it today — member place search moved to Google on 14 Oct 2026 —
+ * but these are the providers the registry hands out, and they now read what
+ * the route sends.
+ *
+ * A result without a pin is dropped: neither provider can place it, and a
+ * coordinate of nought is a place in the Gulf of Guinea, not "unknown".
+ */
 async function searchPlatformLocations(query: string): Promise<PlatformLocation[]> {
-  const response = await apiClient.get<{ data: PlatformLocation[] }>('/location/search', {
+  const response = await apiClient.get<{ data: LocationSearchWire }>('/location/search', {
     params: { query },
   });
-  return response.data?.data ?? [];
+  return (response.data?.data?.results ?? []).flatMap(toPlatformLocation);
+}
+
+function toPlatformLocation(result: LocationReferenceWire): PlatformLocation[] {
+  if (typeof result.latitude !== 'number' || typeof result.longitude !== 'number') return [];
+  return [
+    {
+      countryCode: result.countryCode,
+      countryName: result.countryName,
+      flag: result.flag,
+      state: result.state ?? undefined,
+      cityName: result.cityName ?? '',
+      neighborhood: result.neighborhood ?? '',
+      street: result.street ?? undefined,
+      latitude: result.latitude,
+      longitude: result.longitude,
+      displayName: result.displayName,
+    },
+  ];
 }
 
 /**

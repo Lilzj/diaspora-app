@@ -701,17 +701,6 @@ const NO_CALLER_CHUNKED =
 
 /** Client types that declare fields their routes do not send, keyed `Client <- Contract`. */
 const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
-  // ── RMD-008 — a wrapped list read as a bare one, outside the map.
-  'CalendarEvent[] <- CommunityCalendarResponse': {
-    fields: ['(body)'],
-    row: 'RMD-008',
-    why: "`fetchCalendar` hands the calendar object back as `CalendarEvent[]`; `events.tsx` spreads it into an array, which throws inside the promise's own `catch`, so the calendar tab has never shown a platform entry.",
-  },
-  'PlatformLocation[] <- LocationSearchResponse': {
-    fields: ['(body)'],
-    row: 'RMD-008',
-    why: '`searchPlatformLocations` hands `{ term, results }` back as a list; both callers `.filter` or `.map` it and throw inside their own `try`, so every platform place search answers with an error.',
-  },
   // ── Decisions: a name read only behind the one the route sends.
   'an inline type in src/lib/api/community-life-api.ts <- EventSeriesResponse': {
     fields: ['id'],

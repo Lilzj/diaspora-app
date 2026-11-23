@@ -560,11 +560,6 @@
       "count": 3
     }
   },
-  "src/mocks/handlers/community-life.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "src/providers/app-provider.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
