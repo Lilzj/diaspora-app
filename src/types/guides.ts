@@ -292,6 +292,12 @@ export interface GuideCardResponse {
   categoryKey: string;
   countryCode: string;
   cityName: string | null;
+  /**
+   * The guide's pin. On the card since 23 November 2026, so the map can place a
+   * search result (RMD-007); null for a guide about a whole town or country.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
   language: string;
   /** Drafts appear only on the author's own lists. */
   status: GuideStatus;

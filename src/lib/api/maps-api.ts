@@ -55,13 +55,16 @@
 
 import { apiClient } from '../transport/apiClient';
 import { toEventBrowseQuery, toOrganizationBrowseQuery } from './community-life-api';
-import { toList } from '../transport/platform-envelope';
-import type { CommunityOrganization, Event } from '@/types/community-life';
-import type { Guide } from '@/types/guide';
-import type { HousingListing } from '@/types/housing';
+import { toEvent, type EventWire } from './event-wire';
+import { toMarketplaceListing } from './marketplace-listings-api';
+import type { ProviderSummary } from './providers-api';
+import { readPage, type Page } from '../transport/platform-envelope';
+import type { OrganizationSearchCard } from '@/types/community-life';
+import type { GuideCardResponse } from '@/types/guides';
+import type { JobCardResponse } from '@/types/jobs-hiring';
+import type { MarketplaceListingCardResponse } from '@/types/marketplace';
+import { toHousingCardListing, type HousingCardWire } from '../platform/housing-cards';
 import { photoUriOf } from '../platform/media-url';
-import type { JobOpportunity } from '@/types/job';
-import type { MarketplaceListing } from '@/types/marketplace';
 import type { CommunityUpdate } from '@/types/update';
 import {
   type CommunityAlert,
@@ -84,7 +87,6 @@ import {
   organizationMarker,
   providerMarker,
   toCommunityAlert,
-  type ProviderListingLike,
 } from '../maps/markers';
 import { coordinateForRequest } from '../maps/privacy';
 import {
@@ -313,42 +315,28 @@ function withinBounds(marker: MapMarker, bounds: GeoBoundingBox | null): boolean
  *
  *   **An unscoped search passes everything.** No projection, no filter.
  *
- *   **A result with no discoverable origin does not pass a scoped search.** An
- *   absent origin is not evidence of belonging, and letting it through would make
- *   the filter mean "these communities, plus anything unlabelled".
+ *   **A result naming no country does not pass a scoped search.** An absent
+ *   country is not evidence of belonging, and letting it through would make the
+ *   filter mean "these communities, plus anything unlabelled".
  *
- *   **The entity, not the marker, is inspected.** The marker is a presentation
- *   object and carries no publisher. `MapSearchResult.entity` is the raw record
- *   the certified route returned, which is where `owner`, `employer`, `host` and
- *   `seller` live.
+ *   **The searcher that read the card names the country.** `scopeCountryCode` is
+ *   set where the card's type is known: the publisher's origin where a card
+ *   carries one — only the provider directory's does, as
+ *   `owner.originCountryCode` — the country a guide is about, and otherwise the
+ *   country the row is in, which is a weaker basis. Until RMD-007 this looked
+ *   for `originCountry.code` under four publisher names, then `country.code`,
+ *   then `location.countryCode`, in whatever the route sent. No search card has
+ *   either of the first two shapes, so under a community scope the job and guide
+ *   layers were always empty and the provider layer never saw its owner's origin.
  */
 function withinCommunityScope(result: MapSearchResult, params: MapSearchParams): boolean {
   const codes = params.communityOriginCountryCodes;
   if (!codes || codes.length === 0) return true;
 
-  const entity = result.entity as Record<string, unknown> | undefined;
-  if (!entity) return false;
+  const code = result.scopeCountryCode?.toUpperCase();
+  if (!code) return false;
 
-  const wanted = codes.map((code) => code.toUpperCase());
-
-  for (const key of ['owner', 'employer', 'host', 'seller'] as const) {
-    const publisher = entity[key] as Record<string, unknown> | undefined;
-    const origin = publisher?.originCountry as Record<string, unknown> | undefined;
-    const code = origin?.code;
-    if (typeof code === 'string') return wanted.includes(code.toUpperCase());
-  }
-
-  // Guides carry `country` directly; events, organizations and alerts carry only
-  // a location, which is a weaker basis and is used only as a last resort.
-  const direct = entity.country as Record<string, unknown> | undefined;
-  if (typeof direct?.code === 'string') return wanted.includes(direct.code.toUpperCase());
-
-  const location = entity.location as Record<string, unknown> | undefined;
-  if (typeof location?.countryCode === 'string') {
-    return wanted.includes(location.countryCode.toUpperCase());
-  }
-
-  return false;
+  return codes.some((wanted) => wanted.toUpperCase() === code);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -359,6 +347,22 @@ function withinCommunityScope(result: MapSearchResult, params: MapSearchParams):
 // and `searchMap` below runs them with `Promise.allSettled` so one domain being
 // down costs its own pins and nothing else.
 // ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * A search route's page, or an error when the body is not one.
+ *
+ * `readPage` answers a body it cannot read with an empty page, which is the
+ * right default for a list screen and the wrong one here: an empty layer is
+ * drawn as "nothing here", and a body the map could not read means "could not
+ * ask". Raising puts the layer in `allSettled`'s rejected pile, and the filter
+ * chip shows a dash instead of a confident nought (§54).
+ */
+function pageOrThrow<T>(page: Page<T>, layer: DiscoveryCategory): Page<T> {
+  if (page.shape === 'unrecognised') {
+    throw new Error(`The ${layer} search answered something other than a page.`);
+  }
+  return page;
+}
 
 async function searchHousing(
   params: MapSearchParams,
@@ -383,10 +387,16 @@ async function searchHousing(
     signal: options.signal,
   });
 
-  // The route returns `{ items, nextCursor, hasMore, totalCount, … }`, not a
-  // bare array. `toList` is the one place that knows which of the platform's
-  // four list shapes came back.
-  return toList<HousingListing>(response.data).flatMap((listing) => {
+  // RMD-007. A page of `HousingListingCardResponse`, read as the Housing tab
+  // reads it — `HousingCardWire`, mapped by `toHousingCardListing` — and not
+  // cast to `HousingListing`, which it is not. The card has said where the home
+  // is since 23 November 2026, exactly as precisely as a stranger may know it;
+  // before that no housing pin could be drawn at all.
+  const page = pageOrThrow(readPage<HousingCardWire>(response.data), 'housing');
+
+  return page.items.flatMap((card) => {
+    if (!card?.id) return [];
+    const listing = toHousingCardListing(card);
     const marker = housingMarker(listing, origin);
     if (!marker) return [];
     return [
@@ -396,7 +406,9 @@ async function searchHousing(
         detail: `${listing.bedrooms} bed · ${listing.furnished}`,
         // A home's cover is a media reference; the image route serves it.
         imageUrl: photoUriOf(listing.coverImage),
-        entity: listing,
+        entity: card,
+        // The landlord summary carries no origin: where the home is, as a last resort.
+        scopeCountryCode: card.location?.countryCode ?? null,
       },
     ];
   });
@@ -428,7 +440,15 @@ async function searchMarketplace(
     { signal: options.signal }
   );
 
-  return toList<MarketplaceListing>(response.data).flatMap((listing) => {
+  // RMD-007. A page of `ListingCardResponse`, mapped by `toMarketplaceListing`
+  // as the Marketplace tab maps it. Read raw, the card's `listingId` was taken
+  // for an `id` it does not have, so every pin opened `/marketplace/undefined`,
+  // and its `price` object reached `formatPrice` where a number was expected.
+  const page = pageOrThrow(readPage<MarketplaceListingCardResponse>(response.data), 'marketplace');
+
+  return page.items.flatMap((card) => {
+    if (!card?.listingId) return [];
+    const listing = toMarketplaceListing(card);
     const marker = marketplaceMarker(listing, origin);
     if (!marker) return [];
     return [
@@ -436,11 +456,11 @@ async function searchMarketplace(
         marker,
         category: 'marketplace' as const,
         detail: `${listing.condition} · ${listing.intent}`,
-        // Search rows carry the cover as `coverMediaId`; the image route serves it.
-        imageUrl: photoUriOf(
-          listing.coverImage || (listing as { coverMediaId?: string | null }).coverMediaId
-        ),
-        entity: listing,
+        // The card carries the cover as `coverMediaId`; the image route serves it.
+        imageUrl: photoUriOf(listing.coverImage),
+        entity: card,
+        // The seller summary carries no origin: where the item is, as a last resort.
+        scopeCountryCode: card.location?.countryCode ?? null,
       },
     ];
   });
@@ -451,25 +471,37 @@ async function searchJobs(
   origin: GeoCoordinate | null,
   options: RequestOptions
 ): Promise<MapSearchResult[]> {
-  const response = await apiClient.get<Envelope<JobOpportunity[]>>('/jobs', {
+  // RMD-007. `GET /jobs` binds `q` and `city`. This sent `query` and
+  // `cityName`, which the model binder drops without a word, so the layer asked
+  // for every posting near the point whatever the member had typed. It binds
+  // `bounds` too, answered against each posting's own pin.
+  const response = await apiClient.get<Envelope<unknown>>('/jobs', {
     params: {
       ...geoParams(params),
-      query: params.query || undefined,
-      cityName: params.cityName,
+      ...geoBounds(params),
+      q: params.query || undefined,
+      city: params.cityName,
     },
     signal: options.signal,
   });
 
-  return (response.data?.data ?? []).flatMap((job) => {
-    const marker = jobMarker(job, origin);
+  // A page of `JobCardResponse`. It was read as a bare `JobOpportunity[]`, so
+  // `.flatMap` on the page threw on every search; the card has carried the
+  // posting's pin since 23 November 2026.
+  const page = pageOrThrow(readPage<JobCardResponse>(response.data), 'job');
+
+  return page.items.flatMap((card) => {
+    const marker = jobMarker(card, origin);
     if (!marker) return [];
     return [
       {
         marker,
         category: 'job' as const,
-        detail: [job.employer?.name, job.employmentType].filter(Boolean).join(' · '),
-        imageUrl: job.employer?.avatarUrl ?? null,
-        entity: job,
+        detail: marker.subtitle ?? '',
+        imageUrl: photoUriOf(card.employerLogoMediaId),
+        entity: card,
+        // The card names no employer origin: where the job is, as a last resort.
+        scopeCountryCode: card.countryCode ?? null,
       },
     ];
   });
@@ -515,16 +547,23 @@ async function searchProviders(
     signal: options.signal,
   });
 
-  return toList<ProviderListingLike>(response.data).flatMap((listing) => {
-    const marker = providerMarker(listing, origin);
+  // RMD-007. A page of `ProviderSummaryResponse`, read as `ProviderSummary`, the
+  // type the directory screens read it as. This read it as a shape of its own
+  // that asked for `listingId` and `title`, where the summary sends `providerId`
+  // and `name`, so every pin was untitled and opened `/provider/undefined`.
+  const page = pageOrThrow(readPage<ProviderSummary>(response.data), 'provider');
+
+  return page.items.flatMap((card) => {
+    const marker = providerMarker(card, origin);
     if (!marker) return [];
     return [
       {
         marker,
         category: 'provider' as const,
-        detail:
-          typeof listing.category === 'string' ? listing.category : (listing.category?.name ?? ''),
-        entity: listing,
+        detail: card.category?.name ?? '',
+        entity: card,
+        // The one search card that carries its publisher's origin.
+        scopeCountryCode: card.owner?.originCountryCode ?? card.location?.countryCode ?? null,
       },
     ];
   });
@@ -543,7 +582,7 @@ async function searchEvents(
   // there is one spelling of this route in the codebase. The map is also the one
   // caller entitled to send `bounds`: `MapSearchParams.bounds` is a rectangle the
   // member actually drew by panning, not one derived from a point.
-  const response = await apiClient.get<Envelope<Event[]>>('/community-life/events', {
+  const response = await apiClient.get<Envelope<unknown>>('/community-life/events', {
     params: toEventBrowseQuery({
       query: params.query,
       cityName: params.cityName,
@@ -554,7 +593,16 @@ async function searchEvents(
     signal: options.signal,
   });
 
-  return (response.data?.data ?? []).flatMap((event) => {
+  // RMD-007. A page of `EventSummaryResponse`, read as `EventWire` and mapped by
+  // `toEvent`, as the browse screens read it. It was read as a bare `Event[]`,
+  // so `.flatMap` on the page threw on every search. The summary has carried the
+  // venue's pin in `location` since 23 November 2026; before that, no event
+  // could have been placed even once the page was read.
+  const page = pageOrThrow(readPage<EventWire>(response.data), 'event');
+
+  return page.items.flatMap((wire) => {
+    const event = toEvent(wire);
+    if (!event.id) return [];
     const marker = eventMarker(event, origin);
     if (!marker) return [];
     return [
@@ -562,8 +610,10 @@ async function searchEvents(
         marker,
         category: 'event' as const,
         detail: [event.date, event.time].filter(Boolean).join(' · '),
-        imageUrl: event.coverImage,
-        entity: event,
+        imageUrl: event.coverImage || null,
+        entity: wire,
+        // An event names no publisher origin: where it is, as a last resort.
+        scopeCountryCode: wire.location?.countryCode ?? null,
       },
     ];
   });
@@ -576,28 +626,32 @@ async function searchOrganizations(
 ): Promise<MapSearchResult[]> {
   // Remediation Wave J — same defect, same fix, same shared mapping as
   // `searchEvents` above.
-  const response = await apiClient.get<Envelope<CommunityOrganization[]>>(
-    '/community-life/organizations',
-    {
-      params: toOrganizationBrowseQuery({
-        query: params.query,
-        cityName: params.cityName,
-        ...geoBounds(params),
-      }),
-      signal: options.signal,
-    }
-  );
+  const response = await apiClient.get<Envelope<unknown>>('/community-life/organizations', {
+    params: toOrganizationBrowseQuery({
+      query: params.query,
+      cityName: params.cityName,
+      ...geoBounds(params),
+    }),
+    signal: options.signal,
+  });
 
-  return (response.data?.data ?? []).flatMap((organization) => {
-    const marker = organizationMarker(organization, origin);
+  // RMD-007. A page of `OrganizationSummaryResponse`. It was read as a bare
+  // `CommunityOrganization[]`, so `.flatMap` on the page threw on every search;
+  // the summary sends `organizationId` and a type key, not `id` and a category.
+  const page = pageOrThrow(readPage<OrganizationSearchCard>(response.data), 'organization');
+
+  return page.items.flatMap((card) => {
+    const marker = organizationMarker(card, origin);
     if (!marker) return [];
     return [
       {
         marker,
         category: 'organization' as const,
-        detail: organization.category,
-        imageUrl: organization.logo,
-        entity: organization,
+        detail: marker.subtitle ?? '',
+        imageUrl: photoUriOf(card.logoMediaId),
+        entity: card,
+        // An organisation names no publisher origin: where it is, as a last resort.
+        scopeCountryCode: card.location?.countryCode ?? null,
       },
     ];
   });
@@ -606,31 +660,62 @@ async function searchOrganizations(
 /**
  * Guides.
  *
- * FRONTEND-MAPS-GAP-004: no geographic query exists, and guides carry an
- * optional `location` whose scope level is not declared. Only guides with a
- * coordinate are placed, and `guideMarker` labels them as *covering* an area
- * rather than being *at* a point.
+ * Two routes, because the platform splits the question. `GET /guides/nearby`
+ * takes a point and a radius and answers the guides pinned around it, and binds
+ * no text. A typed query goes to `GET /guides`, which binds `q` and `country`
+ * and no geography, and `searchMap`'s bounds filter keeps the pinned matches
+ * inside the viewport. This used to send `GET /guides` a `countryCode` it does
+ * not bind, and no point at all.
+ *
+ * Only a guide with a pin is placed, and `guideMarker` labels it as *covering*
+ * an area rather than being *at* a point. A guide about a whole town or country
+ * has no pin and draws nothing: FRONTEND-MAPS-GAP-004's scope level and area
+ * outline are still not on the card.
  */
 async function searchGuides(
   params: MapSearchParams,
   origin: GeoCoordinate | null,
   options: RequestOptions
 ): Promise<MapSearchResult[]> {
-  const response = await apiClient.get<Envelope<Guide[]>>('/guides', {
-    params: { query: params.query || undefined, countryCode: params.countryCode },
+  const text = params.query?.trim();
+
+  // Two requests rather than one under a conditional: each body is read by
+  // `readPage` in plain sight, which is what `backend-response-field-drift`
+  // compares with the contract. Under a conditional it could not see the read,
+  // fell back to `Envelope<unknown>`, and compared nothing.
+  if (text) {
+    const response = await apiClient.get<Envelope<unknown>>('/guides', {
+      params: { q: text, country: params.countryCode },
+      signal: options.signal,
+    });
+    return guideResults(pageOrThrow(readPage<GuideCardResponse>(response.data), 'guide'), origin);
+  }
+
+  const response = await apiClient.get<Envelope<unknown>>('/guides/nearby', {
+    params: { ...geoParams(params), countryCode: params.countryCode },
     signal: options.signal,
   });
+  return guideResults(pageOrThrow(readPage<GuideCardResponse>(response.data), 'guide'), origin);
+}
 
-  return (response.data?.data ?? []).flatMap((guide) => {
-    const marker = guideMarker(guide, origin);
+/**
+ * RMD-007. A page of `GuideCardResponse`, read as the guide screens read it. It
+ * was read as a bare `Guide[]`, so `.flatMap` on the page threw on every
+ * search; the card has carried the guide's pin since 23 November 2026.
+ */
+function guideResults(page: Page<GuideCardResponse>, origin: GeoCoordinate | null): MapSearchResult[] {
+  return page.items.flatMap((card) => {
+    const marker = guideMarker(card, origin);
     if (!marker) return [];
     return [
       {
         marker,
         category: 'guide' as const,
-        detail: guide.category,
-        imageUrl: guide.coverImageUrl,
-        entity: guide,
+        detail: marker.subtitle ?? '',
+        imageUrl: photoUriOf(card.heroMediaId),
+        entity: card,
+        // A guide names the country it is about.
+        scopeCountryCode: card.countryCode ?? null,
       },
     ];
   });
