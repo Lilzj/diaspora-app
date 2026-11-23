@@ -211,8 +211,11 @@ export function setupLocationMocks(mock: MockAdapter) {
     const params = config.params || {};
     const query = params.query ? String(params.query).toLowerCase() : '';
 
+    // `LocationSearchResponse`: the results inside `{ term, results }`, as the
+    // route answers (RMD-008). This served a bare list, which the provider read
+    // as a list, so its tests agreed with each other and not with the route.
     if (!query) {
-      return [200, { data: mockLocationDatabase.slice(0, 5) }];
+      return [200, { data: { term: '', results: mockLocationDatabase.slice(0, 5) } }];
     }
 
     const filtered = mockLocationDatabase.filter(
@@ -223,7 +226,7 @@ export function setupLocationMocks(mock: MockAdapter) {
         loc.displayName?.toLowerCase().includes(query)
     );
 
-    return [200, { data: filtered }];
+    return [200, { data: { term: String(params.query), results: filtered } }];
   });
 
   // GET /location/reverse-geocode
