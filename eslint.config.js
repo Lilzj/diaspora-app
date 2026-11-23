@@ -39,6 +39,28 @@ const security = require('eslint-plugin-security');
 module.exports = tseslint.config(
   ...expoConfig,
 
+  // ── ESLint 10, and the React version eslint-config-expo asks for ─────────
+  //
+  // eslint-config-expo sets `settings.react.version: 'detect'`, and
+  // eslint-plugin-react's detection calls `context.getFilename()`, which
+  // ESLint 10 removed. Every React rule then failed to load, and lint died
+  // with exit code 2 before reporting anything: "Error while loading rule
+  // 'react/display-name': contextOrFilename.getFilename is not a function".
+  //
+  // The installed React version, read here, is what 'detect' would have found,
+  // so nothing about any rule changes: on this tree, ESLint 10 with this line
+  // and ESLint 9.39.5 with it produce byte-identical output. Read rather than
+  // written down, so it cannot drift from the React the app actually ships.
+  //
+  // Not fixed upstream yet: eslint-plugin-react 7.37.5 declares ESLint ^9.7
+  // at most, and ESLint 10 installs over that only because `.npmrc` sets
+  // `legacy-peer-deps`. Its other uses of the removed context methods are
+  // guarded, except in `react/forward-ref-uses-ref` and
+  // `react/jsx-filename-extension`, which this config does not enable and
+  // which would crash lint if it did. Delete this block when a release of the
+  // plugin declares ESLint 10.
+  { settings: { react: { version: require('react/package.json').version } } },
+
   {
     // Build output, native projects, coverage and the Expo cache. Linting
     // generated or vendored code reports defects nobody can fix in this
