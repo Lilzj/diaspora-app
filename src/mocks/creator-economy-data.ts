@@ -1589,7 +1589,6 @@ export const MOCK_REFERRAL_PROGRAMME: CreatorReferralProgramme = {
   qualified: 3,
   pendingRewards: 1,
   confirmedRewards: 3,
-  totalEarned: null,
   totalPointsEarned: 600,
   isEligible: true,
   updatedAt: isoHoursAgo(2),

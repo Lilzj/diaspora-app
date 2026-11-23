@@ -113,7 +113,6 @@ export class IntegrationError extends Error implements IntegrationErrorShape {
       message: this.message,
       occurredAt,
       correlationId: this.correlationId,
-      retryAfterSeconds: this.retryAfterSeconds,
     };
   }
 }

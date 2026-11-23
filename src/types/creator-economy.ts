@@ -968,8 +968,6 @@ export interface CreatorReferralProgramme {
   /** Rewards earned but not yet released. */
   pendingRewards: number;
   confirmedRewards: number;
-  /** Total value earned from referrals. `Money`, and served. */
-  totalEarned?: Money | null;
   /** Points earned from referrals, where the programme pays points. */
   totalPointsEarned?: number | null;
 
@@ -990,7 +988,6 @@ export interface CreatorReferral {
   qualifiedAt?: string | null;
   /** What it paid, once it paid. */
   rewardPoints?: number | null;
-  rewardAmount?: Money | null;
 }
 
 export interface CreatorReferralPage {

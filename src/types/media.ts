@@ -188,21 +188,6 @@ export interface MediaCapabilities {
   signedUrlLifetimeSeconds: number;
 }
 
-/** `UploadSessionResponse`. The resumable path's state. */
-export interface MediaUploadSession {
-  sessionId: string;
-  state: 'pending' | 'uploading' | 'paused' | 'completing' | 'completed' | 'cancelled' | 'failed';
-  kind: MediaKind;
-  fileName: string;
-  totalBytes: number;
-  receivedBytes: number;
-  chunkSizeBytes: number;
-  totalChunks: number;
-  receivedChunks: number[];
-  expiresAt: string;
-  mediaId: string | null;
-}
-
 export interface MediaSignedUrl {
   url: string;
   expiresAt: string;

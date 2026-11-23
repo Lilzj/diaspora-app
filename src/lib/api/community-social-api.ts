@@ -99,11 +99,9 @@ import type {
   CommunityPostVisibility,
   CommunityReactionCapability,
   CommunityReactionKey,
-  CommunityReportReason,
   CreateBookmarkFolderRequest,
   CreateBookmarkRequest,
   CreateCommentRequest,
-  CreateModerationDecisionRequest,
   CreatePostRequest,
   CreateReportRequest,
   CreateShareRequest,
@@ -1000,13 +998,6 @@ export function fetchModerationQueue(
     cursor: query.cursor,
     limit: query.limit,
   });
-}
-
-/** `POST /community/moderation/decisions` — **201**. */
-export function submitModerationDecision(
-  request: CreateModerationDecisionRequest
-): Promise<ModerationDecisionResponse> {
-  return post<ModerationDecisionResponse>(`${ROOT}/moderation/decisions`, request);
 }
 
 /** `GET /community/moderation/history/{contentType}/{contentId}` — a **bare array**. */

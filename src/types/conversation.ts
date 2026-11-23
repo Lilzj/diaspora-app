@@ -125,10 +125,6 @@ export interface MessageDeliveryReceipt {
   sentAt?: string;           // ISO — when server received
   deliveredAt?: string;      // ISO — when delivered to device
   readAt?: string;           // ISO — when opened by recipient
-  // Analytics fields (used by future metrics/response time calculations)
-  queuedAt?: string;
-  failedAt?: string;
-  retryCount?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +139,6 @@ export interface BaseAttachment {
   attachmentId: string;
   type: AttachmentType;
   uploadState: AttachmentUploadState;
-  uploadProgress?: number;   // 0–100
   /**
    * The address of the bytes.
    *

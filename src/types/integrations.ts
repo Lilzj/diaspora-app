@@ -350,8 +350,6 @@ export interface IntegrationErrorSummary {
   occurredAt: string;
   /** For a support conversation. Never a token, never a request body (§56). */
   correlationId?: string | null;
-  /** Seconds. Only ever set on RateLimited — §57. */
-  retryAfterSeconds?: number | null;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

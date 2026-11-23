@@ -97,18 +97,12 @@ export interface JobOpportunity {
   category: JobCategory;
   employmentType: EmploymentType;
   description: string;
-  requirements: string[];
-  responsibilities: string[];
-  benefits: string[];
   salary: Salary;
   location: JobLocation;
   employer: JobEmployer;
   benefitsFlags: BenefitsFlags;
-  experienceRequired: boolean;
-  languages: string[];
   urgency: 'Urgent' | 'Normal' | 'Ending Soon';
   publishedAt: string;
   expiresAt: string;
   status: 'Active' | 'Draft' | 'Archived';
-  viewCount: number;
 }

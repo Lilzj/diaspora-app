@@ -67,7 +67,6 @@ import {
   setPostPinned,
   shouldRenderSafetyBadge,
   sharePost,
-  submitModerationDecision,
   suggestHashtags,
   toCommentPage,
   toFeedPage,
@@ -684,23 +683,19 @@ describe('the moderation queue accepts a cursor and cannot be paged', () => {
     expect(items.every((item) => item.reportCount === 2)).toBe(true);
   });
 
-  it('hardcodes the four display names to null', async () => {
+  it('hardcodes the three display names on a queue row to null', async () => {
     await reportContent({ contentType: 'post', contentId: OTHERS_POST, reason: 'spam' });
 
     const [item] = await fetchModerationQueue();
 
-    // Three on the row, and `moderatorName` on a decision. A queue that
-    // identifies people cannot be built on this contract.
+    // A queue that identifies people cannot be built on this contract. The
+    // fourth name, `moderatorName`, was on a decision from
+    // `POST /community/moderation/decisions`, which the backend removed on
+    // 7 Nov 2026 in favour of Trust moderation cases; its client went with it
+    // (RMD-009).
     expect(item.reporterName).toBeNull();
     expect(item.authorName).toBeNull();
     expect(item.authorLevel).toBeNull();
-
-    const decision = await submitModerationDecision({
-      contentType: 'post',
-      contentId: OTHERS_POST,
-      action: 'dismiss',
-    });
-    expect(decision.moderatorName).toBeNull();
   });
 
   it('falls back to the literal "(removed)" for content that is already gone', async () => {

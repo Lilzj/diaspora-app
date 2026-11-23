@@ -121,7 +121,6 @@ import type {
   GuideVersionSummaryResponse,
   GuidesByCategoryQuery,
   GuidesByCountryQuery,
-  HideGuideRequest,
   MyGuidesQuery,
   NearbyGuidesQuery,
   PublishGuideRequest,
@@ -904,16 +903,6 @@ export function fetchGuideModerationQueue(
     ...query,
     limit: clampGuideLimit(query.limit),
   });
-}
-
-/** `POST /guides/{guideId}/hide` — `guides.moderate`. The reason is required. */
-export function hideGuide(guideId: string, request: HideGuideRequest): Promise<GuideResponse> {
-  return post<GuideResponse>(`${ROOT}/${segment(guideId)}/hide`, request);
-}
-
-/** `POST /guides/{guideId}/unhide` — `guides.moderate`. Restores exactly what was there. */
-export function unhideGuide(guideId: string): Promise<GuideResponse> {
-  return post<GuideResponse>(`${ROOT}/${segment(guideId)}/unhide`);
 }
 
 /** `POST /guides/{guideId}/moderation-notes` — `guides.moderate`. Never shown to readers. */

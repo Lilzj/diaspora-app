@@ -126,9 +126,6 @@ export function setupJobsMocks(mock: MockAdapter) {
         category: data.category || 'Other',
         employmentType: data.employmentType || 'Full-Time',
         description: data.description || '',
-        requirements: data.requirements || [],
-        responsibilities: data.responsibilities || [],
-        benefits: data.benefits || [],
         salary: data.salary || { amount: 0, currency: 'GBP', frequency: 'hourly' },
         location: data.location || { cityName: 'London', areaName: 'Unknown', addressLine: '' },
         employer: data.employer || {
@@ -141,13 +138,10 @@ export function setupJobsMocks(mock: MockAdapter) {
           preferredContactMethod: 'whatsapp'
         },
         benefitsFlags: data.benefitsFlags || { accommodationIncluded: false, mealsIncluded: false, transportIncluded: false },
-        experienceRequired: data.experienceRequired ?? false,
-        languages: data.languages || ['English'],
         urgency: data.urgency || 'Normal',
         publishedAt: new Date().toISOString(),
         expiresAt: data.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         status: data.status || 'Active',
-        viewCount: 0
       };
 
       customJobs.unshift(newJob);

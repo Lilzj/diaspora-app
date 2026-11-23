@@ -139,7 +139,6 @@ export interface CommunityUpdate {
   /** How far around its pin it applies, in metres. Null for a point. */
   affectedRadiusMetres?: number | null;
 
-  imageUrls: string[];
 
   // Scaled verification
   confirmationCount: number;

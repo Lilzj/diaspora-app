@@ -27,30 +27,17 @@ export const mockOrganizations: CommunityOrganization[] = [
     },
     contact: {
       phone: '+44 7700 900321',
-      whatsapp: '+44 7700 900321',
       email: 'fellowship@peckhamchurch.org.uk',
       website: 'https://peckhamfellowshipchurch.org.uk',
       facebook: 'https://facebook.com/peckhamfellowship',
       instagram: 'https://instagram.com/peckhamfellowship'
     },
-    openingHours: [
-      { day: 'Monday - Friday', hours: '09:00 - 17:00' },
-      { day: 'Saturday', hours: '10:00 - 15:00' },
-      { day: 'Sunday', hours: '08:00 - 14:00' }
-    ],
     isVerified: true,
     rating: 4.8,
-    reputationLevel: 'TrustedCommunityHub',
     followersCount: 342,
-    isFollowing: true,
     leaders: [
-      { name: 'Pastor Koffi Mensah', role: 'Senior Pastor', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' },
-      { name: 'Deaconess Aminata Diallo', role: 'Welfare Director', avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100' }
-    ],
-    gallery: [
-      'https://images.unsplash.com/photo-1548625361-155deee2614a?w=400',
-      'https://images.unsplash.com/photo-1438032005730-c779502df39b?w=400',
-      'https://images.unsplash.com/photo-1478147427282-58a87a120781?w=400'
+      { name: 'Pastor Koffi Mensah', role: 'Senior Pastor' },
+      { name: 'Deaconess Aminata Diallo', role: 'Welfare Director' }
     ],
     createdAt: '2025-01-15T12:00:00Z'
   },
@@ -79,28 +66,15 @@ export const mockOrganizations: CommunityOrganization[] = [
     },
     contact: {
       phone: '+44 7700 900543',
-      whatsapp: '+44 7700 900543',
       email: 'info@gspa-london.org',
       website: 'https://gspa-london.org',
-      twitter: 'https://twitter.com/gspa_london',
-      youtube: 'https://youtube.com/gspa_london'
     },
-    openingHours: [
-      { day: 'Monday - Friday', hours: '10:00 - 18:00' },
-      { day: 'Saturday - Sunday', hours: 'Closed' }
-    ],
     isVerified: true,
     rating: 4.7,
-    reputationLevel: 'ProfessionalAssociation',
     followersCount: 510,
-    isFollowing: false,
     leaders: [
-      { name: 'Dr. Kwame Agyei', role: 'President / Co-founder', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100' },
-      { name: 'Abena Osei', role: 'Student Relations Lead', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100' }
-    ],
-    gallery: [
-      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400',
-      'https://images.unsplash.com/photo-1529070538774-1843cb3265df?w=400'
+      { name: 'Dr. Kwame Agyei', role: 'President / Co-founder' },
+      { name: 'Abena Osei', role: 'Student Relations Lead' }
     ],
     createdAt: '2024-09-10T12:00:00Z'
   },
@@ -129,25 +103,14 @@ export const mockOrganizations: CommunityOrganization[] = [
     },
     contact: {
       phone: '+44 7700 900657',
-      whatsapp: '+44 7700 900657',
       email: 'contact@elnu.org.uk',
       website: 'https://elnu.org.uk'
     },
-    openingHours: [
-      { day: 'Tuesday & Thursday', hours: '12:00 - 18:00' },
-      { day: 'Saturday', hours: '11:00 - 16:00' },
-      { day: 'Monday, Wednesday, Friday, Sunday', hours: 'Closed' }
-    ],
     isVerified: true,
     rating: 4.6,
-    reputationLevel: 'UnionHub',
     followersCount: 289,
-    isFollowing: false,
     leaders: [
-      { name: 'Chief Olumide Awosika', role: 'Union Chairman', avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100' }
-    ],
-    gallery: [
-      'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400'
+      { name: 'Chief Olumide Awosika', role: 'Union Chairman' }
     ],
     createdAt: '2023-05-20T12:00:00Z'
   },
@@ -176,23 +139,15 @@ export const mockOrganizations: CommunityOrganization[] = [
     },
     contact: {
       phone: '+44 20 7946 0987',
-      whatsapp: '+44 7700 900876',
       email: 'consult@diasporalegal.co.uk',
       website: 'https://diasporalegal.co.uk'
     },
-    openingHours: [
-      { day: 'Monday - Friday', hours: '09:00 - 17:30' },
-      { day: 'Saturday - Sunday', hours: 'Closed' }
-    ],
     isVerified: true,
     rating: 4.9,
-    reputationLevel: 'TrustedProfessional',
     followersCount: 195,
-    isFollowing: false,
     leaders: [
-      { name: 'Barrister Sarah Okonjo', role: 'Managing Partner', avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100' }
+      { name: 'Barrister Sarah Okonjo', role: 'Managing Partner' }
     ],
-    gallery: [],
     createdAt: '2024-03-01T12:00:00Z'
   },
   {
@@ -222,17 +177,10 @@ export const mockOrganizations: CommunityOrganization[] = [
       email: 'taxes@diasporatax.co.uk',
       website: 'https://diasporatax.co.uk'
     },
-    openingHours: [
-      { day: 'Monday - Friday', hours: '09:00 - 17:00' },
-      { day: 'Saturday - Sunday', hours: 'Closed' }
-    ],
     isVerified: true,
     rating: 4.8,
-    reputationLevel: 'TrustedProfessional',
     followersCount: 112,
-    isFollowing: false,
     leaders: [],
-    gallery: [],
     createdAt: '2025-05-10T12:00:00Z'
   },
   {
@@ -258,20 +206,12 @@ export const mockOrganizations: CommunityOrganization[] = [
     },
     contact: {
       phone: '+44 7700 900333',
-      whatsapp: '+44 7700 900333',
       email: 'apply@visalinkconsultancy.com'
     },
-    openingHours: [
-      { day: 'Monday - Friday', hours: '09:00 - 18:00' },
-      { day: 'Saturday', hours: '10:00 - 14:00' }
-    ],
     isVerified: true,
     rating: 4.6,
-    reputationLevel: 'TrustedConsultant',
     followersCount: 88,
-    isFollowing: false,
     leaders: [],
-    gallery: [],
     createdAt: '2025-08-01T12:00:00Z'
   },
   {
@@ -297,21 +237,12 @@ export const mockOrganizations: CommunityOrganization[] = [
     },
     contact: {
       phone: '+44 20 7946 0111',
-      whatsapp: '+44 7700 900444',
       email: 'order@mamaafricakitchen.co.uk'
     },
-    openingHours: [
-      { day: 'Monday - Sunday', hours: '11:00 - 23:00' }
-    ],
     isVerified: true,
     rating: 4.9,
-    reputationLevel: 'LocalGuidesFavour',
     followersCount: 654,
-    isFollowing: false,
     leaders: [],
-    gallery: [
-      'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400'
-    ],
     createdAt: '2023-01-01T12:00:00Z'
   },
   {
@@ -341,17 +272,10 @@ export const mockOrganizations: CommunityOrganization[] = [
       email: 'info@rosehillcentre.mu',
       website: 'https://rosehillcentre.mu'
     },
-    openingHours: [
-      { day: 'Monday - Saturday', hours: '08:00 - 20:00' },
-      { day: 'Sunday', hours: '09:00 - 13:00' }
-    ],
     isVerified: true,
     rating: 4.7,
-    reputationLevel: 'TrustedCommunityHub',
     followersCount: 184,
-    isFollowing: false,
     leaders: [],
-    gallery: [],
     createdAt: '2024-05-10T12:00:00Z'
   }
 ];
