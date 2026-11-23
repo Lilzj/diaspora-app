@@ -50,7 +50,8 @@
 //     streams, a file download, three provider webhooks, a telemetry
 //     acknowledgement and the host's own two checkout pages. None of them answers
 //     the platform envelope. **Response-shape checking against this document is
-//     therefore possible.** It is not done here; RMD-005 is the row for it.
+//     therefore possible.** It is not done here:
+//     `backend-response-field-drift.test.ts` does it, for every request (RMD-005).
 //
 //     **This paragraph said the opposite until 20 November 2026**, and the
 //     reversal is worth keeping rather than overwriting. It read: only 54 of 885
@@ -84,6 +85,13 @@
 //     backend is `backend-gap-register-drift.test.ts`'s question, and it asks it.
 //   · **Prefixes imported from another module.** A transport whose root constant
 //     comes from an import is dropped, not guessed — see `UNRESOLVABLE`.
+//   · **A helper handed a whole URL.** `post<T>(url)`, called as
+//     `post(`${ROOT}/moderation/decisions`)`, is not a transport by this file's
+//     definition — nothing is spliced into a root inside the helper — so its call
+//     sites are never swept. Three such requests reached routes the backend does
+//     not publish while this file passed (23 November 2026). The type checker in
+//     `backend-response-field-drift.test.ts` resolves them, and holds every
+//     request it resolves to the same contract.
 //   · **Bodies, parameters, responses, auth.** Per the section above.
 //   · **Route constraints.** `{id}` matches `{employerId:guid}`; a slug sent
 //     where the server wants a GUID still matches.

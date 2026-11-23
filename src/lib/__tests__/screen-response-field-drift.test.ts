@@ -16,48 +16,62 @@
 // written to match the screen, not the route), and a runtime probe (the route
 // answered 200 — the payload was never compared to what the screen reads).
 //
-// ── Why this is narrow on purpose ────────────────────────────────────────────
+// ── Why this is narrow on purpose, and what it is narrow beside ───────────────
 //
-// The general check — "for every screen, which route does it call, and does
-// every property it reads exist on that response type" — needs a call graph.
-// The published OpenAPI document cannot stand in for it: only 54 of 885
-// operations attach a typed schema to a 2xx, so for most routes it has nothing
-// to say.
+// `backend-response-field-drift.test.ts` is the general check: every request
+// the client makes, the type its body is read as, against the schema the route
+// documents. It reads types, so it is exactly as good as the types are — and a
+// screen that holds a payload in a variable the type checker cannot connect to
+// a route is invisible to it.
 //
-// What is cheap and exact is a **registered** pairing: a screen, the C# response
-// type its route returns, and the variable it holds the payload in. Each entry
-// costs three lines and buys a whole screen. The list starting below is the one
-// screen this defect was found on; adding the next is deliberately trivial.
+// This one reads the *screen*: every `<variable>.<name>` in a registered file,
+// against the schema that variable holds. Each entry costs three lines and buys
+// a whole file, and the list below is the four seams where a payload has been
+// read under the wrong names before.
 //
-// Under-reporting is the bias, following the three sibling cross-repo checks: a
+// ── Where the declared names come from ───────────────────────────────────────
+//
+// **From the published contract, since RMD-005.** Until then this parsed the
+// backend's C# response records with a regular expression — a parser guessing
+// at what the backend's own generator already states in
+// `contracts/Diaspora.Api.json`, which names a schema for 1,076 of 1,093 success
+// bodies (RMD-003) and, since RMD-006, means one type by each name. The regex is
+// gone; `support/published-contract` reads the document.
+//
+// Under-reporting is the bias, following the sibling cross-repo checks: a
 // property that cannot be resolved is skipped, never guessed at.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Node's globals are declared locally rather than by adding `"node"` to the
 // project's `types` — that change is global and surfaces pre-existing errors in
 // other suites. Matches `backend-row-property-drift.test.ts`.
-import { backendSourceRoot } from './support/backend-checkout';
+import { backendContractFile } from './support/backend-checkout';
+import {
+  readPublishedContract,
+  schemaNamed,
+  schemaProperties,
+  type PublishedContract,
+} from './support/published-contract';
 
 declare const __dirname: string;
 
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
-const existsSync: (path: string) => boolean = require('fs').existsSync;
 const join: (...parts: string[]) => string = require('path').join;
 
 // The backend checkout is located by `support/backend-checkout`, which is
 // also where the rule lives: not configured and absent is a skip, configured
 // and absent is a failure. Eleven suites resolved this separately until
 // 11 November 2026; FBL-001 is what that cost.
-const BACKEND_SOURCE_ROOT = backendSourceRoot();
+const CONTRACT_FILE = backendContractFile();
 const CLIENT_ROOT = join(__dirname, '..', '..');
 
 interface Pairing {
   /** Path segments under `src/`. */
   screen: string[];
-  /** Path segments under the backend's `src/`. */
-  responseType: string[];
+  /** The contract component the route answers with. */
+  schema: string;
   /**
-   * Further contracts whose properties also count as declared.
+   * Further components whose properties also count as declared.
    *
    * For a reader that takes more than one shape. The events adapter is the
    * case: the detail route answers `EventResponse` with a nested schedule, and
@@ -65,7 +79,7 @@ interface Pairing {
    * reads both — a summary being an event with fewer facts, not a different
    * kind of thing.
    */
-  unionWith?: string[][];
+  unionWith?: string[];
   /** The variable the screen holds the payload in. */
   variable: string;
   /**
@@ -79,13 +93,7 @@ interface Pairing {
 const PAIRINGS: Pairing[] = [
   {
     screen: ['app', 'community-life', 'org', '[id].tsx'],
-    responseType: [
-      'Diaspora.Modules.CommunityLife',
-      'Contracts',
-      'V1',
-      'Responses',
-      'OrganizationResponse.cs',
-    ],
+    schema: 'OrganizationResponse',
     variable: 'org',
     allowed: {
       // `socialLinks` and `statistics` are read as whole objects before their
@@ -100,22 +108,8 @@ const PAIRINGS: Pairing[] = [
     // the running order all rendered `undefined`. `lib/event-wire.ts` is now
     // the one place the wire is read, so it is the one place to check.
     screen: ['lib', 'api', 'event-wire.ts'],
-    responseType: [
-      'Diaspora.Modules.CommunityLife',
-      'Contracts',
-      'V1',
-      'Responses',
-      'EventResponse.cs',
-    ],
-    unionWith: [
-      [
-        'Diaspora.Modules.CommunityLife',
-        'Contracts',
-        'V1',
-        'Responses',
-        'EventSummaryResponse.cs',
-      ],
-    ],
+    schema: 'EventResponse',
+    unionWith: ['EventSummaryResponse'],
     variable: 'wire',
     allowed: {
       // Mock events and anything cached before the adapter existed spell the
@@ -128,13 +122,7 @@ const PAIRINGS: Pairing[] = [
     // adapter, because its type was written from the contract rather than
     // asserted over it. Registered to keep it that way.
     screen: ['app', 'community-life', 'rsvps.tsx'],
-    responseType: [
-      'Diaspora.Modules.CommunityLife',
-      'Contracts',
-      'V1',
-      'Responses',
-      'EventSummaryResponse.cs',
-    ],
+    schema: 'EventSummaryResponse',
     variable: 'event',
   },
   {
@@ -143,13 +131,7 @@ const PAIRINGS: Pairing[] = [
     // `intent` and `images` stayed wrong after everything around them was
     // fixed.
     screen: ['lib', 'api', 'marketplace-wire.ts'],
-    responseType: [
-      'Diaspora.Modules.Marketplace',
-      'Contracts',
-      'V1',
-      'Responses',
-      'ListingResponse.cs',
-    ],
+    schema: 'ListingResponse',
     variable: 'wire',
     allowed: {
       // Mock and cached listings spell the identifier `id`. Read only as a
@@ -159,26 +141,9 @@ const PAIRINGS: Pairing[] = [
   },
 ];
 
-/**
- * Property names declared on a C# response record.
- *
- * A shallow parse of `public [required] <Type> <Name> { get; ... }`, camelCased
- * to match the wire. Deliberately unclever, following
- * `backend-row-property-drift.test.ts`: anything it cannot read is absent from
- * the set, and an absent property can only make this check quieter.
- */
-function responseProperties(source: string): Set<string> {
-  const names = new Set<string>();
-  const declaration = /public\s+(?:required\s+)?[\w<>?,.\[\]\s]+?\s+(\w+)\s*\{\s*get/g;
-
-  let match = declaration.exec(source);
-  while (match !== null) {
-    const name = match[1];
-    names.add(name.charAt(0).toLowerCase() + name.slice(1));
-    match = declaration.exec(source);
-  }
-
-  return names;
+/** The property names a component declares, as the wire spells them. */
+function declaredBy(contract: PublishedContract, name: string): Set<string> {
+  return new Set(Object.keys(schemaProperties(contract, schemaNamed(contract, name)) ?? {}));
 }
 
 /**
@@ -213,7 +178,7 @@ function fieldsReadFrom(rawSource: string, variable: string): Set<string> {
 }
 
 describe('screens read fields their routes send', () => {
-  if (BACKEND_SOURCE_ROOT === null) {
+  if (CONTRACT_FILE === null) {
     // Skips loudly. A cross-repo check that passes quietly when it cannot see
     // the other side is worse than no check, because the green tick then
     // describes work that never happened.
@@ -221,20 +186,21 @@ describe('screens read fields their routes send', () => {
     return;
   }
 
+  const contract = readPublishedContract(CONTRACT_FILE);
+
   it.each(PAIRINGS.map((p) => [p.screen.join('/'), p] as const))(
     '%s reads only properties its response type declares',
     (_name, pairing) => {
       const screen = readFileSync(join(CLIENT_ROOT, ...pairing.screen), 'utf8');
-      const contract = readFileSync(join(BACKEND_SOURCE_ROOT, ...pairing.responseType), 'utf8');
 
-      const declared = responseProperties(contract);
-
+      const declared = declaredBy(contract, pairing.schema);
       for (const also of pairing.unionWith ?? []) {
-        for (const name of responseProperties(readFileSync(join(BACKEND_SOURCE_ROOT, ...also), 'utf8'))) {
-          declared.add(name);
-        }
+        for (const name of declaredBy(contract, also)) declared.add(name);
       }
 
+      // A component this cannot read has no properties, and an empty set would
+      // make every read look like drift — or, worse, a typo'd name that threw
+      // would be indistinguishable from one that resolved to nothing.
       expect(declared.size).toBeGreaterThan(5);
 
       const allowed = pairing.allowed ?? {};
@@ -244,7 +210,7 @@ describe('screens read fields their routes send', () => {
         .sort();
 
       const report = unknown
-        .map((field) => `  ${pairing.variable}.${field} — not declared on ${pairing.responseType.at(-1)}`)
+        .map((field) => `  ${pairing.variable}.${field} — not declared on ${pairing.schema}`)
         .join('\n');
 
       expect(
@@ -257,19 +223,39 @@ describe('screens read fields their routes send', () => {
     },
   );
 
-  it('detects a field the contract does not declare', () => {
-    // A guard that cannot fail proves nothing. This is the exact defect, run
-    // through the same two functions the sweep uses.
-    const contract = `
-      public sealed record OrganizationResponse
-      {
-          public required Guid OrganizationId { get; init; }
-          public IReadOnlyList<OperatingHourResponse> OperatingHours { get; init; } = [];
+  it('names components the contract actually carries', () => {
+    // `schemaNamed` throws for a name the document does not carry, which is
+    // the failure this wants: a pairing renamed on one side only must not
+    // quietly compare against nothing.
+    for (const pairing of PAIRINGS) {
+      for (const name of [pairing.schema, ...(pairing.unionWith ?? [])]) {
+        expect(() => schemaNamed(contract, name)).not.toThrow();
       }
-    `;
+    }
+  });
+});
+
+describe('the comparison this file makes', () => {
+  // A guard that cannot fail proves nothing. This is the exact defect, run
+  // through the same two functions the sweep uses, against a contract of one
+  // schema.
+  const contract: PublishedContract = {
+    schemas: {
+      OrganizationResponse: {
+        type: 'object',
+        properties: {
+          organizationId: { type: 'string' },
+          operatingHours: { type: 'array', items: { type: 'object' } },
+        },
+      },
+    },
+    operations: new Map(),
+  };
+
+  it('detects a field the contract does not declare', () => {
     const screen = 'const a = org.operatingHours; const b = org.openingHours.map(x => x);';
 
-    const declared = responseProperties(contract);
+    const declared = declaredBy(contract, 'OrganizationResponse');
     const read = fieldsReadFrom(screen, 'org');
 
     expect(declared.has('operatingHours')).toBe(true);
