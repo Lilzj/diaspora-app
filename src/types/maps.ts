@@ -1022,6 +1022,14 @@ export interface MapSearchResult {
   imageUrl?: string | null;
   /** The raw entity, for a preview sheet that needs more than the marker. */
   entity?: unknown;
+  /**
+   * The country a community scope is tested against (FRONTEND-PHASE13-GAP-009):
+   * the publisher's origin where the card carries one, otherwise the country the
+   * row is about or in. Null when the card names none, which no scoped search
+   * passes. Set by the searcher that read the card, the one place its type is
+   * known (RMD-007).
+   */
+  scopeCountryCode?: string | null;
 }
 
 export interface MapSearchResponse {

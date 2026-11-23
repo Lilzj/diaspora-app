@@ -964,6 +964,12 @@ export interface JobCardResponse {
   experienceLevel: ExperienceLevel;
   countryCode: string;
   locationLabel: string;
+  /**
+   * The employer's pin. On the card since 23 November 2026, so the map can place
+   * a search result (RMD-007); null when the posting gave none.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
   workplaceType: WorkplaceType;
   isRemote: boolean;
   offersVisaSponsorship: boolean;

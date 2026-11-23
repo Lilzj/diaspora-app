@@ -412,6 +412,38 @@ describe('the instrument', () => {
     expect(outcome.requests.map((request) => request.read.kind)).toEqual(['nothing']);
   });
 
+  it('counts a body read as unknown as opaque, not as agreement', () => {
+    // An `unknown` body names no field, so comparing it compares nothing and
+    // reports nothing. A reader typed `unknown` was already opaque; the call's
+    // own `Envelope<unknown>` was not, and the map's guide layer read its body
+    // that way on 23 November 2026 while the suite passed: two requests compared
+    // with a page, zero fields matched, zero drift.
+    const outcome = examine(
+      `
+      import { apiClient, readPage, type Envelope } from '../transport';
+      export async function throughTheCall(): Promise<unknown> {
+        const response = await apiClient.get<Envelope<unknown>>('/things/one');
+        return response.data.data;
+      }
+      export async function throughAReader(): Promise<unknown[]> {
+        const response = await apiClient.get('/things/two');
+        return readPage<unknown>(response.data).items;
+      }`,
+      contractOf(THING, {
+        'get /api/v1/things/one': ref('ThingResponse'),
+        'get /api/v1/things/two': ref('ThingResponse'),
+      }),
+    );
+
+    // The reason when opaque and the kind otherwise: a compiler type in a
+    // failure diff is unreadable, and circular enough to crash a JSON reporter.
+    const reads = outcome.requests.map(({ read }) => (read.kind === 'opaque' ? read : { kind: read.kind }));
+    expect(reads).toEqual([
+      { kind: 'opaque', reason: 'a body read as unknown' },
+      { kind: 'opaque', reason: 'a reader with no type' },
+    ]);
+  });
+
   it('keeps both readings of a segment typed as a union of literals', () => {
     // `/things/${kind}` is two routes when the contract maps `/things/a` and
     // `/things/b`, and one route with a parameter when it maps `/things/{kind}`.
@@ -662,8 +694,6 @@ const KNOWN_UNREACHED: Readonly<Record<string, KnownUnreached>> = {
 };
 
 // Shared reasons, so an entry says which kind it is at a glance.
-const MAP_PAGE_READ_AS_LIST =
-  "The map's search reads `response.data.data` as a list where this route answers a page, so `.flatMap` throws on every search and `Promise.allSettled` drops the layer: it has not drawn a pin against a running server since it was written.";
 const NO_TYPED_READ =
   'Nothing in `src` reads these fields through this type (checker-verified when this landed). A promise the next reader will be held to, rather than a defect today.';
 const NO_CALLER_CHUNKED =
@@ -671,42 +701,6 @@ const NO_CALLER_CHUNKED =
 
 /** Client types that declare fields their routes do not send, keyed `Client <- Contract`. */
 const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
-  // ── RMD-007 — the map's search. Every layer is wrong against a running server.
-  'CommunityOrganization[] <- OrganizationSearchResultResponse': {
-    fields: ['(body)'],
-    row: 'RMD-007',
-    why: MAP_PAGE_READ_AS_LIST,
-  },
-  'Event[] <- EventSearchResultResponse': {
-    fields: ['(body)'],
-    row: 'RMD-007',
-    why: MAP_PAGE_READ_AS_LIST,
-  },
-  'Guide[] <- CursorPagedResultOfGuideCardResponse': {
-    fields: ['(body)'],
-    row: 'RMD-007',
-    why: MAP_PAGE_READ_AS_LIST,
-  },
-  'HousingListing <- HousingListingCardResponse': {
-    fields: ['amenities[]', 'availabilityDate', 'bathrooms', 'bedrooms', 'billsIncluded', 'createdAt', 'currency', 'deposit', 'description', 'furnished', 'gallery', 'host', 'houseRules', 'internetIncluded', 'leaseDuration', 'lifestyleMatches', 'listingType', 'location.addressLine', 'location.areaName', 'location.distanceKm', 'location.landmark', 'location.latitude', 'location.longitude', 'media', 'parkingAvailable', 'propertyType', 'rent', 'rentPeriod', 'verificationStatus', 'viewCount'],
-    row: 'RMD-007',
-    why: "The map's housing layer reads search rows as `HousingListing`. The card's `location` (`HousingLocationResponse`) carries no latitude or longitude, so `coordinateOf` is null for every row and the layer never draws a pin; `bedrooms`, `furnished` and the rest are not on the card either.",
-  },
-  'JobOpportunity[] <- JobSearchResultResponse': {
-    fields: ['(body)'],
-    row: 'RMD-007',
-    why: MAP_PAGE_READ_AS_LIST,
-  },
-  'MarketplaceListing <- ListingCardResponse': {
-    fields: ['brand', 'category', 'coverImage', 'createdAt', 'currency', 'deliveryAvailable', 'description', 'gallery', 'id', 'intent', 'location.addressLine', 'location.areaName', 'location.distanceKm', 'location.landmark', 'negotiable', 'pickupOnly', 'price', 'quantity', 'seller.avatarUrl', 'seller.contactPhone', 'seller.contactWhatsapp', 'seller.countryVerifications', 'seller.guidesPublished', 'seller.languagesSpoken', 'seller.name', 'seller.originCountry', 'seller.preferredContactMethod', 'seller.providerVerified', 'seller.reputationLevel', 'seller.responseTime', 'seller.totalHelpfulVotes', 'seller.yearsOnPlatform', 'subcategory', 'swap'],
-    row: 'RMD-007',
-    why: "The map's marketplace layer reads search rows as `MarketplaceListing`. The card sends `listingId` where the marker reads `id`, so every pin opens `/marketplace/undefined`, and `price` arrives as an object where `formatPrice` expects a number.",
-  },
-  'ProviderListingLike <- ProviderSummaryResponse': {
-    fields: ['listingId', 'rating', 'title'],
-    row: 'RMD-007',
-    why: "The map's provider layer reads `providerId` and `name` as `listingId` and `title`, so every pin is untitled and opens `/provider/undefined`.",
-  },
   // ── RMD-008 — a wrapped list read as a bare one, outside the map.
   'CalendarEvent[] <- CommunityCalendarResponse': {
     fields: ['(body)'],
@@ -893,7 +887,7 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
   'JobOpportunity <- JobCardResponse': {
     fields: ['benefits', 'benefitsFlags', 'category', 'description', 'employer', 'employmentType', 'experienceRequired', 'expiresAt', 'languages', 'location', 'requirements', 'responsibilities', 'salary.amount', 'salary.currency', 'salary.frequency', 'salary.maxAmount', 'urgency', 'viewCount'],
     row: 'RMD-009',
-    why: 'The jobs browse reads card rows as the full `JobOpportunity`; the card sends none of these 18. Read by the map markers among others; not traced beyond them.',
+    why: 'The jobs browse reads card rows as the full `JobOpportunity`; the card sends none of these 18. The map read them that way too until RMD-007 gave it the card; the readers left are not traced.',
   },
   'ListingWire <- ListingResponse': {
     fields: ['id', 'price.currencyCode', 'seller.id', 'seller.name'],

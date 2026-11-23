@@ -83,6 +83,13 @@ export interface EventWire {
     cityName?: string | null;
     neighborhoodName?: string | null;
     displayName?: string;
+    /**
+     * The venue's pin. Filled since 23 November 2026 (RMD-007): before that the
+     * server declared it here and never set it, and a search summary, which has
+     * no `venue`, carried no coordinate at all.
+     */
+    latitude?: number | null;
+    longitude?: number | null;
   } | null;
   venue?: {
     name?: string | null;
@@ -299,8 +306,11 @@ export function toEvent(wire: EventWire): Event {
   // event with no area it *is* the city — and using it produced "Port Louis,
   // Port Louis" on the live event.
   //
-  // The address parts are not on `LocationResponse` at all: `landmark` and the
-  // coordinates belong to the *venue*, which is a different object.
+  // The address parts are not on `LocationResponse` at all: `landmark` belongs
+  // to the *venue*, which is a different object. The coordinates are the
+  // venue's too, and `location` has carried them as well since 23 November 2026,
+  // which is the only place a search summary — it has no venue — can say where
+  // the event is (RMD-007).
   const cityName = wire.location?.cityName ?? '';
   const displayName = wire.location?.displayName ?? '';
 
@@ -313,8 +323,8 @@ export function toEvent(wire: EventWire): Event {
     countryCode: wire.location?.countryCode ?? '',
     addressLine: wire.venue?.addressLine1 ?? undefined,
     landmark: wire.venue?.landmark ?? undefined,
-    latitude: wire.venue?.latitude ?? undefined,
-    longitude: wire.venue?.longitude ?? undefined,
+    latitude: wire.venue?.latitude ?? wire.location?.latitude ?? undefined,
+    longitude: wire.venue?.longitude ?? wire.location?.longitude ?? undefined,
     distanceKm: wire.distanceKm ?? undefined,
   };
 

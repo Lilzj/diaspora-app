@@ -126,6 +126,40 @@ export interface EventSummary {
 }
 
 /**
+ * Where an event or organisation is, as `LocationResponse` sends it.
+ *
+ * Narrower than `EventLocation`, which declares an `areaName` and an
+ * `addressLine` no community-life route sends: this is the server's shape and
+ * nothing else.
+ */
+export interface CommunityLifePlace {
+  countryCode?: string | null;
+  regionName?: string | null;
+  cityName?: string | null;
+  neighborhoodName?: string | null;
+  displayName?: string | null;
+  /** The organisation's own pin, or an event's venue's. Null when none was given. */
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+/**
+ * `OrganizationSummaryResponse` — one row of an organisation search page.
+ *
+ * The map's organisation layer reads this (RMD-007). It read the rows as the
+ * full `CommunityOrganization`, which the summary is not: it sends
+ * `organizationId` and a type key where that type has `id` and a category.
+ */
+export interface OrganizationSearchCard {
+  organizationId: string;
+  name: string;
+  organizationTypeKey?: string | null;
+  location?: CommunityLifePlace | null;
+  logoMediaId?: string | null;
+  isVerified?: boolean;
+}
+
+/**
  * `RsvpPageResponse`. The caller's own RSVPs, and the events they are for.
  *
  * **Two arrays, joined on `eventId`.** The server sends the RSVPs and the event

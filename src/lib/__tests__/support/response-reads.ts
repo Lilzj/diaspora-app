@@ -451,13 +451,31 @@ function consumption(context: Context, call: ts.CallExpression, fn: ts.Signature
   return found ?? { unused: true };
 }
 
+/**
+ * A read whose type is `unknown` or `any` names no field. Compared with a
+ * schema it matches nothing and reports nothing, which is exactly what
+ * agreement looks like, so it is opaque and counted instead.
+ *
+ * A reader was already held to this (`a reader with no type`); the call's own
+ * type argument was not, and `Envelope<unknown>` compared as an empty object.
+ * The map's guide layer read its body that way on 23 November 2026, through a
+ * conditional the consumption walk does not follow, and the suite passed with
+ * nothing compared (RMD-007).
+ */
+function settled(read: Read): Read {
+  if ((read.kind === 'data' || read.kind === 'row') && (read.type.flags & NOT_A_TYPE) !== 0) {
+    return { kind: 'opaque', reason: 'a body read as unknown' };
+  }
+  return read;
+}
+
 function readAt(context: Context, call: ts.CallExpression, fn: ts.SignatureDeclaration | null): Read {
   const consumed = consumption(context, call, fn);
   if (consumed !== null && 'authority' in consumed) return consumed.authority;
   if (consumed !== null && 'unused' in consumed) return { kind: 'nothing' };
 
   const typed = call.typeArguments !== undefined && call.typeArguments.length > 0;
-  if (typed) return declaredRead(context, call);
+  if (typed) return settled(declaredRead(context, call));
   if (consumed !== null && 'other' in consumed) return consumed.other;
   if (consumed !== null) return { kind: 'opaque', reason: 'the body read without a type' };
 

@@ -45,6 +45,13 @@ export interface HousingCardWire {
     cityName?: string | null;
     neighborhoodName?: string | null;
     displayName?: string | null;
+    /**
+     * Where a stranger is told the home is: exact only when the landlord made
+     * the address public, otherwise rounded to two decimal places. On the card
+     * since 23 November 2026 (RMD-007); null when the home has no pin.
+     */
+    latitude?: number | null;
+    longitude?: number | null;
   } | null;
   stayPolicy?: { isSharedAccommodation?: boolean } | null;
   furnishedStatus?: string | null;
@@ -115,6 +122,8 @@ export function toHousingCardListing(card: HousingCardWire, now: Date = new Date
       addressLine: location.displayName ?? '',
       countryCode: location.countryCode ?? undefined,
       distanceKm: typeof card.distanceKm === 'number' ? card.distanceKm : undefined,
+      latitude: typeof location.latitude === 'number' ? location.latitude : undefined,
+      longitude: typeof location.longitude === 'number' ? location.longitude : undefined,
     },
     host: { ...host, isVerified: card.isLandlordVerified ?? host.isVerified },
     amenities: [],

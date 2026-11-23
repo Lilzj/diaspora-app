@@ -29,10 +29,12 @@
 import type { CommunityUpdate } from '@/types/update';
 import { toUpdateCategory, toUrgencyLevel } from '@/types/update';
 import type { HousingListing } from '@/types/housing';
-import type { JobOpportunity } from '@/types/job';
 import type { MarketplaceListing } from '@/types/marketplace';
-import type { Guide } from '@/types/guide';
-import type { CommunityOrganization, Event } from '@/types/community-life';
+import type { GuideCardResponse } from '@/types/guides';
+import type { JobCardResponse } from '@/types/jobs-hiring';
+import type { Event, OrganizationSearchCard } from '@/types/community-life';
+import type { ProviderSummary } from '@/lib/api/providers-api';
+import { JOB_TYPE_LABELS } from '@/lib/api/job-detail-api';
 import {
   toAlertKind,
   toAlertSeverity,
@@ -52,6 +54,12 @@ import { markerCoordinate } from './privacy';
 interface LooseLocation {
   latitude?: number | null;
   longitude?: number | null;
+}
+
+/** "community-association" → "Community association". A key, read as words. */
+function readableKey(key: string | null | undefined): string {
+  const words = (key ?? '').replace(/[-_]+/g, ' ').trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : '';
 }
 
 function coordinateOf(location: LooseLocation | undefined | null): GeoCoordinate | null {
@@ -211,26 +219,32 @@ export function marketplaceMarker(
 // JOBS — §33
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * A posting, from the card `GET /jobs` sends (RMD-007). The card carries the
+ * employer's pin flat, beside `countryCode` and `locationLabel`.
+ */
 export function jobMarker(
-  job: JobOpportunity,
+  job: JobCardResponse,
   origin?: GeoCoordinate | null,
   source: DataSource = 'backend'
 ): MapMarker | null {
-  const coordinate = coordinateOf(job.location);
+  const coordinate = coordinateOf(job);
   if (!coordinate) return null;
+
+  const type = JOB_TYPE_LABELS[job.jobType] ?? job.jobType;
 
   return buildMarker({
     id: `job:${job.jobId}`,
     category: 'job',
     rawCoordinate: coordinate,
     title: job.title,
-    subtitle: [job.employer?.name, job.employmentType].filter(Boolean).join(' · '),
-    badge: job.employmentType ? shortEmploymentType(job.employmentType) : undefined,
+    subtitle: [job.employerName, type].filter(Boolean).join(' · '),
+    badge: job.jobType ? shortEmploymentType(job.jobType) : undefined,
     accessibilityLabel: [
       job.title,
-      job.employer?.name ? `at ${job.employer.name}` : '',
-      job.employmentType ?? '',
-      job.location.areaName ? `in ${job.location.areaName}` : '',
+      job.employerName ? `at ${job.employerName}` : '',
+      type ?? '',
+      job.locationLabel ? `in ${job.locationLabel}` : '',
     ]
       .filter(Boolean)
       .join(', '),
@@ -254,51 +268,47 @@ function shortEmploymentType(type: string): string {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * A directory listing.
+ * A provider, from the summary `GET /providers` sends (RMD-007).
  *
- * Typed structurally rather than against a `Listing` interface: the provider
- * directory predates this phase and its shape varies between the mock data and
- * the search result meta. Taking only what a marker needs keeps this converter
- * from becoming a reason to change that type.
+ * This used to take a shape of its own — "typed structurally rather than
+ * against a `Listing` interface", for a directory whose shape was said to vary —
+ * and it asked for `listingId` and `title`. The summary sends `providerId` and
+ * `name`, so every pin was untitled and opened `/provider/undefined`.
+ *
+ * A rating is shown only when somebody has given one: an average of no reviews
+ * is not a score of nought.
  */
-export interface ProviderListingLike {
-  listingId: string;
-  title: string;
-  category?: { name?: string } | string;
-  rating?: number;
-  isVerified?: boolean;
-  location: LooseLocation & { areaName?: string; cityName?: string };
-}
-
 export function providerMarker(
-  listing: ProviderListingLike,
+  provider: ProviderSummary,
   origin?: GeoCoordinate | null,
   source: DataSource = 'backend'
 ): MapMarker | null {
-  const coordinate = coordinateOf(listing.location);
+  const coordinate = coordinateOf(provider.location);
   if (!coordinate) return null;
 
-  const category =
-    typeof listing.category === 'string' ? listing.category : (listing.category?.name ?? '');
+  const category = provider.category?.name ?? '';
+  const area = provider.location?.areaName ?? provider.location?.cityName ?? '';
+  const reviews = provider.reviewSummary;
+  const rating = reviews && reviews.totalReviews > 0 ? reviews.average : undefined;
 
   return buildMarker({
-    id: `provider:${listing.listingId}`,
+    id: `provider:${provider.providerId}`,
     category: 'provider',
     rawCoordinate: coordinate,
-    title: listing.title,
-    subtitle: [category, listing.location.areaName].filter(Boolean).join(' · '),
-    badge: typeof listing.rating === 'number' ? `★${listing.rating.toFixed(1)}` : undefined,
+    title: provider.name,
+    subtitle: [category, area].filter(Boolean).join(' · '),
+    badge: typeof rating === 'number' ? `★${rating.toFixed(1)}` : undefined,
     accessibilityLabel: [
-      listing.title,
+      provider.name,
       category,
-      listing.isVerified ? 'verified' : '',
-      typeof listing.rating === 'number' ? `rated ${listing.rating.toFixed(1)} out of 5` : '',
-      listing.location.areaName ? `in ${listing.location.areaName}` : '',
+      provider.isVerified ? 'verified' : '',
+      typeof rating === 'number' ? `rated ${rating.toFixed(1)} out of 5` : '',
+      area ? `in ${area}` : '',
     ]
       .filter(Boolean)
       .join(', '),
-    destination: { pathname: '/provider/[id]', params: { id: listing.listingId } },
-    entityId: listing.listingId,
+    destination: { pathname: '/provider/[id]', params: { id: provider.providerId } },
+    entityId: provider.providerId,
     source,
     origin,
   });
@@ -353,33 +363,40 @@ function formatEventDate(iso: string): string {
 // ORGANIZATIONS — §37
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * An organisation, from the summary its search page sends (RMD-007): an
+ * `organizationId`, a type key and the organisation's own pin.
+ */
 export function organizationMarker(
-  organization: CommunityOrganization,
+  organization: OrganizationSearchCard,
   origin?: GeoCoordinate | null,
   source: DataSource = 'backend'
 ): MapMarker | null {
   const coordinate = coordinateOf(organization.location);
   if (!coordinate) return null;
 
+  const kind = readableKey(organization.organizationTypeKey);
+  const area = organization.location?.neighborhoodName ?? organization.location?.cityName ?? '';
+
   return buildMarker({
-    id: `organization:${organization.id}`,
+    id: `organization:${organization.organizationId}`,
     category: 'organization',
     rawCoordinate: coordinate,
     title: organization.name,
-    subtitle: [organization.category, organization.location.areaName].filter(Boolean).join(' · '),
+    subtitle: [kind, area].filter(Boolean).join(' · '),
     accessibilityLabel: [
       organization.name,
-      organization.category ?? '',
+      kind,
       organization.isVerified ? 'verified organization' : '',
-      organization.location.areaName ? `in ${organization.location.areaName}` : '',
+      area ? `in ${area}` : '',
     ]
       .filter(Boolean)
       .join(', '),
     destination: {
       pathname: '/community-life/org/[id]',
-      params: { id: organization.id },
+      params: { id: organization.organizationId },
     },
-    entityId: organization.id,
+    entityId: organization.organizationId,
     source,
     origin,
   });
@@ -389,30 +406,33 @@ export function organizationMarker(
 // GUIDES — §35
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * A guide, from the card its search page sends (RMD-007). Only a guide with a
+ * pin is placed; one about a whole town or country has none and draws nothing.
+ */
 export function guideMarker(
-  guide: Guide,
+  guide: GuideCardResponse,
   origin?: GeoCoordinate | null,
   source: DataSource = 'backend'
 ): MapMarker | null {
-  const coordinate = coordinateOf(guide.location);
+  const coordinate = coordinateOf(guide);
   if (!coordinate) return null;
+
+  const category = readableKey(guide.categoryKey);
+  const area = guide.cityName ?? '';
 
   return buildMarker({
     id: `guide:${guide.guideId}`,
     category: 'guide',
     rawCoordinate: coordinate,
     title: guide.title,
-    subtitle: [guide.category, guide.location?.neighborhood ?? guide.location?.cityName]
-      .filter(Boolean)
-      .join(' · '),
+    subtitle: [category, area].filter(Boolean).join(' · '),
     // §35 and FRONTEND-MAPS-GAP-004: a guide covers an area, not a point. The
     // label says "covering", never "at", so nobody reads the pin as an address.
     accessibilityLabel: [
       guide.title,
-      guide.category ? `${guide.category} guide` : 'guide',
-      guide.location?.neighborhood || guide.location?.cityName
-        ? `covering ${guide.location.neighborhood ?? guide.location.cityName}`
-        : '',
+      category ? `${category} guide` : 'guide',
+      area ? `covering ${area}` : '',
     ]
       .filter(Boolean)
       .join(', '),
