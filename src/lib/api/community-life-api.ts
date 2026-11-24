@@ -81,12 +81,12 @@ import type {
   CalendarEntryWire,
   CalendarEvent,
   CommunityCalendarWire,
-  CommunityOrganization,
   Event,
   EventCategory,
   OrgCategory,
   RSVPStatus,
   MyRsvpPage,
+  OrganizationSearchCard,
   RsvpRecord,
 } from '@/types/community-life';
 import { readPage } from '@/lib/transport/platform-envelope';
@@ -1193,11 +1193,7 @@ export function toOrganizationBrowseQuery(
  * {@link toOrganizationBrowseQuery} alongside the type.
  */
 export function fetchOrganizations(params: OrganizationQueryParams = {}) {
-  return readList<CommunityOrganization>('/organizations', toOrganizationBrowseQuery(params));
-}
-
-export function fetchOrganization(organizationId: string): Promise<CommunityOrganization> {
-  return read<CommunityOrganization>(`/organizations/${organizationId}`);
+  return readList<OrganizationSearchCard>('/organizations', toOrganizationBrowseQuery(params));
 }
 
 /**
@@ -1286,7 +1282,7 @@ export function createOrganization(
 ): Promise<OrganizationWire> {
   // `OrganizationWire`, not `CommunityOrganization`: the route answers the
   // organisation as the server holds it, whose identifier is `organizationId`.
-  // `CommunityOrganization` is the **list card's** shape and calls it `id`, so
+  // `CommunityOrganization` calls it `id`, which no organisation route sends, so
   // the old return type was an unchecked cast that renamed the one field the
   // caller needs — the register screen read `created.data.data.organizationId`
   // off the raw response precisely because the typed path did not work.
@@ -1468,8 +1464,9 @@ export function fetchEventForEdit(eventId: string): Promise<EventWire> {
 }
 
 /**
- * The organisation as the server sends it — `fetchOrganization`'s type is the
- * list card's, which is a narrower view of the same body.
+ * The organisation as the server sends it, and the one read of this route.
+ * `fetchOrganization` read the same body as `CommunityOrganization`, which it
+ * is not, and had no caller; it went in RMD-009.
  *
  * **Renamed from `fetchOrganizationForEdit` for FSOLID-002.** Nothing about it
  * is edit-specific: it is the same route, the same read, and the same wire. The

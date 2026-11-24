@@ -6,6 +6,7 @@ import type {
   CommunityOrganization,
   Event,
   Holiday,
+  OrganizationSearchCard,
 } from '@/types/community-life';
 import { eventHost } from '@/lib/api/event-host';
 // `getDistanceKm` is deliberately no longer imported. Wave J removed every
@@ -37,6 +38,34 @@ let customOrganizations: CommunityOrganization[] = [];
 function stripDistance<T extends { location: { distanceKm?: number } }>(row: T): T {
   const { distanceKm: _discarded, ...location } = row.location;
   return { ...row, location };
+}
+
+/**
+ * A fixture as the row `GET /community-life/organizations` sends for it
+ * (`OrganizationSummaryResponse`): `organizationId` and a type key, the place
+ * as `LocationResponse` has it, a member count, and no distance.
+ *
+ * The fixtures are `CommunityOrganization`, which no route sends. This handler
+ * served them as they are, so the Directory and Community search worked in
+ * development and opened `/community-life/org/undefined` against the server
+ * (RMD-009).
+ */
+function toOrganizationSummaryRow(org: CommunityOrganization): OrganizationSearchCard {
+  return {
+    organizationId: org.id,
+    name: org.name,
+    organizationTypeKey: toOrganizationTypeKey(org.category),
+    location: {
+      countryCode: org.location.countryCode ?? null,
+      cityName: org.location.cityName,
+      neighborhoodName: org.location.areaName,
+      latitude: org.location.latitude ?? null,
+      longitude: org.location.longitude ?? null,
+    },
+    logoMediaId: null,
+    isVerified: org.isVerified,
+    memberCount: org.followersCount,
+  };
 }
 
 export function setupCommunityLifeMocks(mock: MockAdapter) {
@@ -447,25 +476,21 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
       return true;
     });
 
-    // As on the event list, and for the same reason: no distance, injected or
-    // inherited from the fixture.
-    const responseData = filtered.map((org) => stripDistance(org));
-
     // `sort` — `OrganizationSortOrder`, defaulting to `MostMembers`. `Nearest`
     // has no centre to measure from and falls through, as it does server-side.
     const normalizedSort = sort.toLowerCase();
     if (normalizedSort === 'name') {
-      responseData.sort((a, b) => a.name.localeCompare(b.name));
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
     } else if (normalizedSort === 'newest') {
-      responseData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else {
-      responseData.sort((a, b) => b.followersCount - a.followersCount);
+      filtered.sort((a, b) => b.followersCount - a.followersCount);
     }
 
-    return [200, {
-      data: responseData,
-      totalCount: responseData.length
-    }];
+    // The page the route answers, of the rows it sends. No distance among them,
+    // as on the event list: the summary has none (`toOrganizationSummaryRow`).
+    const items = filtered.map(toOrganizationSummaryRow);
+    return [200, { data: { items, nextCursor: null, hasMore: false, totalCount: items.length } }];
   });
 
   // GET /community-life/organizations/:id (hub profile)

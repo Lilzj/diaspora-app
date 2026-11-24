@@ -119,7 +119,12 @@ export interface EventSummary {
   timeZoneId: string;
   attendanceMode: string;
   venueName?: string | null;
-  location: EventLocation;
+  /**
+   * As `LocationResponse` sends it. This was `EventLocation`, whose `areaName`,
+   * `addressLine`, `landmark` and `distanceKm` the RSVP page never sends; no
+   * screen read them from it (RMD-009).
+   */
+  location: CommunityLifePlace;
   coverMediaId?: string | null;
   isFree: boolean;
   isFamilyFriendly: boolean;
@@ -146,9 +151,12 @@ export interface CommunityLifePlace {
 /**
  * `OrganizationSummaryResponse` — one row of an organisation search page.
  *
- * The map's organisation layer reads this (RMD-007). It read the rows as the
- * full `CommunityOrganization`, which the summary is not: it sends
- * `organizationId` and a type key where that type has `id` and a category.
+ * The map's organisation layer has read this since RMD-007, and the Directory
+ * and Community search since RMD-009. Each read the rows as the full
+ * `CommunityOrganization` before that, which the summary is not: it sends
+ * `organizationId` and a type key where that type has `id` and a category, so
+ * every Directory card and every organisation in search opened
+ * `/community-life/org/undefined`.
  */
 export interface OrganizationSearchCard {
   organizationId: string;
@@ -157,6 +165,8 @@ export interface OrganizationSearchCard {
   location?: CommunityLifePlace | null;
   logoMediaId?: string | null;
   isVerified?: boolean;
+  /** The row's one count of people. It has no follower count. */
+  memberCount?: number | null;
 }
 
 /**
@@ -534,6 +544,13 @@ export interface OrganizationWire {
   createdAt?: string;
 }
 
+/**
+ * The development fixtures' organisation, and nothing the server sends: no
+ * organisation route has an `id`, a `category`, a `logo` address or a follower
+ * count. The browse mock turns each fixture into the row the route does send
+ * (`toOrganizationSummaryRow`), and the screens read that row,
+ * `OrganizationSearchCard`, or the whole body, `OrganizationWire` (RMD-009).
+ */
 export interface CommunityOrganization {
   id: string;
   name: string;

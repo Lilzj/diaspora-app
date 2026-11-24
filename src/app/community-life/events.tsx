@@ -21,7 +21,8 @@ import { DEFAULT_EVENT_RADIUS_KM, EVENT_RADII_KM, eventDistanceLabel, nearbyPoin
 import { useConnectivityStore } from '@/lib/platform/connectivity';
 import { useSavedStore } from '@/store/saved';
 import { toDateString } from '@/utils/calendar-date';
-import type { Event, CommunityOrganization, CalendarEvent, EventCategory, OrgCategory } from '@/types/community-life';
+import type { Event, OrganizationSearchCard, CalendarEvent, EventCategory, OrgCategory } from '@/types/community-life';
+import { organizationKind, organizationLine } from '@/lib/domain/organization-summary';
 import { backOr } from '@/lib/platform/navigation';
 import { describeEventPrice } from '@/lib/api/event-wire';
 import { TownPicker } from '@/components/forms/TownPicker';
@@ -271,7 +272,7 @@ export default function CommunityLifeScreen() {
   // --- Directory Tab State ---
   const [dirQuery, setDirQuery] = useState('');
   const [selectedDirCat, setSelectedDirCat] = useState<OrgCategory | 'All'>('All');
-  const [orgsList, setOrgsList] = useState<CommunityOrganization[]>([]);
+  const [orgsList, setOrgsList] = useState<OrganizationSearchCard[]>([]);
 
   // --- Calendar Tab State ---
   const [calendarView, setCalendarView] = useState<'month' | 'week' | 'agenda'>('month');
@@ -567,11 +568,11 @@ export default function CommunityLifeScreen() {
     savedItems.forEach((type, id) => {
       if (type === 'Organization') bookmarkedIds.push(id);
     });
-    const matches = orgsList.filter(o => bookmarkedIds.includes(o.id));
+    const matches = orgsList.filter(o => bookmarkedIds.includes(o.organizationId));
     if (!savedSearchQuery) return matches;
     return matches.filter(o => 
       o.name.toLowerCase().includes(savedSearchQuery.toLowerCase()) || 
-      o.category.toLowerCase().includes(savedSearchQuery.toLowerCase())
+      organizationKind(o).toLowerCase().includes(savedSearchQuery.toLowerCase())
     );
   }, [orgsList, savedItems, savedSearchQuery]);
 
@@ -1152,11 +1153,11 @@ export default function CommunityLifeScreen() {
               {/* Directory Org Cards */}
               {orgsList.length > 0 ? (
                 orgsList.map((org) => {
-                  const isFollowing = isSaved(org.id);
+                  const isFollowing = isSaved(org.organizationId);
                   return (
                     <TouchableOpacity
-                      key={org.id}
-                      onPress={() => router.push(`/community-life/org/${org.id}`)}
+                      key={org.organizationId}
+                      onPress={() => router.push(`/community-life/org/${org.organizationId}`)}
                       className="bg-surface-card rounded-3xl border border-subtle p-4 mb-4 flex-row items-center shadow-sm"
                       activeOpacity={0.9}
                     >
@@ -1167,7 +1168,7 @@ export default function CommunityLifeScreen() {
                       <View className="flex-1 mr-2">
                         <View className="flex-row items-center flex-wrap gap-1 mb-1">
                           <Text className="text-[9px] font-black text-primary-500 bg-surface-muted px-2 py-0.5 rounded uppercase">
-                            {org.category}
+                            {organizationKind(org)}
                           </Text>
                           {org.isVerified && (
                             <View className="bg-surface-muted px-1.5 py-0.5 rounded flex-row items-center">
@@ -1181,13 +1182,13 @@ export default function CommunityLifeScreen() {
                         </Text>
                         
                         <Text className="text-[11px] text-content-muted font-semibold mt-0.5">
-                          📍 {org.location.areaName} · {org.followersCount} followers
+                          📍 {organizationLine(org)}
                         </Text>
                       </View>
 
                       {/* Follow Action */}
                       <TouchableOpacity
-                        onPress={() => handleSaveToggle(org.id, 'Organization')}
+                        onPress={() => handleSaveToggle(org.organizationId, 'Organization')}
                         className={`px-3 py-1.5 rounded-full border ${
                           isFollowing ? 'bg-surface-background border-subtle' : 'bg-primary-500 border-primary-500'
                         }`}
@@ -1405,8 +1406,8 @@ export default function CommunityLifeScreen() {
               {followedOrgs.length > 0 ? (
                 followedOrgs.map((org) => (
                   <TouchableOpacity
-                    key={org.id}
-                    onPress={() => router.push(`/community-life/org/${org.id}`)}
+                    key={org.organizationId}
+                    onPress={() => router.push(`/community-life/org/${org.organizationId}`)}
                     className="bg-surface-card border border-subtle rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
                     activeOpacity={0.9}
                   >
@@ -1414,12 +1415,12 @@ export default function CommunityLifeScreen() {
                       <Ionicons name="home" size={24} color="#6B7280" />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-[9px] font-black text-primary-500 uppercase">{org.category}</Text>
+                      <Text className="text-[9px] font-black text-primary-500 uppercase">{organizationKind(org)}</Text>
                       <Text className="text-sm font-black text-content-primary mt-0.5" numberOfLines={1}>
                         {org.name}
                       </Text>
                       <Text className="text-xs text-content-muted font-bold mt-0.5">
-                        📍 {org.location.areaName} · {org.followersCount} followers
+                        📍 {organizationLine(org)}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />

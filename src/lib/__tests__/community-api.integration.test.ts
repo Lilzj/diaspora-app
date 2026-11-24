@@ -1158,7 +1158,7 @@ describe('B12 event and organization writes (certified)', () => {
   });
 
   it('turns a 404 on a missing organization into a FinancialError', async () => {
-    await expect(b12.fetchOrganization('org-does-not-exist')).rejects.toBeInstanceOf(
+    await expect(b12.fetchOrganizationWire('org-does-not-exist')).rejects.toBeInstanceOf(
       FinancialError
     );
   });

@@ -33,6 +33,8 @@ import type { MarketplaceListing } from '@/types/marketplace';
 import type { GuideCardResponse } from '@/types/guides';
 import type { JobCardResponse } from '@/types/jobs-hiring';
 import type { Event, OrganizationSearchCard } from '@/types/community-life';
+import { organizationArea, organizationKind } from '@/lib/domain/organization-summary';
+import { readableKey } from '@/lib/platform/readable-key';
 import type { ProviderSummary } from '@/lib/api/providers-api';
 import { JOB_TYPE_LABELS } from '@/lib/api/job-detail-api';
 import {
@@ -54,12 +56,6 @@ import { markerCoordinate } from './privacy';
 interface LooseLocation {
   latitude?: number | null;
   longitude?: number | null;
-}
-
-/** "community-association" → "Community association". A key, read as words. */
-function readableKey(key: string | null | undefined): string {
-  const words = (key ?? '').replace(/[-_]+/g, ' ').trim();
-  return words ? words.charAt(0).toUpperCase() + words.slice(1) : '';
 }
 
 function coordinateOf(location: LooseLocation | undefined | null): GeoCoordinate | null {
@@ -375,8 +371,8 @@ export function organizationMarker(
   const coordinate = coordinateOf(organization.location);
   if (!coordinate) return null;
 
-  const kind = readableKey(organization.organizationTypeKey);
-  const area = organization.location?.neighborhoodName ?? organization.location?.cityName ?? '';
+  const kind = organizationKind(organization);
+  const area = organizationArea(organization);
 
   return buildMarker({
     id: `organization:${organization.organizationId}`,
