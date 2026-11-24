@@ -17,6 +17,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { ThemeProvider } from '@/design-system';
 import { apiClient } from '@/lib/transport/apiClient';
+import { toCommunityPost } from '@/lib/api/community-social-api';
 import { CommentThread } from '../CommentThread';
 import { CommunityPostCard } from '../CommunityPostCard';
 import { PollBlock } from '../PollBlock';
@@ -24,9 +25,10 @@ import { FollowButton } from '@/components/FollowButton';
 import type { UseCommentThreadResult } from '@/hooks/community-social';
 import type {
   CommentResponse,
+  CommunityPost,
   CommunityPostResponse,
-  ContentReviewStatus,
   PollResponse,
+  ReactionSummaryResponse,
 } from '@/types/community-social';
 
 let mock: MockAdapter;
@@ -87,45 +89,66 @@ function renderSurface(node: React.ReactElement) {
 
 // ── Fixtures shaped like the wire, not like the client ───────────────────────
 
-function buildPost(overrides: Partial<CommunityPostResponse> = {}): CommunityPostResponse {
+const NO_REACTIONS: ReactionSummaryResponse = {
+  totalCount: 0,
+  reactions: [],
+  viewerReactions: [],
+  likeCount: 0,
+  helpfulCount: 0,
+  confirmationCount: 0,
+  disputeCount: 0,
+};
+
+/** The server's post, handed to the card the way the app hands it: through `toCommunityPost`. */
+function buildPost(overrides: Partial<CommunityPostResponse> = {}): CommunityPost {
   const postId = overrides.postId ?? '00000000-0000-4000-c000-000000000001';
   const body = overrides.body ?? 'A crate is 340 this morning.';
+  const now = new Date().toISOString();
 
-  return {
+  return toCommunityPost({
     postId,
     // The same value under the module's older name. Never a second identifier.
     updateId: postId,
+    author: { userId: 'author-1', name: 'Ama Owusu', organizationId: null },
     title: 'Tomato prices at Ridge market',
     body,
     // The same value under the module's older name.
     description: body,
     category: 'marketPrices',
     urgency: 'normal',
+    status: 'published',
     visibility: 'public',
-    countryCode: 'GH',
-    areaId: null,
-    cityName: 'Accra',
-    areaName: null,
-    latitude: null,
-    longitude: null,
-    authorId: 'author-1',
-    organizationId: null,
+    location: {
+      countryCode: 'GH',
+      areaId: null,
+      areaName: null,
+      cityName: 'Accra',
+      latitude: null,
+      longitude: null,
+      distanceKm: null,
+      pointIsExact: false,
+    },
     attachments: [],
     poll: null,
-    reactions: { totalCount: 0, counts: [], myReactionKey: null },
+    reactions: NO_REACTIONS,
     commentCount: 3,
     shareCount: 0,
     bookmarkCount: 0,
+    bookmarkedByViewer: false,
+    reportCount: 0,
     isPinned: false,
     isEdited: false,
-    isBookmarked: false,
-    reportCount: 0,
-    reviewStatus: 'unavailable',
-    createdAt: new Date().toISOString(),
-    publishedAt: new Date().toISOString(),
+    publishedAt: now,
     expiresAt: null,
+    editedAt: null,
+    affectedRadiusMetres: null,
+    closedAt: null,
+    createdAt: now,
+    canEdit: false,
+    canWithdraw: false,
+    canCancel: false,
     ...overrides,
-  };
+  });
 }
 
 function buildComment(overrides: Partial<CommentResponse> = {}): CommentResponse {
@@ -133,7 +156,6 @@ function buildComment(overrides: Partial<CommentResponse> = {}): CommentResponse
     commentId: 'comment-1',
     contentType: 'post',
     contentId: 'post-1',
-    postId: 'post-1',
     parentCommentId: null,
     quotedCommentId: null,
     body: 'Top-level comment.',
@@ -144,10 +166,9 @@ function buildComment(overrides: Partial<CommentResponse> = {}): CommentResponse
     isPinned: false,
     isEdited: false,
     attachmentMediaId: null,
-    reactions: { totalCount: 0, counts: [], myReactionKey: null },
+    reactions: NO_REACTIONS,
     replies: [],
     replyCount: 0,
-    reviewStatus: 'unavailable',
     createdAt: new Date().toISOString(),
     updatedAt: null,
     ...overrides,
@@ -168,36 +189,6 @@ function buildThread(comments: CommentResponse[]): UseCommentThreadResult {
   };
 }
 
-// ── The safety badge ─────────────────────────────────────────────────────────
-
-describe('the automated review badge', () => {
-  /**
-   * `unavailable` means **no provider answered**. It is what a deployment with
-   * no content-review provider configured returns for everything, and it is the
-   * most common value on the wire — so a card that treated "not flagged" as
-   * "checked and safe" would put a reassurance on content nothing looked at.
-   */
-  it.each<ContentReviewStatus>(['unavailable', 'pending'])(
-    'says nothing at all when the review status is %s',
-    (reviewStatus) => {
-      renderSurface(<CommunityPostCard post={buildPost({ reviewStatus })} />);
-
-      expect(screen.queryByText(/Passed automated review/)).toBeNull();
-      expect(screen.queryByText(/Flagged by automated review/)).toBeNull();
-    }
-  );
-
-  it('vouches only for content the review actually cleared', () => {
-    renderSurface(<CommunityPostCard post={buildPost({ reviewStatus: 'clean' })} />);
-    expect(screen.getByText(/Passed automated review/)).toBeTruthy();
-  });
-
-  it('warns when the review flagged it', () => {
-    renderSurface(<CommunityPostCard post={buildPost({ reviewStatus: 'flagged' })} />);
-    expect(screen.getByText(/Flagged by automated review/)).toBeTruthy();
-  });
-});
-
 // ── `reportCount` ────────────────────────────────────────────────────────────
 
 describe('the report count on a post', () => {
@@ -209,7 +200,7 @@ describe('the report count on a post', () => {
   it('is not shown to anybody but the author', () => {
     renderSurface(
       <CommunityPostCard
-        post={buildPost({ authorId: 'someone-else', reportCount: 4 })}
+        post={buildPost({ author: { userId: 'someone-else' }, reportCount: 4 })}
         viewerId="me"
       />
     );
@@ -219,7 +210,7 @@ describe('the report count on a post', () => {
 
   it('is shown to the author, whose copy is the honest one', () => {
     renderSurface(
-      <CommunityPostCard post={buildPost({ authorId: 'me', reportCount: 4 })} viewerId="me" />
+      <CommunityPostCard post={buildPost({ author: { userId: 'me' }, reportCount: 4 })} viewerId="me" />
     );
 
     expect(screen.getByText('4 reports on your post')).toBeTruthy();
@@ -233,16 +224,36 @@ function buildPoll(overrides: Partial<PollResponse> = {}): PollResponse {
     pollId: 'poll-1',
     question: 'Which evening suits everyone?',
     options: [
-      { optionId: 'a', label: 'Thursday', imageMediaId: null, voteCount: null, sharePercent: null },
-      { optionId: 'b', label: 'Friday', imageMediaId: null, voteCount: null, sharePercent: null },
+      option('a', 'Thursday', 0),
+      option('b', 'Friday', 1),
     ],
     allowsMultiple: false,
     resultVisibility: 'afterVoting',
+    status: 'open',
     closesAt: null,
-    isClosed: false,
     totalVotes: null,
+    voterCount: null,
     hasVoted: false,
-    selectedOptionIds: [],
+    canSeeResults: false,
+    ...overrides,
+  };
+}
+
+/** One option as `Community.PollOptionResponse` sends it; hidden figures unless given. */
+function option(
+  optionId: string,
+  label: string,
+  position: number,
+  overrides: Partial<PollResponse['options'][number]> = {}
+): PollResponse['options'][number] {
+  return {
+    optionId,
+    label,
+    position,
+    imageMediaId: null,
+    voteCount: null,
+    sharePercent: null,
+    votedByViewer: false,
     ...overrides,
   };
 }
@@ -276,11 +287,12 @@ describe('a poll whose results are hidden', () => {
       <PollBlock
         poll={buildPoll({
           totalVotes: 22,
+          voterCount: 22,
           hasVoted: true,
-          selectedOptionIds: ['b'],
+          canSeeResults: true,
           options: [
-            { optionId: 'a', label: 'Thursday', imageMediaId: null, voteCount: 8, sharePercent: 36.4 },
-            { optionId: 'b', label: 'Friday', imageMediaId: null, voteCount: 14, sharePercent: 63.6 },
+            option('a', 'Thursday', 0, { voteCount: 8, sharePercent: 36.4 }),
+            option('b', 'Friday', 1, { voteCount: 14, sharePercent: 63.6, votedByViewer: true }),
           ],
         })}
       />
@@ -301,9 +313,11 @@ describe('a poll whose results are hidden', () => {
         poll={buildPoll({
           resultVisibility: 'always',
           totalVotes: 8,
+          voterCount: 8,
+          canSeeResults: true,
           options: [
-            { optionId: 'a', label: 'Thursday', imageMediaId: null, voteCount: 8, sharePercent: 100 },
-            { optionId: 'b', label: 'Friday', imageMediaId: null, voteCount: 0, sharePercent: 0 },
+            option('a', 'Thursday', 0, { voteCount: 8, sharePercent: 100 }),
+            option('b', 'Friday', 1, { voteCount: 0, sharePercent: 0 }),
           ],
         })}
       />
@@ -311,6 +325,44 @@ describe('a poll whose results are hidden', () => {
 
     expect(screen.getByText('0%')).toBeTruthy();
     expect(screen.getByLabelText('Friday. 0 votes.')).toBeTruthy();
+  });
+});
+
+describe("a poll's state, as the server sends it", () => {
+  /**
+   * There is no `isClosed` and no `selectedOptionIds` on the wire (RMD-009).
+   * `PollBlock` read both, so against the server it offered a vote on every
+   * closed poll and threw on `selectedOptionIds.includes` for every poll.
+   */
+  it('takes a vote while the poll is open', () => {
+    const onVote = jest.fn();
+    renderSurface(<PollBlock poll={buildPoll()} onVote={onVote} />);
+
+    fireEvent.press(screen.getByLabelText('Thursday. Results hidden.'));
+    expect(onVote).toHaveBeenCalledWith(['a']);
+  });
+
+  it.each(['closed', 'cancelled'])('takes no vote once the poll is %s', (status) => {
+    const onVote = jest.fn();
+    renderSurface(<PollBlock poll={buildPoll({ status })} onVote={onVote} />);
+
+    expect(screen.getByText(/· Closed/)).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Thursday. Results hidden.'));
+    expect(onVote).not.toHaveBeenCalled();
+  });
+
+  it("marks the member's own choice from the option that says so", () => {
+    renderSurface(
+      <PollBlock
+        poll={buildPoll({
+          hasVoted: true,
+          options: [option('a', 'Thursday', 0), option('b', 'Friday', 1, { votedByViewer: true })],
+        })}
+      />
+    );
+
+    expect(screen.getByText('● Friday')).toBeTruthy();
+    expect(screen.getByText('○ Thursday')).toBeTruthy();
   });
 });
 

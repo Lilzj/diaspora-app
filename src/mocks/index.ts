@@ -497,8 +497,10 @@ export function initMocks(): void {
   // **not one of them had a frontend consumer**, so there was no handler either.
   // Every one of them would have fallen through to the passthrough below.
   //
-  // Every shape was written from that module's contract rather than from what
-  // `lib/community-social-api.ts` expects, and it enforces the refusals rather
+  // Every shape is meant to come from that module's contract rather than from
+  // what `lib/community-social-api.ts` expects. Several did not until RMD-009,
+  // and `community-social-mock-contract.test.ts` now holds the reshaped routes
+  // to the published contract. It enforces the refusals rather
   // than describing them: `prefix` is **required** on `/hashtags/suggest`,
   // unfollowing something you do not follow is a **404** while un-reacting to
   // something you never reacted to is a 200, the 500- and 2000-character
@@ -508,9 +510,9 @@ export function initMocks(): void {
   //
   // It also models what the module returns and cannot be talked out of: poll
   // counts that are **null rather than 0** while results are hidden, a
-  // `reportCount` that is 0 for anyone who is not the author, a `reviewStatus`
-  // of `unavailable` (which is **not** `clean`) on a deployment with no review
-  // provider, deleted comments delivered tombstoned so their replies keep a
+  // `reportCount` that is 0 for anyone who is not the author, a feed whose rows
+  // are feed items holding a post rather than posts, deleted comments
+  // delivered tombstoned so their replies keep a
   // parent, and the four moderation display names the server hardcodes to null.
   //
   // Nothing here is `/api/v1/bookmarks` — that prefix belongs to a separate

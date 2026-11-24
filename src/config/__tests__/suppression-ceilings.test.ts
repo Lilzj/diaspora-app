@@ -108,7 +108,7 @@ const CEILING: Record<string, number> = {
   // ── FSOLID-006, the third rule the audit named ──────────────────────────
   //
   // 105 `any` usages, reviewed one at a time on 20 Nov 2026. 71 went and 34
-  // stayed; these are the 33 still here, and why:
+  // stayed; these are the 30 still here, and why:
   //
   //   13  app/marketplace/[id].tsx     the six companion lists. The API types
   //                                    them `unknown[]` on purpose -- the
@@ -121,11 +121,15 @@ const CEILING: Record<string, number> = {
   //                                    product decision, which the API module
   //                                    says in as many words.
   //
-  //   13  four API row mappers and     `(row: any) => Typed` at a wire the
+  //   10  three API row mappers and    `(row: any) => Typed` at a wire the
   //       `saved-resolver`             platform does not describe. The honest
   //                                    form is `unknown` plus a declared
   //                                    shape per mapper; that is work, not a
   //                                    judgement, and it is the next bite.
+  //                                    The fourth, the feed's `toFeedPost`,
+  //                                    held three; they went on 24 Nov 2026,
+  //                                    when it was typed with the feed item
+  //                                    the route sends (RMD-009).
   //
   //    5  the create screens'          a draft restored from device storage,
   //       draft singletons             which may predate the current shape --
@@ -144,7 +148,7 @@ const CEILING: Record<string, number> = {
   //
   // The rule is an error, so a new one fails the build. This number may only
   // go down, and the test below is what makes that true.
-  '@typescript-eslint/no-explicit-any': 33,
+  '@typescript-eslint/no-explicit-any': 30,
   // Debt that came with the linter rather than from the audit, recorded so it
   // cannot grow. Not named by any finding.
   'react-hooks/refs': 81,

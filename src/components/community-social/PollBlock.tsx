@@ -20,7 +20,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 
-import { arePollResultsHidden } from '@/lib/api/community-social-api';
+import { arePollResultsHidden, isPollOpen } from '@/lib/api/community-social-api';
 import type { PollResponse } from '@/types/community-social';
 
 interface PollBlockProps {
@@ -51,7 +51,7 @@ export function PollBlock({ poll, onVote, isVoting = false, error = null }: Poll
   const [pending, setPending] = useState<string[]>([]);
 
   const resultsHidden = arePollResultsHidden(poll);
-  const canVote = Boolean(onVote) && !poll.isClosed && !poll.hasVoted;
+  const canVote = Boolean(onVote) && isPollOpen(poll) && !poll.hasVoted;
 
   const toggle = (optionId: string) => {
     if (!canVote || !onVote) return;
@@ -76,11 +76,13 @@ export function PollBlock({ poll, onVote, isVoting = false, error = null }: Poll
 
       <Text className="text-[10px] font-bold text-content-faint uppercase tracking-wider mb-3">
         {poll.allowsMultiple ? 'Choose as many as you like' : 'Choose one'}
-        {poll.isClosed ? ' · Closed' : ''}
+        {isPollOpen(poll) ? '' : ' · Closed'}
       </Text>
 
       {poll.options.map((option) => {
-        const chosen = poll.selectedOptionIds.includes(option.optionId);
+        // The member's own choice is on the option. There is no selection list
+        // on the poll, and reading one threw on every poll the server sent.
+        const chosen = option.votedByViewer;
         const staged = pending.includes(option.optionId);
         const highlighted = chosen || staged;
 

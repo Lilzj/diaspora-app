@@ -452,7 +452,7 @@ export function guideMarker(
  * are the only mapping. An update that expires stops being an active alert
  * here without anybody having to remember to sweep it (§29).
  */
-export function toCommunityAlert(update: CommunityUpdate): CommunityAlert {
+export function toCommunityAlert(update: Omit<CommunityUpdate, 'authorId'>): CommunityAlert {
   const expired =
     update.isExpired ||
     update.status === 'expired' ||

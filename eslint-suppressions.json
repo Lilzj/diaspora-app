@@ -537,11 +537,6 @@
       "count": 3
     }
   },
-  "src/lib/api/community-social-api.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 3
-    }
-  },
   "src/lib/api/reservations-api.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 4

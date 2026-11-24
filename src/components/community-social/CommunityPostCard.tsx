@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — One community post (Wave D-2b)
 //
-// The card every community feed draws. It renders a `CommunityPostResponse` and
+// The card every community feed draws. It renders a `CommunityPost` and
 // nothing else — no author name, no distance, no confidence score, because the
 // wire carries none of those and the card it replaces invented all three.
 //
@@ -12,12 +12,9 @@
 // would tell every member on the platform that nothing has ever been reported.
 // The author's own copy is honest, and that is the only place it is shown.
 //
-// **A "checked and safe" badge for anything but `clean`.**
-// `ContentReviewStatus` can be `unavailable`, which means **no provider
-// answered** — the review did not happen. It is the value a deployment with no
-// configured provider returns for everything, so a badge that treated
-// "not flagged" as "safe" would be the application vouching for content nothing
-// looked at. `shouldRenderSafetyBadge` is the guard and it only passes `clean`.
+// **An automated-review badge.** The card drew "Flagged by automated review" and
+// "Passed automated review" from a `reviewStatus` that no post carries, so
+// neither ever appeared against the server. Both went in RMD-009.
 //
 // **A quote-share.** `ShareResponse.quotePostId` is **always null** — `kind:
 // 'quote'` records a share and creates no post, on every deployment, despite
@@ -39,9 +36,8 @@ import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 
-import { shouldRenderSafetyBadge, isFlaggedContent } from '@/lib/api/community-social-api';
 import { useBookmark, useReact } from '@/hooks/community-social';
-import type { CommunityPostResponse, CommunityReactionKey } from '@/types/community-social';
+import type { CommunityPost, CommunityReactionKey } from '@/types/community-social';
 
 import { PollBlock } from './PollBlock';
 import { ReactionBar } from './ReactionBar';
@@ -56,9 +52,9 @@ import {
 } from './labels';
 
 interface CommunityPostCardProps {
-  post: CommunityPostResponse;
+  post: CommunityPost;
   /** Defaults to opening the post's own screen. */
-  onPress?: (post: CommunityPostResponse) => void;
+  onPress?: (post: CommunityPost) => void;
   /** True on the detail screen, where the poll is votable and the body is whole. */
   expanded?: boolean;
   onVotePoll?: (optionIds: string[]) => void;
@@ -175,21 +171,6 @@ export function CommunityPostCard({
         />
       ) : null}
 
-      {/* Only `flagged` earns words. `unavailable` means nothing looked at this
-          and `pending` means nothing has concluded — neither is a verdict in
-          either direction, and `shouldRenderSafetyBadge` refuses both. */}
-      {isFlaggedContent(post.reviewStatus) ? (
-        <View className="mt-2.5 bg-surface-muted border border-warning-default/30 rounded-xl px-3 py-2">
-          <Text className="text-[10px] font-black text-warning-default">
-            ⚠️ Flagged by automated review
-          </Text>
-        </View>
-      ) : shouldRenderSafetyBadge(post.reviewStatus) ? (
-        <Text className="text-[10px] font-bold text-success-default mt-2">
-          ✓ Passed automated review
-        </Text>
-      ) : null}
-
       {/* Where and when. Nothing is computed — there is no distance on this
           contract and no user position to measure one from. */}
       <View className="flex-row items-center justify-between mt-3 pt-2.5 border-t border-faint">
@@ -212,7 +193,7 @@ export function CommunityPostCard({
 
       {/* The author's own copy of `reportCount`, and only theirs. Zero here for
           anybody else is "not your business", not "no reports". */}
-      {viewerId !== null && post.authorId === viewerId && post.reportCount > 0 ? (
+      {viewerId !== null && post.authorId === viewerId && post.reportCount !== null && post.reportCount > 0 ? (
         <Text className="text-[9px] font-bold text-error-default mt-1">
           {post.reportCount} {post.reportCount === 1 ? 'report' : 'reports'} on your post
         </Text>

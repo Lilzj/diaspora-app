@@ -18,6 +18,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react-nativ
 import { ThemeProvider } from '@/design-system';
 import { UpdateCard } from '../UpdateCard';
 import type { UpdateSummary } from '@/types/update';
+import type { ReactionSummaryResponse } from '@/types/community-social';
 import type { AuthorSummary } from '@/types/social';
 
 const mockReact = jest.fn().mockResolvedValue(undefined);
@@ -49,6 +50,22 @@ const AUTHOR = {
   avatarUrl: null,
   reputationLevel: 'Newcomer',
 } as unknown as AuthorSummary;
+
+/** The wire's tally, with every key the member reacted with. */
+function reactionsBy(viewerReactions: string[]): ReactionSummaryResponse {
+  return {
+    totalCount: 3,
+    reactions: [
+      { reactionKey: 'confirmed', count: 2, reactedByViewer: viewerReactions.includes('confirmed') },
+      { reactionKey: 'helpful', count: 1, reactedByViewer: viewerReactions.includes('helpful') },
+    ],
+    viewerReactions,
+    likeCount: 0,
+    helpfulCount: 1,
+    confirmationCount: 2,
+    disputeCount: 0,
+  };
+}
 
 function anUpdate(overrides: Partial<UpdateSummary> = {}): UpdateSummary {
   return {
@@ -227,9 +244,7 @@ describe('the viewer’s own state', () => {
    * never confirmed something they had. The wire carries the answer.
    */
   it('comes from the wire, so it survives a remount', () => {
-    const update = anUpdate({
-      reactions: { totalCount: 3, counts: [], myReactionKey: 'confirmed' },
-    });
+    const update = anUpdate({ reactions: reactionsBy(['confirmed']) });
 
     const { unmount } = renderCard(update);
     expect(screen.getByRole('button', { name: /you confirmed this/i })).toBeTruthy();
@@ -240,9 +255,7 @@ describe('the viewer’s own state', () => {
   });
 
   it('refuses a second press once the wire says the member confirmed', () => {
-    renderCard(
-      anUpdate({ reactions: { totalCount: 3, counts: [], myReactionKey: 'confirmed' } })
-    );
+    renderCard(anUpdate({ reactions: reactionsBy(['confirmed']) }));
 
     const control = screen.getByRole('button', { name: /you confirmed this/i });
     expect(control.props.accessibilityState).toMatchObject({ disabled: true, selected: true });
@@ -252,9 +265,18 @@ describe('the viewer’s own state', () => {
   });
 
   it('does not mistake another reaction for a confirmation', () => {
-    renderCard(anUpdate({ reactions: { totalCount: 1, counts: [], myReactionKey: 'like' } }));
+    renderCard(anUpdate({ reactions: reactionsBy(['helpful']) }));
 
     expect(screen.getByRole('button', { name: /I can confirm this/i })).toBeTruthy();
+  });
+
+  it('sees a confirmation behind another reaction the member holds', () => {
+    // A member may hold several reactions on one item. Until RMD-009 the card
+    // compared only the first, so a member who found the post helpful and then
+    // confirmed it was offered the confirmation again.
+    renderCard(anUpdate({ reactions: reactionsBy(['helpful', 'confirmed']) }));
+
+    expect(screen.getByRole('button', { name: /you confirmed this/i })).toBeTruthy();
   });
 });
 

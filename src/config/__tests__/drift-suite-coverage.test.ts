@@ -21,8 +21,8 @@
 // the list names something that no longer exists, the count falls, the job
 // fails.
 //
-// It cannot catch a suite **added**. A seventeenth cross-repository suite that
-// nobody lists leaves the count at sixteen, so the step passes, the job passes,
+// It cannot catch a suite **added**. An eighteenth cross-repository suite that
+// nobody lists leaves the count at seventeen, so the step passes, the job passes,
 // and the new suite skips. The count knows how many names resolve; it does not
 // know how many suites there are. This file is that direction, and it is
 // derived from the filesystem rather than from a second list, because a list
@@ -103,7 +103,7 @@ function driftSuitePattern(): string[] {
 
 const NAMED = driftSuitePattern();
 
-/** The count the job asserts: `if [ "$found" -ne 16 ]`. */
+/** The count the job asserts: `if [ "$found" -ne 17 ]`. */
 function declaredSuiteCount(): number {
   const assertion = /if \[ "\$found" -ne (\d+) \]; then/.exec(WORKFLOW);
 
