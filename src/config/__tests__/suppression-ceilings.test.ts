@@ -157,7 +157,10 @@ const CEILING: Record<string, number> = {
   'react-hooks/refs': 81,
   'react-hooks/set-state-in-effect': 75,
   'react/no-unescaped-entities': 24,
-  'react-hooks/purity': 15,
+  // `MessageBubble` held one more: a voice note's bars were `Math.random()`
+  // during render. It went on 24 Nov 2026, with the waveform no route sends
+  // (RMD-009).
+  'react-hooks/purity': 14,
   'react-hooks/immutability': 9,
   'react-hooks/preserve-manual-memoization': 6,
   'react-hooks/static-components': 4,

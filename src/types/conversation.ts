@@ -74,6 +74,11 @@ export interface ConversationContextSnapshot {
 // TRUST PROFILE
 // ---------------------------------------------------------------------------
 
+/**
+ * What the route sends about a participant (`ConversationTrustProfileResponse`).
+ * It names no countries: the trust banner's row of verified countries read a
+ * `countryVerifications` no route sends, and never appeared.
+ */
 export interface ConversationTrustProfile {
   isVerified: boolean;
   verificationLabel?: string;     // "Diaspora Verified" | "Trusted Contributor" | "Community Leader"
@@ -82,12 +87,6 @@ export interface ConversationTrustProfile {
   responseTime?: string;          // "Immediate" | "< 1 hr" | "~3 hrs"
   responseRate?: number;          // 0–100 percentage
   memberSince?: string;           // Year string e.g. "2023"
-  countryVerifications?: Array<{
-    countryCode: string;
-    countryName: string;
-    flag: string;
-    isVerified: boolean;
-  }>;
   reputationLevel?: string;       // "VerifiedResident" | "TrustedContributor" etc.
   totalHelpfulVotes?: number;
 }
@@ -171,10 +170,10 @@ export interface DocumentAttachment extends BaseAttachment {
   pageCount?: number;
 }
 
+/** A voice note. The route sends its length and no waveform. */
 export interface VoiceAttachment extends BaseAttachment {
   type: 'voice';
   durationSeconds: number;
-  waveformData?: number[];   // Amplitude samples for waveform display
 }
 
 export type MessageAttachment = ImageAttachment | DocumentAttachment | VoiceAttachment;
@@ -225,8 +224,20 @@ export interface Message {
   deletedAt?: string;
   delivery: MessageDeliveryReceipt;
   createdAt: string;         // ISO
-  // Client-only
-  localId?: string;          // Optimistic update ID before server confirms
+  /**
+   * The id the sending device gave the message. The server echoes it, so a
+   * pending bubble can be matched to its confirmation.
+   */
+  localId?: string;
+}
+
+/**
+ * A message as this device holds it in a thread: one the server sent, or one it
+ * is still sending. `isOptimistic` is the device's own state, so it lives here
+ * and not on `Message`, which is what the routes send.
+ */
+export interface ThreadMessage extends Message {
+  /** A pending bubble this device made for a send, until the server confirms it. */
   isOptimistic?: boolean;
 }
 

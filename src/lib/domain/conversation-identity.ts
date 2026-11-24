@@ -29,7 +29,13 @@
 //     match anybody.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { Conversation, ConversationParticipant, Message, ReplyReference } from '@/types/conversation';
+import type {
+  Conversation,
+  ConversationParticipant,
+  Message,
+  ReplyReference,
+  ThreadMessage,
+} from '@/types/conversation';
 
 const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
 
@@ -63,7 +69,7 @@ export function currentUserIdIn(
  * send.
  */
 export function isOwnMessage(
-  message: Pick<Message, 'senderId' | 'isOptimistic'>,
+  message: Pick<ThreadMessage, 'senderId' | 'isOptimistic'>,
   currentUserId: string | null | undefined
 ): boolean {
   return message.isOptimistic === true || sameUser(message.senderId, currentUserId);

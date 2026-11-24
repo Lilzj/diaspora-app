@@ -201,13 +201,6 @@ export function validateDraft(draft: AutomationDraft, now: Date): AutomationVali
       error('actions', `“${definition.label}” is added more than once.`, action.id);
     }
     seenActionKeys.add(action.key);
-
-    if (definition.notificationChannel && action.channel) {
-      // A channel override has to be a channel the action can actually use.
-      if (action.channel !== definition.notificationChannel && !isCompatibleChannel(action.channel)) {
-        error('actions', `“${definition.label}” cannot be sent that way.`, action.id);
-      }
-    }
   }
 
   // ── Schedule — §41 · §43 ──────────────────────────────────────────────────
@@ -237,11 +230,6 @@ function isEmptyValue(value: unknown): boolean {
   if (typeof value === 'string') return value.trim().length === 0;
   if (Array.isArray(value)) return value.length === 0;
   return false;
-}
-
-/** The channels an action may be overridden to. B13's member-facing set. */
-function isCompatibleChannel(channel: string): boolean {
-  return channel === 'InApp' || channel === 'Push' || channel === 'Email';
 }
 
 /** Whether a draft can be saved at all. Warnings never block. */

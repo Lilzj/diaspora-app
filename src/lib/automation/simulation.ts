@@ -148,7 +148,7 @@ export function simulate(draft: AutomationDraft, context: SimulationContext): Au
     // as B13 would apply them at dispatch. §53 — and the reason this is worth
     // simulating is that "it ran and you heard nothing" is the most confusing
     // possible outcome, and this is where somebody finds out why.
-    const channel = action.channel ?? definition.notificationChannel;
+    const channel = definition.notificationChannel;
     if (channel && !context.enabledChannels.includes(channel)) {
       wouldHaveDone.push({
         actionKey: action.key,

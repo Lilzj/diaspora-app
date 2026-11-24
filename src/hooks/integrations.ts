@@ -243,7 +243,6 @@ function resolveConnectionFor(
       scopes: [],
       lastSyncedAt: null,
       lastError: null,
-      gapId: status.gapId ?? null,
       observedAt: now,
     };
   }
@@ -266,7 +265,6 @@ function resolveConnectionFor(
       scopes: [],
       lastSyncedAt: null,
       lastError: null,
-      gapId: null,
       observedAt: now,
     };
   }
@@ -285,7 +283,6 @@ function resolveConnectionFor(
       scopes: [],
       lastSyncedAt: null,
       lastError: null,
-      gapId: null,
       observedAt: now,
     };
   }
@@ -303,7 +300,6 @@ function resolveConnectionFor(
       scopes: [],
       lastSyncedAt: null,
       lastError: null,
-      gapId: null,
       observedAt: now,
     };
   }

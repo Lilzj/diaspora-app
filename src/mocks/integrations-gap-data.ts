@@ -97,7 +97,6 @@ export function upsertConnection(
     expiresAt: isoOffset(60 * 24 * 30),
     lastSyncedAt: null,
     lastError: null,
-    gapId: null,
     observedAt: NOW.toISOString(),
   };
 
@@ -122,7 +121,6 @@ export function removeConnection(provider: IntegrationProviderId): IntegrationCo
     expiresAt: null,
     lastSyncedAt: null,
     lastError: null,
-    gapId: null,
     observedAt: NOW.toISOString(),
   };
 }

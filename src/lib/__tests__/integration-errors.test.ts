@@ -352,7 +352,6 @@ describe('§41 · a disconnect leaves nothing stale', () => {
     expiresAt: '2026-12-01T00:00:00.000Z',
     lastSyncedAt: '2026-08-01T00:00:00.000Z',
     lastError: null,
-    gapId: null,
     observedAt: '2026-08-09T09:00:00.000Z',
   };
 

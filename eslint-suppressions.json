@@ -426,11 +426,6 @@
       "count": 1
     }
   },
-  "src/components/conversation/MessageBubble.tsx": {
-    "react-hooks/purity": {
-      "count": 1
-    }
-  },
   "src/components/conversation/TypingIndicator.tsx": {
     "react-hooks/refs": {
       "count": 5

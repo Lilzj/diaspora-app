@@ -32,6 +32,17 @@ function formatVoiceDuration(secs: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+/**
+ * A voice note's track: twenty bars of one height, the same for every note.
+ *
+ * It drew a note's `waveformData`, which no route sends, and otherwise twenty
+ * `Math.random()` bars computed during render. So every note showed a waveform
+ * that was not its own and changed shape whenever the bubble re-rendered:
+ * pressing play was enough. These bars say "voice note" and claim nothing
+ * about the recording.
+ */
+const VOICE_TRACK = Array.from({ length: 20 }, (_, index) => `bar-${index}`);
+
 export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLongPress, onReplyPress, onImagePress }: Props) {
   const [voicePlaying, setVoicePlaying] = useState(false);
   const tokens = useThemeTokens();
@@ -133,14 +144,13 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLon
                 </Text>
               </TouchableOpacity>
               <View className="flex-1">
-                {/* Waveform placeholder */}
-                <View className="flex-row items-center h-6 gap-0.5">
-                  {(message.attachment.waveformData || Array.from({ length: 20 }, () => Math.random())).map((amp, i) => (
+                <View testID="voice-track" className="flex-row items-center h-6 gap-0.5">
+                  {VOICE_TRACK.map((key) => (
                     <View
-                      key={i}
+                      key={key}
                       style={{
                         width: 3,
-                        height: Math.max(4, amp * 22),
+                        height: 10,
                         backgroundColor: isCurrentUser ? 'rgba(255,255,255,0.7)' : '#F59300',
                         borderRadius: 2,
                       }}
