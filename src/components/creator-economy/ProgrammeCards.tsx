@@ -46,10 +46,9 @@ import type {
 /**
  * What completing something pays.
  *
- * Branches on `kind` so a points reward renders as a count with its unit and a
- * money reward goes through `AmountDisplay`. The two are never interchangeable
- * — that is the whole reason `CreatorMilestoneReward` has separate `points` and
- * `amount` fields rather than one `value`.
+ * A points reward renders as a count with its unit, and any other kind as the
+ * server's own label. It drew a money reward through `AmountDisplay` from an
+ * `amount` no route sends, for a kind the platform never sets.
  */
 export function RewardPill({ reward }: { reward: CreatorMilestoneReward }) {
   const colours = useToneColours('brand');
@@ -73,17 +72,11 @@ export function RewardPill({ reward }: { reward: CreatorMilestoneReward }) {
         color={colours.fg}
       />
 
-      {reward.kind === 'money' && reward.amount ? (
-        <View className="ml-1">
-          <AmountDisplay value={reward.amount} size="small" />
-        </View>
-      ) : (
-        <Text style={{ color: colours.fg }} className="text-[10px] font-black ml-1">
-          {reward.kind === 'points' && typeof reward.points === 'number'
-            ? formatPoints(reward.points)
-            : reward.label}
-        </Text>
-      )}
+      <Text style={{ color: colours.fg }} className="text-[10px] font-black ml-1">
+        {reward.kind === 'points' && typeof reward.points === 'number'
+          ? formatPoints(reward.points)
+          : reward.label}
+      </Text>
     </View>
   );
 }

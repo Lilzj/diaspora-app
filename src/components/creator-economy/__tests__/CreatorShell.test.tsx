@@ -296,7 +296,6 @@ describe('the quiz cannot mark its own paper', () => {
           { optionId: 'a', label: 'Introduce the topic' },
           { optionId: 'b', label: 'Say what goes wrong' },
         ],
-        explanation: 'Somebody reading already has the problem.',
       },
       {
         questionId: 'q2',
@@ -305,7 +304,6 @@ describe('the quiz cannot mark its own paper', () => {
           { optionId: 'a', label: 'Leave it' },
           { optionId: 'b', label: 'Update it and say what changed' },
         ],
-        explanation: 'A visible correction is what makes the guide trustworthy.',
       },
     ],
   };
@@ -554,7 +552,6 @@ describe('leaderboard rows name the score and mark the viewer', () => {
           displayName: 'Amara Kone',
           score: 1_200,
           isVerifiedCreator: true,
-          rankDelta: 2,
         }}
         scoreLabel="Impact score"
         isViewer
@@ -566,7 +563,7 @@ describe('leaderboard rows name the score and mark the viewer', () => {
     expect(screen.getByLabelText(/Impact score: 1,200/)).toBeTruthy();
   });
 
-  it('speaks the movement since last time', () => {
+  it('speaks the rank, the name and the score, and no movement the platform does not keep', () => {
     renderWithTheme(
       <LeaderboardRow
         entry={{
@@ -575,14 +572,13 @@ describe('leaderboard rows name the score and mark the viewer', () => {
           displayName: 'Zainab Ali',
           score: 400,
           isVerifiedCreator: false,
-          rankDelta: -3,
         }}
         scoreLabel="Impact score"
         isViewer={false}
       />
     );
 
-    expect(screen.getByLabelText(/Down 3 since last time/)).toBeTruthy();
+    expect(screen.getByLabelText('Rank 8. Zainab Ali Impact score: 400.')).toBeTruthy();
   });
 });
 

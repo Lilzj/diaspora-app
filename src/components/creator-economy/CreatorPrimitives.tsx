@@ -22,7 +22,6 @@ import React from 'react';
 import { Pressable, Text, View, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
-import { AmountDisplay } from '@/components/financial';
 import {
   clampPercentage,
   describeMetricChange,
@@ -114,10 +113,13 @@ export function CreatorStatusChip({
 /**
  * One headline metric.
  *
- * `metric.format` decides the rendering: a currency metric goes through
- * `AmountDisplay` so it obeys the same `Money` discipline as every other amount
- * in the app, and a count goes through `formatCount`. A percentage renders with
- * its sign so 6.8% and −6.8% are distinguishable without the colour.
+ * `metric.format` decides the rendering: a percentage to one decimal place, a
+ * duration in minutes, and anything else through `formatCount`. The change
+ * carries its sign so 6.8% and −6.8% are distinguishable without the colour.
+ *
+ * A currency metric is never drawn as money here. It read an `amount` no route
+ * sends; the route sends no currency at all, and the one currency metric the
+ * platform defines, revenue, is not measured, so the screens leave it out.
  */
 export function StatTile({
   metric,
@@ -141,9 +143,7 @@ export function StatTile({
 
   const accessibilityLabel = [
     `${metric.label}:`,
-    metric.format === 'currency' && metric.amount
-      ? `${metric.amount.currency} ${metric.amount.amount.toFixed(2)}`
-      : valueText,
+    valueText,
     change ? `${change.text === 'No change' ? 'no change' : change.text} against the previous period` : null,
     metric.definition,
   ]
@@ -174,18 +174,14 @@ export function StatTile({
       </Text>
 
       <View className="mt-1.5">
-        {metric.format === 'currency' && metric.amount ? (
-          <AmountDisplay value={metric.amount} size="medium" />
-        ) : (
-          <Text
-            style={{ color: tokens.color.text.primary, fontVariant: ['tabular-nums'] }}
-            className="text-xl font-black tracking-tight"
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            {valueText}
-          </Text>
-        )}
+        <Text
+          style={{ color: tokens.color.text.primary, fontVariant: ['tabular-nums'] }}
+          className="text-xl font-black tracking-tight"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {valueText}
+        </Text>
       </View>
 
       {change ? (

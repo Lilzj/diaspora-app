@@ -681,10 +681,6 @@ interface KnownDrift {
 const KNOWN_UNREACHED: Readonly<Record<string, KnownUnreached>> = {
 };
 
-// Shared reasons, so an entry says which kind it is at a glance.
-const NO_TYPED_READ =
-  'Nothing in `src` reads these fields through this type (checker-verified when this landed). A promise the next reader will be held to, rather than a defect today.';
-
 /** Client types that declare fields their routes do not send, keyed `Client <- Contract`. */
 const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
   // ── Decisions: a name read only behind the one the route sends.
@@ -714,11 +710,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: "`channel` is read by automation simulation and validation, which also handle drafts built on the device; whether either sees this route's body is not established.",
   },
-  'AnalyticsWire <- CommunityProgramme.OrganizationAnalyticsResponse': {
-    fields: ['memberGrowth[].amount', 'memberGrowth[].donationCount', 'memberGrowth[].periodStart'],
-    row: 'RMD-009',
-    why: "`memberGrowth` points arrive as `{ date, value }` and are declared with the giving series' `{ periodStart, amount, donationCount }`, while `DonationTimeSeriesWire` declares the reverse. The two point shapes look swapped; not traced to a screen.",
-  },
   'AutomationDefinition <- AutomationDefinitionResponse': {
     fields: ['actions[].channel'],
     row: 'RMD-009',
@@ -734,46 +725,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: "`fromUser.trust.countryVerifications` is never sent, so `TrustBanner`'s country row never renders for a request.",
   },
-  'CreatorChallenge <- CreatorChallengeResponse': {
-    fields: ['reward.amount'],
-    row: 'RMD-009',
-    why: '`ProgrammeCards` reads `reward.amount`; the reward is sent without it. Not traced to what the card shows instead.',
-  },
-  'CreatorChallenge[] <- CreatorChallengeResponse[]': {
-    fields: ['[].reward.amount'],
-    row: 'RMD-009',
-    why: '`ProgrammeCards` reads `reward.amount`; the reward is sent without it. Not traced to what the card shows instead.',
-  },
-  'CreatorContentPerformancePageWire <- CreatorContentPerformancePageResponse': {
-    fields: ['items[].metrics[].amount'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
-  'CreatorLeaderboard <- CreatorLeaderboardResponse': {
-    fields: ['entries[].rankDelta'],
-    row: 'RMD-009',
-    why: '`leaderboard.tsx` reads `rankDelta` for its movement arrows; the route never sends it.',
-  },
-  'CreatorMilestone <- CreatorMilestoneResponse': {
-    fields: ['reward.amount'],
-    row: 'RMD-009',
-    why: '`ProgrammeCards` reads `reward.amount`; the reward is sent without it. Not traced to what the card shows instead.',
-  },
-  'CreatorMilestone[] <- CreatorMilestoneResponse[]': {
-    fields: ['[].reward.amount'],
-    row: 'RMD-009',
-    why: '`ProgrammeCards` reads `reward.amount`; the reward is sent without it. Not traced to what the card shows instead.',
-  },
-  'CreatorSummaryWire <- CreatorAnalyticsSummaryResponse': {
-    fields: ['metrics[].amount'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
-  'DonationTimeSeriesWire <- DonationTimeSeriesResponse': {
-    fields: ['points[].date', 'points[].value'],
-    row: 'RMD-009',
-    why: "Declared as `{ date, value }`, the organisation growth series' shape; see the `AnalyticsWire` entry. No typed read.",
-  },
   'IntegrationConnection <- IntegrationConnectionResponse': {
     fields: ['gapId'],
     row: 'RMD-009',
@@ -788,31 +739,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     fields: ['voice[].waveformData'],
     row: 'RMD-009',
     why: "`uploadProgress` is the device's own upload state, kept on the wire type. `waveformData` is never sent; `MessageBubble` falls back to random bars.",
-  },
-  'PublicCreator <- PublicCreatorResponse': {
-    fields: ['badges[].progress', 'badges[].tier'],
-    row: 'RMD-009',
-    why: '`config/badges` reads `progress` and `tier` off a badge the route sends without them.',
-  },
-  'SponsoredContentItem[] <- SponsoredContentItemResponse[]': {
-    fields: ['[].performance[].amount', '[].performance[].changePercentage'],
-    row: 'RMD-009',
-    why: 'The sponsored performance metrics declare `amount` and `changePercentage`; read by the creator primitives and the analytics adapters, not traced.',
-  },
-  'WireDirectoryPage <- CreatorDirectoryResponse': {
-    fields: ['creators[].badges[].progress', 'creators[].badges[].tier'],
-    row: 'RMD-009',
-    why: '`config/badges` reads `progress` and `tier` off a badge the route sends without them.',
-  },
-  'WireLesson <- CreatorLessonResponse': {
-    fields: ['quiz.questions[].explanation'],
-    row: 'RMD-009',
-    why: 'The lesson quiz declares `explanation`, which the route does not send; read once, not traced.',
-  },
-  'WireLesson[] <- CreatorLessonResponse[]': {
-    fields: ['[].quiz.questions[].explanation'],
-    row: 'RMD-009',
-    why: 'The lesson quiz declares `explanation`, which the route does not send; read once, not traced.',
   },
 };
 

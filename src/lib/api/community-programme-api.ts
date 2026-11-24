@@ -2853,8 +2853,14 @@ interface CampaignFundUsageWire {
   isOverReported: boolean;
 }
 
-/** `DonationTimeSeriesPointResponse` — B15_1GivingResponses.cs:333. */
-interface TimeSeriesPointWire {
+/**
+ * `DonationTimeSeriesPointResponse` — B15_1GivingResponses.cs:333.
+ *
+ * Named apart from the organisation series' `TimeSeriesPointWire`. It had the
+ * same name, and two interfaces of one name in one module merge: the points of
+ * both series were declared with all five fields, three of them never sent.
+ */
+interface DonationTimeSeriesPointWire {
   periodStart: string;
   amount: GivingMoneyWire;
   donationCount: number;
@@ -2868,7 +2874,7 @@ interface DonationTimeSeriesWire {
   to: string;
   timeZone: string;
   granularity: string;
-  points: TimeSeriesPointWire[];
+  points: DonationTimeSeriesPointWire[];
   total: GivingMoneyWire;
   refunded: GivingMoneyWire;
   donationCount: number;

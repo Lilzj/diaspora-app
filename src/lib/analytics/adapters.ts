@@ -339,7 +339,9 @@ function creatorMetricToAnalytics(
     },
     format: definition.format,
     computation: 'server-aggregate',
-    money: metric.amount ?? null,
+    // A creator metric carries no currency (`CreatorMetricResponse`), so there
+    // is no `Money` to pass on. This read an `amount` no route sends.
+    money: null,
     higherIsBetter: metric.higherIsBetter ?? definition.higherIsBetter,
     comparison: comparisonFromPercent(percentToRatio(metric.changePercentage)),
     freshness,
