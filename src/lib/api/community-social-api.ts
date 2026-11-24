@@ -15,7 +15,7 @@
 // `/api/v1/bookmarks` is a *different Bookmarks module* with its own folders and
 // its own identifiers — see the note over the bookmark section.
 //
-// ── The nine things worth knowing before calling anything here ───────────────
+// ── The ten things worth knowing before calling anything here ────────────────
 //
 // **1. camelCase enums, with one PascalCase island.** Every enum value in this
 // module is camelCase (`hateSpeech`, `verifiedMembers`, `afterVoting`) — the
@@ -68,6 +68,11 @@
 // and returns a bare array with no cursor anywhere. See
 // `fetchModerationQueue`.
 //
+// **10. A follow answer is the edge, not the state.** Both follow routes answer
+// `FollowResponse` — `followeeId`, `isMuted`, the new `followerCount` — with no
+// `isFollowing`: which route answered is the fact. `FollowState` is the state
+// (RMD-009; see `useFollow`).
+//
 // ── What this file deliberately does not offer ───────────────────────────────
 //
 // Because the routes do not exist:
@@ -104,6 +109,7 @@ import type {
   CommunityPostVisibility,
   CommunityReactionCapability,
   CommunityReactionKey,
+  CommunityReportReason,
   CreateBookmarkFolderRequest,
   CreateBookmarkRequest,
   CreateCommentRequest,
@@ -130,8 +136,7 @@ import type {
   ShareResponse,
   UpdateCommentRequest,
   UpdatePostRequest,
-  HashtagSuggestionResponse,
-  TrendingHashtagResponse,
+  HashtagResponse,
 } from '@/types/community-social';
 
 const ROOT = '/community';
@@ -884,11 +889,13 @@ export async function deleteBookmark(
 }
 
 /**
- * `GET /community/bookmarks/collections` — a **bare array**.
+ * `GET /community/bookmarks/collections` — a **bare array** of tiles.
  *
- * The whole saved-items surface in one response: every folder, with its items
- * inside it. There is no per-folder route and **no route that moves a bookmark
- * between folders** — the folder is chosen at save time and never again.
+ * One tile per content type and one per named folder, each with a `count` and
+ * **none with its bookmarks** (RMD-009: declared as folders carrying `items`
+ * until then). There is no route that lists a tile's bookmarks and **no route
+ * that moves a bookmark between folders** — the folder is chosen at save time
+ * and never again.
  */
 export function fetchBookmarkCollections(): Promise<BookmarkCollectionResponse[]> {
   return get<BookmarkCollectionResponse[]>(`${ROOT}/bookmarks/collections`);
@@ -955,16 +962,9 @@ export function followTarget(
 }
 
 /**
- * `DELETE /community/follows/{targetId}?targetType=` — **200**, or **404**.
- *
- * `targetType` is a **query parameter** here, not a body field.
- *
- * **This throws when you were not following.** `FollowNotFound` is a genuine
- * failure rather than a no-op, so unfollow is not idempotent and a retry after a
- * successful-but-unacknowledged call fails. `ensureNotFollowing` is the
- * idempotent form.
+ * `GET /community/follows/{targetId}?targetType=member` (20 Oct 2026) —
+ * `FollowStateResponse`. The only answer that says whether the caller follows.
  */
-/** `GET /community/follows/{targetId}?targetType=member` (20 Oct 2026). */
 export interface FollowState {
   isFollowing: boolean;
   followerCount: number;
@@ -975,6 +975,17 @@ export function fetchFollowState(targetId: string): Promise<FollowState> {
   return get<FollowState>(`${ROOT}/follows/${segment(targetId)}`, { targetType: 'member' });
 }
 
+/**
+ * `DELETE /community/follows/{targetId}?targetType=` — **200**, or **404**.
+ *
+ * `targetType` is a **query parameter** here, not a body field. The answer is
+ * the edge that was removed, with the target's new `followerCount`.
+ *
+ * **This throws when you were not following.** `FollowNotFound` is a genuine
+ * failure rather than a no-op, so unfollow is not idempotent and a retry after a
+ * successful-but-unacknowledged call fails. `ensureNotFollowing` is the
+ * idempotent form.
+ */
 export function unfollowTarget(
   targetId: string,
   targetType?: FollowTargetType | null
@@ -1050,6 +1061,25 @@ export function fetchModerationQueue(
   });
 }
 
+/**
+ * Why a queue row was reported: each reason once, in the order the reports gave
+ * them. The row carries its reports rather than a list of reasons (RMD-009).
+ */
+export function queueRowReasons(item: ModerationQueueItemResponse): CommunityReportReason[] {
+  return [...new Set(item.reports.map((report) => report.reasonCode))];
+}
+
+/**
+ * When a queue row was last reported. The row's own `createdAt` is its **first**
+ * report, so it is where the latest starts.
+ */
+export function queueRowLastReportedAt(item: ModerationQueueItemResponse): string {
+  return item.reports.reduce(
+    (latest, report) => (Date.parse(report.createdAt) > Date.parse(latest) ? report.createdAt : latest),
+    item.createdAt
+  );
+}
+
 /** `GET /community/moderation/history/{contentType}/{contentId}` — a **bare array**. */
 export function fetchModerationHistory(
   contentType: CommunityContentType,
@@ -1074,16 +1104,19 @@ export function fetchModerationHistory(
 export function suggestHashtags(
   prefix: string,
   limit?: number | null
-): Promise<HashtagSuggestionResponse[]> {
-  return get<HashtagSuggestionResponse[]>(`${ROOT}/hashtags/suggest`, { prefix, limit });
+): Promise<HashtagResponse[]> {
+  return get<HashtagResponse[]>(`${ROOT}/hashtags/suggest`, { prefix, limit });
 }
 
-/** `GET /community/hashtags/trending` — `countryCode` and `limit` both optional. */
+/**
+ * `GET /community/hashtags/trending` — `countryCode` and `limit` both optional.
+ * Ranked by `recentUsageCount`: a hashtag's rank is its position.
+ */
 export function fetchTrendingHashtags(
   countryCode?: string | null,
   limit?: number | null
-): Promise<TrendingHashtagResponse[]> {
-  return get<TrendingHashtagResponse[]>(`${ROOT}/hashtags/trending`, {
+): Promise<HashtagResponse[]> {
+  return get<HashtagResponse[]>(`${ROOT}/hashtags/trending`, {
     countryCode: countryCode ? countryCode.trim().toUpperCase() : null,
     limit,
   });

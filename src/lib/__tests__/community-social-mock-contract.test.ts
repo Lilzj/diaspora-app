@@ -23,7 +23,9 @@
 // Each case also names the components its body must reach, so a comparison
 // cannot pass by walking an empty list.
 //
-// The cases are the routes RMD-009's wave B2 reshaped. A route that is not
+// The cases are the routes RMD-009's wave B2 reshaped: posts, the feed,
+// comments, reactions and polls (B2a), then follows, shares, bookmarks,
+// hashtags, reports and the moderation records (B2b). A route that is not
 // listed is not yet held to the contract.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -56,6 +58,10 @@ const describeAgainstContract = CONTRACT_FILE === null ? describe.skip : describ
 const OTHERS_POST = '00000000-0000-4000-c000-000000000001';
 /** The seeded post with a poll. */
 const POLL_POST = '00000000-0000-4000-c000-000000000004';
+/** The seeded pinned post, which has a moderation history. */
+const PINNED_POST = '00000000-0000-4000-c000-000000000003';
+/** Somebody to follow. */
+const FOLLOWED = '00000000-0000-4000-e000-0000000000f1';
 
 /** A post with something in every list a post carries. */
 const NEW_POST = {
@@ -244,6 +250,101 @@ const CASES: Record<string, Case> = {
     ask: () =>
       apiClient.post(`/community/content/post/${OTHERS_POST}/reactions`, { reactionKey: 'helpful' }),
     reaches: ['ReactionResponse', 'ReactionSummaryResponse', 'ReactionCountResponse'],
+  },
+  'a follow': {
+    method: 'post',
+    operation: '/api/v1/community/follows/{targetId}',
+    ask: () => apiClient.post(`/community/follows/${FOLLOWED}`, { targetType: 'member', muted: false }),
+    reaches: ['FollowResponse'],
+  },
+  'an unfollow': {
+    method: 'delete',
+    operation: '/api/v1/community/follows/{targetId}',
+    ask: async () => {
+      await apiClient.post(`/community/follows/${FOLLOWED}`, { targetType: 'member', muted: false });
+      return apiClient.delete(`/community/follows/${FOLLOWED}`, { params: { targetType: 'member' } });
+    },
+    reaches: ['FollowResponse'],
+  },
+  "a follow's state": {
+    method: 'get',
+    operation: '/api/v1/community/follows/{targetId}',
+    ask: () => apiClient.get(`/community/follows/${FOLLOWED}`, { params: { targetType: 'member' } }),
+    reaches: ['FollowStateResponse'],
+  },
+  'a share of a post': {
+    method: 'post',
+    operation: '/api/v1/community/posts/{postId}/shares',
+    ask: () =>
+      apiClient.post(`/community/posts/${OTHERS_POST}/shares`, { kind: 'external', destination: 'whatsapp' }),
+    reaches: ['ShareResponse'],
+  },
+  'a share of other content': {
+    method: 'post',
+    operation: '/api/v1/community/content/{contentType}/{contentId}/shares',
+    ask: () => apiClient.post(`/community/content/post/${OTHERS_POST}/shares`, { kind: 'quote' }),
+    reaches: ['ShareResponse'],
+  },
+  'the saved tiles': {
+    method: 'get',
+    operation: '/api/v1/community/bookmarks/collections',
+    ask: async () => {
+      await apiClient.post('/community/bookmarks/folders', { name: 'To read' });
+      return apiClient.get('/community/bookmarks/collections');
+    },
+    reaches: ['BookmarkCollectionResponse'],
+  },
+  'a new bookmark': {
+    method: 'post',
+    operation: '/api/v1/community/bookmarks',
+    ask: () => apiClient.post('/community/bookmarks', { contentType: 'post', contentId: OTHERS_POST }),
+    reaches: ['Community.BookmarkResponse'],
+  },
+  'a new bookmark folder': {
+    method: 'post',
+    operation: '/api/v1/community/bookmarks/folders',
+    ask: () => apiClient.post('/community/bookmarks/folders', { name: 'To read' }),
+    reaches: ['BookmarkFolderResponse'],
+  },
+  'hashtag suggestions': {
+    method: 'get',
+    operation: '/api/v1/community/hashtags/suggest',
+    ask: () => apiClient.get('/community/hashtags/suggest', { params: { prefix: 'ho' } }),
+    reaches: ['HashtagResponse'],
+  },
+  'trending hashtags': {
+    method: 'get',
+    operation: '/api/v1/community/hashtags/trending',
+    ask: () => apiClient.get('/community/hashtags/trending'),
+    reaches: ['HashtagResponse'],
+  },
+  'a report': {
+    method: 'post',
+    operation: '/api/v1/community/reports',
+    ask: () =>
+      apiClient.post('/community/reports', { contentType: 'post', contentId: OTHERS_POST, reason: 'spam' }),
+    reaches: ['Community.ReportResponse'],
+  },
+  'the report reasons': {
+    method: 'get',
+    operation: '/api/v1/community/reports/reasons',
+    ask: () => apiClient.get('/community/reports/reasons'),
+    reaches: ['ReportReasonResponse'],
+  },
+  'the moderation queue': {
+    method: 'get',
+    operation: '/api/v1/community/moderation/queue',
+    ask: async () => {
+      await apiClient.post('/community/reports', { contentType: 'post', contentId: OTHERS_POST, reason: 'spam' });
+      return apiClient.get('/community/moderation/queue');
+    },
+    reaches: ['Community.ModerationQueueItemResponse', 'Community.ReportResponse', 'ContentReviewResponse'],
+  },
+  "a content's moderation history": {
+    method: 'get',
+    operation: '/api/v1/community/moderation/history/{contentType}/{contentId}',
+    ask: () => apiClient.get(`/community/moderation/history/post/${PINNED_POST}`),
+    reaches: ['Community.ModerationDecisionResponse'],
   },
 };
 

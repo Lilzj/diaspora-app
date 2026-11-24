@@ -97,7 +97,6 @@ import type {
   AppealType,
   EvaluateEligibilityBody,
   RecordConfirmationBody,
-  RecordModerationDecisionBody,
   ReviewAppealBody,
   ReviewVerificationBody,
   SubmitAppealBody,
@@ -114,7 +113,6 @@ import type {
   WireEligibilityDecision,
   WireFeatureRequirement,
   WireModerationContentType,
-  WireModerationDecision,
   WireModerationPriority,
   WireModerationQueueItem,
   WireModerationQueueStatus,
@@ -884,22 +882,12 @@ export function assignModerationItem(
   );
 }
 
-/**
- * `POST /trust/moderation/queue/{itemId}/decision` — 200.
- *
- * An unrecognised `action` becomes `Escalate` — the safe fallback, but still
- * not the decision that was made. `reason` is required for `Reject`, `Hide` and
- * `Suspend`; omitting it is a 400, not a silent accept.
- */
-export function recordModerationDecision(
-  itemId: string,
-  body: RecordModerationDecisionBody
-): Promise<WireModerationDecision> {
-  return post<WireModerationDecision>(
-    `${ROOT}/moderation/queue/${segment(itemId)}/decision`,
-    body
-  );
-}
+// No `recordModerationDecision` (RMD-009). Staff decide a case in the staff
+// console, and the app has no decision control (7 Nov 2026). The function that
+// was here sent `{ action, reason }` to a route whose body is
+// `{ outcome, reasonCode, note }`, all three required, so the server could only
+// refuse it; and it read the answer as a decision, where the route answers with
+// the case. Nothing called it.
 
 // ── Reading what came back ───────────────────────────────────────────────────
 

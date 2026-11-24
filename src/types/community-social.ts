@@ -61,10 +61,11 @@
 // because removing it would orphan its replies.
 //
 // **8. Several fields are structurally present and permanently null.**
-// `ShareResponse.quotePostId`, and the four display names on the moderation
-// contracts. They are typed as `null` rather than `string | null` where the
-// server hardcodes them, so a screen cannot be written against a value that will
-// never arrive.
+// `ShareResponse.quotePostId`, and four display names on the moderation records:
+// `authorName` and `authorLevel` on a queue row, `reporterName` on each report
+// in it, `moderatorName` on a decision. They are typed as `null` rather than
+// `string | null` where the server hardcodes them, so a screen cannot be written
+// against a value that will never arrive.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -220,11 +221,22 @@ export type CommunityPostVisibility = Open<
  */
 export type PollResultVisibility = Open<'always' | 'afterVoting' | 'afterClose'>;
 
-/** How something was shared. camelCase. */
-export type ShareKind = Open<'link' | 'repost' | 'quote' | 'direct' | 'external'>;
+/**
+ * How something was shared. camelCase, and the server's four (RMD-009).
+ *
+ * A kind the server does not know is **recorded as `external`, not refused**:
+ * the handler parses it with a fallback. This union named `link`, `repost` and
+ * `direct`, none of which the server has; the share sheet's `link` was recorded
+ * as `external` all along, which is what it is.
+ */
+export type ShareKind = Open<'internal' | 'external' | 'quote' | 'reshare'>;
 
-/** What a follow points at. camelCase. */
-export type FollowTargetType = Open<'member' | 'organization' | 'hashtag' | 'community'>;
+/**
+ * What a follow points at. camelCase. An unknown type is followed as `member`,
+ * not refused. (This named a fourth, `community`, which the server does not have
+ * and nothing sent.)
+ */
+export type FollowTargetType = Open<'member' | 'organization' | 'hashtag'>;
 
 /**
  * Why something was reported. camelCase — `misinformation`, `personalData`.
@@ -253,8 +265,26 @@ export type CommunityReportReason = Open<
   | 'other'
 >;
 
-/** What a moderator did. camelCase. */
-export type ModerationAction = Open<'dismiss' | 'warn' | 'hide' | 'remove' | 'escalate' | 'restore'>;
+/**
+ * What a moderation decision did. camelCase — the server's `ModerationActionType`.
+ *
+ * Named `ModerationAction` with six members until RMD-009 (`dismiss`, `warn`,
+ * `remove`, `escalate` among them), of which the server has two.
+ */
+export type ModerationActionType = Open<
+  'approve' | 'reject' | 'hide' | 'archive' | 'pin' | 'unpin' | 'suspend' | 'restore'
+>;
+
+/** Who or what made a moderation decision. camelCase. */
+export type ModerationSource = Open<'staff' | 'automated' | 'system' | 'author'>;
+
+/**
+ * An automated review's outcome. camelCase.
+ *
+ * **`unavailable` is not `clean`.** It means no provider answered, and a screen
+ * that drew it as a pass would be telling a moderator something nobody checked.
+ */
+export type ContentReviewStatus = Open<'pending' | 'clean' | 'flagged' | 'rejected' | 'unavailable'>;
 
 /**
  * The eleven feed keys, closed.
@@ -1024,10 +1054,13 @@ export interface BookmarkResponse {
   bookmarkId: string;
   /** Property 2. **The same value as `bookmarkId`.** */
   savedId: string;
+  userId: string;
   contentType: CommunityContentType;
   contentId: string;
   folderId: string | null;
   note: string | null;
+  /** The saved content's title, where the route that answered looked it up. */
+  title: string | null;
   createdAt: string;
 }
 
@@ -1035,22 +1068,33 @@ export interface BookmarkFolderResponse {
   folderId: string;
   name: string;
   glyph: string | null;
+  itemCount: number;
+  position: number;
   createdAt: string;
 }
 
 /**
- * One folder and what is in it.
+ * One tile on the saved screen: a count, **not the bookmarks in it**.
  *
  * `GET /community/bookmarks/collections` returns a **bare array** of these — no
- * cursor, no total. There is no route that lists the bookmarks in a folder
- * separately and **no route that moves a bookmark between folders**: a bookmark's
- * folder is set when it is created and never again.
+ * cursor, no total — and two kinds share the shape: one tile per content type
+ * (`contentType` set, `folderId` null, sent even at a count of zero), then one
+ * per folder the member named (`folderId` set, `contentType` null).
+ *
+ * Until RMD-009 this was declared as a folder carrying its `items`, a `name` and
+ * an `itemCount`, none of which the route sends. There is no route that lists
+ * the bookmarks in a tile, and **no route that moves a bookmark between
+ * folders**: a bookmark's folder is set when it is created and never again.
  */
 export interface BookmarkCollectionResponse {
+  contentType: CommunityContentType | null;
   folderId: string | null;
-  name: string;
-  itemCount: number;
-  items: BookmarkResponse[];
+  label: string;
+  icon: string | null;
+  count: number;
+  isAvailable: boolean;
+  /** Media identifiers for the tile's preview, never addresses. Empty on every deployment today. */
+  thumbnailMediaIds: string[];
 }
 
 // ── Shares and follows ───────────────────────────────────────────────────────
@@ -1083,9 +1127,14 @@ export interface ShareResponse {
   contentId: string;
   kind: ShareKind;
   destination: string | null;
-  message: string | null;
   /** **Always null.** No post is ever created from a quote share. */
   quotePostId: null;
+  /**
+   * How many times this content has been shared, this one included. The
+   * request's `message` is stored and **not echoed**: the client declared it
+   * here until RMD-009.
+   */
+  shareCount: number;
   createdAt: string;
 }
 
@@ -1114,17 +1163,30 @@ export interface FollowRequest {
 /**
  * What both follow routes answer — **200 on POST as well as DELETE**.
  *
+ * **The follow edge, not the follow state.** There is no `isFollowing` on it:
+ * the route that answered says that — a POST that succeeded is a follow, a
+ * DELETE that succeeded removed one (and answers with the removed edge, its
+ * `isMuted` false). Until RMD-009 this was declared with `isFollowing`, `muted`
+ * and `targetId`, none of which is sent, and the follow hook wrote the missing
+ * `isFollowing` into the follow-state cache: the contributor page's button
+ * turned back to "Follow" the moment the server confirmed the follow.
+ * `FollowState` (`GET /community/follows/{targetId}`) is the state.
+ *
  * **`DELETE` on something you do not follow is a failure, not a no-op.** The
  * handler answers `FollowNotFound` (404). Unfollow is therefore not idempotent
  * and a "make sure I am not following this" call cannot be written as a bare
  * DELETE — see `isFollowNotFoundError` in the client.
  */
 export interface FollowResponse {
+  followId: string;
+  followerId: string;
+  /** What is followed: the route's `{targetId}`. */
+  followeeId: string;
   targetType: FollowTargetType;
-  targetId: string;
-  isFollowing: boolean;
-  muted: boolean;
+  isMuted: boolean;
+  /** The target's followers after this write. */
   followerCount: number;
+  createdAt: string;
 }
 
 // ── Moderation ───────────────────────────────────────────────────────────────
@@ -1146,14 +1208,22 @@ export interface CreateReportRequest {
 
 export interface ReportResponse {
   reportId: string;
+  reporterId: string;
+  /** **Hardcoded null.** */
+  reporterName: null;
   contentType: CommunityContentType;
   contentId: string;
   /** Property 4. **`reasonCode`**, where the request said `reason`. */
   reasonCode: CommunityReportReason;
   description: string | null;
   evidenceUrl: string | null;
+  /** `open`, `reviewed` or `resolved`. */
   status: string;
+  resolvedBy: string | null;
+  resolutionNote: string | null;
+  /** When it was reported. */
   createdAt: string;
+  resolvedAt: string | null;
 }
 
 export interface ReportReasonResponse {
@@ -1199,48 +1269,96 @@ export interface ModerationQueueQuery {
  * 50 rows and the client cannot tell which. "Fewer rows than the limit" does not
  * mean "that is all there is".
  *
- * Four display fields are hardcoded null, and `title` falls back to the literal
- * string `"(removed)"` when the content is already gone.
+ * **A row carries its reports, not a summary of them** (RMD-009). Until then it
+ * was declared with `reasons`, `firstReportedAt`, `lastReportedAt` and a
+ * `reporterName`, none of which is sent, and the queue screen mapped the absent
+ * `reasons` — so it threw on the first row a server returned. The reasons are the
+ * reports' `reasonCode`s and the last report is the latest `createdAt` among
+ * them (`queueRowReasons`, `queueRowLastReportedAt`); the row's own `createdAt`
+ * is its **first report**, not the content's creation.
+ *
+ * `authorName` and `authorLevel` are hardcoded null, as is `reporterName` on
+ * every report, and `title` falls back to the literal string `"(removed)"` when
+ * the content is already gone.
  */
 export interface ModerationQueueItemResponse {
   contentType: CommunityContentType;
   contentId: string;
   /** The literal `"(removed)"` when the content no longer exists. */
   title: string;
-  reportCount: number;
-  reasons: CommunityReportReason[];
-  firstReportedAt: string;
-  lastReportedAt: string;
-  status: string;
-  /** **Hardcoded null.** */
-  reporterName: null;
+  authorId: string;
   /** **Hardcoded null.** */
   authorName: null;
   /** **Hardcoded null.** */
   authorLevel: null;
+  /** The latest automated review of this content, where there is one. */
+  aiReview: ContentReviewResponse | null;
+  /** How many of the reports read are about this content: `reports.length`. */
+  reportCount: number;
+  reports: ReportResponse[];
+  /** The first report's status. */
+  status: string;
+  /** When this content was **first reported**. */
+  createdAt: string;
 }
 
-export interface ModerationDecisionResponse {
+/** An automated review, as a queue row carries it. */
+export interface ContentReviewResponse {
+  reviewId: string;
   contentType: CommunityContentType;
   contentId: string;
-  action: ModerationAction;
-  reason: string | null;
-  moderatorId: string;
+  status: ContentReviewStatus;
+  /** camelCase — `hateSpeech`, `personalData`. */
+  flags: string[];
+  /** 0 to 1. */
+  confidence: number;
+  /** Which provider answered, and which version of it. */
+  provider: string;
+  providerVersion: string | null;
+  processedAt: string;
+}
+
+/**
+ * One decision in a piece of content's history.
+ *
+ * Declared until RMD-009 with an `action` the server sends as **`actionType`**.
+ */
+export interface ModerationDecisionResponse {
+  actionId: string;
+  /** Null when no member of staff made it — see `source`. */
+  moderatorId: string | null;
   /** **Hardcoded null.** */
   moderatorName: null;
+  contentType: CommunityContentType;
+  contentId: string;
+  actionType: ModerationActionType;
+  source: ModerationSource;
+  reason: string | null;
+  previousStatus: string;
+  newStatus: string;
   createdAt: string;
 }
 
 // ── Discovery ────────────────────────────────────────────────────────────────
 
-export interface HashtagSuggestionResponse {
-  tag: string;
-}
-
-export interface TrendingHashtagResponse {
-  tag: string;
-  rank: number;
-  countryCode: string | null;
+/**
+ * One hashtag — what both discovery routes answer with (RMD-009).
+ *
+ * The client declared a `tag` for suggestions and `tag`, `rank` and
+ * `countryCode` for trending, none of which is sent. A suggestion list is
+ * ordered by `usageCount`, a trending one by `recentUsageCount`: **a trending
+ * hashtag's rank is its position**. Trending narrowed to a country is the
+ * hashtags whose `primaryCountryCode` is that country.
+ */
+export interface HashtagResponse {
+  /** The canonical form; what a feed filters on. */
+  slug: string;
+  /** The capitalisation the first member used; what a screen shows. */
+  displayText: string;
+  usageCount: number;
+  /** Uses inside the current trending window. */
+  recentUsageCount: number;
+  primaryCountryCode: string | null;
 }
 
 /**

@@ -13,23 +13,28 @@
 //
 // ── What this route will not tell you ────────────────────────────────────────
 //
-// **1. Four display fields are hardcoded null.** `reporterName`, `authorName`,
-// `authorLevel` on the queue item and `moderatorName` on a decision. The server
-// never populates them — they are typed `null`, not `string | null`, precisely
-// so a screen cannot be written against a value that will never arrive. This
-// screen identifies content by what it *is* and by the reports against it,
-// because that is what the route carries. Printing "Author: null (null)" is the
-// alternative, and the old screen was one real response away from doing it.
+// **1. Four display fields are hardcoded null.** `authorName` and
+// `authorLevel` on the queue item, `reporterName` on each of its reports and
+// `moderatorName` on a decision. The server never populates them — they are
+// typed `null`, not `string | null`, precisely so a screen cannot be written
+// against a value that will never arrive. This screen identifies content by what
+// it *is* and by the reports against it, because that is what the route
+// carries. Printing "Author: null (null)" is the alternative, and the old screen
+// was one real response away from doing it.
 //
 // **2. `title` can be the literal string `"(removed)"`.** Not a null, not an
 // empty string — those five characters, when the content is already gone. It is
 // rendered as a state rather than as a heading.
 //
-// **3. There is no AI review on this contract.** `ModerationQueueItemResponse`
-// carries no `reviewStatus`, no confidence and no flag list, and no post or
-// comment carries a review status either (the client said one did until
-// RMD-009). So the "AI Flagged" split is gone rather than being reconstructed
-// from something that does not mean what it looked like it meant.
+// **3. A row carries its reports, and an automated review this screen does
+// not show.** The reasons and the last report are read from `reports`
+// (`queueRowReasons`, `queueRowLastReportedAt`), and the row's `createdAt` is
+// its first report. Until RMD-009 the screen read `reasons`, `firstReportedAt`
+// and `lastReportedAt`, which no server sends, and threw on the first row.
+// `aiReview` — status, flags, confidence — is on the row where Community has
+// reviewed the content; this header said there was none, which is why the old
+// "AI Flagged" split was removed rather than rebuilt. No post or comment carries
+// a review status, so the row is the only place one appears.
 //
 // **4. It is not pageable, despite accepting `cursor` and `limit`.** The answer
 // is a bare array with no cursor in it, beside it, or in `meta` — there is
@@ -58,6 +63,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import { humanise, relativeTime } from '@/components/community-social';
 import { useModerationQueue } from '@/hooks/community-social';
+import { queueRowLastReportedAt, queueRowReasons } from '@/lib/api/community-social-api';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { backOr } from '@/lib/platform/navigation';
 
@@ -153,10 +159,11 @@ export default function ModerationQueueScreen() {
                   </View>
 
                   {/* The reasons, which are the only description of the problem
-                      this route carries — `reporterName` and `authorName` are
-                      hardcoded null, so there is nobody to name. */}
+                      this route carries — `authorName`, and `reporterName` on
+                      every report, are hardcoded null, so there is nobody to
+                      name. Read from the reports: the row has no list of them. */}
                   <View className="flex-row flex-wrap mb-3">
-                    {item.reasons.map((reason) => (
+                    {queueRowReasons(item).map((reason) => (
                       <Text
                         key={reason}
                         className="text-[10px] font-bold text-content-secondary bg-surface-muted px-2 py-1 rounded mr-2 mb-1.5"
@@ -167,8 +174,8 @@ export default function ModerationQueueScreen() {
                   </View>
 
                   <Text className="text-[10px] font-semibold text-content-faint mb-3">
-                    First reported {relativeTime(item.firstReportedAt)} · last{' '}
-                    {relativeTime(item.lastReportedAt)}
+                    First reported {relativeTime(item.createdAt)} · last{' '}
+                    {relativeTime(queueRowLastReportedAt(item))}
                   </Text>
 
                   {/* Decisions are made on the content's case in the staff console

@@ -111,11 +111,13 @@ export default function UpdateDetailScreen() {
       });
       if (result.action === Share.dismissedAction) return;
 
-      // Then the record, so `shareCount` reflects it. `kind: 'link'` rather than
-      // `'quote'`: a quote share records a share and creates no post — its
-      // `quotePostId` is always null — so offering "quote this" would promise
-      // the member something with nowhere to go.
-      await sharing.share({ contentType: 'post', contentId: post.postId }, { kind: 'link' });
+      // Then the record, so `shareCount` reflects it. `kind: 'external'`: the
+      // device sheet takes it off the platform. (This sent `'link'`, which the
+      // server does not have and records as `external` anyway.) Not `'quote'`:
+      // a quote share records a share and creates no post — its `quotePostId`
+      // is always null — so offering "quote this" would promise the member
+      // something with nowhere to go.
+      await sharing.share({ contentType: 'post', contentId: post.postId }, { kind: 'external' });
       refresh();
     } catch {
       showAlert({

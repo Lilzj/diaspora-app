@@ -56,7 +56,6 @@ import {
   fetchVerificationQueue,
   hasStaffRiskView,
   recordConfirmation,
-  recordModerationDecision,
   reviewAppeal,
   reviewVerification,
   requestModerationReview,
@@ -75,7 +74,6 @@ import type {
   AppealStatus,
   EvaluateEligibilityBody,
   RecordConfirmationBody,
-  RecordModerationDecisionBody,
   ReviewAppealBody,
   ReviewVerificationBody,
   RiskLevel,
@@ -91,7 +89,6 @@ import type {
   WireConfirmation,
   WireEligibilityDecision,
   WireFeatureRequirement,
-  WireModerationDecision,
   WireModerationQueueItem,
   WirePublicTrustProfile,
   WireReputationDimension,
@@ -987,12 +984,17 @@ export function useTrustModerationQueue(
 
 export interface UseTrustModerationActionsResult {
   assign: (itemId: string, release?: boolean) => Promise<WireModerationQueueItem>;
-  decide: (itemId: string, body: RecordModerationDecisionBody) => Promise<WireModerationDecision>;
   isPending: boolean;
   error: string | null;
 }
 
-/** The two staff actions on a Trust moderation queue item. */
+/**
+ * Assigning a Trust moderation queue item to oneself, or releasing it.
+ *
+ * Deciding one is not here (RMD-009): staff decide a case in the staff console,
+ * and the `decide` this offered sent a body the route refuses. See
+ * `trust-api.ts`.
+ */
 export function useTrustModerationActions(): UseTrustModerationActionsResult {
   const client = useQueryClient();
 
@@ -1005,19 +1007,9 @@ export function useTrustModerationActions(): UseTrustModerationActionsResult {
     },
   });
 
-  const decision = useMutation({
-    mutationFn: (input: { itemId: string; body: RecordModerationDecisionBody }) =>
-      recordModerationDecision(input.itemId, input.body),
-    retry: false,
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: trustKeys.moderation() });
-    },
-  });
-
   return {
     assign: (itemId, release = false) => assignment.mutateAsync({ itemId, release }),
-    decide: (itemId, body) => decision.mutateAsync({ itemId, body }),
-    isPending: assignment.isPending || decision.isPending,
-    error: messageFor(assignment) ?? messageFor(decision),
+    isPending: assignment.isPending,
+    error: messageFor(assignment),
   };
 }
