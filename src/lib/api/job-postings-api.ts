@@ -35,11 +35,11 @@ import { countryCurrency } from '../platform/country-currency';
 import { coordinatesOf } from '../platform/place-coordinates';
 import type {
   ExperienceLevel,
+  JobCardResponse,
   JobType,
   SalaryPeriod,
   WorkplaceType,
 } from '@/types/jobs-hiring';
-import type { JobOpportunity } from '@/types/job';
 
 interface Envelope<T> {
   data: T;
@@ -478,19 +478,21 @@ export function jobPostingErrorMessage(cause: unknown): string {
  * `GET /jobs` itself to fill it. The route and the envelope belong here; the
  * screen only ever wanted a handful of rows.
  *
- * Deliberately loose about the row shape. This is a cross-domain courtesy
- * strip, not the jobs tab, and typing it as a job card would promise a contract
- * the strip does not check.
+ * Typed as the card the route sends (RMD-009). It was the pre-backend
+ * `JobOpportunity`, kept "deliberately loose" so as not to promise a contract
+ * the strip does not check. A declared type promises one either way, and that
+ * one named twelve fields `GET /jobs` never sends. The strip renders `JobCard`,
+ * which reads the card.
  */
 export async function fetchJobsNear(params: {
   cityName?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   limit?: number;
-}): Promise<JobOpportunity[]> {
+}): Promise<JobCardResponse[]> {
   // `toList` is generic and this call did not use it, so the result was
   // `unknown[]` and the one screen that reads it used `any[]` to get past
   // that. `/jobs` is typed in `maps-api.ts` for the same route.
   const response = await apiClient.get('/jobs', { params });
-  return toList<JobOpportunity>(response.data);
+  return toList<JobCardResponse>(response.data);
 }

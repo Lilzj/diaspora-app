@@ -758,7 +758,7 @@ export default function JobDetailScreen() {
             <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary mb-3">Similar jobs</Text>
             {similarJobs.map((item) => (
               // `JobCard` reads the wire card shape first; see its header.
-              <JobCard key={item.jobId} job={item as never} />
+              <JobCard key={item.jobId} job={item} />
             ))}
           </View>
         ) : null}

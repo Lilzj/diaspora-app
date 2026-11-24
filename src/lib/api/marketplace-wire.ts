@@ -31,12 +31,12 @@
 // says so, rather than showing a zero somebody might act on.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { currencySymbol } from '@/lib/domain/money';
 import type { ListingIntent, MarketplaceListing, SwapTerms, SwapTopUp } from '@/types/marketplace';
 
 /** A listing as the platform sends it. Deliberately loose. */
 export interface ListingWire {
   listingId?: string;
-  id?: string;
   title?: string;
   slug?: string;
   description?: string | null;
@@ -55,7 +55,6 @@ export interface ListingWire {
     isDisclosed?: boolean;
     amount?: number | null;
     currency?: string | null;
-    currencyCode?: string | null;
     isNegotiable?: boolean;
     isFree?: boolean;
     minimumOffer?: number | null;
@@ -70,9 +69,7 @@ export interface ListingWire {
   media?: Array<{ mediaId?: string; role?: string; order?: number }> | null;
   seller?: {
     sellerId?: string;
-    id?: string;
     displayName?: string;
-    name?: string;
     isVerified?: boolean;
     badge?: string | null;
     logoMediaId?: string | null;
@@ -257,6 +254,19 @@ export function describeListingPrice(
 }
 
 /**
+ * Where a listing's price goes: what a swap wants back, or the price as the
+ * platform states it. The card and the owner's list both say it this way, so
+ * the two never disagree about what a listing costs.
+ */
+export function listingPriceLine(
+  listing: Pick<MarketplaceListing, 'swap' | 'price' | 'currency'>
+): string {
+  return listing.swap
+    ? describeSwapWants(listing.swap)
+    : describeListingPrice(listing.price, currencySymbol(listing.currency));
+}
+
+/**
  * The wire listing as the screens expect it.
  *
  * `gallery` and `coverImage` stay empty here on purpose: marketplace media is
@@ -270,13 +280,13 @@ export function toListing(wire: ListingWire): MarketplaceListing {
 
   return {
     ...(wire as object),
-    id: wire.listingId ?? wire.id ?? '',
+    id: wire.listingId ?? '',
     title: wire.title ?? '',
     description: wire.description ?? wire.summary ?? '',
     // An undisclosed price is not a free one. Left undefined so the render can
     // say the price is on request rather than showing a zero.
     price: price.isDisclosed === false ? undefined : price.amount,
-    currency: price.currency ?? price.currencyCode,
+    currency: price.currency,
     negotiable: price.isNegotiable ?? false,
     quantity: wire.inventory?.quantity ?? undefined,
     // A free listing that names a cause is a donation, not a plain giveaway.
@@ -287,8 +297,8 @@ export function toListing(wire: ListingWire): MarketplaceListing {
       ...seller,
       // `displayName` on the wire; the render wants `name`, and reading the
       // wrong one crashed this screen.
-      name: seller.displayName ?? seller.name ?? 'Seller',
-      sellerId: seller.sellerId ?? seller.id ?? '',
+      name: seller.displayName ?? 'Seller',
+      sellerId: seller.sellerId ?? '',
       isVerified: seller.isVerified ?? false,
       // Absent on the wire. Left undefined rather than invented — the render
       // guards each one.

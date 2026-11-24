@@ -135,7 +135,7 @@ describe('the creator workspace reads the routes it says it reads', () => {
       data: { items: [{ listingId: 'm1', title: 'Refurbished laptop', status: 'Active', viewCount: 5 }] },
     });
     api.onGet('/housing/listings/mine').reply(200, {
-      data: { items: [{ listingId: 'h1', title: 'Two-bedroom in Yaba', status: 'Published' }] },
+      data: { items: [{ id: 'h1', title: 'Two-bedroom in Yaba', status: 'Published' }] },
     });
     api.onGet('/community-life/events/mine').reply(200, {
       data: { items: [{ eventId: 'e1', title: 'Lagos meetup', status: 'Published' }] },

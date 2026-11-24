@@ -58,7 +58,8 @@
 // **No cross-domain engagement.** `messagesCount`, `unreadMessagesCount` and
 // `offersCount` are only set where the source route carries them. Marketplace
 // cards carry `viewCount` and `saveCount`; guide cards carry `views`,
-// `commentCount` and `bookmarkCount`; events carry neither. Absent stays absent.
+// `commentCount` and `bookmarkCount`; events and homes carry neither. Absent
+// stays absent.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import axios from 'axios';
@@ -158,7 +159,8 @@ async function readSource<T>(
 interface GuideRow {
   guideId: string;
   title?: string | null;
-  summary?: string | null;
+  /** The guide's summary. It was read as `summary`, which no guide card sends (RMD-009). */
+  excerpt?: string | null;
   status?: string | null;
   categoryKey?: string | null;
   cityName?: string | null;
@@ -189,51 +191,56 @@ interface ListingRow {
   location?: { cityName?: string | null; regionName?: string | null } | null;
 }
 
+/**
+ * `ProviderSummaryResponse`. Its summary is `summary`; this read `description`,
+ * so a business never showed one here. It sends no `createdAt` either, so a
+ * business that was never published has no date to show (RMD-009).
+ */
 interface ProviderRow {
   providerId?: string;
   name?: string | null;
-  description?: string | null;
+  summary?: string | null;
   status?: string | null;
   category?: { name?: string | null } | null;
   coverMedia?: { mediaId?: string | null } | null;
   location?: { cityName?: string | null } | null;
   publishedAt?: string | null;
-  createdAt?: string | null;
 }
 
 /**
  * `HousingListingCardResponse`. The photo is `coverImage.mediaId`, the price
  * `price` and the area `location.neighborhoodName`; this read `coverMediaId`,
  * `rent` and `location.neighbourhood`, so every home was told to add a
- * photograph it had (Android UAT, 3 Nov 2026). The old names stay as fallbacks.
+ * photograph it had (Android UAT, 3 Nov 2026). The old names stayed on as
+ * fallbacks beside `listingId`, `viewCount` and `saveCount`, none of which a
+ * home's card sends; they went on 24 Nov 2026 (RMD-009). With no counts on the
+ * card, a home's views and saves stay at the zero every row starts from.
  */
 interface HousingRow {
-  listingId?: string;
   id?: string;
   title?: string | null;
   summary?: string | null;
   status?: string | null;
   accommodationTypeKey?: string | null;
   coverImage?: { mediaId?: string | null } | null;
-  coverMediaId?: string | null;
   publishedAt?: string | null;
-  viewCount?: number | null;
-  saveCount?: number | null;
   price?: { isDisclosed?: boolean | null; amount?: number | null; currencyCode?: string | null } | null;
-  rent?: { amount?: number | null; currency?: string | null } | null;
-  location?: { cityName?: string | null; neighborhoodName?: string | null; neighbourhood?: string | null } | null;
+  location?: { cityName?: string | null; neighborhoodName?: string | null } | null;
 }
 
+/**
+ * `EventSummaryResponse`. Its city is `location.cityName`; this read a
+ * top-level `cityName`, so an event never showed where it is. It read `id` and
+ * `updatedAt` too, which no event summary sends (RMD-009).
+ */
 interface EventRow {
   eventId?: string;
-  id?: string;
   title?: string | null;
   summary?: string | null;
   status?: string | null;
   startsAt?: string | null;
-  updatedAt?: string | null;
   coverMediaId?: string | null;
-  cityName?: string | null;
+  location?: { cityName?: string | null } | null;
 }
 
 /**
@@ -357,7 +364,7 @@ export async function fetchWorkspaceContent(
     item.helpfulVotes = row.helpfulCount ?? undefined;
     item.readingTime = row.readingTimeMinutes ? `${row.readingTimeMinutes} min` : undefined;
     item.thumbnail = row.heroMediaId ?? undefined;
-    item.summary = row.summary ?? undefined;
+    item.summary = row.excerpt ?? undefined;
     item.category = row.categoryKey ?? undefined;
     item.location = row.cityName ?? row.countryCode ?? undefined;
     item.tags = row.tags ?? undefined;
@@ -390,7 +397,7 @@ export async function fetchWorkspaceContent(
   }
 
   for (const row of housing.rows) {
-    const id = row?.listingId ?? row?.id;
+    const id = row?.id;
     if (!id) continue;
     const item = baseItem(
       id,
@@ -401,18 +408,13 @@ export async function fetchWorkspaceContent(
     );
     item.createdDate = toDisplayDate(row.publishedAt);
     item.lastUpdated = toDisplayDate(row.publishedAt);
-    item.views = row.viewCount ?? 0;
-    item.bookmarks = row.saveCount ?? 0;
-    item.thumbnail = row.coverImage?.mediaId ?? row.coverMediaId ?? undefined;
+    item.thumbnail = row.coverImage?.mediaId ?? undefined;
     item.summary = row.summary ?? undefined;
     item.category = row.accommodationTypeKey ?? undefined;
-    item.location =
-      row.location?.cityName ?? row.location?.neighborhoodName ?? row.location?.neighbourhood ?? undefined;
+    item.location = row.location?.cityName ?? row.location?.neighborhoodName ?? undefined;
     item.price =
       row.price?.isDisclosed !== false && typeof row.price?.amount === 'number'
         ? `${row.price.currencyCode ?? ''} ${row.price.amount}`.trim()
-        : typeof row.rent?.amount === 'number'
-        ? `${row.rent.currency ?? ''} ${row.rent.amount}`.trim()
         : undefined;
     items.push(item);
   }
@@ -429,17 +431,17 @@ export async function fetchWorkspaceContent(
       toStatus(row.status, 'Draft'),
       identity
     );
-    item.createdDate = toDisplayDate(row.publishedAt ?? row.createdAt);
-    item.lastUpdated = toDisplayDate(row.publishedAt ?? row.createdAt);
+    item.createdDate = toDisplayDate(row.publishedAt);
+    item.lastUpdated = toDisplayDate(row.publishedAt);
     item.thumbnail = row.coverMedia?.mediaId ?? undefined;
-    item.summary = row.description ?? undefined;
+    item.summary = row.summary ?? undefined;
     item.category = row.category?.name ?? undefined;
     item.location = row.location?.cityName ?? undefined;
     items.push(item);
   }
 
   for (const row of events.rows) {
-    const id = row?.eventId ?? row?.id;
+    const id = row?.eventId;
     if (!id) continue;
     const item = baseItem(
       id,
@@ -449,10 +451,10 @@ export async function fetchWorkspaceContent(
       identity
     );
     item.createdDate = toDisplayDate(row.startsAt);
-    item.lastUpdated = toDisplayDate(row.updatedAt ?? row.startsAt);
+    item.lastUpdated = toDisplayDate(row.startsAt);
     item.thumbnail = row.coverMediaId ?? undefined;
     item.summary = row.summary ?? undefined;
-    item.location = row.cityName ?? undefined;
+    item.location = row.location?.cityName ?? undefined;
     items.push(item);
   }
 
@@ -508,7 +510,7 @@ export async function fetchWorkspaceArchive(
     items.push(item);
   }
   for (const row of housing.rows) {
-    const id = row?.listingId ?? row?.id;
+    const id = row?.id;
     if (!id) continue;
     const item = baseItem(id, 'Housing', row.title ?? 'Untitled property', 'Archived', identity);
     item.lastUpdated = toDisplayDate(row.publishedAt);
@@ -518,7 +520,7 @@ export async function fetchWorkspaceArchive(
   for (const row of providers.rows) {
     if (!row?.providerId || row.status !== 'Archived') continue;
     const item = baseItem(row.providerId, 'Provider', row.name ?? 'Untitled business', 'Archived', identity);
-    item.lastUpdated = toDisplayDate(row.publishedAt ?? row.createdAt);
+    item.lastUpdated = toDisplayDate(row.publishedAt);
     items.push(item);
   }
 

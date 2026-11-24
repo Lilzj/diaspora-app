@@ -272,7 +272,7 @@ export default function EmployerProfileScreen() {
             <>
               {jobs.jobs.map((job) => (
                 // `JobCard` reads the wire card shape first; see its header.
-                <JobCard key={job.jobId} job={job as never} />
+                <JobCard key={job.jobId} job={job} />
               ))}
               {jobs.hasMore ? (
                 <Button

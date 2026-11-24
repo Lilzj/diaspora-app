@@ -17,6 +17,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { hostFromLandlord, type LandlordSummaryWire } from '../api/housing-host';
+import { currencySymbol } from '../domain/money';
 import type { HousingListing, HousingMediaRef } from '@/types/housing';
 
 /** `HousingListingCardResponse`, loosely — every member optional but the id. */
@@ -87,6 +88,31 @@ function availabilityLabel(availableFrom: string | null | undefined, now: Date):
   if (Number.isNaN(from.getTime())) return '';
   if (from.getTime() <= now.getTime()) return 'Available Now';
   return from.toISOString().slice(0, 10);
+}
+
+/** "month", "week", "night" — from the platform's period, month when it said none. */
+function periodWord(rentPeriod: string | undefined): string {
+  switch (rentPeriod) {
+    case 'PerNight':
+      return 'night';
+    case 'PerWeek':
+      return 'week';
+    case 'PerYear':
+      return 'year';
+    default:
+      return 'month';
+  }
+}
+
+/**
+ * The rent as a card says it, "Rs 25000/month". An undisclosed rent is "Price
+ * on request", never a symbol followed by nothing. The housing card and the
+ * owner's list both say it this way, so the two never disagree.
+ */
+export function describeRent(home: Pick<HousingListing, 'rent' | 'currency' | 'rentPeriod'>): string {
+  return home.rent == null
+    ? 'Price on request'
+    : `${currencySymbol(home.currency)}${home.rent}/${periodWord(home.rentPeriod)}`;
 }
 
 /** One card, in the shape `HousingCard` renders. */

@@ -38,6 +38,14 @@ describe('the job card bottom row', () => {
     // `mb-4.5` is not on Tailwind's scale, so the perks row had no margin at all.
     expect(card).not.toContain('mb-4.5');
   });
+
+  // RMD-009, 24 Nov 2026. The perks row read flags no job card carries, so it
+  // only ever drew its bottom margin. It went with them, and the row after it
+  // in each layout takes that margin over, so the card is spaced as before.
+  it('keeps the space the empty perks row used to leave', () => {
+    expect(bottomRow).toContain('border-t border-faint pt-4 mt-4');
+    expect(card).toContain('border-t border-faint pt-3 mt-3');
+  });
 });
 
 // The same overflow on My Profile (Android UAT, 3 Nov 2026): a long description

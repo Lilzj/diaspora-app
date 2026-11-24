@@ -52,14 +52,17 @@ import { Button } from '@/components/Button';
 import { router } from 'expo-router';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { fetchMyProviders } from '@/lib/api/providers-api';
-import { fetchMyMarketplaceListings } from '@/lib/api/marketplace-listings-api';
+import { fetchMyMarketplaceListings, toMarketplaceListing } from '@/lib/api/marketplace-listings-api';
+import { listingPriceLine } from '@/lib/api/marketplace-wire';
 import { fetchMyHousingListings } from '@/lib/api/housing-listings-api';
+import { describeRent, toHousingCardListing } from '@/lib/platform/housing-cards';
+import { placeLabelOf } from '@/lib/platform/listing-place';
 import { holdingsFromFailure } from '@/lib/analytics/owner-holdings';
 
-// `MyMarketplaceListing` and `MyHousingListing` moved to the two modules that
-// own those routes (FSOLID-002). They described `ListingCardResponse` and
-// `HousingListingCardResponse` — wire shapes, which belong beside the read that
-// produces them rather than in the one screen that happened to need them first.
+// The two "mine" routes answer with the cards the searches send, and are read
+// as those cards (RMD-009). They were read as `MyMarketplaceListing` and
+// `MyHousingListing`, shapes of this list's own that declared a
+// `price.displayText` and a `location.areaName` neither card has.
 
 /** One row, whichever vertical it came from. */
 interface OwnedListing {
@@ -72,14 +75,17 @@ interface OwnedListing {
   href: string;
 }
 
-function subtitleOf(
-  category: string,
-  location: { cityName?: string | null; areaName?: string | null } | null | undefined,
-  price: { displayText?: string | null } | null | undefined
-): string {
-  return [category, location?.areaName ?? location?.cityName, price?.displayText]
-    .filter(Boolean)
-    .join(' · ');
+/**
+ * "Category · place · price", leaving out whatever a row does not have.
+ *
+ * The place and the price are worded by the helpers the vertical's own card
+ * uses, so a row and the card it stands for never disagree. This read
+ * `location.areaName ?? location.cityName` and `price.displayText`, and neither
+ * card sends `areaName` or `displayText` (RMD-009): every row fell back to its
+ * city, and no listing or home ever showed its price here.
+ */
+function subtitleOf(...parts: (string | null | undefined)[]): string {
+  return parts.filter(Boolean).join(' · ');
 }
 
 async function fetchMyListings(): Promise<{ items: OwnedListing[]; partial: boolean }> {
@@ -96,33 +102,34 @@ async function fetchMyListings(): Promise<{ items: OwnedListing[]; partial: bool
   const items: OwnedListing[] = [];
 
   if (marketplace.status === 'fulfilled') {
-    for (const listing of marketplace.value) {
+    for (const card of marketplace.value) {
       items.push({
-        key: `marketplace:${listing.listingId}`,
-        id: listing.listingId,
-        title: listing.title,
-        status: listing.status,
+        key: `marketplace:${card.listingId}`,
+        id: card.listingId,
+        title: card.title ?? '',
+        status: card.status ?? '',
         kind: 'marketplace',
-        subtitle: subtitleOf(listing.categoryKey, listing.location, listing.price),
-        href: `/marketplace/${listing.listingId}`,
+        subtitle: subtitleOf(
+          card.categoryKey,
+          placeLabelOf(card as never),
+          listingPriceLine(toMarketplaceListing(card))
+        ),
+        href: `/marketplace/${card.listingId}`,
       });
     }
   }
 
   if (housing.status === 'fulfilled') {
-    for (const listing of housing.value) {
+    for (const card of housing.value) {
+      const home = toHousingCardListing(card);
       items.push({
-        key: `housing:${listing.id}`,
-        id: listing.id,
-        title: listing.title,
-        status: listing.status,
+        key: `housing:${card.id}`,
+        id: card.id,
+        title: card.title ?? '',
+        status: card.status ?? '',
         kind: 'housing',
-        subtitle: subtitleOf(
-          listing.accommodationTypeName ?? listing.accommodationTypeKey,
-          listing.location,
-          listing.price
-        ),
-        href: `/housing/${listing.id}`,
+        subtitle: subtitleOf(home.listingType, placeLabelOf(card as never), describeRent(home)),
+        href: `/housing/${card.id}`,
       });
     }
   }
@@ -138,13 +145,12 @@ async function fetchMyListings(): Promise<{ items: OwnedListing[]; partial: bool
         title: provider.name,
         status: provider.status,
         kind: 'provider',
+        // A business has no price of its own; its services are priced
+        // individually, and inventing a "from" figure here would be a claim
+        // about what it charges.
         subtitle: subtitleOf(
           provider.category?.name ?? 'Service',
-          provider.location,
-          // A business has no price of its own; its services are priced
-          // individually, and inventing a "from" figure here would be a claim
-          // about what it charges.
-          null
+          provider.location?.areaName ?? provider.location?.cityName
         ),
         href: `/provider/${provider.providerId}`,
       });

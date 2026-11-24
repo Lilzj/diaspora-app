@@ -774,21 +774,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: "Declared as `{ date, value }`, the organisation growth series' shape; see the `AnalyticsWire` entry. No typed read.",
   },
-  'EventRow <- EventSummaryResponse': {
-    fields: ['cityName', 'id', 'updatedAt'],
-    row: 'RMD-009',
-    why: 'The creator workspace reads its rows tolerantly — `listingId ?? id`, `?? 0` — so nothing throws, but the fields named here are never sent and their figures always read as the fallback.',
-  },
-  'GuideRow <- GuideCardResponse': {
-    fields: ['summary'],
-    row: 'RMD-009',
-    why: 'The creator workspace reads its rows tolerantly — `listingId ?? id`, `?? 0` — so nothing throws, but the fields named here are never sent and their figures always read as the fallback.',
-  },
-  'HousingRow <- HousingListingCardResponse': {
-    fields: ['coverMediaId', 'listingId', 'location.neighbourhood', 'rent', 'saveCount', 'viewCount'],
-    row: 'RMD-009',
-    why: 'The creator workspace reads its rows tolerantly — `listingId ?? id`, `?? 0` — so nothing throws, but the fields named here are never sent and their figures always read as the fallback.',
-  },
   'IntegrationConnection <- IntegrationConnectionResponse': {
     fields: ['gapId'],
     row: 'RMD-009',
@@ -799,45 +784,10 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: '`gapId` is read by `integrations/status`; `lastError.retryAfterSeconds` is never read. Neither is sent.',
   },
-  'JobOpportunity <- JobCardResponse': {
-    fields: ['benefitsFlags', 'category', 'description', 'employer', 'employmentType', 'expiresAt', 'location', 'salary.amount', 'salary.currency', 'salary.frequency', 'salary.maxAmount', 'urgency'],
-    row: 'RMD-009',
-    why: 'The jobs browse reads card rows as the full `JobOpportunity`; the card sends none of these 12. The map read them that way too until RMD-007 gave it the card; the readers left are not traced.',
-  },
-  'ListingWire <- ListingResponse': {
-    fields: ['id', 'price.currencyCode', 'seller.id', 'seller.name'],
-    row: 'RMD-009',
-    why: '`id` is read only behind `listingId`. `price.currencyCode`, `seller.id` and `seller.name` are declared for older shapes and nothing reads them.',
-  },
-  'MarketplaceListingCardResponse <- ListingCardResponse': {
-    fields: ['description'],
-    row: 'RMD-009',
-    why: 'Read as `description ?? summary`: the card never sends `description`, so the fallback always wins and the order says the opposite of what happens.',
-  },
-  'MyHousingListing <- HousingListingCardResponse': {
-    fields: ['location.areaName', 'price.displayText'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
-  'MyMarketplaceListing <- ListingCardResponse': {
-    fields: ['location.areaName', 'price.displayText'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
   'Partial<ConversationMediaGallery> <- ConversationMediaResponse': {
     fields: ['voice[].waveformData'],
     row: 'RMD-009',
     why: "`uploadProgress` is the device's own upload state, kept on the wire type. `waveformData` is never sent; `MessageBubble` falls back to random bars.",
-  },
-  'PlatformLocation <- LocationReferenceResponse': {
-    fields: ['precision'],
-    row: 'RMD-009',
-    why: '`precision` is declared on the reverse-geocode result and not sent. The reads the index finds are of other `precision` fields; not traced further.',
-  },
-  'ProviderRow <- ProviderSummaryResponse': {
-    fields: ['createdAt', 'description'],
-    row: 'RMD-009',
-    why: 'The creator workspace reads its rows tolerantly — `listingId ?? id`, `?? 0` — so nothing throws, but the fields named here are never sent and their figures always read as the fallback.',
   },
   'PublicCreator <- PublicCreatorResponse': {
     fields: ['badges[].progress', 'badges[].tier'],
