@@ -20,6 +20,14 @@
 //   > A development handler written from the client's expectations proves the
 //   > client is self-consistent. It proves nothing about the platform.
 //
+// They drifted all the same. Until RMD-009 the post, the feed, the reaction
+// summary, the poll and the comment here were the client's invented shapes —
+// flat `authorId` and `cityName`, `counts` and `myReactionKey`, `isClosed` and
+// `selectedOptionIds`, a `reviewStatus` — and the client read them back, so
+// every test agreed with a server that sends none of them.
+// `community-social-mock-contract.test.ts` now holds what this file serves to
+// the published contract.
+//
 // ── The refusals this file ENFORCES rather than describes ────────────────────
 //
 //   1. **`prefix` is required on `/hashtags/suggest`.** Absent or blank is a
@@ -73,10 +81,11 @@
 //      `reportCount` on a post is **0 for anyone who is not its author** — the
 //      figure is suppressed, not the field.
 //
-//  12. **`reviewStatus` can be `unavailable`.** This deployment has no content
-//      review provider configured, so most content carries `unavailable` — which
-//      is *not* `clean`. A handler that emitted `clean` everywhere would let a
-//      "checked and safe" badge be developed against a guarantee nothing makes.
+//  12. **A feed row is a feed item, not a post.** `{ contentType, contentId,
+//      post }`, where `post` is the summary a feed carries: no visibility,
+//      attachments, poll (only `hasPoll`), share or bookmark count, report
+//      count, edit state, creation time or permissions. And neither a post nor
+//      a comment carries a review status at all.
 //
 //  13. **Deleted comments are delivered, not omitted.** `isTombstoned: true`,
 //      empty `body`, replies intact. `renderedDepth` is clamped at 6 while
@@ -131,39 +140,55 @@ type Reply = [number, unknown];
 interface WireReactionCount {
   reactionKey: string;
   count: number;
+  reactedByViewer: boolean;
 }
 
 interface WireReactionSummary {
   totalCount: number;
-  counts: WireReactionCount[];
-  myReactionKey: string | null;
+  reactions: WireReactionCount[];
+  /** A list: a member may hold several reactions on one item at once. */
+  viewerReactions: string[];
+  likeCount: number;
+  helpfulCount: number;
+  confirmationCount: number;
+  disputeCount: number;
 }
 
 interface WireReaction {
+  /** `Guid.Empty` on every answer, adding or removing. */
+  reactionId: string;
+  userId: string;
   contentType: string;
   contentId: string;
+  reactionKey: string;
+  createdAt: string;
   /** Property 10. The same record a post calls `reactions`. */
   summary: WireReactionSummary;
-  myReactionKey: string | null;
 }
 
 interface WireAttachment {
   attachmentId: string;
   kind: string;
   mediaId: string | null;
-  url: string | null;
-  role: string | null;
-  caption: string | null;
+  role: string;
   position: number;
+  caption: string | null;
+  linkUrl: string | null;
+  linkTitle: string | null;
+  linkDescription: string | null;
+  linkSiteName: string | null;
+  linkImageMediaId: string | null;
 }
 
 interface WirePollOption {
   optionId: string;
   label: string;
+  position: number;
   imageMediaId: string | null;
   /** Property 11. Null — not 0 — while results are hidden. */
   voteCount: number | null;
   sharePercent: number | null;
+  votedByViewer: boolean;
 }
 
 interface WirePoll {
@@ -172,58 +197,125 @@ interface WirePoll {
   options: WirePollOption[];
   allowsMultiple: boolean;
   resultVisibility: string;
+  /** `open`, `closed` or `cancelled`. There is no `isClosed`. */
+  status: string;
   closesAt: string | null;
-  isClosed: boolean;
   totalVotes: number | null;
+  voterCount: number | null;
   hasVoted: boolean;
-  selectedOptionIds: string[];
+  canSeeResults: boolean;
 }
 
-interface WirePost {
+/** `AuthorSummaryResponse`. */
+interface WireAuthor {
+  userId: string;
+  name: string | null;
+  avatarMediaId: string | null;
+  avatarUrl: string | null;
+  reputationLevel: string | null;
+  isCountryVerified: boolean;
+  primaryCountryCode: string | null;
+  followerCount: number;
+  isFollowedByUser: boolean;
+  organizationId: string | null;
+  organizationName: string | null;
+  publishingIdentityType: string | null;
+}
+
+/** `LocationContextResponse`. */
+interface WireLocation {
+  countryCode: string | null;
+  areaId: string | null;
+  areaName: string | null;
+  cityName: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  distanceKm: number | null;
+  pointIsExact: boolean;
+}
+
+/** `CommunityPostSummaryResponse`: a post as a feed item carries it. Property 12. */
+interface WirePostSummary {
   postId: string;
   /** Property 7. The same value as `postId`. */
   updateId: string;
+  author: WireAuthor;
   title: string | null;
   body: string;
   /** Property 7. The same value as `body`. */
   description: string;
   category: string | null;
   urgency: string | null;
+  status: string;
+  contentType: string;
+  location: WireLocation;
+  imageMediaIds: string[];
+  hashtags: string[];
+  /** Property 10. The same record a reaction response calls `summary`. */
+  reactions: WireReactionSummary;
+  commentCount: number;
+  confirmationCount: number;
+  verifiedResidentConfirmationCount: number;
+  requiredConfirmations: number;
+  verificationStatus: string;
+  bookmarkedByViewer: boolean;
+  isPinned: boolean;
+  hasPoll: boolean;
+  publishedAt: string | null;
+  expiresAt: string | null;
+  isExpired: boolean;
+  affectedRadiusMetres: number | null;
+  closedAt: string | null;
+}
+
+/** `CommunityPostResponse`: the whole post. */
+interface WirePost {
+  postId: string;
+  /** Property 7. The same value as `postId`. */
+  updateId: string;
+  author: WireAuthor;
+  title: string | null;
+  body: string;
+  /** Property 7. The same value as `body`. */
+  description: string;
+  category: string | null;
+  urgency: string | null;
+  /** 16 Sep 2026: an author taking an alert back is `withdrawn` or `cancelled`. */
+  status: string;
+  contentType: string;
   visibility: string;
-  audienceCountryCode: string | null;
-  audienceAreaId: string | null;
-  visibilityRuleId: string | null;
-  countryCode: string | null;
-  areaId: string | null;
-  cityName: string | null;
-  areaName: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  authorId: string;
-  organizationId: string | null;
+  location: WireLocation;
   attachments: WireAttachment[];
+  imageMediaIds: string[];
+  hashtags: string[];
+  mentionedUserIds: string[];
   poll: WirePoll | null;
   /** Property 10. The same record a reaction response calls `summary`. */
   reactions: WireReactionSummary;
   commentCount: number;
   shareCount: number;
   bookmarkCount: number;
-  isPinned: boolean;
-  isEdited: boolean;
-  isPublished: boolean;
-  isBookmarked: boolean;
+  viewCount: number;
+  bookmarkedByViewer: boolean;
+  verificationStatus: string;
+  confirmationCount: number;
+  verifiedResidentConfirmationCount: number;
+  requiredConfirmations: number;
+  requiredVerifiedConfirmations: number;
   /** Property 11. Zero for anyone who is not the author. */
   reportCount: number;
-  reviewStatus: string;
-  versionNumber: number;
-  createdAt: string;
-  updatedAt: string | null;
+  isPinned: boolean;
+  isEdited: boolean;
+  commentsClosed: boolean;
+  pinnedCommentId: string | null;
+  revisionCount: number;
   publishedAt: string | null;
   expiresAt: string | null;
-  /** 16 Sep 2026: an author taking an alert back, its declared reach, and what the caller may do. */
-  status: string;
-  closedAt: string | null;
+  isExpired: boolean;
+  editedAt: string | null;
   affectedRadiusMetres: number | null;
+  closedAt: string | null;
+  createdAt: string;
   canEdit: boolean;
   canWithdraw: boolean;
   canCancel: boolean;
@@ -245,23 +337,30 @@ interface WireComment {
   commentId: string;
   contentType: string;
   contentId: string;
-  postId: string | null;
+  author: WireAuthor;
+  authorId: string;
+  authorName: string | null;
+  authorReputationLevel: string | null;
   parentCommentId: string | null;
   quotedCommentId: string | null;
   /** Property 13. The empty string when tombstoned. */
   body: string;
-  authorId: string;
+  mentions: string[];
+  attachmentMediaId: string | null;
+  likeCount: number;
+  isLikedByUser: boolean;
+  reactions: WireReactionSummary;
+  isPinned: boolean;
+  isEdited: boolean;
+  isTombstoned: boolean;
+  /** `active`, `reported`, `hidden`, `removed` or `deleted`. */
+  status: string;
   depth: number;
   /** `min(depth, 6)`. */
   renderedDepth: number;
-  isTombstoned: boolean;
-  isPinned: boolean;
-  isEdited: boolean;
-  attachmentMediaId: string | null;
-  reactions: WireReactionSummary;
   replies: WireComment[];
   replyCount: number;
-  reviewStatus: string;
+  canEdit: boolean;
   createdAt: string;
   updatedAt: string | null;
 }
@@ -275,18 +374,27 @@ interface WireCommentThread {
   totalCount: number;
   nextCursor: string | null;
   hasMore: boolean;
+  commentsClosed: boolean;
+}
+
+/** One row of a feed. Property 12: it holds a post; it is not one. */
+interface WireFeedItem {
+  contentType: string;
+  contentId: string;
+  post: WirePostSummary | null;
+  distanceKm: number | null;
+  reason: string | null;
 }
 
 interface WireFeed {
   feedKey: string;
-  ranking: string;
-  /** Property 16. **`items`**, like the platform envelope. */
-  items: WirePost[];
+  rankingKey: string;
+  /** Property 16. **`items`**, like the platform envelope — feed items, not posts. */
+  items: WireFeedItem[];
   nextCursor: string | null;
   hasMore: boolean;
   /** Property 16. **`totalAvailable`**, not `totalCount`. */
   totalAvailable: number | null;
-  generatedAt: string;
 }
 
 interface WireBookmark {
@@ -640,7 +748,6 @@ interface StoredPost {
   isPinned: boolean;
   isEdited: boolean;
   isPublished: boolean;
-  reviewStatus: string;
   versionNumber: number;
   revisions: WireRevision[];
   hashtags: string[];
@@ -670,7 +777,9 @@ interface StoredPoll {
   allowsMultiple: boolean;
   resultVisibility: string;
   closesAt: string | null;
-  selectedOptionIds: string[];
+  /** The signed-in member's choices. The wire says so per option, as `votedByViewer`. */
+  viewerVotes: string[];
+  voterCount: number;
 }
 
 interface StoredComment {
@@ -686,7 +795,6 @@ interface StoredComment {
   isPinned: boolean;
   isEdited: boolean;
   attachmentMediaId: string | null;
-  reviewStatus: string;
   createdAt: string;
   updatedAt: string | null;
 }
@@ -712,9 +820,10 @@ interface StoredFollow {
 const posts = new Map<string, StoredPost>();
 const comments = new Map<string, StoredComment>();
 
-/** `contentKey` → reaction key → count. The signed-in member's own is separate. */
+/** `contentKey` → reaction key → count. The signed-in member's own are separate. */
 const reactionCounts = new Map<string, Map<string, number>>();
-const myReactions = new Map<string, string>();
+/** `contentKey` → every key the signed-in member reacted with: several, not one. */
+const myReactions = new Map<string, Set<string>>();
 
 const bookmarks = new Map<string, WireBookmark>();
 const folders: WireBookmarkFolder[] = [];
@@ -763,7 +872,6 @@ interface Seed {
   ageHours: number;
   /** Set for the one expired post, which is absent unless `includeExpired`. */
   expiredHoursAgo?: number;
-  reviewStatus?: string;
   hashtags?: string[];
   poll?: {
     question: string;
@@ -816,9 +924,6 @@ const SEEDS: Seed[] = [
     countryCode: 'GH',
     isPinned: true,
     ageHours: 8,
-    // Property 12. Flagged, so a client has something that is genuinely not
-    // clean and genuinely not unavailable.
-    reviewStatus: 'flagged',
     reactions: { support: 7 },
   },
   {
@@ -890,16 +995,7 @@ function hoursAgo(hours: number): string {
   return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 }
 
-/**
- * Seeds the store.
- *
- * `reviewStatus` defaults to **`unavailable`** rather than `clean` — property
- * 12. This deployment has no content review provider configured, so nothing
- * looked at most of this content. A handler that said `clean` would let a
- * "checked and safe" badge be built against a guarantee the platform does not
- * make, which is the same defect the Media wave found when it discovered this
- * platform has no virus scanner.
- */
+/** Seeds the store. */
 function seed(): void {
   SEEDS.forEach((entry) => {
     const createdAt = hoursAgo(entry.ageHours);
@@ -917,7 +1013,9 @@ function seed(): void {
           allowsMultiple: entry.poll.allowsMultiple,
           resultVisibility: entry.poll.resultVisibility,
           closesAt: null,
-          selectedOptionIds: [],
+          viewerVotes: [],
+          // The seeded poll is single-choice, so a vote is a voter.
+          voterCount: entry.poll.votes.reduce((sum, votes) => sum + votes, 0),
         }
       : null;
 
@@ -944,8 +1042,6 @@ function seed(): void {
       isPinned: entry.isPinned ?? false,
       isEdited: false,
       isPublished: true,
-      // Property 12. `unavailable` is not `clean`.
-      reviewStatus: entry.reviewStatus ?? 'unavailable',
       versionNumber: 1,
       revisions: [],
       hashtags: entry.hashtags ?? [],
@@ -1001,7 +1097,6 @@ function seedComments(): void {
       isPinned: index === 0,
       isEdited: false,
       attachmentMediaId: null,
-      reviewStatus: 'unavailable',
       createdAt: hoursAgo(2 - index * 0.1),
       updatedAt: null,
     });
@@ -1029,7 +1124,6 @@ function seedComments(): void {
       isPinned: false,
       isEdited: false,
       attachmentMediaId: null,
-      reviewStatus: 'unavailable',
       createdAt: hoursAgo(1.5 - depth * 0.05),
       updatedAt: null,
     });
@@ -1061,20 +1155,30 @@ seed();
 
 // ── Projection ───────────────────────────────────────────────────────────────
 
-/** Property 10. The record a post calls `reactions` and a reaction calls `summary`. */
+/**
+ * Property 10. The record a post calls `reactions` and a reaction calls
+ * `summary`, as `ReactionMapper` builds it: one row per key in ordinal order,
+ * every key the member reacted with, and the four named counts.
+ */
 function summaryFor(contentType: string, contentId: string): WireReactionSummary {
   const key = contentKey(contentType, contentId);
   const counts = reactionCounts.get(key) ?? new Map<string, number>();
-  const mine = myReactions.get(key) ?? null;
+  const mine = myReactions.get(key) ?? new Set<string>();
+  const countOf = (reactionKey: string) => counts.get(reactionKey) ?? 0;
 
-  const entries: WireReactionCount[] = [...counts.entries()]
+  const reactions: WireReactionCount[] = [...counts.entries()]
     .filter(([, count]) => count > 0)
-    .map(([reactionKey, count]) => ({ reactionKey, count }));
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .map(([reactionKey, count]) => ({ reactionKey, count, reactedByViewer: mine.has(reactionKey) }));
 
   return {
-    totalCount: entries.reduce((total, entry) => total + entry.count, 0),
-    counts: entries,
-    myReactionKey: mine,
+    totalCount: reactions.reduce((total, entry) => total + entry.count, 0),
+    reactions,
+    viewerReactions: [...mine],
+    likeCount: countOf('like'),
+    helpfulCount: countOf('helpful'),
+    confirmationCount: countOf('confirmed'),
+    disputeCount: countOf('disputed'),
   };
 }
 
@@ -1091,7 +1195,7 @@ function pollFor(post: StoredPost): WirePoll | null {
   const poll = post.poll;
   if (!poll) return null;
 
-  const hasVoted = poll.selectedOptionIds.length > 0;
+  const hasVoted = poll.viewerVotes.length > 0;
   const isClosed = poll.closesAt !== null && Date.parse(poll.closesAt) <= Date.now();
 
   const hidden =
@@ -1103,9 +1207,10 @@ function pollFor(post: StoredPost): WirePoll | null {
   return {
     pollId: poll.pollId,
     question: poll.question,
-    options: poll.options.map((option) => ({
+    options: poll.options.map((option, index) => ({
       optionId: option.optionId,
       label: option.label,
+      position: index,
       imageMediaId: option.imageMediaId,
       voteCount: hidden ? null : option.voteCount,
       sharePercent: hidden
@@ -1113,14 +1218,17 @@ function pollFor(post: StoredPost): WirePoll | null {
         : total > 0
           ? Math.round((option.voteCount / total) * 1000) / 10
           : 0,
+      votedByViewer: poll.viewerVotes.includes(option.optionId),
     })),
     allowsMultiple: poll.allowsMultiple,
     resultVisibility: poll.resultVisibility,
+    // `cancelled` is a poll its author closed early, which nothing here does.
+    status: isClosed ? 'closed' : 'open',
     closesAt: poll.closesAt,
-    isClosed,
     totalVotes: hidden ? null : total,
+    voterCount: hidden ? null : poll.voterCount,
     hasVoted,
-    selectedOptionIds: poll.selectedOptionIds,
+    canSeeResults: !hidden,
   };
 }
 
@@ -1140,62 +1248,169 @@ function reportCountFor(contentType: string, contentId: string): number {
   ).length;
 }
 
+/** Display names, as `CommunityAuthorNames` resolves them. One it cannot resolve has none. */
+const MEMBER_NAMES: Readonly<Record<string, string>> = {
+  [DEV_MEMBER_ID]: 'Dev Member',
+  [OTHER_MEMBER_ID]: 'Ama Owusu',
+};
+
+/**
+ * `AuthorSummaryResponse`, as `AuthorMapper` fills it: a name and whether the
+ * reader follows them, and for a post the identity it was published under.
+ * Community stores no member profile, so the avatar and reputation are null.
+ */
+function authorFor(authorId: string, publisher?: { organizationId: string | null }): WireAuthor {
+  return {
+    userId: authorId,
+    name: MEMBER_NAMES[authorId] ?? null,
+    avatarMediaId: null,
+    avatarUrl: null,
+    reputationLevel: null,
+    isCountryVerified: false,
+    primaryCountryCode: null,
+    followerCount: 0,
+    isFollowedByUser: follows.has(`member|${authorId}`),
+    organizationId: publisher?.organizationId ?? null,
+    organizationName: null,
+    publishingIdentityType: publisher
+      ? publisher.organizationId
+        ? 'organization'
+        : 'personal'
+      : null,
+  };
+}
+
+/** `draft`, `published` or `expired`, unless its author took it back. */
+function statusOf(post: StoredPost): string {
+  if (post.closure) return post.closure;
+  if (!post.isPublished) return 'draft';
+  const expired = post.expiresAt !== null && Date.parse(post.expiresAt) <= Date.now();
+  return expired ? 'expired' : 'published';
+}
+
+/** `ConfirmationThresholds.For`: total confirmations, and verified ones, by urgency. */
+function thresholdsFor(urgency: string | null): [number, number] {
+  if (urgency === 'emergency') return [10, 4];
+  if (urgency === 'urgent') return [7, 3];
+  return [3, 1];
+}
+
 /** `CommunityPostResponse`, with properties 7 and 11 applied. */
 function toWirePost(post: StoredPost): WirePost {
   const bookmarked = bookmarks.has(contentKey('post', post.postId));
+  const reactions = summaryFor('post', post.postId);
+  const status = statusOf(post);
+  const isOwner = post.authorId === DEV_MEMBER_ID;
+  const [required, requiredVerified] = thresholdsFor(post.urgency);
+  const imageMediaIds = post.attachments
+    .filter((attachment) => attachment.kind === 'image' && attachment.mediaId !== null)
+    .map((attachment) => attachment.mediaId as string);
 
   return {
     postId: post.postId,
     // Property 7. The same value, twice, because the module was CommunityUpdates
     // before it was Community and the older name is still emitted.
     updateId: post.postId,
+    author: authorFor(post.authorId, { organizationId: post.organizationId }),
     title: post.title,
     body: post.body,
     // Property 7 again.
     description: post.body,
     category: post.category,
     urgency: post.urgency,
+    status,
+    contentType: post.poll ? 'poll' : imageMediaIds.length > 0 ? 'image' : 'text',
     visibility: post.visibility,
-    audienceCountryCode: post.audienceCountryCode,
-    audienceAreaId: post.audienceAreaId,
-    visibilityRuleId: post.visibilityRuleId,
-    countryCode: post.countryCode,
-    areaId: post.areaId,
-    cityName: post.cityName,
-    areaName: post.areaName,
-    latitude: post.latitude,
-    longitude: post.longitude,
-    authorId: post.authorId,
-    organizationId: post.organizationId,
+    location: {
+      countryCode: post.countryCode,
+      areaId: post.areaId,
+      areaName: post.areaName,
+      cityName: post.cityName,
+      latitude: post.latitude,
+      longitude: post.longitude,
+      distanceKm: null,
+      // A point its author chose. The seeds sit in a town and carry none.
+      pointIsExact: post.latitude !== null && post.longitude !== null,
+    },
     attachments: post.attachments,
+    imageMediaIds,
+    hashtags: post.hashtags,
+    mentionedUserIds: [],
     poll: pollFor(post),
     // Property 10. Named `reactions` here and `summary` on a reaction response.
-    reactions: summaryFor('post', post.postId),
+    reactions,
     commentCount: commentCountFor(post.postId),
     shareCount: post.shareCount,
     bookmarkCount: bookmarked ? 1 : 0,
-    isPinned: post.isPinned,
-    isEdited: post.isEdited,
-    isPublished: post.isPublished,
-    isBookmarked: bookmarked,
+    viewCount: 0,
+    bookmarkedByViewer: bookmarked,
+    verificationStatus: 'unverified',
+    confirmationCount: reactions.confirmationCount,
+    verifiedResidentConfirmationCount: 0,
+    requiredConfirmations: required,
+    requiredVerifiedConfirmations: requiredVerified,
     // Property 11. **Zero for anyone who is not the author.** The figure is
     // suppressed, not the field, so a moderation surface built on this would
     // report a clean platform to every moderator who is not also the author of
     // the thing they are looking at.
-    reportCount:
-      post.authorId === DEV_MEMBER_ID ? reportCountFor('post', post.postId) : 0,
-    reviewStatus: post.reviewStatus,
-    versionNumber: post.versionNumber,
-    createdAt: post.createdAt,
-    updatedAt: post.updatedAt,
+    reportCount: isOwner ? reportCountFor('post', post.postId) : 0,
+    isPinned: post.isPinned,
+    isEdited: post.isEdited,
+    commentsClosed: false,
+    pinnedCommentId:
+      [...comments.values()].find(
+        (comment) =>
+          comment.contentType === 'post' && comment.contentId === post.postId && comment.isPinned
+      )?.commentId ?? null,
+    revisionCount: post.revisions.length,
     publishedAt: post.publishedAt,
     expiresAt: post.expiresAt,
-    status: post.closure ?? (post.isPublished ? 'published' : 'draft'),
-    closedAt: post.closedAt ?? null,
+    isExpired: status === 'expired',
+    editedAt: post.isEdited ? post.updatedAt : null,
     affectedRadiusMetres: post.affectedRadiusMetres ?? null,
-    canEdit: post.authorId === DEV_MEMBER_ID,
-    canWithdraw: post.authorId === DEV_MEMBER_ID && post.isPublished && !post.closure,
-    canCancel: post.authorId === DEV_MEMBER_ID && post.isPublished && !post.closure,
+    closedAt: post.closedAt ?? null,
+    createdAt: post.createdAt,
+    canEdit: isOwner,
+    // Only while it is in effect: an expired alert has already stopped being true.
+    canWithdraw: isOwner && status === 'published',
+    canCancel: isOwner && status === 'published',
+  };
+}
+
+/**
+ * `CommunityPostSummaryResponse`: the post a feed item carries. Listed field by
+ * field, so nothing the summary lacks can leak into a feed from the full post.
+ */
+function toWirePostSummary(post: StoredPost): WirePostSummary {
+  const full = toWirePost(post);
+  return {
+    postId: full.postId,
+    updateId: full.updateId,
+    author: full.author,
+    title: full.title,
+    body: full.body,
+    description: full.description,
+    category: full.category,
+    urgency: full.urgency,
+    status: full.status,
+    contentType: full.contentType,
+    location: full.location,
+    imageMediaIds: full.imageMediaIds,
+    hashtags: full.hashtags,
+    reactions: full.reactions,
+    commentCount: full.commentCount,
+    confirmationCount: full.confirmationCount,
+    verifiedResidentConfirmationCount: full.verifiedResidentConfirmationCount,
+    requiredConfirmations: full.requiredConfirmations,
+    verificationStatus: full.verificationStatus,
+    bookmarkedByViewer: full.bookmarkedByViewer,
+    isPinned: full.isPinned,
+    hasPoll: full.poll !== null,
+    publishedAt: full.publishedAt,
+    expiresAt: full.expiresAt,
+    isExpired: full.isExpired,
+    affectedRadiusMetres: full.affectedRadiusMetres,
+    closedAt: full.closedAt,
   };
 }
 
@@ -1205,30 +1420,37 @@ function toWireComment(comment: StoredComment): WireComment {
     .filter((candidate) => candidate.parentCommentId === comment.commentId)
     .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
     .map(toWireComment);
+  const reactions = summaryFor('comment', comment.commentId);
 
   return {
     commentId: comment.commentId,
     contentType: comment.contentType,
     contentId: comment.contentId,
-    postId: comment.contentType === 'post' ? comment.contentId : null,
+    author: authorFor(comment.authorId),
+    authorId: comment.authorId,
+    authorName: MEMBER_NAMES[comment.authorId] ?? null,
+    authorReputationLevel: null,
     parentCommentId: comment.parentCommentId,
     quotedCommentId: comment.quotedCommentId,
     // Property 13. A tombstone carries the empty string, and is still delivered.
     body: comment.isTombstoned ? '' : comment.body,
-    authorId: comment.authorId,
+    mentions: [],
+    attachmentMediaId: comment.attachmentMediaId,
+    likeCount: reactions.likeCount,
+    isLikedByUser: reactions.viewerReactions.includes('like'),
+    reactions,
+    isPinned: comment.isPinned,
+    isEdited: comment.isEdited,
+    isTombstoned: comment.isTombstoned,
+    status: comment.isTombstoned ? 'deleted' : 'active',
     // The true depth, unbounded.
     depth: comment.depth,
     // Clamped at six, for indentation only. A screen that indented by `depth`
     // would run a long argument off the side of the phone.
     renderedDepth: Math.min(comment.depth, MAX_RENDERED_DEPTH),
-    isTombstoned: comment.isTombstoned,
-    isPinned: comment.isPinned,
-    isEdited: comment.isEdited,
-    attachmentMediaId: comment.attachmentMediaId,
-    reactions: summaryFor('comment', comment.commentId),
     replies,
     replyCount: replies.length,
-    reviewStatus: comment.reviewStatus,
+    canEdit: comment.authorId === DEV_MEMBER_ID && !comment.isTombstoned,
     createdAt: comment.createdAt,
     updatedAt: comment.updatedAt,
   };
@@ -1281,6 +1503,7 @@ function threadFor(
     totalCount: roots.length,
     nextCursor: hasMore ? encodeCursor(nextOffset) : null,
     hasMore,
+    commentsClosed: false,
   };
 }
 
@@ -1424,6 +1647,35 @@ function refuseCommentText(payload: Record<string, unknown>): Reply | null {
   }
 
   return null;
+}
+
+/**
+ * One attachment from a create or edit request, as `PostAttachmentResponse`.
+ * The request's `url` is the response's `linkUrl`, and a role nobody sent is
+ * chosen by kind, as `NormaliseRole` chooses it.
+ */
+function attachmentFrom(entry: Record<string, unknown>, index: number): WireAttachment {
+  const kind = String(entry.kind ?? 'unknown');
+  const role = text(entry.role);
+  return {
+    attachmentId: newId(),
+    kind,
+    mediaId: text(entry.mediaId),
+    role: role
+      ? role.trim().toLowerCase()
+      : kind === 'document'
+        ? 'document'
+        : kind === 'link'
+          ? 'inline'
+          : 'gallery',
+    position: index,
+    caption: text(entry.caption),
+    linkUrl: text(entry.url),
+    linkTitle: null,
+    linkDescription: null,
+    linkSiteName: null,
+    linkImageMediaId: null,
+  };
 }
 
 function isKnownReaction(value: string | null): boolean {
@@ -1937,16 +2189,24 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
 
     const feed: WireFeed = {
       feedKey,
-      ranking,
+      rankingKey: ranking,
       // Property 16. `items`, like the platform envelope — which is why
-      // `readPage` finds the rows here and not on a comment thread.
-      items: window.map(toWirePost),
+      // `readPage` finds the rows here and not on a comment thread. Property
+      // 12: each row holds a post's summary; it is not the post.
+      items: window.map(
+        (post): WireFeedItem => ({
+          contentType: 'post',
+          contentId: post.postId,
+          post: toWirePostSummary(post),
+          distanceKm: null,
+          reason: null,
+        })
+      ),
       nextCursor: hasMore ? encodeCursor(nextOffset) : null,
       hasMore,
       // Property 16. `totalAvailable`, which `readPage` reads as `totalCount`
       // and therefore reports as null.
       totalAvailable: ordered.length,
-      generatedAt: new Date().toISOString(),
     };
 
     return ok(feed);
@@ -2186,7 +2446,7 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
     }
 
     // Re-voting replaces rather than accumulates.
-    for (const previous of post.poll.selectedOptionIds) {
+    for (const previous of post.poll.viewerVotes) {
       const option = post.poll.options.find((candidate) => candidate.optionId === previous);
       if (option) option.voteCount = Math.max(0, option.voteCount - 1);
     }
@@ -2196,7 +2456,8 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
       if (option) option.voteCount += 1;
     }
 
-    post.poll.selectedOptionIds = optionIds;
+    if (post.poll.viewerVotes.length === 0) post.poll.voterCount += 1;
+    post.poll.viewerVotes = optionIds;
 
     // 200.
     return ok(pollFor(post));
@@ -2226,15 +2487,7 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
     const attachments = Array.isArray(payload.attachments)
       ? payload.attachments
           .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
-          .map((entry, index): WireAttachment => ({
-            attachmentId: newId(),
-            kind: String(entry.kind ?? 'unknown'),
-            mediaId: text(entry.mediaId),
-            url: text(entry.url),
-            role: text(entry.role),
-            caption: text(entry.caption),
-            position: index,
-          }))
+          .map(attachmentFrom)
       : [];
 
     const pollPayload = payload.poll;
@@ -2263,7 +2516,8 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
         allowsMultiple: record.allowsMultiple === true,
         resultVisibility: text(record.resultVisibility) ?? 'always',
         closesAt: text(record.closesAt),
-        selectedOptionIds: [],
+        viewerVotes: [],
+        voterCount: 0,
       };
     }
 
@@ -2294,9 +2548,6 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
       isPinned: false,
       isEdited: false,
       isPublished: publish,
-      // Property 12. No review provider is configured on this deployment, so
-      // nothing looked at it.
-      reviewStatus: 'unavailable',
       versionNumber: 1,
       revisions: [],
       hashtags: [...postBody.matchAll(/#([\p{L}\p{N}_]+)/gu)].map((match) => match[1]),
@@ -2436,15 +2687,7 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
     if (Array.isArray(payload.attachments)) {
       post.attachments = payload.attachments
         .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
-        .map((entry, index): WireAttachment => ({
-          attachmentId: newId(),
-          kind: String(entry.kind ?? 'unknown'),
-          mediaId: text(entry.mediaId),
-          url: text(entry.url),
-          role: text(entry.role),
-          caption: text(entry.caption),
-          position: index,
-        }));
+        .map(attachmentFrom);
     }
 
     return ok(toWirePost(post));
@@ -2511,7 +2754,6 @@ function addComment(
     isEdited: false,
     attachmentMediaId: text(payload.attachmentMediaId),
     // Property 12.
-    reviewStatus: 'unavailable',
     createdAt: new Date().toISOString(),
     updatedAt: null,
   });
@@ -2546,30 +2788,34 @@ function applyReaction(
   const key = contentKey(contentType, contentId);
   const counts = reactionCounts.get(key) ?? new Map<string, number>();
   reactionCounts.set(key, counts);
+  const mine = myReactions.get(key) ?? new Set<string>();
+  myReactions.set(key, mine);
 
-  const previous = myReactions.get(key);
-
-  // One reaction per member per item: choosing a second replaces the first.
-  if (previous && previous !== reactionKey) {
-    counts.set(previous, Math.max(0, (counts.get(previous) ?? 0) - 1));
-  }
-
-  if (previous !== reactionKey) {
+  // Set membership. A member may hold several reactions on one item — helpful
+  // and confirmed at once — and the server means them to (`Reaction`'s rule is
+  // one per member, content and kind). Adding one already held changes nothing.
+  if (!mine.has(reactionKey as string)) {
     counts.set(reactionKey as string, (counts.get(reactionKey as string) ?? 0) + 1);
-    myReactions.set(key, reactionKey as string);
+    mine.add(reactionKey as string);
   }
 
-  const response: WireReaction = {
+  // 200.
+  return ok(reactionAnswer(contentType, contentId, reactionKey as string));
+}
+
+/** What both reaction routes answer, adding or removing: `ReactCommandHandler`'s record. */
+function reactionAnswer(contentType: string, contentId: string, reactionKey: string): WireReaction {
+  return {
+    reactionId: '00000000-0000-0000-0000-000000000000',
+    userId: DEV_MEMBER_ID,
     contentType,
     contentId,
+    reactionKey,
+    createdAt: new Date().toISOString(),
     // Property 10. **`summary`** here; the identical record is **`reactions`**
     // on a post or a comment.
     summary: summaryFor(contentType, contentId),
-    myReactionKey: myReactions.get(key) ?? null,
   };
-
-  // 200.
-  return ok(response);
 }
 
 /**
@@ -2586,19 +2832,12 @@ function removeReaction(contentType: string, contentId: string, reactionKey: str
   const counts = reactionCounts.get(key);
   const mine = myReactions.get(key);
 
-  if (counts && mine === reactionKey) {
+  if (counts && mine?.has(reactionKey)) {
     counts.set(reactionKey, Math.max(0, (counts.get(reactionKey) ?? 0) - 1));
-    myReactions.delete(key);
+    mine.delete(reactionKey);
   }
 
-  const response: WireReaction = {
-    contentType,
-    contentId,
-    summary: summaryFor(contentType, contentId),
-    myReactionKey: myReactions.get(key) ?? null,
-  };
-
-  return ok(response);
+  return ok(reactionAnswer(contentType, contentId, reactionKey));
 }
 
 /**

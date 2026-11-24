@@ -117,7 +117,7 @@ import type {
   CommunityCapabilitiesResponse,
   CommunityContentType,
   CommunityFeedKey,
-  CommunityPostResponse,
+  CommunityPost,
   CommunityReactionKey,
   CreateBookmarkFolderRequest,
   CreateBookmarkRequest,
@@ -206,7 +206,7 @@ export function useCommunityCapabilities(): UseCommunityCapabilitiesResult {
 // ── Feeds ────────────────────────────────────────────────────────────────────
 
 export interface UseCommunityFeedResult {
-  posts: CommunityPostResponse[];
+  posts: CommunityPost[];
   /**
    * What the server said the population is, or null.
    *
@@ -281,7 +281,7 @@ export function useCommunityFeed(
 // ── One post ─────────────────────────────────────────────────────────────────
 
 export interface UsePostResult {
-  post: CommunityPostResponse | null;
+  post: CommunityPost | null;
   isLoading: boolean;
   error: string | null;
   refresh: () => void;
@@ -457,7 +457,7 @@ function invalidatePost(client: QueryClient, postId: string): void {
 // ── Post mutations ───────────────────────────────────────────────────────────
 
 export function useCreatePost(): {
-  createPost: (request: CreatePostRequest) => Promise<CommunityPostResponse>;
+  createPost: (request: CreatePostRequest) => Promise<CommunityPost>;
   isPending: boolean;
   error: string | null;
 } {
@@ -483,7 +483,7 @@ export function useCreatePost(): {
 }
 
 export function useUpdatePost(): {
-  updatePost: (postId: string, request: UpdatePostRequest) => Promise<CommunityPostResponse>;
+  updatePost: (postId: string, request: UpdatePostRequest) => Promise<CommunityPost>;
   isPending: boolean;
   error: string | null;
 } {
@@ -543,8 +543,8 @@ export function useDeletePost(): {
  * map's alerts are invalidated because it has just left both.
  */
 export function useClosePost(): {
-  withdraw: (postId: string) => Promise<CommunityPostResponse>;
-  cancel: (postId: string) => Promise<CommunityPostResponse>;
+  withdraw: (postId: string) => Promise<CommunityPost>;
+  cancel: (postId: string) => Promise<CommunityPost>;
   isPending: boolean;
   error: string | null;
 } {

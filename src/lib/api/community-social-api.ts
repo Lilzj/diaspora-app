@@ -58,9 +58,11 @@
 // `post.reportCount` is 0 for everyone who is not the author. Neither absence
 // means zero.
 //
-// **8. `ContentReviewStatus` can be `unavailable`, which is not `clean`.** It
-// means no provider answered. `shouldRenderSafetyBadge` is the guard; nothing
-// else may branch on the field.
+// **8. A post arrives in the server's shape and is drawn in the app's.** The
+// server's post names its author `author`, its place `location` and its saved
+// flag `bookmarkedByViewer`; a feed row is a feed item holding a summary of the
+// post. Every route here that returns a post maps it through
+// `toCommunityPost`, so no screen holds a `CommunityPostResponse` (RMD-009).
 //
 // **9. The moderation queue is not pageable.** It accepts `cursor` and `limit`
 // and returns a bare array with no cursor anywhere. See
@@ -95,7 +97,10 @@ import type {
   CommunityContentType,
   CommunityFeedKey,
   AlertCapabilitiesResponse,
+  CommunityFeedPage,
+  CommunityPost,
   CommunityPostResponse,
+  CommunityPostSummaryResponse,
   CommunityPostVisibility,
   CommunityReactionCapability,
   CommunityReactionKey,
@@ -105,7 +110,7 @@ import type {
   CreatePostRequest,
   CreateReportRequest,
   CreateShareRequest,
-  ContentReviewStatus,
+  FeedItemResponse,
   FeedQuery,
   FeedResponse,
   FollowRequest,
@@ -118,6 +123,7 @@ import type {
   PostRevisionResponse,
   ReactionResponse,
   ReactionSummaryResponse,
+  ReactionTally,
   ReportReasonResponse,
   ReportResponse,
   SetPinnedRequest,
@@ -353,23 +359,24 @@ async function del<T>(url: string, query?: Record<string, unknown>): Promise<T> 
  * default, because a client that flipped it would make every existing caller's
  * post a draft; `createDraftPost` is the explicit opposite.
  */
-export function createPost(request: CreatePostRequest): Promise<CommunityPostResponse> {
-  return post<CommunityPostResponse>(`${ROOT}/posts`, request);
+export async function createPost(request: CreatePostRequest): Promise<CommunityPost> {
+  return toCommunityPost(await post<CommunityPostResponse>(`${ROOT}/posts`, request));
 }
 
 /** The same route with `publish: false` stated rather than assumed. */
-export function createDraftPost(
+export async function createDraftPost(
   request: Omit<CreatePostRequest, 'publish'>
-): Promise<CommunityPostResponse> {
-  return post<CommunityPostResponse>(`${ROOT}/posts`, { ...request, publish: false });
+): Promise<CommunityPost> {
+  return toCommunityPost(
+    await post<CommunityPostResponse>(`${ROOT}/posts`, { ...request, publish: false })
+  );
 }
 
-export async function fetchPost(postId: string): Promise<CommunityPostResponse> {
-  // Through the same mapping as the feed (14 Oct 2026): the wire names the
-  // author `author` and the place `location`, and has no `authorId` at all, so
-  // "Posted by" opened /contributor/undefined.
-  const post = await get<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}`);
-  return toFeedPost(post) ?? post;
+export async function fetchPost(postId: string): Promise<CommunityPost> {
+  // Mapped (14 Oct 2026): the wire names the author `author` and the place
+  // `location`, and has no `authorId` at all, so "Posted by" opened
+  // /contributor/undefined.
+  return toCommunityPost(await get<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}`));
 }
 
 /**
@@ -380,11 +387,11 @@ export async function fetchPost(postId: string): Promise<CommunityPostResponse> 
  * poll are not on `UpdatePostRequest`, so a screen that reused the create form
  * for an edit would collect four more fields from the member and discard them.
  */
-export function updatePost(
+export async function updatePost(
   postId: string,
   request: UpdatePostRequest
-): Promise<CommunityPostResponse> {
-  return put<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}`, request);
+): Promise<CommunityPost> {
+  return toCommunityPost(await put<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}`, request));
 }
 
 /** What the edit screen lets an author change on their post (14 Oct 2026). */
@@ -407,7 +414,7 @@ export interface PostEdits {
  * Urgency is sent only when it changed: `AmendAlert` refuses anything but a
  * published post, so a body fix on a draft must not carry an urgency at all.
  */
-export function postEditRequest(post: CommunityPostResponse, edits: PostEdits): UpdatePostRequest {
+export function postEditRequest(post: CommunityPost, edits: PostEdits): UpdatePostRequest {
   const title = edits.title.trim();
   const summary = edits.changeSummary.trim();
   const request: UpdatePostRequest = {
@@ -438,13 +445,13 @@ export async function deletePost(postId: string): Promise<void> {
  * map. Only its author, and only while it is in effect: the server answers 403
  * `community.post.not-owned` and 409 `community.post.not-open` otherwise.
  */
-export function withdrawPost(postId: string): Promise<CommunityPostResponse> {
-  return post<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}/withdraw`);
+export async function withdrawPost(postId: string): Promise<CommunityPost> {
+  return toCommunityPost(await post<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}/withdraw`));
 }
 
 /** `POST /community/posts/{postId}/cancel` — what it reported is over. Same rules as withdraw. */
-export function cancelPost(postId: string): Promise<CommunityPostResponse> {
-  return post<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}/cancel`);
+export async function cancelPost(postId: string): Promise<CommunityPost> {
+  return toCommunityPost(await post<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}/cancel`));
 }
 
 /** `GET /community/alerts/capabilities` — what this caller may publish on the alert map. */
@@ -685,48 +692,91 @@ export function unreactToPost(
  * wants is a request whose behaviour survives a change to that default.
  */
 /**
- * One feed item as the post a card renders (14 Oct 2026).
+ * A post, or a feed item's summary of one, as the post the screens draw.
  *
- * **A feed page holds feed items, not posts.** The server sends
- * `{ contentType, contentId, post: CommunityPostSummaryResponse }`, and the
- * summary names things its own way (`author`, `location`, `bookmarkedByViewer`)
- * and leaves out what a card does not need (`visibility`, `reportCount`). The
- * app read each item AS the post, and its mock fed it posts, so every test
- * agreed; on a real device the Updates list rendered objects with no post
- * fields at all, and crashed reading `visibility` the first time it held one.
- * Already-shaped posts (the mock, older pages) pass through untouched. Fields
- * the summary does not carry stay empty rather than being guessed.
+ * Every route in this file that returns a post maps it here (RMD-009). Until
+ * then only the feed and `fetchPost` did: creating, editing, withdrawing and
+ * cancelling a post returned the server's record as it came, and the hooks
+ * cached it under the post's key, so the detail screen drew a post with no
+ * `authorId`, no place and no saved flag until the next refetch.
+ *
+ * Nothing is guessed. A summary has no visibility, attachments, poll, share or
+ * bookmark count, report count, edit state, creation time or permissions, and
+ * the post this returns says `null` (or an empty list) for each.
  */
-export function toFeedPost(item: unknown): CommunityPostResponse | null {
-  if (!item || typeof item !== 'object') return null;
-  const raw = item as Record<string, any>;
-  const post = (raw.post ?? (raw.postId ? raw : null)) as Record<string, any> | null;
-  if (!post?.postId) return null;
-  if ('authorId' in post && 'visibility' in post) return post as CommunityPostResponse;
+export function toCommunityPost(
+  post: CommunityPostResponse | CommunityPostSummaryResponse
+): CommunityPost {
+  const detail = 'hasPoll' in post ? null : post;
+  const { author, location } = post;
 
-  const location = (post.location ?? {}) as Record<string, any>;
   return {
-    ...post,
-    authorId: post.author?.userId ?? '',
-    organizationId: post.author?.organizationId ?? null,
-    countryCode: location.countryCode ?? null,
-    areaId: location.areaId ?? null,
-    cityName: location.cityName ?? null,
-    areaName: location.areaName ?? null,
-    latitude: location.latitude ?? null,
-    longitude: location.longitude ?? null,
-    isBookmarked: Boolean(post.bookmarkedByViewer),
-    createdAt: post.createdAt ?? post.publishedAt,
-    attachments: post.attachments ?? [],
-    poll: post.poll ?? null,
-  } as unknown as CommunityPostResponse;
+    postId: post.postId,
+    updateId: post.updateId,
+    author,
+    authorId: author.userId,
+    organizationId: author.organizationId ?? null,
+    title: post.title,
+    body: post.body,
+    description: post.description,
+    category: post.category,
+    urgency: post.urgency,
+    status: post.status,
+    location,
+    countryCode: location.countryCode,
+    areaId: location.areaId,
+    cityName: location.cityName,
+    areaName: location.areaName,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    reactions: post.reactions,
+    commentCount: post.commentCount,
+    isBookmarked: post.bookmarkedByViewer,
+    isPinned: post.isPinned,
+    publishedAt: post.publishedAt,
+    expiresAt: post.expiresAt,
+    affectedRadiusMetres: post.affectedRadiusMetres,
+    closedAt: post.closedAt,
+    visibility: detail?.visibility ?? null,
+    attachments: detail?.attachments ?? [],
+    poll: detail?.poll ?? null,
+    hasPoll: 'hasPoll' in post ? post.hasPoll : post.poll !== null,
+    shareCount: detail?.shareCount ?? null,
+    bookmarkCount: detail?.bookmarkCount ?? null,
+    reportCount: detail?.reportCount ?? null,
+    isEdited: detail?.isEdited ?? null,
+    editedAt: detail?.editedAt ?? null,
+    createdAt: detail?.createdAt ?? null,
+    canEdit: detail?.canEdit ?? null,
+    canWithdraw: detail?.canWithdraw ?? null,
+    canCancel: detail?.canCancel ?? null,
+  };
 }
 
-export async function fetchFeed(feedKey: CommunityFeedKey, query: FeedQuery = {}): Promise<FeedResponse> {
+/**
+ * One feed item as the post a card renders, or null for an item that holds no
+ * post.
+ *
+ * **A feed page holds feed items, not posts** (14 Oct 2026). The server sends
+ * `{ contentType, contentId, post: CommunityPostSummaryResponse }`. The app read
+ * each item AS the post, and its mock fed it posts, so every test agreed; on a
+ * real device the Updates list rendered objects with no post fields at all, and
+ * crashed reading `visibility` the first time it held one. This took posts as
+ * well as items until RMD-009, because the mock still served posts.
+ */
+export function toFeedPost(item: FeedItemResponse): CommunityPost | null {
+  return item.post ? toCommunityPost(item.post) : null;
+}
+
+export async function fetchFeed(feedKey: CommunityFeedKey, query: FeedQuery = {}): Promise<CommunityFeedPage> {
   const page = await fetchFeedPage(feedKey, query);
   return {
-    ...page,
-    items: (page.items ?? []).map(toFeedPost).filter((post): post is CommunityPostResponse => post !== null),
+    feedKey: page.feedKey,
+    rankingKey: page.rankingKey,
+    items: page.items.map(toFeedPost).filter((post): post is CommunityPost => post !== null),
+    nextCursor: page.nextCursor,
+    hasMore: page.hasMore,
+    totalAvailable: page.totalAvailable,
   };
 }
 
@@ -774,8 +824,8 @@ function fetchFeedPage(feedKey: CommunityFeedKey, query: FeedQuery): Promise<Fee
 // else. Two named adapters at the one call site that needs them keeps the
 // tolerance local to the module that actually has the problem.
 
-/** `FeedResponse` as the platform's `Page`, with `totalAvailable` carried across. */
-export function toFeedPage(feed: FeedResponse): Page<CommunityPostResponse> {
+/** A feed page as the platform's `Page`, with `totalAvailable` carried across. */
+export function toFeedPage(feed: CommunityFeedPage): Page<CommunityPost> {
   return {
     items: feed.items,
     nextCursor: feed.nextCursor,
@@ -1068,61 +1118,46 @@ export function fetchCommunityCapabilities(): Promise<CommunityCapabilitiesRespo
 export function readReactionSummary(
   source:
     | ReactionResponse
-    | CommunityPostResponse
+    | CommunityPost
     | CommentResponse
     | ContentEngagementResponse
     | null
     | undefined
-): ReactionSummaryResponse | null {
+): ReactionTally | null {
   if (!source) return null;
-  if ('summary' in source && source.summary) return toReactionSummary(source.summary);
-  if ('reactions' in source && source.reactions) return toReactionSummary(source.reactions);
+  if ('summary' in source && source.summary) return toReactionTally(source.summary);
+  if ('reactions' in source && source.reactions) return toReactionTally(source.reactions);
   return null;
 }
 
 /**
- * The server's reaction summary, in the shape this app reads.
+ * The server's reaction summary, as the tally a screen reads.
  *
- * **The server never sent `counts` or `myReactionKey`.** Its `ReactionSummaryResponse`
- * is `{ totalCount, reactions: [{ reactionKey, count, reactedByViewer }],
+ * **The server never sent `counts` or `myReactionKey`.** Its summary is
+ * `{ totalCount, reactions: [{ reactionKey, count, reactedByViewer }],
  * viewerReactions: [key] }`; the app's type and its mock server both invented the
  * other names, so every test agreed. `ReactionBar` read `summary.counts.find(...)`
  * on `undefined` and threw, which crashed the official-notice screen on its first
  * real use (14 Oct 2026), and `UpdateCard` never knew the member had reacted.
- * Either shape is accepted, so the mock and the real server both read correctly.
+ *
+ * Until RMD-009 this accepted the invented shape as well, because the mock
+ * still served it. It takes the server's now, and keeps every key the member
+ * reacted with: `viewerReactions` is a list because a member may hold several
+ * reactions on one item, and keeping only the first left the others looking
+ * like somebody else's, with no way to take them back.
  */
-export function toReactionSummary(raw: unknown): ReactionSummaryResponse | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const record = raw as {
-    totalCount?: number;
-    counts?: ReactionSummaryResponse['counts'];
-    myReactionKey?: CommunityReactionKey | null;
-    reactions?: { reactionKey: CommunityReactionKey; count: number; reactedByViewer?: boolean }[];
-    viewerReactions?: CommunityReactionKey[];
-  };
-
-  const counts = Array.isArray(record.counts)
-    ? record.counts
-    : Array.isArray(record.reactions)
-      ? record.reactions.map(({ reactionKey, count }) => ({ reactionKey, count }))
-      : [];
-
-  const myReactionKey =
-    record.myReactionKey ??
-    record.viewerReactions?.[0] ??
-    (Array.isArray(record.reactions) ? record.reactions.find((r) => r.reactedByViewer)?.reactionKey : undefined) ??
-    null;
-
+export function toReactionTally(summary: ReactionSummaryResponse | null | undefined): ReactionTally | null {
+  if (!summary) return null;
   return {
-    totalCount: record.totalCount ?? counts.reduce((sum, entry) => sum + entry.count, 0),
-    counts,
-    myReactionKey,
+    totalCount: summary.totalCount,
+    counts: summary.reactions.map(({ reactionKey, count }) => ({ reactionKey, count })),
+    myReactionKeys: [...summary.viewerReactions],
   };
 }
 
 /** How many people used one reaction key, from either record shape. */
 export function reactionCount(
-  source: ReactionResponse | CommunityPostResponse | CommentResponse | null | undefined,
+  source: ReactionResponse | CommunityPost | CommentResponse | null | undefined,
   reactionKey: CommunityReactionKey
 ): number {
   const summary = readReactionSummary(source);
@@ -1144,23 +1179,13 @@ export function arePollResultsHidden(poll: PollResponse | null | undefined): boo
 }
 
 /**
- * Whether a safety badge may be shown for this content.
- *
- * **`unavailable` is not `clean`.** It means no provider answered — the review
- * did not happen. A badge on it would be the application vouching for something
- * nothing looked at, which is the same defect as the "verified safe" claim the
- * Media wave removed when it found this platform has no virus scanner.
- *
- * `pending` is also refused: a review that has not finished has not concluded
- * anything either.
+ * Whether a poll still takes votes. Only an `open` one does: `closed` is past
+ * its closing time and `cancelled` was closed early by its author. The poll has
+ * no `isClosed`, which `PollBlock` read until RMD-009 and so offered a vote on
+ * every closed poll.
  */
-export function shouldRenderSafetyBadge(status: ContentReviewStatus | null | undefined): boolean {
-  return status === 'clean';
-}
-
-/** Whether the automated review actually flagged this. */
-export function isFlaggedContent(status: ContentReviewStatus | null | undefined): boolean {
-  return status === 'flagged';
+export function isPollOpen(poll: PollResponse): boolean {
+  return poll.status === 'open';
 }
 
 /**

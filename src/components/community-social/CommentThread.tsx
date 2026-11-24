@@ -42,11 +42,7 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 
-import {
-  COMMENT_BODY_MAX_LENGTH,
-  commentBodyText,
-  isFlaggedContent,
-} from '@/lib/api/community-social-api';
+import { COMMENT_BODY_MAX_LENGTH, commentBodyText } from '@/lib/api/community-social-api';
 import {
   useCommunityCapabilities,
   useCreateComment,
@@ -425,15 +421,6 @@ function CommentNode({
       >
         {commentBodyText(comment)}
       </Text>
-
-      {/* Only `flagged` earns a notice. `unavailable` means no provider
-          answered — nothing looked at this — and `pending` means nothing has
-          concluded, so neither may be dressed as a verdict in either direction. */}
-      {isFlaggedContent(comment.reviewStatus) ? (
-        <Text className="text-[9px] font-black text-warning-default mt-1.5">
-          ⚠️ Flagged by automated review
-        </Text>
-      ) : null}
 
       {/* A tombstone gets no controls. There is nothing to react to, reply to or
           report, and offering them would be offering to act on nothing. */}

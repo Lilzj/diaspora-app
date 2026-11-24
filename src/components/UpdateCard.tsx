@@ -37,7 +37,7 @@ import type { AuthorSummary } from '@/types/social';
 import { UPDATE_CATEGORY_ICONS } from '@/types/update';
 import { ReputationBadge } from './ReputationBadge';
 import { useCommunityCapabilities, useReact } from '@/hooks/community-social';
-import { corroboratingReactionFor, toReactionSummary } from '@/lib/api/community-social-api';
+import { corroboratingReactionFor, toReactionTally } from '@/lib/api/community-social-api';
 import { useThemeTokens } from '@/design-system';
 
 interface UpdateCardProps {
@@ -103,9 +103,11 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
   // `readReactionSummary` exists to reconcile the two names B6 uses for this
   // record — `summary` on a reaction response, `reactions` on a post. A summary
   // carries only the second, so the field is unambiguous and read directly.
-  // Through `toReactionSummary`: the server names it `viewerReactions`, never `myReactionKey`.
-  const viewerReaction = toReactionSummary(update.reactions)?.myReactionKey ?? null;
-  const hasConfirmed = corroboration !== null && viewerReaction === corroboration.key;
+  // Through `toReactionTally`: the server names them `viewerReactions`, never
+  // `myReactionKey`, and they are a list. A member who found the post helpful
+  // and then confirmed it holds both, and only the first was ever compared.
+  const viewerReactions = toReactionTally(update.reactions)?.myReactionKeys ?? [];
+  const hasConfirmed = corroboration !== null && viewerReactions.includes(corroboration.key);
 
   const handlePress = () => router.push(`/update/${update.updateId}`);
 

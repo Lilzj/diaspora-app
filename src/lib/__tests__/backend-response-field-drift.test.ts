@@ -729,31 +729,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: NO_TYPED_READ,
   },
-  'CommentResponse <- CommentResponse': {
-    fields: ['postId', 'reactions.counts', 'reactions.myReactionKey', 'reviewStatus'],
-    row: 'RMD-009',
-    why: "`reactions.counts` and `myReactionKey` are read through `readReactionSummary`, which accepts the server's shape too (`reaction-bar-server-shape.test.tsx`). `postId` and `reviewStatus` are not traced.",
-  },
-  'CommentThreadResponse <- CommentThreadResponse': {
-    fields: ['comments[].postId', 'comments[].reactions.counts', 'comments[].reactions.myReactionKey', 'comments[].reviewStatus'],
-    row: 'RMD-009',
-    why: "`reactions.counts` and `myReactionKey` are read through `readReactionSummary`, which accepts the server's shape too (`reaction-bar-server-shape.test.tsx`). `postId` and `reviewStatus` are not traced.",
-  },
-  'CommunityPostResponse <- CommunityPostResponse': {
-    fields: ['areaId', 'areaName', 'attachments[].url', 'authorId', 'cityName', 'countryCode', 'isBookmarked', 'latitude', 'longitude', 'organizationId', 'poll.isClosed', 'poll.selectedOptionIds', 'reactions.counts', 'reactions.myReactionKey', 'reviewStatus'],
-    row: 'RMD-009',
-    why: "`reactions.counts` and `myReactionKey` are read through `readReactionSummary`, which accepts the server's shape too (`reaction-bar-server-shape.test.tsx`). `cityName`, `areaName`, `authorId`, `organizationId`, `isBookmarked` and the poll's `isClosed` and `selectedOptionIds` are read by the post card, the update screen and the poll block; whether those reads see this body or a mapped post is not established.",
-  },
-  'CommunityUpdate <- CommunityPostResponse': {
-    fields: ['authorId'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
-  'ContentEngagementResponse <- ContentEngagementResponse': {
-    fields: ['reactions.counts', 'reactions.myReactionKey'],
-    row: 'RMD-009',
-    why: "`reactions.counts` and `myReactionKey` are read through `readReactionSummary`, which accepts the server's shape too (`reaction-bar-server-shape.test.tsx`).",
-  },
   'Conversation <- ConversationResponse': {
     fields: ['lastMessage.isOptimistic', 'participants[].trust.countryVerifications'],
     row: 'RMD-009',
@@ -808,11 +783,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     fields: ['cityName', 'id', 'updatedAt'],
     row: 'RMD-009',
     why: 'The creator workspace reads its rows tolerantly — `listingId ?? id`, `?? 0` — so nothing throws, but the fields named here are never sent and their figures always read as the fallback.',
-  },
-  'FeedResponse <- FeedResponse': {
-    fields: ['items[].affectedRadiusMetres', 'items[].areaId', 'items[].areaName', 'items[].attachments', 'items[].author', 'items[].authorId', 'items[].body', 'items[].bookmarkCount', 'items[].canCancel', 'items[].canEdit', 'items[].canWithdraw', 'items[].category', 'items[].cityName', 'items[].closedAt', 'items[].commentCount', 'items[].countryCode', 'items[].createdAt', 'items[].description', 'items[].editedAt', 'items[].expiresAt', 'items[].isBookmarked', 'items[].isEdited', 'items[].isPinned', 'items[].latitude', 'items[].location', 'items[].longitude', 'items[].organizationId', 'items[].poll', 'items[].postId', 'items[].publishedAt', 'items[].reactions', 'items[].reportCount', 'items[].reviewStatus', 'items[].shareCount', 'items[].status', 'items[].title', 'items[].updateId', 'items[].urgency', 'items[].visibility', 'ranking'],
-    row: 'RMD-009',
-    why: "The raw feed page is typed with the mapped post type and `fetchFeed` maps every row through `toFeedPost`; the 40 names are the mapped shape, not the wire's `FeedItemResponse`. Whether anything reads a row before it is mapped is not established.",
   },
   'FollowResponse <- FollowResponse': {
     fields: ['isFollowing', 'muted', 'targetId'],
@@ -889,11 +859,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: '`precision` is declared on the reverse-geocode result and not sent. The reads the index finds are of other `precision` fields; not traced further.',
   },
-  'PollResponse <- Community.PollResponse': {
-    fields: ['isClosed', 'selectedOptionIds'],
-    row: 'RMD-009',
-    why: '`PollBlock` reads `isClosed` and `selectedOptionIds`, which the route never sends — it sends `status` and `hasVoted`. Whether the vote response reaches `PollBlock` unmapped is not traced.',
-  },
   'ProviderRow <- ProviderSummaryResponse': {
     fields: ['createdAt', 'description'],
     row: 'RMD-009',
@@ -903,11 +868,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     fields: ['badges[].progress', 'badges[].tier'],
     row: 'RMD-009',
     why: '`config/badges` reads `progress` and `tier` off a badge the route sends without them.',
-  },
-  'ReactionResponse <- ReactionResponse': {
-    fields: ['myReactionKey', 'summary.counts', 'summary.myReactionKey'],
-    row: 'RMD-009',
-    why: "`reactions.counts` and `myReactionKey` are read through `readReactionSummary`, which accepts the server's shape too (`reaction-bar-server-shape.test.tsx`). The top-level `myReactionKey` has no typed read.",
   },
   'ShareResponse <- ShareResponse': {
     fields: ['message'],

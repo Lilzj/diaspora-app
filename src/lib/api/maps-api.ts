@@ -966,7 +966,9 @@ export async function fetchAlert(
   id: string,
   options: RequestOptions = {}
 ): Promise<CommunityAlert> {
-  const response = await apiClient.get<Envelope<CommunityUpdate>>(`/community/posts/${id}`, {
+  // Everything a `CommunityUpdate` names but `authorId`: the post names its
+  // author `author`, and nothing that draws an alert reads it (RMD-009).
+  const response = await apiClient.get<Envelope<Omit<CommunityUpdate, 'authorId'>>>(`/community/posts/${id}`, {
     signal: options.signal,
   });
   return toCommunityAlert(response.data.data);

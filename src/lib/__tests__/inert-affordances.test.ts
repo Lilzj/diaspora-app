@@ -17,6 +17,7 @@ import {
   isSuspectedFraudError,
 } from '../api/housing-listings-api';
 import { createPost } from '../api/community-social-api';
+import { wirePost } from './support/community-post-wire';
 import { fetchSessions, revokeOtherSessions, revokeSession } from '../api/auth-api';
 import {
   isViewingAlreadyOpenError,
@@ -728,7 +729,9 @@ describe('the listing checkers do not fabricate market data', () => {
 
 describe('posting a local alert', () => {
   it('really does reach POST /community/posts with the alert’s own fields', async () => {
-    api.onPost('/community/posts').reply(201, envelope({ postId: 'p-1' }));
+    // A whole post: `createPost` maps what the route answers (RMD-009), and no
+    // server answers a create with `{ postId }` alone.
+    api.onPost('/community/posts').reply(201, envelope(wirePost({ postId: 'p-1' })));
 
     await createPost({
       body: 'Power cut on Atlantic Road.',

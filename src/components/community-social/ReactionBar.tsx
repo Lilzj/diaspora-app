@@ -32,7 +32,7 @@ import type {
   CommentResponse,
   ContentEngagementResponse,
   CommunityContentType,
-  CommunityPostResponse,
+  CommunityPost,
   CommunityReactionKey,
 } from '@/types/community-social';
 
@@ -40,7 +40,7 @@ import { reactionGlyph } from './labels';
 
 interface ReactionBarProps {
   /** A post or a comment. Either way the tally is read through the narrower. */
-  content: CommunityPostResponse | CommentResponse | ContentEngagementResponse;
+  content: CommunityPost | CommentResponse | ContentEngagementResponse;
   contentType: CommunityContentType;
   onReact: (reactionKey: CommunityReactionKey) => void;
   onUnreact: (reactionKey: CommunityReactionKey) => void;
@@ -59,7 +59,11 @@ export function ReactionBar({
   const { capabilities, reactionsFor } = useCommunityCapabilities();
 
   const summary = readReactionSummary(content);
-  const mine = summary?.myReactionKey ?? null;
+  // Every key the member reacted with. A member may hold several reactions on
+  // one item, so this is a list; reading only the first left the others
+  // looking like somebody else's, and tapping one reacted again instead of
+  // taking it back.
+  const mine = summary?.myReactionKeys ?? [];
 
   // Empty until capabilities arrive. Deliberate — see the header.
   const keys = reactionsFor(contentType);
@@ -78,7 +82,7 @@ export function ReactionBar({
   return (
     <View className="flex-row items-center flex-wrap">
       {keys.map((key) => {
-        const isMine = mine === key;
+        const isMine = mine.includes(key);
         const count = countFor(key);
 
         return (

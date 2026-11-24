@@ -16,9 +16,9 @@ import MockAdapter from 'axios-mock-adapter';
 
 import { apiClient } from '../transport/apiClient';
 import { GuideEditError, saveGuideEdits } from '../api/guides-api';
-import { postEditRequest, updatePost } from '../api/community-social-api';
+import { postEditRequest, toCommunityPost, updatePost } from '../api/community-social-api';
 import type { GuideResponse } from '@/types/guides';
-import type { CommunityPostResponse } from '@/types/community-social';
+import { wirePost } from './support/community-post-wire';
 
 const GUIDE_ID = '6f1c2a40-0b7e-4c1d-9a55-3d2e1f0a9b11';
 const POST_ID = '9b8a7c60-2d1e-4f3a-8b77-1c2d3e4f5a6b';
@@ -193,30 +193,36 @@ describe('postEditRequest + updatePost', () => {
     mock.restore();
   });
 
-  const post = {
+  /** What the PUT answers: the whole post, which `updatePost` maps. */
+  const wire = wirePost({
     postId: POST_ID,
     title: 'Road closed',
     body: 'Royal Road is closed at the market.',
+    category: 'traffic',
     urgency: 'urgent',
-    status: 'published',
     attachments: [
       {
         attachmentId: '11111111-0000-4000-8000-000000000011',
         kind: 'image',
         mediaId: '22222222-0000-4000-8000-000000000022',
-        url: null,
-        role: null,
+        role: 'gallery',
         caption: null,
         position: 0,
+        linkUrl: null,
       },
     ],
-  } as unknown as CommunityPostResponse;
+    canEdit: true,
+    canWithdraw: true,
+    canCancel: true,
+  });
+  /** What the edit screen holds. */
+  const post = toCommunityPost(wire);
 
   it('keeps existing attachments by leaving the field out of the PUT', async () => {
     let body: Record<string, unknown> | null = null;
     mock.onPut(`/community/posts/${POST_ID}`).reply((config) => {
       body = JSON.parse(config.data);
-      return [200, envelope(post)];
+      return [200, envelope(wire)];
     });
 
     await updatePost(

@@ -257,20 +257,6 @@ export type CommunityReportReason = Open<
 export type ModerationAction = Open<'dismiss' | 'warn' | 'hide' | 'remove' | 'escalate' | 'restore'>;
 
 /**
- * What the automated safety review concluded.
- *
- * **`unavailable` is not `clean`.** It means no provider answered — the review
- * did not run, or ran and produced nothing — and it is the value a deployment
- * with no configured provider returns for everything. A screen that rendered a
- * "checked and safe" badge for anything that is not `flagged` would put that
- * badge on content nobody looked at.
- *
- * `shouldRenderSafetyBadge` in the client is the guard. Nothing else in this
- * codebase may branch on this field directly.
- */
-export type ContentReviewStatus = Open<'clean' | 'flagged' | 'pending' | 'unavailable'>;
-
-/**
  * The eleven feed keys, closed.
  *
  * Closed rather than open, unlike every vocabulary above, because this one is a
@@ -332,21 +318,52 @@ export const COMMUNITY_FEED_RANKINGS: readonly CommunityFeedRanking[] = [
 
 // ── Reactions ────────────────────────────────────────────────────────────────
 
-/** One reaction key and how many people used it. */
+/** One reaction key: how many people used it, and whether the viewer did. */
 export interface ReactionCountResponse {
   reactionKey: CommunityReactionKey;
   count: number;
+  reactedByViewer: boolean;
 }
 
 /**
- * The reaction tally for one piece of content.
+ * `ReactionSummaryResponse` — the reaction tally for one piece of content.
  *
  * Property 5: this record hangs off `ReactionResponse` under the name `summary`
- * and off a post or comment under the name `reactions`. Same shape, two field
- * names, and no way to tell from the type which one you are holding — which is
- * why the client exposes `readReactionSummary` rather than letting each screen
- * reach for whichever name it remembers.
+ * and off a post, a comment or an engagement record under the name `reactions`.
+ * Same shape, two field names, and no way to tell from the type which one you
+ * are holding — which is why the client exposes `readReactionSummary` rather
+ * than letting each screen reach for whichever name it remembers.
+ *
+ * **There is no `counts` and no `myReactionKey` on the wire** (RMD-009). The
+ * counts are `reactions`, and the viewer's own reactions are `viewerReactions`:
+ * a list, because a member may hold several reactions on one item at once —
+ * helpful and confirmed, say — and the server means them to. The app's type and
+ * its mock server both used the invented names, so every test agreed while
+ * `ReactionBar` crashed the official-notice screen on its first real use
+ * (14 Oct 2026).
  */
+export interface ReactionSummaryResponse {
+  totalCount: number;
+  reactions: ReactionCountResponse[];
+  /** Every key the signed-in member reacted with. Empty for a guest. */
+  viewerReactions: CommunityReactionKey[];
+  likeCount: number;
+  helpfulCount: number;
+  confirmationCount: number;
+  disputeCount: number;
+}
+
+/**
+ * The tally as a screen reads it: `readReactionSummary`'s answer, never a
+ * response body. One count per key, and every key the member reacted with.
+ */
+export interface ReactionTally {
+  totalCount: number;
+  counts: { reactionKey: CommunityReactionKey; count: number }[];
+  /** All of them, not the first: a member may hold several reactions on one item. */
+  myReactionKeys: CommunityReactionKey[];
+}
+
 /**
  * `ContentEngagementResponse` — `GET /community/content/{type}/{id}/engagement`.
  * The counts for content whose own response does not carry them (a notice).
@@ -356,13 +373,6 @@ export interface ContentEngagementResponse {
   contentId: string;
   reactions: ReactionSummaryResponse;
   commentCount: number;
-}
-
-export interface ReactionSummaryResponse {
-  totalCount: number;
-  counts: ReactionCountResponse[];
-  /** The signed-in member's reaction, or null. */
-  myReactionKey: CommunityReactionKey | null;
 }
 
 /**
@@ -376,9 +386,10 @@ export interface ReactionSummaryResponse {
 export interface ReactionResponse {
   contentType: CommunityContentType;
   contentId: string;
+  /** The key this request added or removed. */
+  reactionKey: CommunityReactionKey;
   /** Property 5. The same record a post calls `reactions`. */
   summary: ReactionSummaryResponse;
-  myReactionKey: CommunityReactionKey | null;
 }
 
 // ── Attachments and polls ────────────────────────────────────────────────────
@@ -395,14 +406,15 @@ export interface PostAttachmentRequest {
   caption?: string | null;
 }
 
+/** An attachment on a post. A link's address is `linkUrl`; there is no `url`. */
 export interface PostAttachmentResponse {
   attachmentId: string;
   kind: string;
   mediaId: string | null;
-  url: string | null;
-  role: string | null;
+  role: string;
   caption: string | null;
   position: number;
+  linkUrl: string | null;
 }
 
 export interface PollOptionRequest {
@@ -435,26 +447,45 @@ export interface CreatePollRequest {
 export interface PollOptionResponse {
   optionId: string;
   label: string;
+  position: number;
   imageMediaId: string | null;
   /** Null while results are hidden. Never coalesce to 0. */
   voteCount: number | null;
   /** Null while results are hidden. 0–100. */
   sharePercent: number | null;
+  /** Whether the signed-in member chose this option. */
+  votedByViewer: boolean;
 }
 
+/**
+ * Where a poll is. Only `open` takes votes: `closed` is past its closing time,
+ * and `cancelled` was closed early by its author.
+ */
+export type PostPollStatus = Open<'open' | 'closed' | 'cancelled'>;
+
+/**
+ * `Community.PollResponse` — a post's poll.
+ *
+ * **No `isClosed` and no `selectedOptionIds`** (RMD-009). The poll says where it
+ * is in `status`, and which options the member chose in each option's
+ * `votedByViewer`. `PollBlock` read the two invented names, so against the
+ * server it offered a vote on every closed poll and threw on
+ * `selectedOptionIds.includes`.
+ */
 export interface PollResponse {
   pollId: string;
   question: string;
   options: PollOptionResponse[];
   allowsMultiple: boolean;
   resultVisibility: PollResultVisibility;
+  status: PostPollStatus;
   closesAt: string | null;
-  isClosed: boolean;
   /** Null while results are hidden. See `PollOptionResponse.voteCount`. */
   totalVotes: number | null;
+  /** How many members voted. Null while results are hidden. */
+  voterCount: number | null;
   hasVoted: boolean;
-  /** What this member chose. Empty until they vote. */
-  selectedOptionIds: string[];
+  canSeeResults: boolean;
 }
 
 /** `POST /community/posts/{postId}/poll/votes` — **200, not 201**. */
@@ -536,13 +567,6 @@ export interface SetPinnedRequest {
   pinned: boolean;
 }
 
-/**
- * `CommunityPostResponse`.
- *
- * Property 2 lives here twice: `postId`/`updateId` and `body`/`description` are
- * the same values under two names. Both are declared so a reader of either finds
- * the type says so.
- */
 /** `AuthorSummaryResponse`: who wrote a post, as the server names them. */
 export interface PostAuthorSummary {
   userId: string;
@@ -554,13 +578,35 @@ export interface PostAuthorSummary {
   organizationName?: string | null;
 }
 
+/** `LocationContextResponse`: where a post is. */
+export interface LocationContextResponse {
+  countryCode: string | null;
+  areaId: string | null;
+  areaName: string | null;
+  cityName: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  /** From the caller's position, when the request gave one. */
+  distanceKm: number | null;
+  /** False when the post sits at a town's centre rather than a point its author chose. */
+  pointIsExact: boolean;
+}
+
+/**
+ * `CommunityPostResponse` — one post, as `GET /community/posts/{postId}` and
+ * every route that creates, edits or closes a post answer it.
+ *
+ * Property 2 lives here twice: `postId`/`updateId` and `body`/`description` are
+ * the same values under two names. Both are declared so a reader of either finds
+ * the type says so.
+ *
+ * **No screen reads this record.** Its author is `author`, its place is
+ * `location` and its saved flag is `bookmarkedByViewer`, where the app's post
+ * says `authorId`, `cityName` and `isBookmarked` (RMD-009). `toCommunityPost`
+ * turns it into the `CommunityPost` the screens draw, and every route that
+ * returns a post goes through it.
+ */
 export interface CommunityPostResponse {
-  /**
-   * The author, by name (14 Oct 2026). The server always sent it; the app's type
-   * left it out, so a post page read "A community member" for every author,
-   * the post's own author included.
-   */
-  author?: PostAuthorSummary | null;
   postId: string;
   /**
    * Property 2. **The same value as `postId`.**
@@ -570,42 +616,24 @@ export interface CommunityPostResponse {
    * identifier and there is nothing to look it up in.
    */
   updateId: string;
-
+  author: PostAuthorSummary;
   title: string | null;
   body: string;
   /** Property 2. **The same value as `body`.** */
   description: string;
-
   category: CommunityPostCategory | null;
   urgency: CommunityPostUrgency | null;
+  status: string;
   visibility: CommunityPostVisibility;
-
-
-  countryCode: string | null;
-  areaId: string | null;
-  cityName: string | null;
-  areaName: string | null;
-  latitude: number | null;
-  longitude: number | null;
-
-  authorId: string;
-  /** The publishing organisation, when the author posted on its behalf. */
-  organizationId: string | null;
-
+  location: LocationContextResponse;
   attachments: PostAttachmentResponse[];
   poll: PollResponse | null;
-
   /** Property 5. The same record `ReactionResponse` calls `summary`. */
   reactions: ReactionSummaryResponse;
-
   commentCount: number;
   shareCount: number;
   bookmarkCount: number;
-
-  isPinned: boolean;
-  isEdited: boolean;
-  isBookmarked: boolean;
-
+  bookmarkedByViewer: boolean;
   /**
    * **Zero for anyone who is not the author.**
    *
@@ -615,39 +643,126 @@ export interface CommunityPostResponse {
    * they are reviewing. The moderation queue is where report counts come from.
    */
   reportCount: number;
-
-  /** See `ContentReviewStatus`. `unavailable` is not `clean`. */
-  reviewStatus: ContentReviewStatus;
-
-
-  createdAt: string;
+  isPinned: boolean;
+  isEdited: boolean;
   publishedAt: string | null;
   expiresAt: string | null;
+  editedAt: string | null;
+  affectedRadiusMetres: number | null;
+  closedAt: string | null;
+  createdAt: string;
+  /** The server's answer, per caller. Never computed on the device. */
+  canEdit: boolean;
+  canWithdraw: boolean;
+  canCancel: boolean;
+}
 
+/**
+ * `CommunityPostSummaryResponse` — a post as a feed item carries it.
+ *
+ * Less than a post: no visibility, attachments, share or bookmark count, report
+ * count, edit state, creation time or permissions, and `hasPoll` where the post
+ * has its poll. `toCommunityPost` leaves those empty rather than guessing them.
+ */
+export interface CommunityPostSummaryResponse {
+  postId: string;
+  /** Property 2. The same value as `postId`. */
+  updateId: string;
+  author: PostAuthorSummary;
+  title: string | null;
+  body: string;
+  /** Property 2. The same value as `body`. */
+  description: string;
+  category: CommunityPostCategory | null;
+  urgency: CommunityPostUrgency | null;
+  status: string;
+  location: LocationContextResponse;
+  reactions: ReactionSummaryResponse;
+  commentCount: number;
+  bookmarkedByViewer: boolean;
+  isPinned: boolean;
+  hasPoll: boolean;
+  publishedAt: string | null;
+  expiresAt: string | null;
+  affectedRadiusMetres: number | null;
+  closedAt: string | null;
+}
+
+/**
+ * A post as this app draws it — never a response body.
+ *
+ * `toCommunityPost` makes one from a post (`CommunityPostResponse`) or from a
+ * feed item's summary (`CommunityPostSummaryResponse`). The author's id, the
+ * place and the saved flag are lifted out of `author`, `location` and
+ * `bookmarkedByViewer` under the names the screens read. What a summary does not
+ * carry is `null`, or an empty list, rather than a guess.
+ */
+export interface CommunityPost {
+  postId: string;
+  /** Property 2. The same value as `postId`. */
+  updateId: string;
+  /**
+   * The author, by name (14 Oct 2026). The server always sent it; the app's type
+   * left it out, so a post page read "A community member" for every author,
+   * the post's own author included.
+   */
+  author: PostAuthorSummary;
+  /** `author.userId`. */
+  authorId: string;
+  /** `author.organizationId`: the organisation it was published as, if any. */
+  organizationId: string | null;
+  title: string | null;
+  body: string;
+  /** Property 2. The same value as `body`. */
+  description: string;
+  category: CommunityPostCategory | null;
+  urgency: CommunityPostUrgency | null;
   /**
    * `draft`, `published`, `expired`, `archived`, `hidden`, `removed`, `deleted`,
    * `withdrawn` or `cancelled`. The last two are an author taking an alert back;
    * both stay readable and must be shown as taken back.
    */
-  status?: string;
-  /** When its author withdrew or cancelled it. */
-  closedAt?: string | null;
-  /** When it was amended after the silent window. */
-  editedAt?: string | null;
-  /** How far around its pin it applies, in metres. Null for a point. */
-  affectedRadiusMetres?: number | null;
-  /** The server's answer, per caller. Never computed on the device. */
-  canEdit?: boolean;
-  canWithdraw?: boolean;
-  canCancel?: boolean;
+  status: string;
   /** Where it is. `pointIsExact` is false when it sits at a town's centre. */
-  location?: {
-    latitude: number | null;
-    longitude: number | null;
-    cityName: string | null;
-    areaName: string | null;
-    pointIsExact?: boolean;
-  } | null;
+  location: LocationContextResponse;
+  /** `location`'s, under the names the screens read. */
+  countryCode: string | null;
+  areaId: string | null;
+  cityName: string | null;
+  areaName: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  /** Property 5. Read it through `readReactionSummary`. */
+  reactions: ReactionSummaryResponse;
+  commentCount: number;
+  /** `bookmarkedByViewer`. */
+  isBookmarked: boolean;
+  isPinned: boolean;
+  publishedAt: string | null;
+  expiresAt: string | null;
+  /** How far around its pin it applies, in metres. Null for a point. */
+  affectedRadiusMetres: number | null;
+  /** When its author withdrew or cancelled it. */
+  closedAt: string | null;
+
+  // ── Not on a feed item: null (or empty) when the post came from a feed ──────
+  visibility: CommunityPostVisibility | null;
+  attachments: PostAttachmentResponse[];
+  /** A feed item says only whether there is one: see `hasPoll`. */
+  poll: PollResponse | null;
+  hasPoll: boolean;
+  shareCount: number | null;
+  bookmarkCount: number | null;
+  /** Zero for anyone who is not the author. See `CommunityPostResponse.reportCount`. */
+  reportCount: number | null;
+  isEdited: boolean | null;
+  /** When it was amended after the silent window. */
+  editedAt: string | null;
+  createdAt: string | null;
+  /** The server's answer, per caller. Never computed on the device. */
+  canEdit: boolean | null;
+  canWithdraw: boolean | null;
+  canCancel: boolean | null;
 }
 
 /**
@@ -742,8 +857,6 @@ export interface CommentResponse {
   commentId: string;
   contentType: CommunityContentType;
   contentId: string;
-  /** Set when the comment hangs off a post. Null for other content types. */
-  postId: string | null;
   parentCommentId: string | null;
   quotedCommentId: string | null;
 
@@ -767,8 +880,6 @@ export interface CommentResponse {
 
   replies: CommentResponse[];
   replyCount: number;
-
-  reviewStatus: ContentReviewStatus;
 
   createdAt: string;
   updatedAt: string | null;
@@ -849,12 +960,41 @@ export interface FeedQuery {
  */
 export interface FeedResponse {
   feedKey: CommunityFeedKey;
-  ranking: CommunityFeedRanking;
-  /** **`items`**, like the platform envelope. */
-  items: CommunityPostResponse[];
+  /** The ordering it was ranked by. `rankingKey`; there is no `ranking`. */
+  rankingKey: CommunityFeedRanking;
+  /** **`items`**, like the platform envelope — feed items, not posts. */
+  items: FeedItemResponse[];
   nextCursor: string | null;
   hasMore: boolean;
   /** **`totalAvailable`, not `totalCount`.** */
+  totalAvailable: number | null;
+}
+
+/**
+ * `FeedItemResponse` — one row of a feed, **which is not a post.** The post is
+ * under `post`, as a summary, and is null for a row that is some other kind of
+ * content. The app read each row as the post itself until 14 Oct 2026.
+ */
+export interface FeedItemResponse {
+  contentType: string;
+  contentId: string;
+  post: CommunityPostSummaryResponse | null;
+  /** From the caller's position, on a feed that was given one. */
+  distanceKm: number | null;
+  /** Why the feed chose it, when it says. */
+  reason: string | null;
+}
+
+/**
+ * A feed page as the app reads it: `FeedResponse`, with every row that holds a
+ * post mapped by `toFeedPost` and the rest dropped. Never a response body.
+ */
+export interface CommunityFeedPage {
+  feedKey: CommunityFeedKey;
+  rankingKey: CommunityFeedRanking;
+  items: CommunityPost[];
+  nextCursor: string | null;
+  hasMore: boolean;
   totalAvailable: number | null;
 }
 

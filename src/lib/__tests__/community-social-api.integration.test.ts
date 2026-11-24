@@ -37,6 +37,8 @@ import {
   communitySocialKeys,
   createBookmark,
   createBookmarkFolder,
+  cancelPost,
+  createDraftPost,
   createPost,
   createPostComment,
   deleteBookmark,
@@ -55,7 +57,6 @@ import {
   fetchTrendingHashtags,
   flattenComments,
   followTarget,
-  isFlaggedContent,
   isFollowNotFoundError,
   isPrefixRequiredError,
   reactToPost,
@@ -65,7 +66,6 @@ import {
   replyToComment,
   reportContent,
   setPostPinned,
-  shouldRenderSafetyBadge,
   sharePost,
   suggestHashtags,
   toCommentPage,
@@ -74,11 +74,12 @@ import {
   unreactToPost,
   updatePost,
   votePoll,
+  withdrawPost,
 } from '@/lib/api/community-social-api';
 import type {
   CommentResponse,
   CommunityCapabilitiesResponse,
-  CommunityPostResponse,
+  CommunityPost,
 } from '@/types/community-social';
 
 let mock: MockAdapter;
@@ -87,8 +88,8 @@ let mock: MockAdapter;
 const OTHERS_POST = '00000000-0000-4000-c000-000000000001';
 /** The one seeded post this member wrote. */
 const MY_POST = '00000000-0000-4000-c000-000000000002';
-/** The flagged one. */
-const FLAGGED_POST = '00000000-0000-4000-c000-000000000003';
+/** The pinned one. */
+const PINNED_POST = '00000000-0000-4000-c000-000000000003';
 /** The one with a poll whose results are hidden until you vote. */
 const POLL_POST = '00000000-0000-4000-c000-000000000004';
 
@@ -170,7 +171,11 @@ describe('enum values are camelCase, with exactly one PascalCase island', () => 
       expect(value).not.toContain('_');
     }
 
-    const visibilities = feed.items.map((post) => post.visibility);
+    // A feed item's summary carries no visibility; the whole post does. This
+    // read it off the feed until RMD-009, which only the mock ever sent.
+    const visibilities = await Promise.all(
+      feed.items.map(async (row) => (await fetchPost(row.postId)).visibility)
+    );
     expect(visibilities).toContain('verifiedMembers');
     expect(visibilities).toContain('communityVerified');
 
@@ -229,7 +234,7 @@ describe('enum values are camelCase, with exactly one PascalCase island', () => 
     expect(capabilities.rankings).toContain('location-weighted');
 
     const weighted = await fetchFeed('home', { ranking: 'trust-weighted' });
-    expect(weighted.ranking).toBe('trust-weighted');
+    expect(weighted.rankingKey).toBe('trust-weighted');
 
     await expect(
       apiClient.get('/community/feeds/home', { params: { ranking: 'trustWeighted' } })
@@ -360,7 +365,9 @@ describe('the reaction summary has two names depending on where it hangs', () =>
     expect(readReactionSummary(reaction)).not.toBeNull();
     expect(readReactionSummary(null)).toBeNull();
 
-    expect(reactionCount(reaction, 'like')).toBe(reaction.summary.myReactionKey === 'like' ? 13 : 12);
+    // The seed's twelve, and this member's.
+    expect(reaction.summary.viewerReactions).toEqual(['like']);
+    expect(reactionCount(reaction, 'like')).toBe(13);
     // A key nobody used is 0 rather than undefined.
     expect(reactionCount(post, 'celebrate')).toBe(0);
   });
@@ -371,7 +378,24 @@ describe('the reaction summary has two names depending on where it hangs', () =>
 
     expect(summary).not.toBeNull();
     expect(summary!.counts).toEqual([]);
-    expect(summary!.myReactionKey).toBeNull();
+    expect(summary!.myReactionKeys).toEqual([]);
+  });
+
+  it('keeps every reaction the member holds on one item, not the first', async () => {
+    // The server's rule is one reaction per member, item and kind: helpful and
+    // liked at once is allowed, and meant. The tally kept only the first until
+    // RMD-009, so the second looked like somebody else's and could not be taken
+    // back.
+    await reactToPost(OTHERS_POST, 'like');
+    const reaction = await reactToPost(OTHERS_POST, 'helpful');
+
+    expect(reaction.summary.viewerReactions).toEqual(['like', 'helpful']);
+    expect(readReactionSummary(reaction)!.myReactionKeys).toEqual(['like', 'helpful']);
+    expect(reactionCount(reaction, 'like')).toBe(13);
+    expect(reactionCount(reaction, 'helpful')).toBe(1);
+
+    const removed = await unreactToPost(OTHERS_POST, 'helpful');
+    expect(removed.summary.viewerReactions).toEqual(['like']);
   });
 });
 
@@ -544,40 +568,79 @@ describe('poll counts are null, not zero, while results are hidden', () => {
 
 // ── Trap 12 ──────────────────────────────────────────────────────────────────
 
-describe('a content review status of `unavailable` is not `clean`', () => {
-  it('never renders a safety badge for content nothing looked at', async () => {
-    const post = await fetchPost(OTHERS_POST);
+describe('a feed row is a feed item, not a post', () => {
+  it('serves each row as an item holding the post, and the client maps the post', async () => {
+    const response = await apiClient.get('/community/feeds/home', { params: { limit: 1 } });
+    const row = response.data.data.items[0];
 
-    // This deployment has no review provider configured, so most content
-    // carries `unavailable`: the review did not run.
-    expect(post.reviewStatus).toBe('unavailable');
+    expect(Object.keys(row).sort()).toEqual(['contentId', 'contentType', 'distanceKm', 'post', 'reason']);
+    // A summary: the author and the place are nested, and a feed carries no
+    // visibility at all.
+    expect(typeof row.post.author.userId).toBe('string');
+    expect(typeof row.post.location).toBe('object');
+    expect(row.post).not.toHaveProperty('authorId');
+    expect(row.post).not.toHaveProperty('cityName');
+    expect(row.post).not.toHaveProperty('visibility');
 
-    // The whole point. A screen that showed a badge for anything that is not
-    // `flagged` would put "checked and safe" on content nobody checked.
-    expect(shouldRenderSafetyBadge(post.reviewStatus)).toBe(false);
-    expect(isFlaggedContent(post.reviewStatus)).toBe(false);
+    const feed = await fetchFeed('home', { limit: 1 });
+    expect(feed.items[0].postId).toBe(row.contentId);
+    expect(feed.items[0].authorId).toBe(row.post.author.userId);
+    expect(feed.items[0].cityName).toBe(row.post.location.cityName);
+    // Not on a summary, and not guessed.
+    expect(feed.items[0].visibility).toBeNull();
+    expect(feed.items[0].createdAt).toBeNull();
   });
 
-  it('distinguishes flagged from unavailable', async () => {
-    const flagged = await fetchPost(FLAGGED_POST);
+  it('carries no review status on a post or a comment', async () => {
+    const post = await apiClient.get(`/community/posts/${OTHERS_POST}`);
+    expect(post.data.data).not.toHaveProperty('reviewStatus');
 
-    expect(flagged.reviewStatus).toBe('flagged');
-    expect(isFlaggedContent(flagged.reviewStatus)).toBe(true);
-    expect(shouldRenderSafetyBadge(flagged.reviewStatus)).toBe(false);
-  });
-
-  it('only ever says yes to `clean`', () => {
-    expect(shouldRenderSafetyBadge('clean')).toBe(true);
-    expect(shouldRenderSafetyBadge('pending')).toBe(false);
-    expect(shouldRenderSafetyBadge('unavailable')).toBe(false);
-    expect(shouldRenderSafetyBadge(null)).toBe(false);
-    expect(shouldRenderSafetyBadge(undefined)).toBe(false);
-  });
-
-  it('marks a new comment unavailable too', async () => {
     const comment = await createPostComment(OTHERS_POST, { body: 'Thanks for this.' });
-    expect(comment.reviewStatus).toBe('unavailable');
-    expect(shouldRenderSafetyBadge(comment.reviewStatus)).toBe(false);
+    expect(comment).not.toHaveProperty('reviewStatus');
+  });
+});
+
+describe('every route that returns a post maps it', () => {
+  // Until RMD-009 only the feed and `fetchPost` mapped. Creating, editing,
+  // withdrawing and cancelling returned the server's record as it came, the
+  // hooks cached it under the post's key, and the detail screen drew a post
+  // with no `authorId`, no place and no saved flag.
+  const DEV_MEMBER = '00000000-0000-4000-b000-00000000da01';
+  const request = { body: 'Water is off on Mill Road.', countryCode: 'GH', cityName: 'Accra' };
+
+  function expectMapped(post: CommunityPost) {
+    expect(post.authorId).toBe(DEV_MEMBER);
+    expect(post.author.userId).toBe(DEV_MEMBER);
+    expect(post.cityName).toBe('Accra');
+    expect(post.countryCode).toBe('GH');
+    expect(post.isBookmarked).toBe(false);
+  }
+
+  it('maps a created post and a draft', async () => {
+    const created = await createPost(request);
+    expectMapped(created);
+    expect(created.canWithdraw).toBe(true);
+
+    expectMapped(await createDraftPost(request));
+  });
+
+  it('maps an edited post', async () => {
+    const created = await createPost(request);
+    const edited = await updatePost(created.postId, { body: 'Water is back on Mill Road.' });
+
+    expectMapped(edited);
+    expect(edited.body).toBe('Water is back on Mill Road.');
+    expect(edited.isEdited).toBe(true);
+  });
+
+  it('maps a withdrawn post and a cancelled one', async () => {
+    const withdrawn = await withdrawPost((await createPost(request)).postId);
+    expectMapped(withdrawn);
+    expect(withdrawn.status).toBe('withdrawn');
+
+    const cancelled = await cancelPost((await createPost(request)).postId);
+    expectMapped(cancelled);
+    expect(cancelled.status).toBe('cancelled');
   });
 });
 
@@ -604,12 +667,12 @@ describe('unfollowing something you do not follow is a failure', () => {
     // Same shape of call, opposite behaviour. This is why the two are not
     // written as one helper.
     const before = await fetchPost(MY_POST);
-    expect(before.reactions.myReactionKey).toBeNull();
+    expect(before.reactions.viewerReactions).toEqual([]);
 
     const response = await unreactToPost(MY_POST, 'like');
     // No throw, no 404 — the current tally, unchanged, because there was nothing
     // of this member's to remove. Other people's reactions are untouched.
-    expect(response.myReactionKey).toBeNull();
+    expect(response.summary.viewerReactions).toEqual([]);
     expect(response.summary.totalCount).toBe(before.reactions.totalCount);
   });
 
@@ -818,7 +881,7 @@ describe('neither list envelope is a CursorPagedResult', () => {
     const feed = await fetchFeed('home', { limit: 2 });
     const thread = await fetchPostComments(OTHERS_POST, { limit: 2 });
 
-    const feedPage = readPage<CommunityPostResponse>({ data: feed });
+    const feedPage = readPage<CommunityPost>({ data: feed });
     // The rows and the cursor survive, because the record happens to spell its
     // rows `items`.
     expect(feedPage.items).toHaveLength(2);
@@ -1054,7 +1117,9 @@ describe('status codes and null bodies', () => {
     expect(response.status).toBe(201);
     // **Defaults to true.** A client that omitted `publish` expecting a draft
     // publishes.
-    expect(response.data.data.isPublished).toBe(true);
+    // The post says so in `status`; it has no `isPublished`, which only the
+    // mock sent until RMD-009.
+    expect(response.data.data.status).toBe('published');
     expect(response.data.data.publishedAt).not.toBeNull();
   });
 
@@ -1154,7 +1219,7 @@ describe('the feed', () => {
     const chronological = await fetchFeed('home', { ranking: 'chronological', limit: 50 });
     const trending = await fetchFeed('home', { ranking: 'trending', limit: 50 });
 
-    expect(chronological.items[0].postId).toBe(FLAGGED_POST);
+    expect(chronological.items[0].postId).toBe(PINNED_POST);
     expect(chronological.items[0].isPinned).toBe(true);
     expect(trending.items[0].isPinned).toBe(true);
   });

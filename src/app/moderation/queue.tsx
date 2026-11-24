@@ -26,11 +26,10 @@
 // rendered as a state rather than as a heading.
 //
 // **3. There is no AI review on this contract.** `ModerationQueueItemResponse`
-// carries no `reviewStatus`, no confidence and no flag list; `ContentReviewStatus`
-// lives on the post or comment itself, and its most common value is
-// **`unavailable`** — no provider answered — which is *not* `clean`. So the "AI
-// Flagged" split is gone rather than being reconstructed from something that
-// does not mean what it looked like it meant.
+// carries no `reviewStatus`, no confidence and no flag list, and no post or
+// comment carries a review status either (the client said one did until
+// RMD-009). So the "AI Flagged" split is gone rather than being reconstructed
+// from something that does not mean what it looked like it meant.
 //
 // **4. It is not pageable, despite accepting `cursor` and `limit`.** The answer
 // is a bare array with no cursor in it, beside it, or in `meta` — there is

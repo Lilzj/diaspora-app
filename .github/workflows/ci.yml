@@ -214,7 +214,7 @@ jobs:
     timeout-minutes: 20
 
     env:
-      DRIFT_SUITES: '(advertising-enum-drift|backend-gap-register-drift|backend-openapi-contract-drift|backend-request-binding-drift|backend-response-field-drift|backend-row-property-drift|creator-earning-drift|password-policy-drift|reputation-rules-drift|screen-response-field-drift|step-up-claims-drift|withdrawal-status|served-routes-drift|access-state|validation-limits-drift|countries-drift)'
+      DRIFT_SUITES: '(advertising-enum-drift|backend-gap-register-drift|backend-openapi-contract-drift|backend-request-binding-drift|backend-response-field-drift|backend-row-property-drift|creator-earning-drift|password-policy-drift|reputation-rules-drift|screen-response-field-drift|step-up-claims-drift|withdrawal-status|served-routes-drift|access-state|validation-limits-drift|countries-drift|community-social-mock-contract)'
 
     steps:
       - name: Check out the client
@@ -303,20 +303,27 @@ jobs:
       # backend and also run in `static-and-unit`; only its comparison of the
       # real client needs the checkout.
       #
+      # Seventeen since 24 November 2026. `community-social-mock-contract` asks
+      # the development handler for the community social routes and holds each
+      # body to the schema the contract documents for that route, both ways: no
+      # name it does not declare, and none it declares left out (RMD-009). The
+      # handler had served the client's own shapes back to it, so every test
+      # agreed with a server that sends none of them.
+      #
       # The step below counts, and counting cannot see the failure that mattered
       # here: a suite written against a backend checkout and never added to
-      # `DRIFT_SUITES` leaves the count at fifteen and runs only in
+      # `DRIFT_SUITES` leaves the count where it was and runs only in
       # `static-and-unit`, where it skips. `drift-suite-coverage.test.ts` is
       # that direction — it reads this file and fails when a suite importing
       # `support/backend-checkout` is not named above.
-      - name: All sixteen suites are still here
+      - name: All seventeen suites are still here
         run: |
           found=$(npx jest --listTests "$DRIFT_SUITES" | grep -c 'test\.ts' || true)
           echo "matched $found suites"
-          if [ "$found" -ne 16 ]; then
-            echo "::error::Expected 16 contract-drift suites, matched $found. A suite was"
+          if [ "$found" -ne 17 ]; then
+            echo "::error::Expected 17 contract-drift suites, matched $found. A suite was"
             echo "::error::renamed, deleted, or DRIFT_SUITES no longer names it. Running"
-            echo "::error::fewer than sixteen is the finding this job exists to close."
+            echo "::error::fewer than seventeen is the finding this job exists to close."
             exit 1
           fi
 
@@ -369,7 +376,7 @@ jobs:
 
           case "$RESULT" in
             success)
-              echo "The sixteen cross-repository suites ran against a backend checkout."
+              echo "The seventeen cross-repository suites ran against a backend checkout."
               ;;
             skipped)
               echo "::error::Cross-repository verification did not run, so the platform's"
@@ -385,7 +392,7 @@ jobs:
               ;;
             *)
               echo "::error::The contract-drift job reported '$RESULT' rather than success."
-              echo "::error::The sixteen cross-repository suites did not pass."
+              echo "::error::The seventeen cross-repository suites did not pass."
               exit 1
               ;;
           esac
