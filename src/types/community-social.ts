@@ -580,9 +580,6 @@ export interface CommunityPostResponse {
   urgency: CommunityPostUrgency | null;
   visibility: CommunityPostVisibility;
 
-  audienceCountryCode: string | null;
-  audienceAreaId: string | null;
-  visibilityRuleId: string | null;
 
   countryCode: string | null;
   areaId: string | null;
@@ -607,7 +604,6 @@ export interface CommunityPostResponse {
 
   isPinned: boolean;
   isEdited: boolean;
-  isPublished: boolean;
   isBookmarked: boolean;
 
   /**
@@ -623,10 +619,8 @@ export interface CommunityPostResponse {
   /** See `ContentReviewStatus`. `unavailable` is not `clean`. */
   reviewStatus: ContentReviewStatus;
 
-  versionNumber: number;
 
   createdAt: string;
-  updatedAt: string | null;
   publishedAt: string | null;
   expiresAt: string | null;
 
@@ -862,7 +856,6 @@ export interface FeedResponse {
   hasMore: boolean;
   /** **`totalAvailable`, not `totalCount`.** */
   totalAvailable: number | null;
-  generatedAt: string;
 }
 
 // ── Bookmarks ────────────────────────────────────────────────────────────────
@@ -916,10 +909,8 @@ export interface BookmarkFolderResponse {
 export interface BookmarkCollectionResponse {
   folderId: string | null;
   name: string;
-  glyph: string | null;
   itemCount: number;
   items: BookmarkResponse[];
-  updatedAt: string | null;
 }
 
 // ── Shares and follows ───────────────────────────────────────────────────────
@@ -952,7 +943,6 @@ export interface ShareResponse {
   contentId: string;
   kind: ShareKind;
   destination: string | null;
-  recipientId: string | null;
   message: string | null;
   /** **Always null.** No post is ever created from a quote share. */
   quotePostId: null;
@@ -995,7 +985,6 @@ export interface FollowResponse {
   isFollowing: boolean;
   muted: boolean;
   followerCount: number;
-  followedAt: string | null;
 }
 
 // ── Moderation ───────────────────────────────────────────────────────────────
@@ -1091,22 +1080,11 @@ export interface ModerationQueueItemResponse {
   authorLevel: null;
 }
 
-export interface CreateModerationDecisionRequest {
-  contentType: CommunityContentType;
-  contentId: string;
-  /** Required. */
-  action: ModerationAction;
-  reason?: string | null;
-  reportId?: string | null;
-}
-
 export interface ModerationDecisionResponse {
-  decisionId: string;
   contentType: CommunityContentType;
   contentId: string;
   action: ModerationAction;
   reason: string | null;
-  reportId: string | null;
   moderatorId: string;
   /** **Hardcoded null.** */
   moderatorName: null;
@@ -1117,12 +1095,10 @@ export interface ModerationDecisionResponse {
 
 export interface HashtagSuggestionResponse {
   tag: string;
-  postCount: number;
 }
 
 export interface TrendingHashtagResponse {
   tag: string;
-  postCount: number;
   rank: number;
   countryCode: string | null;
 }

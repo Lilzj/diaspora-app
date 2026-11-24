@@ -647,17 +647,6 @@ export interface RestoreGuideVersionRequest {
   baseRevision?: number | null;
 }
 
-/**
- * `HideGuideRequest` — `guides.moderate`.
- *
- * One field, and it is required: "a moderation action nobody can explain six
- * months later is an action that should not have been possible." There is no
- * separate note here — that is `AddGuideModerationNoteRequest`.
- */
-export interface HideGuideRequest {
-  reason: string;
-}
-
 /** `GuideModerationQueueItemResponse`. */
 export interface GuideModerationQueueItemResponse {
   guideId: string;

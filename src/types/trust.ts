@@ -1175,14 +1175,9 @@ export interface WireModerationQueueItem {
 
 /** `ModerationDecisionResponse`. */
 export interface WireModerationDecision {
-  actionId: string;
-  moderatorId: string;
   contentType: WireModerationContentType;
   contentId: string;
   actionType: WireModerationActionType;
-  reason?: string | null;
-  previousStatus: WireModerationQueueStatus;
-  newStatus: WireModerationQueueStatus;
   createdAt: string;
 }
 

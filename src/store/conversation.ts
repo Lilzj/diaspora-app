@@ -399,7 +399,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
           senderName,
           type: 'text',
           text,
-          delivery: { status: 'sending', queuedAt: new Date().toISOString() },
+          delivery: { status: 'sending' },
           createdAt: new Date().toISOString(),
           localId,
           isOptimistic: true,

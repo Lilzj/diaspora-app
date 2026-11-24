@@ -73,7 +73,6 @@ import type {
   MediaKind,
   MediaOwnerType,
   MediaSignedUrl,
-  MediaUploadSession,
 } from '@/types/media';
 
 const ROOT = '/media';
@@ -563,57 +562,3 @@ export async function createSignedUrl(
 // here rather than in a second module so that when a video surface arrives it
 // extends this pipeline rather than starting a sixth one.
 
-export async function startUpload(input: {
-  kind: MediaKind;
-  fileName: string;
-  contentType: string;
-  totalBytes: number;
-  owner?: MediaOwner | null;
-}): Promise<MediaUploadSession> {
-  const response = await apiClient.post<Envelope<MediaUploadSession>>(`${ROOT}/uploads`, {
-    kind: input.kind,
-    fileName: input.fileName,
-    contentType: input.contentType,
-    totalBytes: input.totalBytes,
-    ownerType: input.owner?.ownerType,
-    ownerId: input.owner?.ownerId,
-    role: input.owner?.role,
-  });
-  return response.data.data;
-}
-
-export async function fetchUploadSession(sessionId: string): Promise<MediaUploadSession> {
-  const response = await apiClient.get<Envelope<MediaUploadSession>>(
-    `${ROOT}/uploads/${encodeURIComponent(sessionId)}`
-  );
-  return response.data.data;
-}
-
-/** The caller's open uploads. What was I uploading, after a reinstall. */
-export async function listMyUploads(): Promise<MediaUploadSession[]> {
-  const response = await apiClient.get<Envelope<MediaUploadSession[]>>(`${ROOT}/uploads`);
-  return response.data.data;
-}
-
-export async function setUploadState(
-  sessionId: string,
-  state: 'paused' | 'uploading' | 'cancelled'
-): Promise<MediaUploadSession> {
-  const response = await apiClient.put<Envelope<MediaUploadSession>>(
-    `${ROOT}/uploads/${encodeURIComponent(sessionId)}/state`,
-    { state }
-  );
-  return response.data.data;
-}
-
-export async function completeUpload(sessionId: string): Promise<MediaAsset> {
-  const response = await apiClient.post<Envelope<MediaAsset>>(
-    `${ROOT}/uploads/${encodeURIComponent(sessionId)}/complete`,
-    {}
-  );
-  return response.data.data;
-}
-
-export async function cancelUpload(sessionId: string): Promise<void> {
-  await apiClient.delete(`${ROOT}/uploads/${encodeURIComponent(sessionId)}`);
-}

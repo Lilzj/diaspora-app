@@ -503,19 +503,12 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
         },
         contact: {
           phone: data.phone || '',
-          whatsapp: data.whatsapp || '',
           email: data.email || '',
           website: data.website || ''
         },
-        openingHours: data.openingHours || [
-          { day: 'Monday - Friday', hours: '09:00 - 17:00' },
-          { day: 'Saturday - Sunday', hours: 'Closed' }
-        ],
         isVerified: false,
         followersCount: 0,
-        isFollowing: false,
         leaders: [],
-        gallery: [],
         createdAt: new Date().toISOString()
       };
 

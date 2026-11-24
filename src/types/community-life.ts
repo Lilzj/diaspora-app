@@ -369,19 +369,15 @@ export interface Event {
 
 export interface OrgContact {
   phone?: string;
-  whatsapp?: string;
   email?: string;
   website?: string;
   facebook?: string;
   instagram?: string;
-  twitter?: string;
-  youtube?: string;
 }
 
 export interface OrgLeader {
   name: string;
   role: string;
-  avatarUrl?: string;
 }
 
 export interface OpeningHour {
@@ -549,14 +545,10 @@ export interface CommunityOrganization {
   services: string[];
   location: EventLocation;
   contact: OrgContact;
-  openingHours: OpeningHour[];
   isVerified: boolean;
   rating?: number;
-  reputationLevel?: string;
   followersCount: number;
-  isFollowing?: boolean;
   leaders?: OrgLeader[];
-  gallery?: string[];
   createdAt: string;
 }
 

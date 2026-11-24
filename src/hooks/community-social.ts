@@ -98,7 +98,6 @@ import {
   setPostPinned,
   shareContent,
   sharePost,
-  submitModerationDecision,
   suggestHashtags,
   unreactToContent,
   unreactToPost,
@@ -123,7 +122,6 @@ import type {
   CreateBookmarkFolderRequest,
   CreateBookmarkRequest,
   CreateCommentRequest,
-  CreateModerationDecisionRequest,
   CreatePostRequest,
   CreateReportRequest,
   CreateShareRequest,
@@ -1285,33 +1283,6 @@ export function useModerationHistory(
     decisions: query.data ?? [],
     isLoading: query.isLoading,
     error: messageFor(query),
-  };
-}
-
-export function useModerationDecision(): {
-  decide: (request: CreateModerationDecisionRequest) => Promise<ModerationDecisionResponse>;
-  isPending: boolean;
-  error: string | null;
-} {
-  const client = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: (request: CreateModerationDecisionRequest) => submitModerationDecision(request),
-    retry: false,
-    onSuccess: (_decision, request) => {
-      void client.invalidateQueries({ queryKey: communitySocialKeys.moderationQueue() });
-      void client.invalidateQueries({
-        queryKey: communitySocialKeys.moderationHistory(request.contentType, request.contentId),
-      });
-      // A removal or a restore changes what the feeds contain.
-      invalidateFeeds(client);
-    },
-  });
-
-  return {
-    decide: (request) => mutation.mutateAsync(request),
-    isPending: mutation.isPending,
-    error: messageFor(mutation),
   };
 }
 

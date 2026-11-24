@@ -234,7 +234,6 @@ interface EventRow {
   updatedAt?: string | null;
   coverMediaId?: string | null;
   cityName?: string | null;
-  attendeeCount?: number | null;
 }
 
 /**

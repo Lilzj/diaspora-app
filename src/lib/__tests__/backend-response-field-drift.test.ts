@@ -679,25 +679,11 @@ interface KnownDrift {
 
 /** Requests that reach no published operation, keyed `method path`. */
 const KNOWN_UNREACHED: Readonly<Record<string, KnownUnreached>> = {
-  'post /api/v1/community/moderation/decisions': {
-    row: 'RMD-009',
-    why: 'Removed from the backend on 7 Nov 2026 in favour of Trust moderation cases. `submitModerationDecision` is reachable only through the `useModerationDecision` in `hooks/community-social`, which no screen imports: the moderation screen uses the one in `hooks/communities`.',
-  },
-  'post /api/v1/guides/{}/hide': {
-    row: 'RMD-009',
-    why: 'The Guides module maps no hide route. `hideGuide` has no caller.',
-  },
-  'post /api/v1/guides/{}/unhide': {
-    row: 'RMD-009',
-    why: 'The Guides module maps no unhide route. `unhideGuide` has no caller.',
-  },
 };
 
 // Shared reasons, so an entry says which kind it is at a glance.
 const NO_TYPED_READ =
   'Nothing in `src` reads these fields through this type (checker-verified when this landed). A promise the next reader will be held to, rather than a defect today.';
-const NO_CALLER_CHUNKED =
-  'The chunked-upload functions have no caller: the app uploads through `/media/uploads/direct`.';
 
 /** Client types that declare fields their routes do not send, keyed `Client <- Contract`. */
 const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
@@ -739,7 +725,7 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     why: "`channel` is read by automation simulation and validation, which also handle drafts built on the device; whether either sees this route's body is not established.",
   },
   'BookmarkCollectionResponse[] <- BookmarkCollectionResponse[]': {
-    fields: ['[].glyph', '[].itemCount', '[].items', '[].name', '[].updatedAt'],
+    fields: ['[].itemCount', '[].items', '[].name'],
     row: 'RMD-009',
     why: NO_TYPED_READ,
   },
@@ -754,22 +740,22 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     why: "`reactions.counts` and `myReactionKey` are read through `readReactionSummary`, which accepts the server's shape too (`reaction-bar-server-shape.test.tsx`). `postId` and `reviewStatus` are not traced.",
   },
   'CommunityOrganization <- OrganizationResponse': {
-    fields: ['category', 'contact.facebook', 'contact.instagram', 'contact.twitter', 'contact.whatsapp', 'contact.youtube', 'coverImage', 'followersCount', 'gallery', 'id', 'isFollowing', 'leaders[].avatarUrl', 'location.addressLine', 'location.areaName', 'location.distanceKm', 'location.landmark', 'logo', 'openingHours', 'rating', 'reputationLevel'],
+    fields: ['category', 'contact.facebook', 'contact.instagram', 'coverImage', 'followersCount', 'id', 'location.addressLine', 'location.areaName', 'location.distanceKm', 'location.landmark', 'logo', 'rating'],
     row: 'RMD-009',
     why: 'Read by the Community Life screens. Whether those reads see this body or the mapped organisation is not established; the profile screen itself is clean (`screen-response-field-drift`).',
   },
   'CommunityOrganization <- OrganizationSummaryResponse': {
-    fields: ['category', 'contact', 'coverImage', 'createdAt', 'description', 'followersCount', 'gallery', 'id', 'isFollowing', 'leaders', 'location.addressLine', 'location.areaName', 'location.distanceKm', 'location.landmark', 'logo', 'mission', 'openingHours', 'rating', 'reputationLevel', 'services'],
+    fields: ['category', 'contact', 'coverImage', 'createdAt', 'description', 'followersCount', 'id', 'leaders', 'location.addressLine', 'location.areaName', 'location.distanceKm', 'location.landmark', 'logo', 'mission', 'rating', 'services'],
     row: 'RMD-009',
-    why: 'The organisations browse reads rows as the full organisation type; the summary row sends none of these 20. Read by the Community Life screens; not traced.',
+    why: 'The organisations browse reads rows as the full organisation type; the summary row sends none of these 16. Read by the Community Life screens; not traced.',
   },
   'CommunityPostResponse <- CommunityPostResponse': {
-    fields: ['areaId', 'areaName', 'attachments[].url', 'audienceAreaId', 'audienceCountryCode', 'authorId', 'cityName', 'countryCode', 'isBookmarked', 'isPublished', 'latitude', 'longitude', 'organizationId', 'poll.isClosed', 'poll.selectedOptionIds', 'reactions.counts', 'reactions.myReactionKey', 'reviewStatus', 'updatedAt', 'versionNumber', 'visibilityRuleId'],
+    fields: ['areaId', 'areaName', 'attachments[].url', 'authorId', 'cityName', 'countryCode', 'isBookmarked', 'latitude', 'longitude', 'organizationId', 'poll.isClosed', 'poll.selectedOptionIds', 'reactions.counts', 'reactions.myReactionKey', 'reviewStatus'],
     row: 'RMD-009',
     why: "`reactions.counts` and `myReactionKey` are read through `readReactionSummary`, which accepts the server's shape too (`reaction-bar-server-shape.test.tsx`). `cityName`, `areaName`, `authorId`, `organizationId`, `isBookmarked` and the poll's `isClosed` and `selectedOptionIds` are read by the post card, the update screen and the poll block; whether those reads see this body or a mapped post is not established.",
   },
   'CommunityUpdate <- CommunityPostResponse': {
-    fields: ['authorId', 'imageUrls'],
+    fields: ['authorId'],
     row: 'RMD-009',
     why: NO_TYPED_READ,
   },
@@ -779,7 +765,7 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     why: "`reactions.counts` and `myReactionKey` are read through `readReactionSummary`, which accepts the server's shape too (`reaction-bar-server-shape.test.tsx`).",
   },
   'Conversation <- ConversationResponse': {
-    fields: ['lastMessage.delivery.failedAt', 'lastMessage.delivery.queuedAt', 'lastMessage.delivery.retryCount', 'lastMessage.isOptimistic', 'participants[].trust.countryVerifications'],
+    fields: ['lastMessage.isOptimistic', 'participants[].trust.countryVerifications'],
     row: 'RMD-009',
     why: "`isOptimistic` and `delivery` are the device's own send state, kept on the wire type. `participants[].trust.countryVerifications` is never sent, so `TrustBanner`'s country row never renders.",
   },
@@ -818,11 +804,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: '`ProgrammeCards` reads `reward.amount`; the reward is sent without it. Not traced to what the card shows instead.',
   },
-  'CreatorReferralProgramme <- CreatorReferralProgrammeResponse': {
-    fields: ['totalEarned'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
   'CreatorSummaryWire <- CreatorAnalyticsSummaryResponse': {
     fields: ['metrics[].amount'],
     row: 'RMD-009',
@@ -834,17 +815,17 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     why: "Declared as `{ date, value }`, the organisation growth series' shape; see the `AnalyticsWire` entry. No typed read.",
   },
   'EventRow <- EventSummaryResponse': {
-    fields: ['attendeeCount', 'cityName', 'id', 'updatedAt'],
+    fields: ['cityName', 'id', 'updatedAt'],
     row: 'RMD-009',
     why: 'The creator workspace reads its rows tolerantly — `listingId ?? id`, `?? 0` — so nothing throws, but the fields named here are never sent and their figures always read as the fallback.',
   },
   'FeedResponse <- FeedResponse': {
-    fields: ['generatedAt', 'items[].affectedRadiusMetres', 'items[].areaId', 'items[].areaName', 'items[].attachments', 'items[].audienceAreaId', 'items[].audienceCountryCode', 'items[].author', 'items[].authorId', 'items[].body', 'items[].bookmarkCount', 'items[].canCancel', 'items[].canEdit', 'items[].canWithdraw', 'items[].category', 'items[].cityName', 'items[].closedAt', 'items[].commentCount', 'items[].countryCode', 'items[].createdAt', 'items[].description', 'items[].editedAt', 'items[].expiresAt', 'items[].isBookmarked', 'items[].isEdited', 'items[].isPinned', 'items[].isPublished', 'items[].latitude', 'items[].location', 'items[].longitude', 'items[].organizationId', 'items[].poll', 'items[].postId', 'items[].publishedAt', 'items[].reactions', 'items[].reportCount', 'items[].reviewStatus', 'items[].shareCount', 'items[].status', 'items[].title', 'items[].updateId', 'items[].updatedAt', 'items[].urgency', 'items[].versionNumber', 'items[].visibility', 'items[].visibilityRuleId', 'ranking'],
+    fields: ['items[].affectedRadiusMetres', 'items[].areaId', 'items[].areaName', 'items[].attachments', 'items[].author', 'items[].authorId', 'items[].body', 'items[].bookmarkCount', 'items[].canCancel', 'items[].canEdit', 'items[].canWithdraw', 'items[].category', 'items[].cityName', 'items[].closedAt', 'items[].commentCount', 'items[].countryCode', 'items[].createdAt', 'items[].description', 'items[].editedAt', 'items[].expiresAt', 'items[].isBookmarked', 'items[].isEdited', 'items[].isPinned', 'items[].latitude', 'items[].location', 'items[].longitude', 'items[].organizationId', 'items[].poll', 'items[].postId', 'items[].publishedAt', 'items[].reactions', 'items[].reportCount', 'items[].reviewStatus', 'items[].shareCount', 'items[].status', 'items[].title', 'items[].updateId', 'items[].urgency', 'items[].visibility', 'ranking'],
     row: 'RMD-009',
-    why: "The raw feed page is typed with the mapped post type and `fetchFeed` maps every row through `toFeedPost`; the 47 names are the mapped shape, not the wire's `FeedItemResponse`. Whether anything reads a row before it is mapped is not established.",
+    why: "The raw feed page is typed with the mapped post type and `fetchFeed` maps every row through `toFeedPost`; the 40 names are the mapped shape, not the wire's `FeedItemResponse`. Whether anything reads a row before it is mapped is not established.",
   },
   'FollowResponse <- FollowResponse': {
-    fields: ['followedAt', 'isFollowing', 'muted', 'targetId'],
+    fields: ['isFollowing', 'muted', 'targetId'],
     row: 'RMD-009',
     why: NO_TYPED_READ,
   },
@@ -854,7 +835,7 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     why: 'The creator workspace reads its rows tolerantly — `listingId ?? id`, `?? 0` — so nothing throws, but the fields named here are never sent and their figures always read as the fallback.',
   },
   'HashtagSuggestionResponse[] <- HashtagResponse[]': {
-    fields: ['[].postCount', '[].tag'],
+    fields: ['[].tag'],
     row: 'RMD-009',
     why: NO_TYPED_READ,
   },
@@ -864,19 +845,19 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     why: 'The creator workspace reads its rows tolerantly — `listingId ?? id`, `?? 0` — so nothing throws, but the fields named here are never sent and their figures always read as the fallback.',
   },
   'IntegrationConnection <- IntegrationConnectionResponse': {
-    fields: ['gapId', 'lastError.retryAfterSeconds'],
+    fields: ['gapId'],
     row: 'RMD-009',
     why: '`gapId` is read by `integrations/status`; `lastError.retryAfterSeconds` is never read. Neither is sent.',
   },
   'IntegrationConnection[] <- IntegrationConnectionResponse[]': {
-    fields: ['[].gapId', '[].lastError.retryAfterSeconds'],
+    fields: ['[].gapId'],
     row: 'RMD-009',
     why: '`gapId` is read by `integrations/status`; `lastError.retryAfterSeconds` is never read. Neither is sent.',
   },
   'JobOpportunity <- JobCardResponse': {
-    fields: ['benefits', 'benefitsFlags', 'category', 'description', 'employer', 'employmentType', 'experienceRequired', 'expiresAt', 'languages', 'location', 'requirements', 'responsibilities', 'salary.amount', 'salary.currency', 'salary.frequency', 'salary.maxAmount', 'urgency', 'viewCount'],
+    fields: ['benefitsFlags', 'category', 'description', 'employer', 'employmentType', 'expiresAt', 'location', 'salary.amount', 'salary.currency', 'salary.frequency', 'salary.maxAmount', 'urgency'],
     row: 'RMD-009',
-    why: 'The jobs browse reads card rows as the full `JobOpportunity`; the card sends none of these 18. The map read them that way too until RMD-007 gave it the card; the readers left are not traced.',
+    why: 'The jobs browse reads card rows as the full `JobOpportunity`; the card sends none of these 12. The map read them that way too until RMD-007 gave it the card; the readers left are not traced.',
   },
   'ListingWire <- ListingResponse': {
     fields: ['id', 'price.currencyCode', 'seller.id', 'seller.name'],
@@ -888,23 +869,8 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: 'Read as `description ?? summary`: the card never sends `description`, so the fallback always wins and the order says the opposite of what happens.',
   },
-  'MediaAsset <- UploadSessionResponse': {
-    fields: ['altText', 'caption', 'createdAt', 'mediaId', 'metadata', 'reference', 'requiresSignedAccess', 'scanStatus', 'thumbnailUrl', 'url', 'variants', 'visibility'],
-    row: 'RMD-009',
-    why: "`completeUpload` has no caller — the app uploads through `/media/uploads/direct` — and the route answers the upload session, not the asset. `MediaAsset` is read elsewhere as the direct upload's result, which is not this route's body.",
-  },
-  'MediaUploadSession <- UploadSessionResponse': {
-    fields: ['mediaId', 'receivedBytes', 'state', 'totalBytes'],
-    row: 'RMD-009',
-    why: NO_CALLER_CHUNKED,
-  },
-  'MediaUploadSession[] <- UploadSessionResponse[]': {
-    fields: ['[].mediaId', '[].receivedBytes', '[].state', '[].totalBytes'],
-    row: 'RMD-009',
-    why: NO_CALLER_CHUNKED,
-  },
   'ModerationDecisionResponse[] <- Community.ModerationDecisionResponse[]': {
-    fields: ['[].action', '[].decisionId', '[].reportId'],
+    fields: ['[].action'],
     row: 'RMD-009',
     why: NO_TYPED_READ,
   },
@@ -929,7 +895,7 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     why: "The RSVP page's event locations are read as the full location type; the summary sends none of these four. Read by the Community Life screens; not traced.",
   },
   'Partial<ConversationMediaGallery> <- ConversationMediaResponse': {
-    fields: ['documents[].uploadProgress', 'images[].uploadProgress', 'voice[].uploadProgress', 'voice[].waveformData'],
+    fields: ['voice[].waveformData'],
     row: 'RMD-009',
     why: "`uploadProgress` is the device's own upload state, kept on the wire type. `waveformData` is never sent; `MessageBubble` falls back to random bars.",
   },
@@ -959,7 +925,7 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     why: "`reactions.counts` and `myReactionKey` are read through `readReactionSummary`, which accepts the server's shape too (`reaction-bar-server-shape.test.tsx`). The top-level `myReactionKey` has no typed read.",
   },
   'ShareResponse <- ShareResponse': {
-    fields: ['message', 'recipientId'],
+    fields: ['message'],
     row: 'RMD-009',
     why: NO_TYPED_READ,
   },
@@ -969,7 +935,7 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     why: 'The sponsored performance metrics declare `amount` and `changePercentage`; read by the creator primitives and the analytics adapters, not traced.',
   },
   'TrendingHashtagResponse[] <- HashtagResponse[]': {
-    fields: ['[].countryCode', '[].postCount', '[].rank', '[].tag'],
+    fields: ['[].countryCode', '[].rank', '[].tag'],
     row: 'RMD-009',
     why: NO_TYPED_READ,
   },
@@ -989,12 +955,7 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     why: 'The lesson quiz declares `explanation`, which the route does not send; read once, not traced.',
   },
   'WireModerationDecision <- Trust.ModerationQueueItemResponse': {
-    fields: ['actionId', 'actionType', 'moderatorId', 'newStatus', 'previousStatus', 'reason'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
-  'WireReferralPage <- CreatorReferralPageResponse': {
-    fields: ['referrals[].rewardAmount'],
+    fields: ['actionType'],
     row: 'RMD-009',
     why: NO_TYPED_READ,
   },
