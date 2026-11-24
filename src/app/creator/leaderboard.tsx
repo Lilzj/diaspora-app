@@ -18,7 +18,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import {
   CreatorCard,
@@ -191,30 +190,6 @@ export default function CreatorLeaderboardScreen() {
                   >
                     {viewer.score.toLocaleString()} {leaderboard.scoreLabel.toLowerCase()}
                   </Text>
-                  {viewer.rankDelta ? (
-                    <View className="flex-row items-center ml-2">
-                      <Ionicons
-                        name={viewer.rankDelta > 0 ? 'arrow-up' : 'arrow-down'}
-                        size={11}
-                        color={
-                          viewer.rankDelta > 0
-                            ? tokens.color.success.default
-                            : tokens.color.warning.default
-                        }
-                      />
-                      <Text
-                        style={{
-                          color:
-                            viewer.rankDelta > 0
-                              ? tokens.color.success.default
-                              : tokens.color.warning.default,
-                        }}
-                        className="text-[11px] font-black ml-0.5"
-                      >
-                        {Math.abs(viewer.rankDelta)}
-                      </Text>
-                    </View>
-                  ) : null}
                 </View>
               </View>
             ) : null}

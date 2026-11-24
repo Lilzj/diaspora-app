@@ -335,6 +335,9 @@ export interface CreatorReputationBadge extends CreatorBadge {
   source: 'trust' | 'milestone' | (string & {});
   /** For a country-scoped Trust badge. */
   countryCode?: string | null;
+  tier?: 'bronze' | 'silver' | 'gold' | 'platinum' | (string & {}) | null;
+  /** Progress toward an unearned badge, on the creator's own read. */
+  progress?: CreatorProgress | null;
 }
 
 /** A count, and the module whose record it is. */
@@ -363,6 +366,11 @@ export interface CreatorReputationDimension {
   description?: string | null;
 }
 
+/**
+ * A badge as a creator's public profile and the directory send it
+ * (`CreatorBadgeResponse`). It has no tier and no progress: those come on the
+ * reputation read's badge, `CreatorReputationBadge`, and only there.
+ */
 export interface CreatorBadge {
   badgeId: string;
   key: string;
@@ -370,11 +378,8 @@ export interface CreatorBadge {
   description?: string | null;
   /** An emoji or an icon name. Never the only carrier of meaning. */
   icon?: string | null;
-  tier?: 'bronze' | 'silver' | 'gold' | 'platinum' | (string & {});
   isEarned: boolean;
   earnedAt?: string | null;
-  /** Progress toward an unearned badge, when the platform discloses it. */
-  progress?: CreatorProgress | null;
 }
 
 /**
@@ -555,12 +560,16 @@ export interface CreatorMilestone {
   sortOrder: number;
 }
 
+/**
+ * What completing a milestone or a challenge pays (`CreatorRewardSummaryResponse`).
+ *
+ * There is no amount. Nothing on the platform sets a reward kind other than
+ * `points`; a kind it adds later is described by its `label`, in its own words.
+ */
 export interface CreatorMilestoneReward {
   kind: 'points' | 'badge' | 'entitlement' | 'money' | (string & {});
   /** For a points reward. A count. */
   points?: number | null;
-  /** For a money reward. Always `Money`, never a number. */
-  amount?: Money | null;
   badgeKey?: string | null;
   entitlementKey?: string | null;
   label: string;
@@ -648,6 +657,10 @@ export interface CreatorLeaderboard {
   updatedAt: string;
 }
 
+/**
+ * One ranked creator (`CreatorLeaderboardEntryResponse`). There is no movement
+ * since the last ranking: the platform does not keep one.
+ */
 export interface CreatorLeaderboardEntry {
   rank: number;
   creatorId: string;
@@ -656,8 +669,6 @@ export interface CreatorLeaderboardEntry {
   score: number;
   isVerifiedCreator: boolean;
   countryCode?: string | null;
-  /** Movement since the last ranking, when the platform tracks it. */
-  rankDelta?: number | null;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -686,10 +697,12 @@ export interface CreatorMetric {
   key: string;
   label: string;
   value: number;
-  /** How to render it: a count, a percentage, a duration, an amount. */
+  /**
+   * How to render it: a count, a percentage, a duration, an amount. The route
+   * sends no currency with a metric, so a `currency` figure cannot be drawn as
+   * money; the one the platform defines, revenue, is not measured yet.
+   */
   format: 'count' | 'percentage' | 'currency' | 'duration' | (string & {});
-  /** Present when `format` is `currency`. */
-  amount?: Money | null;
   /** Change against the previous comparable period, as a percentage. Served. */
   changePercentage?: number | null;
   /** Whether an increase is good. Not every metric is. */
@@ -1062,7 +1075,20 @@ export interface SponsoredContentItem {
   isRenewable: boolean;
 
   /** Delivery figures, when the platform reports any. */
-  performance?: CreatorMetric[] | null;
+  performance?: SponsoredMetric[] | null;
+}
+
+/**
+ * A sponsored placement's delivery figure (`SponsoredMetricResponse`). Unlike a
+ * creator metric it carries no change against an earlier period.
+ */
+export interface SponsoredMetric {
+  key: string;
+  label: string;
+  value: number;
+  format: 'count' | 'percentage' | (string & {});
+  higherIsBetter: boolean;
+  definition?: string | null;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1154,12 +1180,15 @@ export interface LessonQuiz {
   questions: LessonQuizQuestion[];
 }
 
+/**
+ * A quiz question. It has no explanation: the lesson route does not send one,
+ * and the grader returns it with each outcome (`LessonQuizResult.outcomes`),
+ * once the member has answered.
+ */
 export interface LessonQuizQuestion {
   questionId: string;
   prompt: string;
   options: LessonQuizOption[];
-  /** Shown after answering, whichever way it went. */
-  explanation?: string | null;
 }
 
 /**

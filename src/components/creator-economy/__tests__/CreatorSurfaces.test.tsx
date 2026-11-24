@@ -194,12 +194,13 @@ describe('points are a count and never money', () => {
     expect(screen.getByText('500 points')).toBeTruthy();
   });
 
-  it('renders a money reward through the money path instead', () => {
+  it('renders any other kind in the server’s own words', () => {
     renderWithTheme(
-      <RewardPill reward={{ kind: 'money', amount: gbp(2_500), label: '£25' }} />
+      <RewardPill reward={{ kind: 'badge', badgeKey: 'first-guide', label: 'First guide badge' }} />
     );
 
-    expect(screen.getByLabelText(/Reward: £25/)).toBeTruthy();
+    expect(screen.getByText('First guide badge')).toBeTruthy();
+    expect(screen.getByLabelText('Reward: First guide badge')).toBeTruthy();
   });
 });
 
@@ -351,23 +352,6 @@ describe('a stat tile speaks its meaning', () => {
     renderWithTheme(<StatTile metric={metric} />);
 
     expect(screen.getByLabelText(/against the previous period/)).toBeTruthy();
-  });
-
-  it('renders a currency metric through the money path', () => {
-    renderWithTheme(
-      <StatTile
-        metric={{
-          key: 'revenue',
-          label: 'Revenue',
-          value: 69.5,
-          format: 'currency',
-          amount: gbp(6_950),
-          definition: 'Money attributed to your work.',
-        }}
-      />
-    );
-
-    expect(screen.getByLabelText(/GBP 69\.50/)).toBeTruthy();
   });
 
   it('renders a percentage with its sign rather than relying on colour', () => {

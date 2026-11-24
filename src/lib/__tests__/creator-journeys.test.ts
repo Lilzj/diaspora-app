@@ -220,7 +220,10 @@ describe('Journey 3 · learn something in the Academy', () => {
 
     // The answer key is not in the payload. This is the assertion that keeps it
     // out — a client that could mark its own paper makes the quiz pointless.
+    // Nor is the explanation: the lesson route does not send one, and the
+    // grader returns it once the member has answered.
     for (const question of lesson.quiz!.questions) {
+      expect(question).not.toHaveProperty('explanation');
       for (const option of question.options) {
         expect(option).not.toHaveProperty('isCorrect');
       }
@@ -238,6 +241,9 @@ describe('Journey 3 · learn something in the Academy', () => {
     expect(wrong.outcomes).toHaveLength(lesson.quiz!.questions.length);
     // Every outcome carries the explanation, whichever way it went.
     expect(wrong.outcomes.every((outcome) => typeof outcome.isCorrect === 'boolean')).toBe(true);
+    expect(wrong.outcomes.map((outcome) => typeof outcome.explanation)).toEqual(
+      lesson.quiz!.questions.map(() => 'string')
+    );
 
     if (!wrong.passed) {
       expect(wrong.canRetry).toBe(true);

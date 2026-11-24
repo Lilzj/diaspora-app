@@ -85,7 +85,6 @@ export const MOCK_CREATOR_BADGES: CreatorBadge[] = [
     label: 'First guide',
     description: 'Published your first community guide.',
     icon: '📝',
-    tier: 'bronze',
     isEarned: true,
     earnedAt: isoDaysAgo(210),
   },
@@ -95,7 +94,6 @@ export const MOCK_CREATOR_BADGES: CreatorBadge[] = [
     label: 'Genuinely helpful',
     description: 'Ten people marked your advice helpful.',
     icon: '💡',
-    tier: 'bronze',
     isEarned: true,
     earnedAt: isoDaysAgo(160),
   },
@@ -105,7 +103,6 @@ export const MOCK_CREATOR_BADGES: CreatorBadge[] = [
     label: 'Verified creator',
     description: 'Diaspora has verified you as a creator.',
     icon: '✅',
-    tier: 'silver',
     isEarned: true,
     earnedAt: isoDaysAgo(84),
   },
@@ -115,7 +112,6 @@ export const MOCK_CREATOR_BADGES: CreatorBadge[] = [
     label: 'Newcomer’s guide',
     description: 'Helped fifty people in their first month in a new country.',
     icon: '🧭',
-    tier: 'silver',
     isEarned: true,
     earnedAt: isoDaysAgo(40),
   },
@@ -125,11 +121,7 @@ export const MOCK_CREATOR_BADGES: CreatorBadge[] = [
     label: 'Community pillar',
     description: 'Sustained contribution across a whole year.',
     icon: '🏛️',
-    tier: 'gold',
     isEarned: false,
-    // Note: 61% with 7 of 12 months. Not 58.3%. The programme weights the most
-    // recent quarter, which is exactly why the client must not divide.
-    progress: { current: 7, target: 12, percentage: 61, unit: 'months' },
   },
   {
     badgeId: 'badge-top-creator',
@@ -137,9 +129,7 @@ export const MOCK_CREATOR_BADGES: CreatorBadge[] = [
     label: 'Top creator',
     description: 'Among the most helpful creators on Diaspora.',
     icon: '🏆',
-    tier: 'platinum',
     isEarned: false,
-    progress: { current: 1248, target: 5000, percentage: 25, unit: 'reach' },
   },
 ];
 
@@ -1144,6 +1134,23 @@ export const MOCK_COURSES: CreatorCourse[] = [
 ];
 
 /**
+ * What the grader says about each answer, by quiz and then by question.
+ *
+ * Not on the questions: the lesson route never sends a question's explanation,
+ * and the grader returns it with each outcome (`QuizOutcomeResponse`), once the
+ * member has answered. Kept beside the lessons, so the fixture cannot serve a
+ * field the route does not.
+ */
+export const MOCK_QUIZ_EXPLANATIONS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  'quiz-guide-craft': {
+    q1: 'Somebody reading a guide already has the problem. The first paragraph should be useful on its own.',
+    q2: 'A visible correction is what makes the rest of the guide trustworthy.',
+    q3: 'Describing the process helps. Predicting a decision you do not control does not, and can do real harm.',
+    q4: 'People scan headings looking for their problem. A heading that answers one gets found.',
+  },
+};
+
+/**
  * Lessons.
  *
  * Only a few courses have their lessons written out in full — enough that the
@@ -1308,8 +1315,6 @@ export const MOCK_LESSONS: CreatorLesson[] = [
             { optionId: 'c', label: 'List the sections that follow' },
             { optionId: 'd', label: 'Explain who you are and why you are qualified' },
           ],
-          explanation:
-            'Somebody reading a guide already has the problem. The first paragraph should be useful on its own.',
         },
         {
           questionId: 'q2',
@@ -1320,7 +1325,6 @@ export const MOCK_LESSONS: CreatorLesson[] = [
             { optionId: 'c', label: 'Update it and say what changed' },
             { optionId: 'd', label: 'Unpublish the guide' },
           ],
-          explanation: 'A visible correction is what makes the rest of the guide trustworthy.',
         },
         {
           questionId: 'q3',
@@ -1331,8 +1335,6 @@ export const MOCK_LESSONS: CreatorLesson[] = [
             { optionId: 'c', label: 'Tell them it will be fine' },
             { optionId: 'd', label: 'Refuse to answer at all' },
           ],
-          explanation:
-            'Describing the process helps. Predicting a decision you do not control does not, and can do real harm.',
         },
         {
           questionId: 'q4',
@@ -1343,7 +1345,6 @@ export const MOCK_LESSONS: CreatorLesson[] = [
             { optionId: 'c', label: 'It answers a question the reader has' },
             { optionId: 'd', label: 'It matches the guide title' },
           ],
-          explanation: 'People scan headings looking for their problem. A heading that answers one gets found.',
         },
       ],
     },
@@ -1933,7 +1934,6 @@ export function mockMetricsForPeriod(period: string): CreatorMetric[] {
       label: 'Revenue',
       value: scaled(6_950) / 100,
       format: 'currency',
-      amount: money(scaled(6_950)),
       changePercentage: 31.2,
       higherIsBetter: true,
       definition: METRIC_DEFINITIONS.revenue,
@@ -2167,7 +2167,6 @@ export function mockLeaderboard(scope: string, period = '30d') {
     score: Math.round(2_400 / (index * 0.55 + 1)),
     isVerifiedCreator: index < 9,
     countryCode: index % 3 === 0 ? 'GB' : index % 3 === 1 ? 'FR' : 'DE',
-    rankDelta: [2, -1, 3, 0, -2, 1, 0, 4, -3, 1, 0, 2, -1, 0, 1][index] ?? 0,
   }));
 
   return {

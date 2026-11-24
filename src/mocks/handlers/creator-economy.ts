@@ -60,6 +60,7 @@ import {
   MOCK_MILESTONES,
   MOCK_POINT_RULES,
   MOCK_PUBLIC_CREATORS,
+  MOCK_QUIZ_EXPLANATIONS,
   MOCK_RECOMMENDATIONS,
   MOCK_REFERRAL_PROGRAMME,
   MOCK_REFERRALS,
@@ -895,7 +896,7 @@ export function setupCreatorEconomyMocks(mock: MockAdapter): () => void {
       return {
         questionId: question.questionId,
         isCorrect: given?.optionId === key[question.questionId],
-        explanation: question.explanation ?? null,
+        explanation: MOCK_QUIZ_EXPLANATIONS[quizId]?.[question.questionId] ?? null,
       };
     });
 

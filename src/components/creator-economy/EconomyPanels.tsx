@@ -1026,9 +1026,6 @@ export function LeaderboardRow({
   const { tokens } = useTheme();
 
   const medal = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : null;
-  const deltaTone =
-    !entry.rankDelta ? 'neutral' : entry.rankDelta > 0 ? 'success' : 'warning';
-  const deltaColours = useToneColours(deltaTone);
 
   return (
     <View
@@ -1039,9 +1036,6 @@ export function LeaderboardRow({
         isViewer ? 'This is you.' : null,
         entry.isVerifiedCreator ? 'Verified creator.' : null,
         `${scoreLabel}: ${entry.score.toLocaleString()}.`,
-        entry.rankDelta
-          ? `${entry.rankDelta > 0 ? 'Up' : 'Down'} ${Math.abs(entry.rankDelta)} since last time.`
-          : null,
       ]
         .filter(Boolean)
         .join(' ')}
@@ -1094,19 +1088,6 @@ export function LeaderboardRow({
             </View>
           ) : null}
         </View>
-
-        {entry.rankDelta ? (
-          <View className="flex-row items-center mt-0.5">
-            <Ionicons
-              name={entry.rankDelta > 0 ? 'arrow-up' : 'arrow-down'}
-              size={9}
-              color={deltaColours.fg}
-            />
-            <Text style={{ color: deltaColours.fg }} className="text-[9px] font-black ml-0.5">
-              {Math.abs(entry.rankDelta)}
-            </Text>
-          </View>
-        ) : null}
       </View>
 
       <Text
