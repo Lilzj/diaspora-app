@@ -19,7 +19,7 @@ import MockAdapter from 'axios-mock-adapter';
 
 import { apiClient } from '../transport/apiClient';
 import { fetchWorkspaceContent } from '../creator/workspace';
-import type { HealthRubric } from '../creator/health';
+import { HINT, PLATFORM_RUBRIC } from './support/content-health-rubric';
 import type { ProviderSummary } from '../api/providers-api';
 import type { EventSummary } from '@/types/community-life';
 import type { GuideCardResponse } from '@/types/guides';
@@ -64,24 +64,8 @@ const EVENT: Pick<EventSummary, 'eventId' | 'title' | 'summary' | 'startsAt' | '
   coverMediaId: 'c0ffee00-0000-4000-8000-0000000000a3',
 };
 
-const WRITE_A_SUMMARY = 'Write a summary. It is what appears in search results.';
-const ADD_A_CITY = 'Add a city. Most members search their own first.';
-
-/** The platform's rubric, as `ContentHealthRubric.cs` publishes it. */
-const RUBRIC: HealthRubric = {
-  version: 1,
-  healthyAtOrAbove: 80,
-  needsWorkBelow: 50,
-  criteria: [
-    { key: 'cover', field: 'coverImage', weight: 25, hint: 'Add a photograph. Members scroll past items they cannot see.', appliesTo: [] },
-    { key: 'summary', field: 'summary', weight: 40, hint: WRITE_A_SUMMARY, appliesTo: [] },
-    { key: 'category', field: 'categoryKey', weight: 15, hint: 'Choose a category, so it appears where members look for it.', appliesTo: [] },
-    { key: 'price', field: 'price', weight: 10, hint: 'Say what it costs. Members filter on price, and an undisclosed one is skipped.', appliesTo: ['marketplace', 'housing'] },
-    { key: 'location', field: 'location', weight: 10, hint: ADD_A_CITY, appliesTo: ['marketplace', 'housing', 'event', 'guide'] },
-    { key: 'schedule', field: 'startsAt', weight: 10, hint: 'Set a date and time.', appliesTo: ['event'] },
-    { key: 'tags', field: 'tags', weight: 10, hint: 'Add a tag or two. They are how related items find each other.', appliesTo: [] },
-  ],
-};
+const WRITE_A_SUMMARY = HINT.summary;
+const ADD_A_CITY = HINT.location;
 
 let api: MockAdapter;
 
@@ -92,7 +76,7 @@ beforeEach(() => {
   api.onGet('/housing/listings/mine').reply(200, { data: { items: [], nextCursor: null, hasMore: false } });
   api.onGet('/community-life/events/mine').reply(200, { data: { items: [EVENT], nextCursor: null, hasMore: false } });
   api.onGet('/providers/me').reply(200, { data: [BUSINESS] });
-  api.onGet('/creators/content-health/rubric').reply(200, { data: RUBRIC });
+  api.onGet('/creators/content-health/rubric').reply(200, { data: PLATFORM_RUBRIC });
 });
 
 afterEach(() => api.restore());

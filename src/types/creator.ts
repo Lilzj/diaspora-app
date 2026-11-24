@@ -70,15 +70,14 @@ export interface UnifiedContentItem {
   performanceBadge?: 'Top Performer' | 'Trending' | 'High Conversion' | 'Needs Attention' | 'Expiring Soon' | 'Action Required';
   publishingIdentity: PublishingIdentity;
   /**
-   * Content health, **optional because nothing on the platform computes it.**
+   * Content health, scored on the device against the rubric the platform
+   * publishes (BG-08, `GET /creators/content-health/rubric`; see
+   * `lib/creator/health.ts`).
    *
    * These three were required, and every value that ever filled them came from
-   * `mocks/creator-data.ts`. There is no route that scores a listing, no health
-   * taxonomy in any module, and no field on any `/mine` card that could be
-   * turned into one without the client inventing the rule. Optional is how the
-   * real fan-out in `lib/creator/workspace.ts` can return a row without either
-   * fabricating a score or lying about the shape; `ContentCard` renders "Not
-   * measured" when they are absent.
+   * `mocks/creator-data.ts`. They stay optional because a deployment may serve
+   * no rubric, and then `ContentCard` renders "Not measured" rather than a score
+   * nothing computed.
    */
   healthScore?: number; // 0 - 100
   healthStatus?: HealthStatusLevel;
@@ -91,7 +90,7 @@ export interface UnifiedContentItem {
    *
    * Added for BG-08: it is 40 of the 100 points the content-health rubric scores, and without it
    * every item lost them permanently — a complete listing rendered as a failing grade. Optional
-   * because an event's list projection does not carry one.
+   * because a guide's excerpt and a business's summary may be empty.
    */
   summary?: string;
   organizationName?: string;
@@ -99,6 +98,12 @@ export interface UnifiedContentItem {
   price?: string;
   salaryRange?: string;
   isPinned?: boolean;
+  /**
+   * When an event starts, as its route sends it. The rubric's schedule
+   * criterion names this field, and no item carried it, so every event was
+   * told to set a date and time it already had.
+   */
+  startsAt?: string;
 }
 
 export type OrganizationRole = 'owner' | 'manager' | 'moderator' | 'contributor';
