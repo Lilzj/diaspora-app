@@ -108,7 +108,7 @@ const CEILING: Record<string, number> = {
   // ── FSOLID-006, the third rule the audit named ──────────────────────────
   //
   // 105 `any` usages, reviewed one at a time on 20 Nov 2026. 71 went and 34
-  // stayed; these are the 30 still here, and why:
+  // stayed; these are the 29 still here, and why:
   //
   //   13  app/marketplace/[id].tsx     the six companion lists. The API types
   //                                    them `unknown[]` on purpose -- the
@@ -138,17 +138,20 @@ const CEILING: Record<string, number> = {
   //                                    meaning in October. The stored value
   //                                    genuinely is not the current type.
   //
-  //    2  one each in `JobCard`        a wire read defensively and a fixture
-  //       and `creator-workspace`      builder. The third, in the community
-  //                                    life mock handler, was
-  //                                    `const calendarItems: any[]`; it went
-  //                                    on 23 Nov 2026, when the calendar
+  //    1  `creator-workspace`         a fixture builder. `JobCard` held
+  //                                    another, a wire read defensively; it
+  //                                    went on 24 Nov 2026, when the card was
+  //                                    typed as the `JobCardResponse` every
+  //                                    job list sends (RMD-009). The third,
+  //                                    in the community life mock handler,
+  //                                    was `const calendarItems: any[]`; it
+  //                                    went on 23 Nov 2026, when the calendar
   //                                    mock was rebuilt from the wire type
   //                                    (RMD-008).
   //
   // The rule is an error, so a new one fails the build. This number may only
   // go down, and the test below is what makes that true.
-  '@typescript-eslint/no-explicit-any': 30,
+  '@typescript-eslint/no-explicit-any': 29,
   // Debt that came with the linter rather than from the audit, recorded so it
   // cannot grow. Not named by any finding.
   'react-hooks/refs': 81,

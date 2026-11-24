@@ -2,15 +2,14 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Share, type GestureResponderEvent } from 'react-native';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
-import type { JobOpportunity } from '@/types/job';
-import type { JobSalaryResponse, JobType } from '@/types/jobs-hiring';
+import type { JobCardResponse } from '@/types/jobs-hiring';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
 import { placeOf } from '@/lib/platform/listing-place';
 import { JOB_TYPE_LABELS, describeSalary, describeSchedule, lastOpenDay, placesLeftLabel } from '@/lib/api/job-detail-api';
-import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 interface JobCardProps {
-  job: JobOpportunity;
+  /** The card every job list sends: `GET /jobs`, an employer's jobs, similar jobs. */
+  job: JobCardResponse;
   variant?: 'list' | 'featured';
 }
 
@@ -38,31 +37,22 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
   // It had never fired because the jobs table was empty. Found by seeding two
   // Mauritian postings through the real API and opening the tab.
   //
-  // Everything below reads the wire first and the legacy nested shape second,
-  // so fixtures that still use the old shape keep rendering. Nothing is
-  // invented: an undisclosed salary says so, and an absent distance is omitted
-  // rather than shown as zero.
-  const anyJob = job as unknown as Record<string, any>;
-
-  const jobId: string = anyJob.jobId ?? anyJob.id ?? '';
-  const title: string = anyJob.title ?? '';
-  const category = anyJob.category ?? anyJob.categoryKey ?? '';
+  // ── Typed as the card since 24 Nov 2026 (RMD-009) ─────────────────────────
+  //
+  // That fix read every row through `any`, the wire's names first and a
+  // pre-backend fixture's second, so the fixture went on type-checking here
+  // long after no route sent it. Its names never arrived: the "Urgent Hiring"
+  // and "Ending Soon" badges and the accommodation, meals and transport chips
+  // could not show against a server, and they are gone. Every caller hands this
+  // the card a job list sends (`GET /jobs`, an employer's jobs, similar jobs),
+  // so it reads that card, and the type checker holds it to the contract.
+  // Nothing is invented: an undisclosed salary says so, and an absent distance
+  // is omitted rather than shown as zero.
+  const { jobId, title } = job;
   // The wire's `jobType` is a PascalCase value — "FullTime" printed as
   // "FULLTIME" under the job page's "Similar jobs". Worded as the page words it.
-  const employmentType =
-    anyJob.employmentType ?? JOB_TYPE_LABELS[anyJob.jobType as JobType] ?? anyJob.jobType ?? '';
-  const urgency = anyJob.urgency;
-  const publishedAt = anyJob.publishedAt;
-  const expiresAt = anyJob.expiresAt ?? anyJob.closingAt;
-
-  const salary = anyJob.salary ?? {};
-  const location = anyJob.location ?? {};
-  const benefitsFlags = anyJob.benefitsFlags ?? {};
-
-  const employer = anyJob.employer ?? {
-    name: anyJob.employerName ?? '',
-    isVerified: anyJob.isEmployerVerified ?? false,
-  };
+  const employmentType = JOB_TYPE_LABELS[job.jobType] ?? job.jobType;
+  const employer = { name: job.employerName, isVerified: job.isEmployerVerified };
 
   // `placeOf` owns the three shapes the list routes send — see
   // `lib/listing-place.ts`. It never throws and never invents.
@@ -126,15 +116,14 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
   // it is the step that was being skipped.
   // The poster manages their job; a member who applied follows it (16 Oct 2026).
   // `GET /jobs` says which per viewer (`canManage`, `hasApplied`).
-  const viewerState = job as { canManage?: boolean | null; hasApplied?: boolean | null };
   // A simple job (5 Nov 2026) is answered with "I'm interested" on its page.
-  const isSimple = anyJob.postingMode === 'Simple';
+  const isSimple = job.postingMode === 'Simple';
   const simpleLine = isSimple
-    ? [describeSchedule(anyJob as never), placesLeftLabel(anyJob)].filter(Boolean).join(' · ')
+    ? [describeSchedule(job), placesLeftLabel(job)].filter(Boolean).join(' · ')
     : '';
-  const actionLabel = viewerState.canManage
+  const actionLabel = job.canManage
     ? 'Manage'
-    : viewerState.hasApplied
+    : job.hasApplied
       ? isSimple
         ? 'Interested'
         : 'Applied'
@@ -160,9 +149,10 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
    * so this returns nothing and the caller renders no badge at all.
    */
   const getDaysRemaining = (): string => {
-    if (!expiresAt) return '';
+    const closingAt = job.closingAt;
+    if (!closingAt) return '';
 
-    const expiry = new Date(expiresAt).getTime();
+    const expiry = new Date(closingAt).getTime();
     if (!Number.isFinite(expiry)) return '';
 
     const now = new Date();
@@ -171,7 +161,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
     // Calendar days to the last day it takes interest, as the job page counts
     // them. Rounding the hours up said "Expires in 2 days" on the evening
     // before a one-day job that closes at the end of tomorrow (6 Nov 2026).
-    const last = lastOpenDay(expiresAt);
+    const last = lastOpenDay(closingAt);
     if (!last) return '';
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const days = Math.round((last.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -180,45 +170,16 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
     return `Expires in ${days} days`;
   };
 
-  // Helper to get salary text
   /**
-   * The pay, or an honest statement that it was not given.
+   * The pay, worded exactly as the job page words it — "MUR 15,000 a month" —
+   * so a card and the page it opens never disagree about the pay. An
+   * undisclosed salary says so rather than showing a figure.
    *
-   * The wire's salary is `{ isDisclosed, minimum, maximum, currencyCode,
-   * period, isNegotiable, isUnpaid }`. This used to read `salary.currency`,
-   * `salary.frequency`, `salary.amount` and `salary.maxAmount` — none of which
-   * exist — and rendered `undefinedundefined/mo`.
+   * This used to read `salary.currency`, `salary.frequency`, `salary.amount`
+   * and `salary.maxAmount` — none of which exist — and rendered
+   * `undefinedundefined/mo`.
    */
-  const getSalaryDisplay = (): string => {
-    // The wire record, worded exactly as the job page words it — "MUR 15,000 a
-    // month" — so a card and the page it opens never disagree about the pay.
-    if (typeof salary.isDisclosed === 'boolean') {
-      return describeSalary(salary as JobSalaryResponse);
-    }
-
-    const currency = salary.currencyCode ?? salary.currency;
-    const minimum = salary.minimum ?? salary.amount;
-    const maximum = salary.maximum ?? salary.maxAmount;
-
-    if (salary.isUnpaid) return 'Unpaid';
-    if (salary.isDisclosed === false || minimum == null) return 'Salary not disclosed';
-
-    const symbol = symbolFor(currency);
-
-    const rawPeriod = String(salary.period ?? salary.frequency ?? '').toLowerCase();
-    const freq = rawPeriod.includes('hour')
-      ? 'hr'
-      : rawPeriod.includes('day') || rawPeriod.includes('daily')
-        ? 'day'
-        : rawPeriod.includes('week')
-          ? 'wk'
-          : rawPeriod.includes('year') || rawPeriod.includes('annual')
-            ? 'yr'
-            : 'mo';
-
-    const range = maximum != null ? `${minimum}-${maximum}` : `${minimum}`;
-    return `${symbol}${range}/${freq}`;
-  };
+  const getSalaryDisplay = (): string => describeSalary(job.salary);
 
 
 
@@ -268,25 +229,9 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
           📍 {placeLabel} {formattedDistance ? `· ${formattedDistance}` : ''}
         </Text>
 
-        <View className="flex-row flex-wrap gap-1 mb-3">
-          {benefitsFlags.accommodationIncluded && (
-            <View className="bg-surface-muted px-2 py-0.5 rounded-full">
-              <Text className="text-[9px] font-bold text-primary-600">🛌 Accom.</Text>
-            </View>
-          )}
-          {benefitsFlags.mealsIncluded && (
-            <View className="bg-surface-muted px-2 py-0.5 rounded-full">
-              <Text className="text-[9px] font-bold text-success-default">🍲 Meals</Text>
-            </View>
-          )}
-          {benefitsFlags.transportIncluded && (
-            <View className="bg-surface-muted px-2 py-0.5 rounded-full">
-              <Text className="text-[9px] font-bold text-info-default">🚗 Transport</Text>
-            </View>
-          )}
-        </View>
-
-        <View className="flex-row items-center justify-between border-t border-faint pt-3">
+        {/* `mt-3` is the space the perks row took, which was always empty: no
+            job card carries perks. */}
+        <View className="flex-row items-center justify-between border-t border-faint pt-3 mt-3">
           <Text className="text-base font-black text-primary-500">{getSalaryDisplay()}</Text>
           <Text className="text-[10px] text-content-faint font-bold">{getDaysRemaining()}</Text>
         </View>
@@ -308,19 +253,9 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
         elevation: 1,
       }}
     >
-      {/* Top row: Urgency badge & Expiry countdown & Save icon */}
+      {/* Top row: Job type & Expiry countdown & Save icon */}
       <View className="flex-row items-center justify-between mb-3.5">
         <View className="flex-row items-center">
-          {urgency === 'Urgent' && (
-            <View className="bg-surface-muted px-2.5 py-0.5 rounded-full border border-subtle mr-2">
-              <Text className="text-[9px] font-extrabold text-error-default uppercase">🔥 Urgent Hiring</Text>
-            </View>
-          )}
-          {urgency === 'Ending Soon' && (
-            <View className="bg-surface-muted px-2.5 py-0.5 rounded-full border border-subtle mr-2">
-              <Text className="text-[9px] font-extrabold text-warning-default uppercase">⏳ Ending Soon</Text>
-            </View>
-          )}
           <View className="bg-surface-background px-2.5 py-0.5 rounded-full border border-subtle">
             <Text className="text-[10px] font-extrabold text-content-tertiary uppercase">{employmentType}</Text>
           </View>
@@ -356,29 +291,12 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
         ) : null}
       </View>
 
-      {/* Perks flags */}
-      <View className="flex-row flex-wrap gap-1.5 mb-4">
-        {benefitsFlags.accommodationIncluded && (
-          <View className="bg-surface-muted px-2 py-0.5 rounded-full border border-subtle flex-row items-center">
-            <Text className="text-[9px] font-bold text-primary-600">🛌 Accommodation</Text>
-          </View>
-        )}
-        {benefitsFlags.mealsIncluded && (
-          <View className="bg-surface-muted px-2 py-0.5 rounded-full border border-subtle flex-row items-center">
-            <Text className="text-[9px] font-bold text-success-default">🍲 Meals Provided</Text>
-          </View>
-        )}
-        {benefitsFlags.transportIncluded && (
-          <View className="bg-surface-muted px-2 py-0.5 rounded-full border border-subtle flex-row items-center">
-            <Text className="text-[9px] font-bold text-info-default">🚗 Transport Provided</Text>
-          </View>
-        )}
-      </View>
-
       {/* Bottom row: Salary & Action buttons */}
       {/* The salary takes what the buttons leave and wraps; the buttons keep
-          their size. An unbounded salary pushed Apply outside the card. */}
-      <View className="flex-row items-center justify-between border-t border-faint pt-4">
+          their size. An unbounded salary pushed Apply outside the card.
+          `mt-4` is the space the perks row took, which was always empty: no
+          job card carries perks. */}
+      <View className="flex-row items-center justify-between border-t border-faint pt-4 mt-4">
         <View className="flex-1 min-w-0 mr-3">
           <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Salary</Text>
           <Text className="text-lg font-black text-primary-500 mt-0.5" numberOfLines={2}>{getSalaryDisplay()}</Text>
@@ -398,10 +316,10 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
             className="bg-primary-500 px-4 py-2.5 rounded-xl justify-center items-center active:bg-primary-600"
             accessibilityRole="button"
             accessibilityLabel={
-              viewerState.canManage ? `Manage ${title}` : isSimple ? `Say you are interested in ${title}` : `Apply for ${title}`
+              job.canManage ? `Manage ${title}` : isSimple ? `Say you are interested in ${title}` : `Apply for ${title}`
             }
             accessibilityHint={
-              viewerState.canManage ? 'Opens your posting and its applicants' : 'Opens the job posting, where you can send your application'
+              job.canManage ? 'Opens your posting and its applicants' : 'Opens the job posting, where you can send your application'
             }
           >
             <Text className="text-white font-extrabold text-sm">{actionLabel}</Text>

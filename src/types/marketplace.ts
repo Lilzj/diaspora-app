@@ -219,7 +219,6 @@ export interface MarketplaceListingCardResponse {
   title?: string;
   slug?: string | null;
   summary?: string | null;
-  description?: string | null;
   categoryKey?: string | null;
   listingType?: string | null;
   /** For a swap, what the lister would take in exchange. Null for every other type. */

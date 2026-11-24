@@ -144,7 +144,10 @@ export function toMarketplaceListing(card: MarketplaceListingCardResponse): Mark
   return {
     id: card.listingId,
     title: card.title ?? '',
-    description: card.description ?? card.summary ?? '',
+    // The card carries the summary; the description is on the listing's own
+    // page. This read `description ?? summary`, and no card sends a
+    // description, so the summary always won (RMD-009).
+    description: card.summary ?? '',
 
     // `isDisclosed: false` means the seller chose not to publish a figure, and
     // it stays undefined so the card says "Price on request". It used to become
@@ -752,20 +755,16 @@ export async function fetchMarketplaceListingDetail(
   return { listing: toListing(body.data), companions };
 }
 
-/** `ListingCardResponse`, as much of it as the owner's list renders. */
-export interface MyMarketplaceListing {
-  listingId: string;
-  title: string;
-  status: string;
-  categoryKey: string;
-  price?: { displayText?: string | null } | null;
-  location?: { cityName?: string | null; areaName?: string | null } | null;
-}
-
-/** `GET /marketplace/listings/mine` — the caller's own listings, every status. */
-export async function fetchMyMarketplaceListings(): Promise<MyMarketplaceListing[]> {
+/**
+ * `GET /marketplace/listings/mine` — the caller's own listings, every status.
+ *
+ * The same `ListingCardResponse` the search sends. It was read as a shape of the
+ * owner's list's own, which declared a `price.displayText` and a
+ * `location.areaName` the card does not have (RMD-009).
+ */
+export async function fetchMyMarketplaceListings(): Promise<MarketplaceListingCardResponse[]> {
   const response = await apiClient.get('/marketplace/listings/mine');
-  return readPage<MyMarketplaceListing>(response.data).items;
+  return readPage<MarketplaceListingCardResponse>(response.data).items;
 }
 
 /** `UpdateListingRequest`, as `Contracts/V1/Requests/UpdateListingRequest.cs` declares it. */

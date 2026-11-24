@@ -3,14 +3,13 @@ import { View, Text, TouchableOpacity, Share, Alert, Platform, type GestureRespo
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { HousingListing } from '@/types/housing';
-import { asHousingCardListing, type HousingCardWire } from '@/lib/platform/housing-cards';
+import { asHousingCardListing, describeRent, type HousingCardWire } from '@/lib/platform/housing-cards';
 import { placeOf } from '@/lib/platform/listing-place';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
 // Remediation Wave E. A listing may now genuinely have no photograph — the
 // development handler no longer substitutes a stock one — so the cover slot has
 // to render the absence rather than an empty `<Image>`.
 import { ListingPhoto } from './ListingPhoto';
-import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 interface HousingCardProps {
   /** A mapped home, or the raw row a list route sent — see `asHousingCardListing`. */
@@ -20,7 +19,7 @@ interface HousingCardProps {
 
 export function HousingCard({ listing: given, variant = 'list' }: HousingCardProps) {
   const listing = asHousingCardListing(given);
-  const { id, title, listingType, propertyType, rent, currency, location, bedrooms, bathrooms, furnished, host, availabilityDate, coverImage, lifestyleMatches } = listing;
+  const { id, title, listingType, propertyType, bedrooms, bathrooms, furnished, host, availabilityDate, coverImage, lifestyleMatches } = listing;
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(id);
 
@@ -48,26 +47,8 @@ export function HousingCard({ listing: given, variant = 'list' }: HousingCardPro
     });
   };
 
-  /** "month", "week", "night" — from the platform's period, month when it said none. */
-  const periodWord = () => {
-    switch (listing.rentPeriod) {
-      case 'PerNight':
-        return 'night';
-      case 'PerWeek':
-        return 'week';
-      case 'PerYear':
-        return 'year';
-      default:
-        return 'month';
-    }
-  };
-
   // An undisclosed rent is "Price on request", never a symbol followed by nothing.
-  const rentText = () => (rent == null ? 'Price on request' : `${getCurrencySymbol()}${rent}/${periodWord()}`);
-
-  const getCurrencySymbol = () => {
-    return symbolFor(currency);
-  };
+  const rentText = () => describeRent(listing);
 
   // `location` is `undefined` on rows from `/housing/search`, and reading
   // `location.distanceKm` through it threw during render. `placeOf` owns every

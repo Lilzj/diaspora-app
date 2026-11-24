@@ -210,12 +210,17 @@ export class PlatformGeocodingProvider implements GeocodingProvider {
       // precision, and a neighbourhood lookup does not need a house.
       const safe = coordinateForRequest(coordinate, 'reverse-geocode');
 
-      const response = await apiClient.get<{ data: PlatformLocation }>(
+      // `LocationReferenceResponse`, the record the search's results are made
+      // of. It was read as the store's `PlatformLocation`, which declares a
+      // `precision` no route sends (RMD-009), so it goes through the search's
+      // mapper, which also drops a place with no pin.
+      const response = await apiClient.get<{ data: LocationReferenceWire | null }>(
         '/location/reverse-geocode',
         { params: { latitude: safe.latitude, longitude: safe.longitude } }
       );
 
-      const location = response.data?.data;
+      const wire = response.data?.data;
+      const [location] = wire ? toPlatformLocation(wire) : [];
       if (!location) return fail('not-found', 'No place matched that position.', false);
 
       const matchKm = toKm(

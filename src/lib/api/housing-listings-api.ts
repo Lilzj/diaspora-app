@@ -522,21 +522,16 @@ export async function fetchHousingListing(idOrSlug: string): Promise<HousingList
   return response.data.data;
 }
 
-/** `HousingListingCardResponse`, as much of it as the owner's list renders. */
-export interface MyHousingListing {
-  id: string;
-  title: string;
-  status: string;
-  accommodationTypeName?: string | null;
-  accommodationTypeKey: string;
-  price?: { displayText?: string | null } | null;
-  location?: { cityName?: string | null; areaName?: string | null } | null;
-}
-
-/** `GET /housing/listings/mine` — the caller's own homes, every status (FSOLID-002). */
-export async function fetchMyHousingListings(): Promise<MyHousingListing[]> {
+/**
+ * `GET /housing/listings/mine` — the caller's own homes, every status (FSOLID-002).
+ *
+ * The same `HousingListingCardResponse` the search sends. It was read as a shape
+ * of the owner's list's own, which declared a `price.displayText` and a
+ * `location.areaName` the card does not have (RMD-009).
+ */
+export async function fetchMyHousingListings(): Promise<HousingCardWire[]> {
   const response = await apiClient.get('/housing/listings/mine');
-  return readPage<MyHousingListing>(response.data).items;
+  return readPage<HousingCardWire>(response.data).items;
 }
 
 /**

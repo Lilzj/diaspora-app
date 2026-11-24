@@ -10,8 +10,7 @@ import { CommunityTrustBadge } from './CommunityTrustBadge';
 // composer never sends one and the development handler no longer substitutes a
 // stock one — so the cover slot has to render the absence.
 import { ListingPhoto } from './ListingPhoto';
-import { describeListingPrice, describeSwapWants } from '@/lib/api/marketplace-wire';
-import { currencySymbol as symbolFor } from '@/lib/domain/money';
+import { listingPriceLine } from '@/lib/api/marketplace-wire';
 
 interface MarketplaceCardProps {
   /** A mapped listing, or the raw row a search sent — see `asMarketplaceCardListing`. */
@@ -25,7 +24,6 @@ export function MarketplaceCard({ listing: given, variant = 'list' }: Marketplac
     id,
     title,
     price,
-    currency,
     negotiable,
     condition,
     intent,
@@ -73,11 +71,8 @@ export function MarketplaceCard({ listing: given, variant = 'list' }: Marketplac
     });
   };
 
-  const getCurrencySymbol = () => symbolFor(currency);
-
   /** Where a price goes: what a swap wants back, or the price as the platform states it. */
-  const priceLine = () =>
-    swap ? describeSwapWants(swap) : describeListingPrice(price, getCurrencySymbol());
+  const priceLine = () => listingPriceLine(listing);
 
   const formattedDistance = () => {
     // `distanceKm` is at the **top level** of a `/marketplace/search` row, not

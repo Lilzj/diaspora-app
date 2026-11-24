@@ -1578,14 +1578,12 @@ export default function DiscoverScreen() {
                      ) : filteredJobs.length > 0 ? (
                        filteredJobs.map((item, index) => (
                          /* The cast is the same one `CommunityContentSection`
-                            documents for this route: `useScopedContent` returns
+                            makes for this route: `useScopedContent` returns
                             rows from `GET /jobs` as opaque records because the
                             community projection does not need their shape, and
-                            `JobCard` wants `JobOpportunity` — a type
-                            `lib/jobs-hiring-api.ts` explicitly calls an older
-                            universe. Narrowing it properly needs a typed jobs
-                            browse client, which does not exist yet and is
-                            recorded in the report rather than invented here. */
+                            `JobCard` reads them as the `JobCardResponse` that
+                            route sends (RMD-009, 24 Nov 2026). Narrowing the
+                            row itself needs a typed jobs browse client. */
                          <JobCard
                            key={String(item.jobId ?? item.id ?? index)}
                            job={item as never}
