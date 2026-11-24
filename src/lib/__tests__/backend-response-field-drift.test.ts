@@ -724,11 +724,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: "`channel` is read by automation simulation and validation, which also handle drafts built on the device; whether either sees this route's body is not established.",
   },
-  'BookmarkCollectionResponse[] <- BookmarkCollectionResponse[]': {
-    fields: ['[].itemCount', '[].items', '[].name'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
   'Conversation <- ConversationResponse': {
     fields: ['lastMessage.isOptimistic', 'participants[].trust.countryVerifications'],
     row: 'RMD-009',
@@ -784,20 +779,10 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: 'The creator workspace reads its rows tolerantly — `listingId ?? id`, `?? 0` — so nothing throws, but the fields named here are never sent and their figures always read as the fallback.',
   },
-  'FollowResponse <- FollowResponse': {
-    fields: ['isFollowing', 'muted', 'targetId'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
   'GuideRow <- GuideCardResponse': {
     fields: ['summary'],
     row: 'RMD-009',
     why: 'The creator workspace reads its rows tolerantly — `listingId ?? id`, `?? 0` — so nothing throws, but the fields named here are never sent and their figures always read as the fallback.',
-  },
-  'HashtagSuggestionResponse[] <- HashtagResponse[]': {
-    fields: ['[].tag'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
   },
   'HousingRow <- HousingListingCardResponse': {
     fields: ['coverMediaId', 'listingId', 'location.neighbourhood', 'rent', 'saveCount', 'viewCount'],
@@ -829,16 +814,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: 'Read as `description ?? summary`: the card never sends `description`, so the fallback always wins and the order says the opposite of what happens.',
   },
-  'ModerationDecisionResponse[] <- Community.ModerationDecisionResponse[]': {
-    fields: ['[].action'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
-  'ModerationQueueItemResponse[] <- Community.ModerationQueueItemResponse[]': {
-    fields: ['[].firstReportedAt', '[].lastReportedAt', '[].reasons', '[].reporterName'],
-    row: 'RMD-009',
-    why: '`moderation/queue.tsx` reads `firstReportedAt`, `lastReportedAt` and `reasons`; the queue item sends none of them. Not traced to what the screen shows.',
-  },
   'MyHousingListing <- HousingListingCardResponse': {
     fields: ['location.areaName', 'price.displayText'],
     row: 'RMD-009',
@@ -869,20 +844,10 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: 'RMD-009',
     why: '`config/badges` reads `progress` and `tier` off a badge the route sends without them.',
   },
-  'ShareResponse <- ShareResponse': {
-    fields: ['message'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
-  },
   'SponsoredContentItem[] <- SponsoredContentItemResponse[]': {
     fields: ['[].performance[].amount', '[].performance[].changePercentage'],
     row: 'RMD-009',
     why: 'The sponsored performance metrics declare `amount` and `changePercentage`; read by the creator primitives and the analytics adapters, not traced.',
-  },
-  'TrendingHashtagResponse[] <- HashtagResponse[]': {
-    fields: ['[].countryCode', '[].rank', '[].tag'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
   },
   'WireDirectoryPage <- CreatorDirectoryResponse': {
     fields: ['creators[].badges[].progress', 'creators[].badges[].tier'],
@@ -898,11 +863,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     fields: ['[].quiz.questions[].explanation'],
     row: 'RMD-009',
     why: 'The lesson quiz declares `explanation`, which the route does not send; read once, not traced.',
-  },
-  'WireModerationDecision <- Trust.ModerationQueueItemResponse': {
-    fields: ['actionType'],
-    row: 'RMD-009',
-    why: NO_TYPED_READ,
   },
 };
 

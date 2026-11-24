@@ -1736,57 +1736,8 @@ export function setupTrustMocks(mock: MockAdapter): void {
     });
   });
 
-  mock.onPost(new RegExp(`${ROOT}/moderation/queue/[^/]+/decision(\\?.*)?$`)).reply((config) => {
-    if (!staffMode) return staffOnly();
-
-    const request = body(config);
-    const action = text(request, 'action') ?? '';
-    const reason = text(request, 'reason');
-
-    const known = [
-      'Approve',
-      'Reject',
-      'Hide',
-      'Archive',
-      'Pin',
-      'Unpin',
-      'Suspend',
-      'Restore',
-      'Escalate',
-    ];
-    // An unrecognised action becomes `Escalate` — it sends the item to a human
-    // rather than removing content.
-    const effective = known.find((item) => item.toLowerCase() === action.toLowerCase()) ?? 'Escalate';
-
-    if ((effective === 'Reject' || effective === 'Hide' || effective === 'Suspend') && !reason) {
-      return validation(
-        'validation.failed',
-        'A reason is required when removing or restricting content.'
-      );
-    }
-
-    const newStatus: Record<string, string> = {
-      Approve: 'Approved',
-      Reject: 'Rejected',
-      Hide: 'Rejected',
-      Archive: 'Resolved',
-      Pin: 'Approved',
-      Unpin: 'Approved',
-      Suspend: 'Rejected',
-      Restore: 'Approved',
-      Escalate: 'Escalated',
-    };
-
-    return ok({
-      actionId: nextId(),
-      moderatorId: DEV_MEMBER_ID,
-      contentType: 'Guide',
-      contentId: guid(0x802),
-      actionType: effective,
-      reason,
-      previousStatus: 'PendingReview',
-      newStatus: newStatus[effective],
-      createdAt: new Date().toISOString(),
-    });
-  });
+  // No decision route (RMD-009). `POST /trust/moderation/queue/{itemId}/decision`
+  // takes `{ outcome, reasonCode, note }` and answers with the case; the client's
+  // `recordModerationDecision` sent `{ action, reason }` and read a decision back,
+  // and this answered it in kind. Staff decide in the staff console.
 }

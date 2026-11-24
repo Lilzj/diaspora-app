@@ -559,18 +559,6 @@ export type WireModerationQueueStatus =
   | 'Appealed'
   | 'Resolved';
 
-/** `ModerationActionType`. Closed — an unparseable value becomes `Escalate`. */
-export type WireModerationActionType =
-  | 'Approve'
-  | 'Reject'
-  | 'Hide'
-  | 'Archive'
-  | 'Pin'
-  | 'Unpin'
-  | 'Suspend'
-  | 'Restore'
-  | 'Escalate';
-
 /** `ModerationPriority`. */
 export type WireModerationPriority = 'Low' | 'Normal' | 'High' | 'Urgent';
 
@@ -1171,23 +1159,4 @@ export interface WireModerationQueueItem {
   dueAt?: string | null;
   isOverdue: boolean;
   createdAt: string;
-}
-
-/** `ModerationDecisionResponse`. */
-export interface WireModerationDecision {
-  contentType: WireModerationContentType;
-  contentId: string;
-  actionType: WireModerationActionType;
-  createdAt: string;
-}
-
-/**
- * `RecordModerationDecisionRequest`.
- *
- * `reason` is **required** for `Reject`, `Hide` and `Suspend`
- * (`ModerationHandlers.cs:210-214`).
- */
-export interface RecordModerationDecisionBody {
-  action: WireModerationActionType;
-  reason?: string | null;
 }

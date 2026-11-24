@@ -52,7 +52,6 @@ import {
   mediaDocumentReference,
   needsMemberAction,
   recordConfirmation,
-  recordModerationDecision,
   reviewAppeal,
   submitAppeal,
   submitCountryVerification,
@@ -650,13 +649,10 @@ describe('eligibility', () => {
 // ── Trap 13 ──────────────────────────────────────────────────────────────────
 
 describe('the staff surfaces refuse an ordinary caller', () => {
-  it('answers 403 on both queues and the moderation decision route', async () => {
+  it('answers 403 on the verification, appeal and moderation queues', async () => {
     await expect(fetchVerificationQueue()).rejects.toMatchObject({ response: { status: 403 } });
     await expect(fetchAppealQueue()).rejects.toMatchObject({ response: { status: 403 } });
     await expect(fetchModerationQueue()).rejects.toMatchObject({ response: { status: 403 } });
-    await expect(
-      recordModerationDecision('any', { action: 'Approve' })
-    ).rejects.toMatchObject({ response: { status: 403 } });
   });
 
   it('serves them once the caller holds the permission', async () => {
@@ -670,19 +666,10 @@ describe('the staff surfaces refuse an ordinary caller', () => {
     expect(queue.items[0].aiReview?.flags).toEqual(['low_quality']);
   });
 
-  it('requires a reason before removing or restricting content', async () => {
-    setTrustMockStaff(true);
-
-    await expect(recordModerationDecision('any', { action: 'Reject' })).rejects.toMatchObject({
-      response: { status: 400 },
-    });
-
-    const decision = await recordModerationDecision('any', {
-      action: 'Reject',
-      reason: 'Duplicated from another guide.',
-    });
-    expect(decision.actionType).toBe('Reject');
-  });
+  // No decision test (RMD-009). `recordModerationDecision` sent `{ action,
+  // reason }` to a route whose body is `{ outcome, reasonCode, note }`, read a
+  // decision back where the route answers with the case, and had no caller, so
+  // it was deleted. Staff decide in the staff console.
 
   it('hides reviewer identities and internal notes from the member', async () => {
     const detail = await fetchVerification(REJECTED_DIASPORA);

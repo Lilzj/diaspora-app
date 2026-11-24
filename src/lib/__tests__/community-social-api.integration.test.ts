@@ -48,6 +48,7 @@ import {
   fetchBookmarkCollections,
   fetchCommunityCapabilities,
   fetchFeed,
+  fetchFollowState,
   fetchModerationHistory,
   fetchModerationQueue,
   fetchPost,
@@ -59,6 +60,8 @@ import {
   followTarget,
   isFollowNotFoundError,
   isPrefixRequiredError,
+  queueRowLastReportedAt,
+  queueRowReasons,
   reactToPost,
   reactionCount,
   reactionKeysFor,
@@ -439,7 +442,9 @@ describe('follow.targetType is a body field on POST and a query parameter on DEL
 
     // Named correctly, it works.
     const removed = await unfollowTarget('00000000-0000-4000-e000-000000000001', 'organization');
-    expect(removed.isFollowing).toBe(false);
+    // The edge that was removed, under the type it was followed as.
+    expect(removed.targetType).toBe('organization');
+    expect(removed.followerCount).toBe(0);
   });
 });
 
@@ -683,21 +688,23 @@ describe('unfollowing something you do not follow is a failure', () => {
     const removed = await ensureNotFollowing('00000000-0000-4000-e000-0000000000fe');
 
     expect(removed).not.toBeNull();
-    expect(removed!.isFollowing).toBe(false);
+    // The removed edge. Neither follow route sends `isFollowing`.
+    expect(removed!.followeeId).toBe('00000000-0000-4000-e000-0000000000fe');
+    expect(removed!.followerCount).toBe(0);
   });
 
   it('un-mutes an already-muted follow when the POST carries no body', async () => {
     const target = '00000000-0000-4000-e000-0000000000fd';
 
     const muted = await followTarget(target, { muted: true });
-    expect(muted.muted).toBe(true);
+    expect(muted.isMuted).toBe(true);
 
     // The trap, sent the way the wire allows: the whole body is optional, and
     // `SetMuted(request.Muted)` is applied unconditionally, so an absent body
     // deserialises to `false` and turns the member's mute off.
     const bare = await apiClient.post(`/community/follows/${target}`);
     expect(bare.status).toBe(200);
-    expect(bare.data.data.muted).toBe(false);
+    expect(bare.data.data.isMuted).toBe(false);
   });
 
   it('requires the caller to state `muted`, because there is no safe default', async () => {
@@ -708,6 +715,34 @@ describe('unfollowing something you do not follow is a failure', () => {
     // a "follow" tap cannot un-mute by omission.
     const sent = JSON.parse(String(mock.history.post[mock.history.post.length - 1].data));
     expect(sent.muted).toBe(true);
+  });
+});
+
+describe('a follow answers with the edge, not the state', () => {
+  const target = '00000000-0000-4000-e000-0000000000fb';
+
+  it('carries the followee and the new count, and no isFollowing', async () => {
+    const edge = await followTarget(target, { muted: false });
+
+    expect(edge.followeeId).toBe(target);
+    expect(edge.followerCount).toBe(1);
+    expect(edge.isMuted).toBe(false);
+    // The follow hook read this until RMD-009, and wrote the `undefined` into
+    // the follow state the contributor page draws its button from.
+    expect(edge).not.toHaveProperty('isFollowing');
+
+    // The state is its own route.
+    await expect(fetchFollowState(target)).resolves.toEqual({ isFollowing: true, followerCount: 1 });
+  });
+
+  it('follows a target type it does not know as a member, rather than refusing', async () => {
+    const response = await apiClient.post(`/community/follows/${target}`, {
+      targetType: 'community',
+      muted: false,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.data.data.targetType).toBe('member');
   });
 });
 
@@ -746,19 +781,46 @@ describe('the moderation queue accepts a cursor and cannot be paged', () => {
     expect(items.every((item) => item.reportCount === 2)).toBe(true);
   });
 
-  it('hardcodes the three display names on a queue row to null', async () => {
+  it('hardcodes the display names on a queue row and on its reports to null', async () => {
     await reportContent({ contentType: 'post', contentId: OTHERS_POST, reason: 'spam' });
 
     const [item] = await fetchModerationQueue();
 
-    // A queue that identifies people cannot be built on this contract. The
-    // fourth name, `moderatorName`, was on a decision from
-    // `POST /community/moderation/decisions`, which the backend removed on
-    // 7 Nov 2026 in favour of Trust moderation cases; its client went with it
-    // (RMD-009).
-    expect(item.reporterName).toBeNull();
+    // A queue that identifies people cannot be built on this contract.
+    // `reporterName` is on each report, not on the row, where the client
+    // declared it until RMD-009. The fourth, `moderatorName`, is on a decision.
     expect(item.authorName).toBeNull();
     expect(item.authorLevel).toBeNull();
+    expect(item.reports.map((report) => report.reporterName)).toEqual([null]);
+  });
+
+  it('carries its reports, and the client reads the reasons and the last report from them', async () => {
+    await reportContent({ contentType: 'post', contentId: OTHERS_POST, reason: 'spam' });
+    await reportContent({ contentType: 'post', contentId: OTHERS_POST, reason: 'harassment' });
+    await reportContent({ contentType: 'post', contentId: OTHERS_POST, reason: 'spam' });
+
+    const [item] = await fetchModerationQueue();
+
+    // No `reasons`, `firstReportedAt` or `lastReportedAt` on the row. The
+    // queue screen mapped the absent `reasons` and threw on the first row.
+    expect(item).not.toHaveProperty('reasons');
+    expect(item.reportCount).toBe(3);
+    expect(item.reports).toHaveLength(3);
+    expect(queueRowReasons(item)).toEqual(['spam', 'harassment']);
+
+    // `createdAt` is the first report; the last is the latest among them.
+    const moments = item.reports.map((report) => report.createdAt).sort();
+    expect(item.createdAt).toBe(moments[0]);
+    expect(queueRowLastReportedAt(item)).toBe(moments[moments.length - 1]);
+  });
+
+  it('carries the automated review where there is one', async () => {
+    await reportContent({ contentType: 'post', contentId: OTHERS_POST, reason: 'spam' });
+
+    const [item] = await fetchModerationQueue();
+
+    // The queue screen said there was no AI review on this contract.
+    expect(item.aiReview).toMatchObject({ contentId: OTHERS_POST, status: 'clean' });
   });
 
   it('falls back to the literal "(removed)" for content that is already gone', async () => {
@@ -776,20 +838,24 @@ describe('the moderation queue accepts a cursor and cannot be paged', () => {
     expect(item.title).toBe('(removed)');
   });
 
-  it('records a decision at 201 and reads the history back as a bare array', async () => {
-    await reportContent({ contentType: 'post', contentId: OTHERS_POST, reason: 'spam' });
+  it('reads a history back as a bare array, its action as `actionType`', async () => {
+    // Seeded: staff checked the pinned post against a report and kept it up.
+    // Decisions are made on Trust cases. Community's decision route went on
+    // 7 Nov 2026; the mock served it, and this test posted to it, until RMD-009.
+    const history = await fetchModerationHistory('post', PINNED_POST);
 
-    const response = await apiClient.post('/community/moderation/decisions', {
-      contentType: 'post',
-      contentId: OTHERS_POST,
-      action: 'hide',
-      reason: 'Off topic',
-    });
-    expect(response.status).toBe(201);
-
-    const history = await fetchModerationHistory('post', OTHERS_POST);
+    expect(Array.isArray(history)).toBe(true);
     expect(history).toHaveLength(1);
-    expect(history[0].action).toBe('hide');
+    expect(history[0]).toMatchObject({ actionType: 'approve', source: 'staff', moderatorName: null });
+    expect(history[0]).not.toHaveProperty('action');
+
+    await expect(
+      apiClient.post('/community/moderation/decisions', {
+        contentType: 'post',
+        contentId: OTHERS_POST,
+        action: 'hide',
+      })
+    ).rejects.toMatchObject({ response: { status: 404 } });
   });
 });
 
@@ -835,8 +901,8 @@ describe('the route always wins over the body', () => {
 
 describe('a quote share creates no post', () => {
   it('answers with a null quotePostId for every kind, including quote', async () => {
-    const link = await sharePost(OTHERS_POST, { kind: 'link' });
-    expect(link.quotePostId).toBeNull();
+    const external = await sharePost(OTHERS_POST, { kind: 'external' });
+    expect(external.quotePostId).toBeNull();
 
     const quote = await sharePost(OTHERS_POST, { kind: 'quote', message: 'Look at this' });
     // Both contracts document a post carrying the original, and no handler ever
@@ -845,15 +911,36 @@ describe('a quote share creates no post', () => {
     expect(quote.quotePostId).toBeNull();
   });
 
-  it('is a 201, and refuses an unknown kind', async () => {
+  it('is a 201, and records a kind it does not know as external rather than refusing it', async () => {
     const response = await apiClient.post(`/community/posts/${OTHERS_POST}/shares`, {
       kind: 'link',
     });
     expect(response.status).toBe(201);
+    // `link` is not one of the server's four. The update screen sent it, and it
+    // was recorded as `external` all along; the mock refused it until RMD-009.
+    expect(response.data.data.kind).toBe('external');
 
-    await expect(sharePost(OTHERS_POST, { kind: 'retweet' })).rejects.toMatchObject({
+    await expect(sharePost(OTHERS_POST, { kind: 'retweet' })).resolves.toMatchObject({
+      kind: 'external',
+    });
+  });
+
+  it('refuses only an internal share that names nobody', async () => {
+    await expect(sharePost(OTHERS_POST, { kind: 'internal' })).rejects.toMatchObject({
       response: { status: 400 },
     });
+  });
+
+  it('answers with the new share count, and does not echo the message', async () => {
+    const first = await sharePost(OTHERS_POST, { kind: 'external', message: 'Look at this' });
+    const second = await sharePost(OTHERS_POST, { kind: 'external', destination: 'WhatsApp' });
+
+    expect(first.shareCount).toBe(1);
+    expect(second.shareCount).toBe(2);
+    expect(second.destination).toBe('whatsapp');
+    expect(first).not.toHaveProperty('message');
+    // And the post counts them too.
+    expect((await fetchPost(OTHERS_POST)).shareCount).toBe(2);
   });
 });
 
@@ -1060,17 +1147,23 @@ describe('hashtag suggest requires a prefix', () => {
 
   it('answers with matches once there is one', async () => {
     const suggestions = await suggestHashtags('ho');
-    expect(suggestions.map((entry) => entry.tag)).toContain('housing');
+    // `slug` to filter on and `displayText` to show. The client read a `tag`
+    // nothing sends until RMD-009.
+    expect(suggestions.map((entry) => entry.slug)).toContain('housing');
   });
 
   it('does not require anything on trending, which is the contrast', async () => {
     const trending = await fetchTrendingHashtags();
     expect(trending.length).toBeGreaterThan(0);
-    expect(trending[0].rank).toBe(1);
+    // No `rank`: a trending hashtag's rank is its position.
+    const recent = trending.map((entry) => entry.recentUsageCount);
+    expect(recent).toEqual([...recent].sort((left, right) => right - left));
 
+    // Narrowed to a country: the hashtags whose primary country it is.
     const scoped = await fetchTrendingHashtags('gh');
     expect(mock.history.get[mock.history.get.length - 1].params.countryCode).toBe('GH');
-    expect(scoped.every((entry) => entry.countryCode === 'GH')).toBe(true);
+    expect(scoped.length).toBeGreaterThan(0);
+    expect(scoped.every((entry) => entry.primaryCountryCode === 'GH')).toBe(true);
   });
 });
 
@@ -1181,7 +1274,7 @@ describe('status codes and null bodies', () => {
     await expect(deleteBookmark('post', MY_POST)).resolves.toBeUndefined();
   });
 
-  it('answers the collections route with a bare array of folders and their items', async () => {
+  it('answers the collections route with a bare array of tiles: counts, not bookmarks', async () => {
     const folder = await createBookmarkFolder({ name: 'To read', glyph: '📚' });
     await createBookmark({ contentType: 'post', contentId: OTHERS_POST, folderId: folder.folderId });
     await createBookmark({ contentType: 'post', contentId: MY_POST });
@@ -1189,13 +1282,19 @@ describe('status codes and null bodies', () => {
     const collections = await fetchBookmarkCollections();
     expect(Array.isArray(collections)).toBe(true);
 
-    const named = collections.find((entry) => entry.folderId === folder.folderId);
-    expect(named!.itemCount).toBe(1);
+    // A tile per content type counts every bookmark of that type, whatever its
+    // folder, and is sent at zero too.
+    const updates = collections.find((entry) => entry.contentType === 'post');
+    expect(updates).toMatchObject({ folderId: null, label: 'Updates', count: 2 });
+    expect(collections.find((entry) => entry.contentType === 'job')?.count).toBe(0);
 
-    // The un-foldered collection carries a null `folderId`. There is no route
-    // that moves a bookmark into a folder afterwards.
-    const loose = collections.find((entry) => entry.folderId === null);
-    expect(loose!.itemCount).toBe(1);
+    // A named folder is a tile of its own, with no content type.
+    const named = collections.find((entry) => entry.folderId === folder.folderId);
+    expect(named).toMatchObject({ contentType: null, label: 'To read', icon: '📚', count: 1 });
+
+    // Never the bookmarks themselves: declared as `items` until RMD-009, and no
+    // route lists a tile's contents.
+    expect(named).not.toHaveProperty('items');
   });
 });
 

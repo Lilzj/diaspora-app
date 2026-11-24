@@ -24,7 +24,10 @@
 // summary, the poll and the comment here were the client's invented shapes —
 // flat `authorId` and `cityName`, `counts` and `myReactionKey`, `isClosed` and
 // `selectedOptionIds`, a `reviewStatus` — and the client read them back, so
-// every test agreed with a server that sends none of them.
+// every test agreed with a server that sends none of them. So were the follow,
+// the share, the bookmark tiles, both hashtag lists and the moderation records;
+// and this file refused a share kind and a follow target type the server
+// accepts, and served a decision route the server had removed.
 // `community-social-mock-contract.test.ts` now holds what this file serves to
 // the published contract.
 //
@@ -91,17 +94,26 @@
 //      empty `body`, replies intact. `renderedDepth` is clamped at 6 while
 //      `depth` keeps counting.
 //
-//  14. **Four moderation display fields are hardcoded null** —`reporterName`,
-//      `moderatorName`, `authorName`, `authorLevel` — and a queue row for
-//      content that is already gone carries the literal title `"(removed)"`.
+//  14. **Four moderation display fields are hardcoded null** — `authorName`
+//      and `authorLevel` on a queue row, `reporterName` on each of its
+//      reports, `moderatorName` on a decision — and a queue row for content
+//      that is already gone carries the literal title `"(removed)"`. A row
+//      carries its reports, not a list of reasons or a last-reported time.
 //
 //  15. **`ShareResponse.quotePostId` is always null.** `kind: 'quote'` records a
-//      share and creates no post.
+//      share and creates no post. A kind the server does not know is recorded
+//      as `external`, not refused.
 //
 //  16. **`CommentThreadResponse` names its rows `comments` and its count
 //      `totalCount`; `FeedResponse` names them `items` and `totalAvailable`.**
 //      Neither is a `CursorPagedResult`, and the difference is the whole reason
 //      `platform-envelope.ts`'s `readPage` cannot be pointed at the thread.
+//
+//  17. **A follow answers with the edge, not the state.** `followeeId`,
+//      `isMuted`, the target's new `followerCount` — and no `isFollowing`: the
+//      route that answered says that. `GET /community/follows/{targetId}` is
+//      the state. A target type the server does not know is followed as
+//      `member`, not refused.
 //
 // ── What is deliberately NOT here ───────────────────────────────────────────
 //
@@ -401,10 +413,13 @@ interface WireBookmark {
   bookmarkId: string;
   /** Property 7. The same value as `bookmarkId`. */
   savedId: string;
+  userId: string;
   contentType: string;
   contentId: string;
   folderId: string | null;
   note: string | null;
+  /** Null on save: the server does not look the title up there. */
+  title: string | null;
   createdAt: string;
 }
 
@@ -412,16 +427,20 @@ interface WireBookmarkFolder {
   folderId: string;
   name: string;
   glyph: string | null;
+  itemCount: number;
+  position: number;
   createdAt: string;
 }
 
+/** One tile on the saved screen: a content type or a named folder, and a count. */
 interface WireBookmarkCollection {
+  contentType: string | null;
   folderId: string | null;
-  name: string;
-  glyph: string | null;
-  itemCount: number;
-  items: WireBookmark[];
-  updatedAt: string | null;
+  label: string;
+  icon: string | null;
+  count: number;
+  isAvailable: boolean;
+  thumbnailMediaIds: string[];
 }
 
 interface WireShare {
@@ -430,24 +449,34 @@ interface WireShare {
   contentId: string;
   kind: string;
   destination: string | null;
-  recipientId: string | null;
-  message: string | null;
   /** Property 15. Always null. */
   quotePostId: null;
+  shareCount: number;
   createdAt: string;
 }
 
+/** Property 17. The edge, not the state. */
 interface WireFollow {
+  followId: string;
+  followerId: string;
+  followeeId: string;
   targetType: string;
-  targetId: string;
-  isFollowing: boolean;
-  muted: boolean;
+  isMuted: boolean;
   followerCount: number;
-  followedAt: string | null;
+  createdAt: string;
+}
+
+/** `GET /community/follows/{targetId}` — the state. */
+interface WireFollowState {
+  isFollowing: boolean;
+  followerCount: number;
 }
 
 interface WireReport {
   reportId: string;
+  reporterId: string;
+  /** Property 14. Hardcoded null. */
+  reporterName: null;
   contentType: string;
   contentId: string;
   /** Property 9. `reasonCode`, where the request said `reason`. */
@@ -455,14 +484,23 @@ interface WireReport {
   description: string | null;
   evidenceUrl: string | null;
   status: string;
+  resolvedBy: string | null;
+  resolutionNote: string | null;
   createdAt: string;
+  resolvedAt: string | null;
 }
 
-interface WireReportReason {
-  code: string;
-  label: string;
-  description: string | null;
-  requiresDescription: boolean;
+/** An automated review: `ContentReviewResponse`. */
+interface WireContentReview {
+  reviewId: string;
+  contentType: string;
+  contentId: string;
+  status: string;
+  flags: string[];
+  confidence: number;
+  provider: string;
+  providerVersion: string | null;
+  processedAt: string;
 }
 
 interface WireQueueItem {
@@ -470,42 +508,41 @@ interface WireQueueItem {
   contentId: string;
   /** Property 14. The literal `"(removed)"` when the content is gone. */
   title: string;
-  reportCount: number;
-  reasons: string[];
-  firstReportedAt: string;
-  lastReportedAt: string;
-  status: string;
-  /** Property 14. Hardcoded null. */
-  reporterName: null;
+  authorId: string;
   /** Property 14. Hardcoded null. */
   authorName: null;
   /** Property 14. Hardcoded null. */
   authorLevel: null;
-}
-
-interface WireDecision {
-  decisionId: string;
-  contentType: string;
-  contentId: string;
-  action: string;
-  reason: string | null;
-  reportId: string | null;
-  moderatorId: string;
-  /** Property 14. Hardcoded null. */
-  moderatorName: null;
+  aiReview: WireContentReview | null;
+  reportCount: number;
+  reports: WireReport[];
+  status: string;
+  /** The first report, not the content's creation. */
   createdAt: string;
 }
 
-interface WireHashtagSuggestion {
-  tag: string;
-  postCount: number;
+interface WireDecision {
+  actionId: string;
+  moderatorId: string | null;
+  /** Property 14. Hardcoded null. */
+  moderatorName: null;
+  contentType: string;
+  contentId: string;
+  actionType: string;
+  source: string;
+  reason: string | null;
+  previousStatus: string;
+  newStatus: string;
+  createdAt: string;
 }
 
-interface WireTrendingHashtag {
-  tag: string;
-  postCount: number;
-  rank: number;
-  countryCode: string | null;
+/** What both hashtag routes answer with. */
+interface WireHashtag {
+  slug: string;
+  displayText: string;
+  usageCount: number;
+  recentUsageCount: number;
+  primaryCountryCode: string | null;
 }
 
 // ── Capabilities ─────────────────────────────────────────────────────────────
@@ -571,20 +608,48 @@ const MAX_LIMIT = CAPABILITIES.maxFeedPageSize;
 /** `min(depth, 6)`. Property 13. */
 const MAX_RENDERED_DEPTH = 6;
 
-/** The moderation actions the server parses. camelCase. */
-const MODERATION_ACTIONS = ['dismiss', 'warn', 'hide', 'remove', 'escalate', 'restore'];
+/** The share kinds the server has. camelCase. */
+const SHARE_KINDS = ['internal', 'external', 'quote', 'reshare'];
 
-/** The share kinds. camelCase. */
-const SHARE_KINDS = ['link', 'repost', 'quote', 'direct', 'external'];
+/** The follow target types the server has. camelCase. */
+const FOLLOW_TARGET_TYPES = ['member', 'organization', 'hashtag'];
 
-/** The follow target types. camelCase. */
-const FOLLOW_TARGET_TYPES = ['member', 'organization', 'hashtag', 'community'];
+/**
+ * The saved screen's type tiles, in the server's enum order, with its labels and
+ * glyphs. Which types a deployment has depends on the modules composed into it;
+ * these are the ones the server has a glyph for.
+ */
+const BOOKMARK_TILE_TYPES: readonly (readonly [string, string, string])[] = [
+  ['post', 'Updates', '📢'],
+  ['guide', 'Guides', '📖'],
+  ['listing', 'Providers', '📍'],
+  ['job', 'Jobs', '💼'],
+  ['housing', 'Housing', '🏠'],
+  ['marketplace', 'Marketplace', '🛒'],
+  ['event', 'Events', '🎉'],
+  ['organization', 'Community Groups', '🏛'],
+];
 
 /** The signed-in member, for a handler that has no session. */
 const DEV_MEMBER_ID = '00000000-0000-4000-b000-00000000da01';
 
 /** Somebody else. Everything they author is content this member does not own. */
 const OTHER_MEMBER_ID = '00000000-0000-4000-b000-00000000da02';
+
+/** A member of staff, for the seeded moderation history. */
+const STAFF_MEMBER_ID = '00000000-0000-4000-b000-00000000da03';
+
+/** What the server sends as an author it could not find: `Guid.Empty`. */
+const EMPTY_ID = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * The server's lenient enum parse: case, `_` and `-` do not matter, and an
+ * unknown or absent value is the fallback rather than a refusal.
+ */
+function parseOr(value: string | null, known: readonly string[], fallback: string): string {
+  const cleaned = (value ?? '').replace(/[_-]/g, '').trim().toLowerCase();
+  return known.find((member) => member.toLowerCase() === cleaned) ?? fallback;
+}
 
 // ── The envelope and the problem document ────────────────────────────────────
 
@@ -801,6 +866,7 @@ interface StoredComment {
 
 interface StoredReport {
   reportId: string;
+  reporterId: string;
   contentType: string;
   contentId: string;
   reasonCode: string;
@@ -811,6 +877,7 @@ interface StoredReport {
 }
 
 interface StoredFollow {
+  followId: string;
   targetType: string;
   targetId: string;
   muted: boolean;
@@ -830,6 +897,10 @@ const folders: WireBookmarkFolder[] = [];
 const follows = new Map<string, StoredFollow>();
 const reports: StoredReport[] = [];
 const decisions: WireDecision[] = [];
+/** `contentKey` → the latest automated review of it. */
+const reviews = new Map<string, WireContentReview>();
+/** `contentKey` → how many times it has been shared. */
+const shareCounts = new Map<string, number>();
 
 let sequence = 0;
 
@@ -1062,6 +1133,7 @@ function seed(): void {
   });
 
   seedComments();
+  seedModeration();
 }
 
 /**
@@ -1147,6 +1219,8 @@ export function resetCommunitySocialMocks(): void {
   follows.clear();
   reports.length = 0;
   decisions.length = 0;
+  reviews.clear();
+  shareCounts.clear();
   sequence = 0;
   seed();
 }
@@ -1470,6 +1544,119 @@ function toWireComment(comment: StoredComment): WireComment {
  * a page of 20 can carry a hundred rows — which is correct, and is why
  * `totalCount` counts what it counts.
  */
+/**
+ * What Community already knows about the seeded posts' moderation. Each was
+ * reviewed automatically and passed — content created here has not been, so
+ * its queue row's `aiReview` is null, which the contract allows — and staff
+ * checked the pinned road closure against a report and kept it up: the
+ * `approve` a report that is not upheld records. Ids are written out rather
+ * than drawn from `newId`, so seeding moves no later identifier.
+ */
+function seedModeration(): void {
+  for (const entry of SEEDS) {
+    reviews.set(contentKey('post', entry.postId), {
+      reviewId: `${entry.postId.slice(0, -3)}e${entry.postId.slice(-2)}`,
+      contentType: 'post',
+      contentId: entry.postId,
+      status: 'clean',
+      flags: [],
+      confidence: 0.97,
+      provider: 'heuristic',
+      providerVersion: '1',
+      processedAt: hoursAgo(entry.ageHours),
+    });
+  }
+
+  const pinned = SEEDS.find((entry) => entry.isPinned);
+  if (pinned) {
+    decisions.push({
+      actionId: `${pinned.postId.slice(0, -3)}d${pinned.postId.slice(-2)}`,
+      moderatorId: STAFF_MEMBER_ID,
+      // Property 14. Hardcoded null.
+      moderatorName: null,
+      contentType: 'post',
+      contentId: pinned.postId,
+      actionType: 'approve',
+      source: 'staff',
+      reason: 'Checked against the council notice.',
+      previousStatus: 'published',
+      newStatus: 'published',
+      createdAt: hoursAgo(pinned.ageHours - 1),
+    });
+  }
+}
+
+/** A report as both report routes and a queue row carry it. */
+function toWireReport(report: StoredReport): WireReport {
+  return {
+    reportId: report.reportId,
+    reporterId: report.reporterId,
+    // Property 14. Hardcoded null.
+    reporterName: null,
+    contentType: report.contentType,
+    contentId: report.contentId,
+    reasonCode: report.reasonCode,
+    description: report.description,
+    evidenceUrl: report.evidenceUrl,
+    status: report.status,
+    resolvedBy: null,
+    resolutionNote: null,
+    createdAt: report.createdAt,
+    resolvedAt: null,
+  };
+}
+
+/** Followers of a target. In this store only the signed-in member can be one. */
+function followerCountOf(targetType: string, targetId: string): number {
+  return follows.has(`${targetType}|${targetId}`) ? 1 : 0;
+}
+
+/** Property 17. The edge and the target's count after the write. */
+function toWireFollow(record: StoredFollow, isMuted: boolean): WireFollow {
+  return {
+    followId: record.followId,
+    followerId: DEV_MEMBER_ID,
+    followeeId: record.targetId,
+    targetType: record.targetType,
+    isMuted,
+    followerCount: followerCountOf(record.targetType, record.targetId),
+    createdAt: record.followedAt,
+  };
+}
+
+/**
+ * Every hashtag the posts here use, as the server records one: the slug a feed
+ * filters on, the spelling first used, how often, and the country most of its
+ * posts are in. Every seeded post is recent, so recent use is all use.
+ */
+function hashtagIndex(): WireHashtag[] {
+  const bySlug = new Map<string, { displayText: string; usage: number; countries: Map<string, number> }>();
+
+  for (const post of posts.values()) {
+    for (const tag of post.hashtags) {
+      const slug = tag.toLowerCase();
+      const entry = bySlug.get(slug) ?? { displayText: tag, usage: 0, countries: new Map<string, number>() };
+      entry.usage += 1;
+      if (post.countryCode) {
+        const country = post.countryCode.toUpperCase();
+        entry.countries.set(country, (entry.countries.get(country) ?? 0) + 1);
+      }
+      bySlug.set(slug, entry);
+    }
+  }
+
+  return [...bySlug.entries()].map(([slug, entry]) => {
+    const primary = [...entry.countries.entries()].sort((left, right) => right[1] - left[1])[0];
+    return {
+      slug,
+      displayText: entry.displayText,
+      usageCount: entry.usage,
+      recentUsageCount: entry.usage,
+      primaryCountryCode: primary ? primary[0] : null,
+    };
+  });
+}
+
 function threadFor(
   contentType: string,
   contentId: string,
@@ -1711,16 +1898,11 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
     const limit = clampLimit(query(config, 'limit'));
     const wanted = prefix.trim().replace(/^#/, '').toLowerCase();
 
-    const tags = new Map<string, number>();
-    for (const post of posts.values()) {
-      for (const tag of post.hashtags) tags.set(tag, (tags.get(tag) ?? 0) + 1);
-    }
-
-    const suggestions: WireHashtagSuggestion[] = [...tags.entries()]
-      .filter(([tag]) => tag.toLowerCase().startsWith(wanted))
-      .sort((left, right) => right[1] - left[1])
-      .slice(0, limit)
-      .map(([tag, postCount]) => ({ tag, postCount }));
+    // By use, most first.
+    const suggestions: WireHashtag[] = hashtagIndex()
+      .filter((hashtag) => hashtag.slug.startsWith(wanted))
+      .sort((left, right) => right.usageCount - left.usageCount)
+      .slice(0, limit);
 
     return ok(suggestions);
   });
@@ -1729,23 +1911,14 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
     const countryCode = query(config, 'countryCode');
     const limit = clampLimit(query(config, 'limit'));
 
-    const tags = new Map<string, number>();
-    for (const post of posts.values()) {
-      if (countryCode && (post.countryCode ?? '').toLowerCase() !== countryCode.toLowerCase()) {
-        continue;
-      }
-      for (const tag of post.hashtags) tags.set(tag, (tags.get(tag) ?? 0) + 1);
-    }
-
-    const trending: WireTrendingHashtag[] = [...tags.entries()]
-      .sort((left, right) => right[1] - left[1])
-      .slice(0, limit)
-      .map(([tag, postCount], index) => ({
-        tag,
-        postCount,
-        rank: index + 1,
-        countryCode: countryCode ? countryCode.toUpperCase() : null,
-      }));
+    // By recent use, so a hashtag's rank is its position. Narrowed to a
+    // country, it is the hashtags whose primary country that is.
+    const wantedCountry = countryCode ? countryCode.trim().toUpperCase() : null;
+    const trending: WireHashtag[] = hashtagIndex()
+      .filter((hashtag) => hashtag.recentUsageCount > 0)
+      .filter((hashtag) => wantedCountry === null || hashtag.primaryCountryCode === wantedCountry)
+      .sort((left, right) => right.recentUsageCount - left.recentUsageCount)
+      .slice(0, limit);
 
     return ok(trending);
   });
@@ -1800,20 +1973,21 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
 
     const stored: StoredReport = {
       reportId: newId(),
+      reporterId: DEV_MEMBER_ID,
       contentType,
       contentId,
       // Property 9, in one line.
       reasonCode: reason,
       description,
       evidenceUrl: text(payload.evidenceUrl),
-      status: 'pending',
+      // `ReportStatus`: open, reviewed, resolved.
+      status: 'open',
       createdAt: new Date().toISOString(),
     };
 
     reports.push(stored);
 
-    const response: WireReport = { ...stored };
-    return created(response);
+    return created(toWireReport(stored));
   });
 
   /**
@@ -1826,15 +2000,17 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
    * predict, and "fewer rows than I asked for" does not mean "that is all there
    * is".
    *
-   * Four display fields are hardcoded null and a row for content that has been
-   * removed carries the literal title `"(removed)"`.
+   * Property 14. A row carries its reports, not a summary of them; its
+   * `authorName` and `authorLevel` are hardcoded null, as is each report's
+   * `reporterName`; and a row for content that has been removed carries the
+   * literal title `"(removed)"`.
    */
   mock.onGet(new RegExp(`${ROOT}/moderation/queue(\\?.*)?$`)).reply((config) => {
     const contentType = query(config, 'contentType');
     const reason = query(config, 'reason');
     const limit = clampLimit(query(config, 'limit'));
 
-    let matching = reports.filter((report) => report.status === 'pending');
+    let matching = reports.filter((report) => report.status === 'open');
     if (contentType) {
       matching = matching.filter(
         (report) => report.contentType.toLowerCase() === contentType.toLowerCase()
@@ -1873,22 +2049,26 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
             ? comment.body.slice(0, 80)
             : '(removed)';
 
-      const moments = bucket.map((report) => Date.parse(report.createdAt));
-
       return {
         contentType: first.contentType,
         contentId: first.contentId,
         title,
-        reportCount: bucket.length,
-        reasons: [...new Set(bucket.map((report) => report.reasonCode))],
-        firstReportedAt: new Date(Math.min(...moments)).toISOString(),
-        lastReportedAt: new Date(Math.max(...moments)).toISOString(),
-        status: 'pending',
-        // Property 14. All three hardcoded null, on every row, on every
-        // deployment. A queue that identifies people cannot be built on this.
-        reporterName: null,
+        authorId: post?.authorId ?? comment?.authorId ?? EMPTY_ID,
+        // Property 14. Both hardcoded null, on every row, on every deployment,
+        // as is `reporterName` on each report. A queue that identifies people
+        // cannot be built on this.
         authorName: null,
         authorLevel: null,
+        aiReview: reviews.get(contentKey(first.contentType, first.contentId)) ?? null,
+        reportCount: bucket.length,
+        // The reports themselves: no list of reasons and no last-reported time
+        // beside them. A client reads both from here.
+        reports: bucket.map(toWireReport),
+        status: first.status,
+        // The first report, not the content's creation.
+        createdAt: new Date(
+          Math.min(...bucket.map((report) => Date.parse(report.createdAt)))
+        ).toISOString(),
       };
     });
 
@@ -1912,54 +2092,9 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
       );
     });
 
-  mock.onPost(new RegExp(`${ROOT}/moderation/decisions$`)).reply((config) => {
-    const payload = body(config);
-
-    const contentType = text(payload.contentType);
-    const contentId = text(payload.contentId);
-    const action = text(payload.action);
-
-    if (!contentType || !contentId) {
-      return validation('community.moderation.content-required', "'Content' must not be empty.");
-    }
-    if (!action || !MODERATION_ACTIONS.includes(action)) {
-      return validation(
-        'community.moderation.action-invalid',
-        `'${String(action)}' is not a moderation action.`
-      );
-    }
-
-    // A decision resolves the reports it was made about.
-    for (const report of reports) {
-      if (
-        report.contentType.toLowerCase() === contentType.toLowerCase() &&
-        report.contentId === contentId
-      ) {
-        report.status = 'resolved';
-      }
-    }
-
-    if (action === 'remove') {
-      const post = posts.get(contentId);
-      if (post) post.isDeleted = true;
-    }
-
-    const decision: WireDecision = {
-      decisionId: newId(),
-      contentType,
-      contentId,
-      action,
-      reason: text(payload.reason),
-      reportId: text(payload.reportId),
-      moderatorId: DEV_MEMBER_ID,
-      // Property 14. Hardcoded null.
-      moderatorName: null,
-      createdAt: new Date().toISOString(),
-    };
-
-    decisions.push(decision);
-    return created(decision);
-  });
+  // No `POST /community/moderation/decisions`. The server removed it on 7 Nov
+  // 2026 — staff decide on a Trust case — and this file served it until RMD-009,
+  // to a test that posted to it directly. The history above is seeded.
 
   // ── Bookmarks ─────────────────────────────────────────────────────────────
   //
@@ -1968,36 +2103,33 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
   mock.onGet(new RegExp(`${ROOT}/bookmarks/collections(\\?.*)?$`)).reply(() => {
     const all = [...bookmarks.values()];
 
-    const collections: WireBookmarkCollection[] = folders.map((folder) => {
-      const items = all.filter((bookmark) => bookmark.folderId === folder.folderId);
-      return {
-        folderId: folder.folderId,
-        name: folder.name,
-        glyph: folder.glyph,
-        itemCount: items.length,
-        items,
-        updatedAt: items.length > 0 ? items[items.length - 1].createdAt : folder.createdAt,
-      };
-    });
+    // One tile per content type, sent even at a count of zero, counting every
+    // bookmark of that type whatever its folder...
+    const byType: WireBookmarkCollection[] = BOOKMARK_TILE_TYPES.map(([contentType, label, icon]) => ({
+      contentType,
+      folderId: null,
+      label,
+      icon,
+      count: all.filter((bookmark) => bookmark.contentType.toLowerCase() === contentType).length,
+      isAvailable: true,
+      thumbnailMediaIds: [],
+    }));
 
-    // The un-foldered collection carries a **null** `folderId`. It is not a
-    // folder and there is no route that creates it — a bookmark saved without a
-    // folder lands here and, since no route moves a bookmark between folders,
-    // stays here.
-    const loose = all.filter((bookmark) => bookmark.folderId === null);
-    if (loose.length > 0 || folders.length === 0) {
-      collections.unshift({
-        folderId: null,
-        name: 'Saved',
-        glyph: null,
-        itemCount: loose.length,
-        items: loose,
-        updatedAt: loose.length > 0 ? loose[loose.length - 1].createdAt : null,
-      });
-    }
+    // ...then one per folder the member named. A count, never the bookmarks:
+    // no route lists a tile's contents, and none moves a bookmark between
+    // folders.
+    const named: WireBookmarkCollection[] = folders.map((folder) => ({
+      contentType: null,
+      folderId: folder.folderId,
+      label: folder.name,
+      icon: folder.glyph,
+      count: all.filter((bookmark) => bookmark.folderId === folder.folderId).length,
+      isAvailable: true,
+      thumbnailMediaIds: [],
+    }));
 
     // A bare array.
-    return ok(collections);
+    return ok([...byType, ...named]);
   });
 
   mock.onPost(new RegExp(`${ROOT}/bookmarks/folders$`)).reply((config) => {
@@ -2012,6 +2144,8 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
       folderId: newId(),
       name: name.trim(),
       glyph: text(payload.glyph),
+      itemCount: 0,
+      position: folders.length,
       createdAt: new Date().toISOString(),
     };
 
@@ -2041,10 +2175,12 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
       bookmarkId,
       // Property 7. The same value under the older name.
       savedId: bookmarkId,
+      userId: DEV_MEMBER_ID,
       contentType,
       contentId,
       folderId: text(payload.folderId),
       note: text(payload.note),
+      title: null,
       createdAt: new Date().toISOString(),
     };
 
@@ -2082,16 +2218,9 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
     const targetId = parts[parts.length - 1];
 
     const payload = body(config);
-    const declaredType = text(payload.targetType);
-
-    if (declaredType !== null && !FOLLOW_TARGET_TYPES.includes(declaredType)) {
-      return validation(
-        'community.follow.target-type-invalid',
-        `'${declaredType}' is not a follow target type.`
-      );
-    }
-
-    const targetType = declaredType ?? 'member';
+    // Property 17. Lenient, as the server parses it: a type it does not know is
+    // a member follow, not a refusal.
+    const targetType = parseOr(text(payload.targetType), FOLLOW_TARGET_TYPES, 'member');
     const key = `${targetType}|${targetId}`;
     const existing = follows.get(key);
 
@@ -2099,6 +2228,7 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
     const muted = payload.muted === true;
 
     const record: StoredFollow = {
+      followId: existing?.followId ?? newId(),
       targetType,
       targetId,
       muted,
@@ -2107,17 +2237,9 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
 
     follows.set(key, record);
 
-    const response: WireFollow = {
-      targetType,
-      targetId,
-      isFollowing: true,
-      muted,
-      followerCount: 1,
-      followedAt: record.followedAt,
-    };
-
+    // Property 17. The edge, with the new count, and no `isFollowing`.
     // 200, not 201.
-    return ok(response);
+    return ok(toWireFollow(record, record.muted));
   });
 
   /**
@@ -2131,7 +2253,7 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
   mock.onDelete(new RegExp(`${ROOT}/follows/[^/?]+(\\?.*)?$`)).reply((config) => {
     const parts = segments(config.url);
     const targetId = parts[parts.length - 1];
-    const targetType = query(config, 'targetType') ?? 'member';
+    const targetType = parseOr(query(config, 'targetType'), FOLLOW_TARGET_TYPES, 'member');
 
     const key = `${targetType}|${targetId}`;
     const existing = follows.get(key);
@@ -2140,16 +2262,25 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
 
     follows.delete(key);
 
-    const response: WireFollow = {
-      targetType,
-      targetId,
-      isFollowing: false,
-      muted: false,
-      followerCount: 0,
-      followedAt: null,
+    // Property 17. The removed edge, `isMuted` false, and the count without it.
+    return ok(toWireFollow(existing, false));
+  });
+
+  /**
+   * `GET /community/follows/{targetId}?targetType=` — whether the caller
+   * follows, and how many do. The one answer that carries `isFollowing`.
+   */
+  mock.onGet(new RegExp(`${ROOT}/follows/[^/?]+(\\?.*)?$`)).reply((config) => {
+    const parts = segments(config.url);
+    const targetId = parts[parts.length - 1];
+    const targetType = parseOr(query(config, 'targetType'), FOLLOW_TARGET_TYPES, 'member');
+
+    const state: WireFollowState = {
+      isFollowing: follows.has(`${targetType}|${targetId}`),
+      followerCount: followerCountOf(targetType, targetId),
     };
 
-    return ok(response);
+    return ok(state);
   });
 
   // ── Feeds ─────────────────────────────────────────────────────────────────
@@ -2378,7 +2509,6 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
     const post = posts.get(postId);
     if (!post || post.isDeleted) return postNotFound();
 
-    post.shareCount += 1;
     return addShare(config, 'post', postId);
   });
 
@@ -2850,22 +2980,37 @@ function removeReaction(contentType: string, contentId: string, reactionKey: str
  */
 function addShare(config: { data?: unknown }, contentType: string, contentId: string): Reply {
   const payload = body(config);
-  const kind = text(payload.kind);
+  // Property 15. Lenient, as the server parses it: an unknown or absent kind is
+  // recorded as `external`, not refused.
+  const kind = parseOr(text(payload.kind), SHARE_KINDS, 'external');
 
-  if (!kind || !SHARE_KINDS.includes(kind)) {
-    return validation('community.share.kind-invalid', `'${String(kind)}' is not a share kind.`);
+  // The one share the server refuses: passed to a member, and no member named.
+  if (kind === 'internal' && !text(payload.recipientId)) {
+    return validation('community.share.invalid-target', 'That share has no valid destination.');
   }
+
+  const key = contentKey(contentType, contentId);
+  const shareCount = (shareCounts.get(key) ?? 0) + 1;
+  shareCounts.set(key, shareCount);
+
+  // A share of a post counts on the post as well, by either route.
+  const post = contentType.toLowerCase() === 'post' ? posts.get(contentId) : undefined;
+  if (post) post.shareCount += 1;
+
+  // Only an external share says where it went, trimmed, lower-cased and cut at
+  // 64. The request's `message` is stored and not echoed.
+  const sentDestination = text(payload.destination)?.trim().toLowerCase();
+  const destination = kind === 'external' && sentDestination ? sentDestination.slice(0, 64) : null;
 
   const share: WireShare = {
     shareId: newId(),
     contentType,
     contentId,
     kind,
-    destination: text(payload.destination),
-    recipientId: text(payload.recipientId),
-    message: text(payload.message),
+    destination,
     // Property 15. Always null, for every kind, on every deployment.
     quotePostId: null,
+    shareCount,
     createdAt: new Date().toISOString(),
   };
 

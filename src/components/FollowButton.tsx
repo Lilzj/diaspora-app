@@ -37,16 +37,16 @@
 // control that stayed flipped after the write was refused is a control that
 // lies about what the server holds.
 //
-// ── The read this module does not offer ──────────────────────────────────────
+// ── Where the seed comes from ────────────────────────────────────────────────
 //
-// **There is no `GET /community/follows`.** Thirty-six routes, and not one of
-// them answers "am I following this member?". `FollowResponse.isFollowing`
-// arrives only as the result of a write. So the initial state is whatever the
-// surrounding screen was given — today, on the contributor surfaces, still a
-// fixture's `isFollowedByUser` — and after that this button shows what the
-// server last confirmed. Replacing that seed needs a route that does not exist;
-// it is recorded as a gap rather than papered over with a local store, which is
-// exactly what was there before.
+// **`GET /community/follows/{targetId}` (20 Oct 2026) is the one read that says
+// whether the member follows someone.** The contributor header seeds this
+// button from it and remounts it when the answer changes; the directory rows and
+// the author card still pass the `isFollowedByUser` they were given. A follow
+// write answers with the follow **edge** — no `isFollowing` on it — so the hook
+// records the state from which route answered (RMD-009). Until then it read an
+// `isFollowing` the server never sends, and the header's button went back to
+// "Follow" as soon as the server confirmed the follow.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';

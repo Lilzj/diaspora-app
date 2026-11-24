@@ -126,15 +126,15 @@ import type {
   CreateReportRequest,
   CreateShareRequest,
   FeedQuery,
+  FollowResponse,
   FollowTargetType,
-  HashtagSuggestionResponse,
+  HashtagResponse,
   ModerationDecisionResponse,
   ModerationQueueItemResponse,
   ModerationQueueQuery,
   PollResponse,
   PostRevisionResponse,
   ReportReasonResponse,
-  TrendingHashtagResponse,
   UpdatePostRequest,
 } from '@/types/community-social';
 import { mapKeys } from '@/lib/api/maps-api';
@@ -1086,10 +1086,16 @@ export function useFollow(): {
     if (context?.previous) client.setQueryData(context.key, context.previous);
   };
 
-  const settle = (targetId: string, answer: { isFollowing: boolean; followerCount: number } | null) => {
+  // The answer is the follow edge, not the follow state: it carries the new
+  // count and no `isFollowing`. Which route answered is the state — a follow
+  // that succeeded is a follow. Until RMD-009 this read `answer.isFollowing`,
+  // which the server never sends, so the entry held `undefined` and the
+  // contributor page's button, seeded from it, went back to "Follow" the moment
+  // the server confirmed the follow.
+  const settle = (targetId: string, nowFollowing: boolean, answer: FollowResponse | null) => {
     if (answer) {
       client.setQueryData<FollowState>(followStateKey(targetId), {
-        isFollowing: answer.isFollowing,
+        isFollowing: nowFollowing,
         followerCount: answer.followerCount,
       });
     } else {
@@ -1118,7 +1124,7 @@ export function useFollow(): {
     retry: false,
     onMutate: ({ targetId }) => guess(targetId, true),
     onError: (_cause, _variables, context) => undo(context),
-    onSuccess: (answer, { targetId }) => settle(targetId, answer),
+    onSuccess: (answer, { targetId }) => settle(targetId, true, answer),
   });
 
   const unfollowing = useMutation({
@@ -1132,7 +1138,7 @@ export function useFollow(): {
     retry: false,
     onMutate: ({ targetId }) => guess(targetId, false),
     onError: (_cause, _variables, context) => undo(context),
-    onSuccess: (answer, { targetId }) => settle(targetId, answer),
+    onSuccess: (answer, { targetId }) => settle(targetId, false, answer),
   });
 
   return {
@@ -1260,8 +1266,8 @@ export function useModerationQueue(
  * What has already been decided about one piece of content.
  *
  * A bare array. `moderatorName` on every entry is **hardcoded null** — the
- * server never populates it — so a history list identifies decisions by action
- * and time, or not at all.
+ * server never populates it — so a history list identifies decisions by
+ * `actionType`, `source` and time, or not at all.
  */
 export function useModerationHistory(
   contentType: CommunityContentType,
@@ -1301,7 +1307,7 @@ export function useHashtagSuggestions(
   prefix: string,
   limit?: number | null
 ): {
-  suggestions: HashtagSuggestionResponse[];
+  suggestions: HashtagResponse[];
   isLoading: boolean;
   error: string | null;
 } {
@@ -1328,7 +1334,7 @@ export function useTrendingHashtags(
   countryCode?: string | null,
   limit?: number | null
 ): {
-  hashtags: TrendingHashtagResponse[];
+  hashtags: HashtagResponse[];
   isLoading: boolean;
   error: string | null;
   refresh: () => void;
