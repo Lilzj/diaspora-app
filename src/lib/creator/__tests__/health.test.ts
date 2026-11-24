@@ -17,23 +17,16 @@
 // It took a device to find. These tests are what mean it does not take one twice.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { assess, assessAll, type HealthRubric } from '../health';
+import { assess, assessAll } from '../health';
+import { HINT, PLATFORM_RUBRIC } from '../../__tests__/support/content-health-rubric';
 import type { UnifiedContentItem } from '@/types/creator';
 
-/** The rubric as the platform serves it. Field names are the PLATFORM's. */
-const RUBRIC: HealthRubric = {
-  version: 1,
-  healthyAtOrAbove: 80,
-  needsWorkBelow: 50,
-  criteria: [
-    { key: 'cover', field: 'coverImage', weight: 25, hint: 'Add a photograph.', appliesTo: [] },
-    { key: 'summary', field: 'summary', weight: 40, hint: 'Write a summary.', appliesTo: [] },
-    { key: 'category', field: 'categoryKey', weight: 15, hint: 'Choose a category.', appliesTo: [] },
-    { key: 'price', field: 'price', weight: 10, hint: 'Say what it costs.', appliesTo: ['marketplace', 'housing'] },
-    { key: 'location', field: 'location', weight: 10, hint: 'Add a city.', appliesTo: ['marketplace', 'housing', 'event', 'guide'] },
-    { key: 'tags', field: 'tags', weight: 10, hint: 'Add a tag or two.', appliesTo: [] },
-  ],
-};
+/**
+ * The rubric as the platform serves it. Field names are the PLATFORM's. This
+ * was a copy of its own that had fallen behind: no schedule criterion, and tags
+ * for every type.
+ */
+const RUBRIC = PLATFORM_RUBRIC;
 
 /** A listing with every field a member can fill in, filled in. */
 function completeListing(): UnifiedContentItem {
@@ -106,7 +99,7 @@ describe('the rubric is evaluated against the shape the client actually holds', 
     expect(score).toBe(77);
     expect(status).toBe('needs_attention');
     expect(recommendations).toHaveLength(1);
-    expect(recommendations[0].title).toBe('Add a photograph.');
+    expect(recommendations[0].title).toBe(HINT.cover);
   });
 
   it('does not mark a guide down for having no price', () => {

@@ -194,7 +194,8 @@ interface ListingRow {
 /**
  * `ProviderSummaryResponse`. Its summary is `summary`; this read `description`,
  * so a business never showed one here. It sends no `createdAt` either, so a
- * business that was never published has no date to show (RMD-009).
+ * business that was never published has no date to show (RMD-009). Its `tags`
+ * were sent and not kept, so every business was told to add tags it had.
  */
 interface ProviderRow {
   providerId?: string;
@@ -204,6 +205,7 @@ interface ProviderRow {
   category?: { name?: string | null } | null;
   coverMedia?: { mediaId?: string | null } | null;
   location?: { cityName?: string | null } | null;
+  tags?: string[] | null;
   publishedAt?: string | null;
 }
 
@@ -231,12 +233,15 @@ interface HousingRow {
 /**
  * `EventSummaryResponse`. Its city is `location.cityName`; this read a
  * top-level `cityName`, so an event never showed where it is. It read `id` and
- * `updatedAt` too, which no event summary sends (RMD-009).
+ * `updatedAt` too, which no event summary sends (RMD-009). Its `categoryKey`
+ * was sent and not kept, and its start went only into the display dates, so
+ * every event was told to choose a category and set a date it had.
  */
 interface EventRow {
   eventId?: string;
   title?: string | null;
   summary?: string | null;
+  categoryKey?: string | null;
   status?: string | null;
   startsAt?: string | null;
   coverMediaId?: string | null;
@@ -437,6 +442,7 @@ export async function fetchWorkspaceContent(
     item.summary = row.summary ?? undefined;
     item.category = row.category?.name ?? undefined;
     item.location = row.location?.cityName ?? undefined;
+    item.tags = row.tags ?? undefined;
     items.push(item);
   }
 
@@ -454,7 +460,9 @@ export async function fetchWorkspaceContent(
     item.lastUpdated = toDisplayDate(row.startsAt);
     item.thumbnail = row.coverMediaId ?? undefined;
     item.summary = row.summary ?? undefined;
+    item.category = row.categoryKey ?? undefined;
     item.location = row.location?.cityName ?? undefined;
+    item.startsAt = row.startsAt ?? undefined;
     items.push(item);
   }
 
