@@ -962,6 +962,7 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['delete', '/platform/operations/jobs/{jobId}'],
   ['get', '/platform/operations/kill-switch'],
   ['post', '/platform/operations/kill-switch'],
+  ['get', '/platform/operations/modules'],
   ['get', '/platform/operations/policies'],
   ['get', '/platform/operations/privacy-audit'],
   ['get', '/platform/operations/resilience'],
