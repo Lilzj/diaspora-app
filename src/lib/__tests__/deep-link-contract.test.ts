@@ -25,7 +25,7 @@
 // `jobs.interview.scheduled`, `events.reminder` and `provider.review.received`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { KNOWN_PREFIXES, isResolvableRoute } from '../platform/notification-routes';
+import { KNOWN_PREFIXES, isResolvableRoute, openRouteTarget } from '../platform/notification-routes';
 
 /**
  * The agreed contract, as a literal.
@@ -118,5 +118,49 @@ describe('what the allowlist still refuses', () => {
     expect(isResolvableRoute('')).toBe(false);
     expect(isResolvableRoute(null)).toBe(false);
     expect(isResolvableRoute(undefined)).toBe(false);
+  });
+});
+
+// FBL-005. On Android the App Link hands the whole https link to the app, so
+// the server's page, which carries a safe query over into diaspora://, never
+// runs and `/open/<route>` is the only thing between the link and the route.
+describe('what /open/<route> forwards', () => {
+  it('carries the query the link brought', () => {
+    expect(openRouteTarget({ route: ['profile', 'trust-center'], tab: 'documents' })).toBe(
+      '/profile/trust-center?tab=documents'
+    );
+  });
+
+  it('opens the bare path when the link brought no query', () => {
+    expect(openRouteTarget({ route: ['profile', 'trust-center'] })).toBe('/profile/trust-center');
+  });
+
+  it('keeps every value of a repeated key', () => {
+    expect(openRouteTarget({ route: ['explore'], tag: ['food', 'housing'] })).toBe(
+      '/explore?tag=food&tag=housing'
+    );
+  });
+
+  it('encodes what it carries, so a value cannot read as URL syntax', () => {
+    expect(openRouteTarget({ route: ['search'], q: 'a b&c=d#e' })).toBe(
+      '/search?q=a%20b%26c%3Dd%23e'
+    );
+  });
+
+  it('re-encodes the path a segment at a time, as the server does', () => {
+    expect(openRouteTarget({ route: ['profile', 'a?b#c'], tab: 'x' })).toBe(
+      '/profile/a%3Fb%23c?tab=x'
+    );
+  });
+
+  it('never carries the route itself, or a fragment the server could not have seen', () => {
+    expect(openRouteTarget({ route: ['wallet'], '#': 'top', tab: 'cards' })).toBe(
+      '/wallet?tab=cards'
+    );
+  });
+
+  it('sends a path this build cannot render home, and carries nothing there', () => {
+    expect(openRouteTarget({ route: ['nowhere'], tab: 'x' })).toBe('/(tabs)');
+    expect(openRouteTarget({})).toBe('/(tabs)');
   });
 });

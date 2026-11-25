@@ -106,6 +106,52 @@ export function isResolvableRoute(route: string | undefined | null): boolean {
 }
 
 /**
+ * Where `/open/<route>` forwards: the in-app path with the query the link
+ * carried, or the home tabs when the path is not one this build can render.
+ *
+ * FBL-005. On Android the App Link hands `https://…/open/<route>?…` straight to
+ * the app, so the server's page, which carries a safe query over into
+ * `diaspora://<route>?…`, never runs. The screen rebuilt only the path, and a
+ * link's tab, filter or highlighted item was lost on the way. iOS declares no
+ * universal link, so its links always go through the server's page.
+ *
+ * - The path is re-encoded a segment at a time, as the server does, so an
+ *   identifier holding `?` or `#` reaches its screen as data rather than
+ *   cutting the path short.
+ * - `route` is the path, so it never travels in the query. `#` is a fragment,
+ *   which expo-router hands over as a param; the server never sees a fragment,
+ *   so its page cannot carry one either, and dropping it keeps the two paths
+ *   alike.
+ * - Values arrive decoded and leave encoded, one `key=value` per value, so a
+ *   repeated key survives and nothing in a value reads as URL syntax.
+ * - The fallback gets no query: a query belongs to the route it came with.
+ *
+ * A query naming a param the target's path already sets cannot override it:
+ * expo-router keeps the path's value.
+ */
+export function openRouteTarget(
+  params: Readonly<Record<string, string | string[] | undefined>>
+): string {
+  const segments = (Array.isArray(params.route) ? params.route : [params.route ?? '']).filter(
+    Boolean
+  );
+  const path = `/${segments.map((segment) => encodeURIComponent(segment)).join('/')}`;
+
+  if (!isResolvableRoute(path)) return '/(tabs)';
+
+  const query = Object.entries(params)
+    .filter(([key]) => key !== 'route' && key !== '#')
+    .flatMap(([key, value]) =>
+      (Array.isArray(value) ? value : [value])
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => `${encodeURIComponent(key)}=${encodeURIComponent(item)}`)
+    )
+    .join('&');
+
+  return query ? `${path}?${query}` : path;
+}
+
+/**
  * Follows a notification, or falls back to the inbox.
  *
  * Returns whether it navigated, so a caller can decide what to tell somebody
