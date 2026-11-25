@@ -318,6 +318,9 @@ export interface IntegrationAccount {
 
 /**
  * One integration's live state — the object the connection centre renders.
+ *
+ * It has no `gapId`. The route sends none, and the one the device set on the
+ * connections it composes was never read.
  */
 export interface IntegrationConnection {
   provider: IntegrationProviderId;
@@ -335,8 +338,6 @@ export interface IntegrationConnection {
   /** ISO-8601. Null when it has never run — distinct from "ran and found nothing". */
   lastSyncedAt?: string | null;
   lastError?: IntegrationErrorSummary | null;
-  /** The gap this connection is standing in for, if any. */
-  gapId?: string | null;
   /** ISO-8601. When this snapshot was taken. */
   observedAt: string;
 }

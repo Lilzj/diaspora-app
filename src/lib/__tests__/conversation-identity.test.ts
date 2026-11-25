@@ -16,7 +16,7 @@ import {
   sameUser,
   withAuthors,
 } from '@/lib/domain/conversation-identity';
-import type { ConversationParticipant, Message } from '@/types/conversation';
+import type { ConversationParticipant, ThreadMessage } from '@/types/conversation';
 
 const AISHA = '01a0576f-2c1d-7f00-8000-0000000000a1';
 const DAVID = '01a05770-33f2-7600-8000-0000000000da';
@@ -30,7 +30,7 @@ const participants: ConversationParticipant[] = [
   { userId: DAVID, displayName: 'David Mensah', trust, isCurrentUser: false },
 ];
 
-function message(overrides: Partial<Message> = {}): Message {
+function message(overrides: Partial<ThreadMessage> = {}): ThreadMessage {
   return {
     messageId: 'm1',
     conversationId: 'c1',

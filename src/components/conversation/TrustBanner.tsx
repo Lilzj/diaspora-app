@@ -71,18 +71,6 @@ export function TrustBanner({ trust, displayName }: Props) {
           </View>
         )}
       </View>
-
-      {/* Country verifications */}
-      {trust.countryVerifications && trust.countryVerifications.length > 0 && (
-        <View className="flex-row flex-wrap mt-2 gap-1">
-          {trust.countryVerifications.filter((v) => v.isVerified).map((v) => (
-            <View key={v.countryCode} className="flex-row items-center bg-surface-card border border-subtle rounded-full px-2 py-0.5">
-              <Text className="text-xs mr-1">{v.flag}</Text>
-              <Text className="text-[10px] font-semibold text-content-secondary">{v.countryName}</Text>
-            </View>
-          ))}
-        </View>
-      )}
     </View>
   );
 }

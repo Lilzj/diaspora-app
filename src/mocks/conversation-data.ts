@@ -49,10 +49,6 @@ const highTrust: ConversationTrustProfile = {
   memberSince: '2023',
   reputationLevel: 'VerifiedResident',
   totalHelpfulVotes: 123,
-  countryVerifications: [
-    { countryCode: 'GB', countryName: 'United Kingdom', flag: '🇬🇧', isVerified: true },
-    { countryCode: 'NG', countryName: 'Nigeria', flag: '🇳🇬', isVerified: true },
-  ],
 };
 
 const mediumTrust: ConversationTrustProfile = {
@@ -64,9 +60,6 @@ const mediumTrust: ConversationTrustProfile = {
   responseRate: 85,
   memberSince: '2024',
   reputationLevel: 'ActiveContributor',
-  countryVerifications: [
-    { countryCode: 'MU', countryName: 'Mauritius', flag: '🇲🇺', isVerified: true },
-  ],
 };
 
 const newUserTrust: ConversationTrustProfile = {
@@ -379,7 +372,6 @@ export const mockMessages: Record<string, Message[]> = {
         sizeBytes: 89600,
         createdAt: daysAgo(3),
         durationSeconds: 28,
-        waveformData: [0.3, 0.5, 0.7, 0.9, 0.6, 0.4, 0.8, 0.5, 0.3, 0.6, 0.7, 0.9, 0.5, 0.4, 0.2, 0.6, 0.8, 0.7, 0.5, 0.3],
       },
       delivery: { status: 'read', sentAt: daysAgo(3), deliveredAt: daysAgo(3), readAt: daysAgo(2) },
       createdAt: daysAgo(3),

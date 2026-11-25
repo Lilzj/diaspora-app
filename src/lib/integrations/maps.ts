@@ -43,7 +43,6 @@
 
 import { getProviderStatus } from '@/lib/maps/providers/registry';
 import { getMapFeatureFlags } from '@/config/map-config';
-import { MAP_PROVIDER_GAPS } from '@/config/map-provider-gaps';
 import type {
   IntegrationCapability,
   IntegrationConnection,
@@ -121,7 +120,6 @@ export function mapConnection(now: string): IntegrationConnection {
     expiresAt: null,
     lastSyncedAt: null,
     lastError: null,
-    gapId: hasSimulatedComponent ? MAP_PROVIDER_GAPS.tileMap.id : null,
     observedAt: now,
   };
 }

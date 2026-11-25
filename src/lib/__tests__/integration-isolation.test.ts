@@ -68,7 +68,6 @@ function connection(provider: IntegrationConnection['provider']): IntegrationCon
     expiresAt: null,
     lastSyncedAt: null,
     lastError: null,
-    gapId: null,
     observedAt: '2026-08-09T09:00:00.000Z',
   };
 }

@@ -704,42 +704,6 @@ const KNOWN_RESPONSE_DRIFT: Readonly<Record<string, KnownDrift>> = {
     row: null,
     why: '`event-wire` reads `id` only behind `eventId`, for mock and cached events — the allowance `screen-response-field-drift` makes for the same adapter.',
   },
-  // ── RMD-009 — declared, not sent, and not yet shown to matter or not.
-  'an inline type in src/lib/automation/certified-client.ts <- AutomationStatusChangedResponse': {
-    fields: ['automation.actions[].channel'],
-    row: 'RMD-009',
-    why: "`channel` is read by automation simulation and validation, which also handle drafts built on the device; whether either sees this route's body is not established.",
-  },
-  'AutomationDefinition <- AutomationDefinitionResponse': {
-    fields: ['actions[].channel'],
-    row: 'RMD-009',
-    why: "`channel` is read by automation simulation and validation, which also handle drafts built on the device; whether either sees this route's body is not established.",
-  },
-  'Conversation <- ConversationResponse': {
-    fields: ['lastMessage.isOptimistic', 'participants[].trust.countryVerifications'],
-    row: 'RMD-009',
-    why: "`isOptimistic` and `delivery` are the device's own send state, kept on the wire type. `participants[].trust.countryVerifications` is never sent, so `TrustBanner`'s country row never renders.",
-  },
-  'ConversationRequest <- ConversationRequestResponse': {
-    fields: ['fromUser.trust.countryVerifications'],
-    row: 'RMD-009',
-    why: "`fromUser.trust.countryVerifications` is never sent, so `TrustBanner`'s country row never renders for a request.",
-  },
-  'IntegrationConnection <- IntegrationConnectionResponse': {
-    fields: ['gapId'],
-    row: 'RMD-009',
-    why: '`gapId` is read by `integrations/status`; `lastError.retryAfterSeconds` is never read. Neither is sent.',
-  },
-  'IntegrationConnection[] <- IntegrationConnectionResponse[]': {
-    fields: ['[].gapId'],
-    row: 'RMD-009',
-    why: '`gapId` is read by `integrations/status`; `lastError.retryAfterSeconds` is never read. Neither is sent.',
-  },
-  'Partial<ConversationMediaGallery> <- ConversationMediaResponse': {
-    fields: ['voice[].waveformData'],
-    row: 'RMD-009',
-    why: "`uploadProgress` is the device's own upload state, kept on the wire type. `waveformData` is never sent; `MessageBubble` falls back to random bars.",
-  },
 };
 
 function ledgerEntry(label: string, fields: readonly string[]): string {

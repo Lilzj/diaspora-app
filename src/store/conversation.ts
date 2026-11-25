@@ -12,6 +12,7 @@ import { readPage, unwrapEnvelope } from '@/lib/transport/platform-envelope';
 import type {
   Conversation,
   Message,
+  ThreadMessage,
   ConversationRequest,
   BlockedUser,
   InboxFilter,
@@ -53,7 +54,7 @@ interface ConversationState {
   conversationsError: string | null;
 
   // Messages (per conversation)
-  messages: Record<string, Message[]>;
+  messages: Record<string, ThreadMessage[]>;
   isLoadingMessages: Record<string, boolean>;
 
   // Requests
@@ -162,7 +163,7 @@ interface ConversationState {
  * sends only `replyToMessageId` — and the REST reply reference has no author
  * name. The quoted message is already in the thread, so it is read from there.
  */
-function withReplyPreview(message: Message, thread: Message[]): Message {
+function withReplyPreview<T extends Message>(message: T, thread: readonly Message[]): T {
   const reply = message.replyTo;
   if (!reply || (reply.senderId && reply.previewText)) return message;
 
@@ -391,7 +392,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
       // Stamped `senderId: 'user-current'` and `senderName: 'Joshua M.'` — a
       // development fixture's member — on every member's pending bubble.
-      const optimistic: Message = withReplyPreview(
+      const optimistic = withReplyPreview<ThreadMessage>(
         {
           messageId: localId,
           conversationId,
@@ -443,7 +444,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         messages: { ...state.messages, [confirmed.conversationId]: thread },
         conversations: state.conversations.map((c) =>
           c.conversationId === confirmed.conversationId && c.lastMessage?.localId === localId
-            ? { ...c, lastMessage: { ...confirmed, isOptimistic: false } }
+            ? { ...c, lastMessage: confirmed }
             : c
         ),
       };
@@ -489,14 +490,14 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       const target = msgs.find((m) => m.messageId === messageId);
       const cutoff = target ? new Date(target.createdAt).getTime() : null;
 
-      const readNow = (m: Message): boolean =>
+      const readNow = (m: ThreadMessage): boolean =>
         !m.isOptimistic &&
         m.delivery.status !== 'read' &&
         isOwnMessage(m, currentUserId) &&
         (m.messageId === messageId ||
           (cutoff !== null && new Date(m.createdAt).getTime() <= cutoff));
 
-      const mark = (m: Message): Message =>
+      const mark = (m: ThreadMessage): ThreadMessage =>
         readNow(m) ? { ...m, delivery: { ...m.delivery, status: 'read', readAt } } : m;
 
       return {

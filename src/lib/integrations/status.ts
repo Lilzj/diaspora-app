@@ -153,7 +153,6 @@ export function notConnected(
     expiresAt: null,
     lastSyncedAt: null,
     lastError: null,
-    gapId: null,
     observedAt: now,
   };
 }
@@ -181,7 +180,6 @@ export function withError(
     // offering an action that will immediately fail again.
     grantedCapabilities: status === 'REAUTH_REQUIRED' ? connection.grantedCapabilities : [],
     lastError: error.toSummary(now),
-    gapId: error.gapId ?? connection.gapId ?? null,
     observedAt: now,
   };
 }

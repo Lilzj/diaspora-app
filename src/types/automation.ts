@@ -568,6 +568,11 @@ export interface AutomationActionDefinition {
   allowedOwners: AutomationOwnerKind[];
 }
 
+/**
+ * One action in an automation (`AutomationActionResponse`). It has no channel of
+ * its own: the action's definition names the channel, and B13's preferences
+ * decide what is sent.
+ */
 export interface AutomationAction {
   id: string;
   key: string;
@@ -578,8 +583,6 @@ export interface AutomationAction {
    * money field anywhere in this domain.
    */
   parameters: Record<string, string | number | boolean | string[]>;
-  /** Channel override, within what the definition and B13 preferences allow. */
-  channel?: NotificationChannel | null;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
