@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { isResolvableRoute } from '@/lib/platform/notification-routes';
+import { openRouteTarget } from '@/lib/platform/notification-routes';
 
 /**
  * `https://diaspora-api.fly.dev/open/<route>`: an email's button, opened by the app.
@@ -13,15 +13,19 @@ import { isResolvableRoute } from '@/lib/platform/notification-routes';
  * answers a page that opens the app, and Android hands the link straight to the
  * app (App Link, `app.json`). This screen forwards to the route inside it, and
  * only to a route the app knows (the same check notification taps use).
+ *
+ * The link's query goes with it (FBL-005, 25 Nov 2026). On Android this screen
+ * is the only thing between the link and the route, and it rebuilt the path
+ * alone, so a link's tab or filter never arrived. See `openRouteTarget`.
  */
 export default function OpenRouteScreen() {
-  const { route } = useLocalSearchParams<{ route?: string | string[] }>();
+  const params = useLocalSearchParams<Record<string, string | string[]>>();
+  const target = openRouteTarget(params);
 
   useEffect(() => {
-    const path = `/${(Array.isArray(route) ? route : [route ?? '']).filter(Boolean).join('/')}`;
     // Replaced, not pushed: Back must not land on this screen and forward again.
-    router.replace((isResolvableRoute(path) ? path : '/(tabs)') as never);
-  }, [route]);
+    router.replace(target);
+  }, [target]);
 
   return (
     <View className="flex-1 items-center justify-center bg-surface-background">
