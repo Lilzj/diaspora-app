@@ -19,7 +19,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { Stack } from 'expo-router';
+import { RequireMember } from '@/components/RequireMember';
 
 export default function AnalyticsLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <RequireMember>
+      <Stack screenOptions={{ headerShown: false }} />
+    </RequireMember>
+  );
 }

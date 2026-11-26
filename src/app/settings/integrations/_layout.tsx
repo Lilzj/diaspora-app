@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { RequireMember } from '@/components/RequireMember';
 
 /**
  * Frontend Phase 16 — the integration settings tree.
@@ -7,5 +8,9 @@ import { Stack } from 'expo-router';
  * convention the rest of the settings tree already follows.
  */
 export default function IntegrationsLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <RequireMember>
+      <Stack screenOptions={{ headerShown: false }} />
+    </RequireMember>
+  );
 }
