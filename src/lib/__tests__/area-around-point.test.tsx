@@ -397,8 +397,10 @@ describe('nothing asks the retired catalogue routes, or for outlines', () => {
 
   it('the map draws no polygons and opens the area screen from a cell', () => {
     const map = source('app', 'map', 'index.tsx');
-    expect(map).not.toMatch(/polygons=/);
+    // The map's props are grouped since FSOLID-005, so a prop reads `name: value`
+    // inside its group as well as `name={value}`. Both spellings count.
+    expect(map).not.toMatch(/\bpolygons\s*[=:]/);
     expect(map).toContain("pathname: '/map/area'");
-    expect(map).toContain('onServerClusterPress={handleServerClusterPress}');
+    expect(map).toMatch(/\bonServerClusterPress\s*[=:]\s*\{?\s*handleServerClusterPress\b/);
   });
 });

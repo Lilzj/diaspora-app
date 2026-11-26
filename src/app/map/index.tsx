@@ -408,22 +408,30 @@ export default function MapDiscoveryScreen() {
       {showMap ? (
         <View style={{ flex: displayMode === 'split' ? 1 : 3 }}>
           <DiasporaMap
-            viewport={viewport}
-            onViewportChange={setViewport}
-            markers={markers}
-            serverClusters={showsTotals ? serverClusters.page!.clusters : null}
-            onServerClusterPress={handleServerClusterPress}
-            chromeBottomInset={displayMode === 'map' ? chromeInset : 0}
-            // Drawn by the surface as the server's grid squares, withheld ones in grey.
-            heatLayers={activeLayer && heat.data ? [heat.data] : undefined}
-            dataAttributions={heatCredit ? [heatCredit] : undefined}
-            selectedMarkerId={selectedMarkerId}
-            onSelectMarker={(marker) => selectMarker(marker?.id ?? null, 'map')}
-            userLocation={deviceLocation}
-            followUser={followUser}
-            onFollowUserChange={setFollowUser}
-            onOpenLayers={() => setShowLayers((open) => !open)}
-            hasLayers
+            viewport={{
+              region: viewport,
+              onChange: setViewport,
+              userLocation: deviceLocation,
+              followUser,
+              onFollowUserChange: setFollowUser,
+            }}
+            overlays={{
+              markers,
+              serverClusters: showsTotals ? serverClusters.page!.clusters : null,
+              // Drawn by the surface as the server's grid squares, withheld ones in grey.
+              heatLayers: activeLayer && heat.data ? [heat.data] : undefined,
+              dataAttributions: heatCredit ? [heatCredit] : undefined,
+            }}
+            interaction={{
+              onServerClusterPress: handleServerClusterPress,
+              selectedMarkerId,
+              onSelectMarker: (marker) => selectMarker(marker?.id ?? null, 'map'),
+            }}
+            chrome={{
+              bottomInset: displayMode === 'map' ? chromeInset : 0,
+              onOpenLayers: () => setShowLayers((open) => !open),
+              hasLayers: true,
+            }}
           >
             <SearchThisAreaButton
               visible={search.isViewportDirty}

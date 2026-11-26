@@ -92,11 +92,8 @@ describe('the schematic renderer', () => {
     const result = render(
       <ThemeProvider>
         <CanvasMapSurface
-          viewport={viewport}
-          markers={[]}
-          clusters={[]}
-          polygons={[OUTLINE]}
-          onViewportChange={() => undefined}
+          viewport={{ region: viewport, onChange: () => undefined }}
+          overlays={{ markers: [], clusters: [], polygons: [OUTLINE] }}
         />
       </ThemeProvider>
     );

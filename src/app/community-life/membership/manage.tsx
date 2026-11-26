@@ -172,9 +172,7 @@ export default function MembershipManageScreen() {
     <CommunityScreen
       title="Your membership"
       subtitle={membership?.organizationName}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch }}
       footer={
         membership ? (
           <View>

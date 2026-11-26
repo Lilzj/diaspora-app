@@ -220,13 +220,9 @@ export default function RoutePlanningScreen() {
       <View style={{ height: 260 }}>
         {viewport ? (
           <DiasporaMap
-            viewport={viewport}
-            onViewportChange={setViewport}
-            markers={markers}
-            polylines={polylines}
-            userLocation={deviceLocation}
-            clustering={false}
-            showControls={false}
+            viewport={{ region: viewport, onChange: setViewport, userLocation: deviceLocation }}
+            overlays={{ markers, polylines, clustering: false }}
+            chrome={{ showControls: false }}
             accessibilityLabel={`Map showing the route from ${origin.label} to ${destination.label}. The full list of directions is below.`}
           />
         ) : (

@@ -26,6 +26,12 @@ import {
   screenToCoordinate,
 } from '@/lib/maps/providers/canvas-map';
 import { DiasporaMap } from '@/components/maps';
+import type {
+  DiasporaMapChrome,
+  DiasporaMapInteraction,
+  DiasporaMapOverlays,
+  DiasporaMapViewport,
+} from '@/components/maps/DiasporaMap';
 import { viewportFromCenter } from '@/lib/maps/geo';
 import type { MapMarker, MapViewport } from '@/types/maps';
 
@@ -72,9 +78,11 @@ describe('rendering', () => {
   it('summarises what is on it for a screen reader, and points at the list — §50', () => {
     renderSurface(
       <CanvasMapSurface
-        viewport={VIEWPORT}
-        markers={[marker('a', 51.4742, -0.0691), marker('b', 51.475, -0.07)]}
-        clusters={[]}
+        viewport={{ region: VIEWPORT }}
+        overlays={{
+          markers: [marker('a', 51.4742, -0.0691), marker('b', 51.475, -0.07)],
+          clusters: [],
+        }}
       />
     );
 
@@ -86,9 +94,11 @@ describe('rendering', () => {
   it('draws markers inside the viewport and skips ones far outside it', () => {
     renderSurface(
       <CanvasMapSurface
-        viewport={VIEWPORT}
-        markers={[marker('near', 51.4742, -0.0691), marker('far', -20.2417, 57.4806)]}
-        clusters={[]}
+        viewport={{ region: VIEWPORT }}
+        overlays={{
+          markers: [marker('near', 51.4742, -0.0691), marker('far', -20.2417, 57.4806)],
+          clusters: [],
+        }}
       />
     );
 
@@ -101,9 +111,8 @@ describe('rendering', () => {
   it('exposes each marker as a button carrying its own label', () => {
     renderSurface(
       <CanvasMapSurface
-        viewport={VIEWPORT}
-        markers={[marker('a', 51.4742, -0.0691)]}
-        clusters={[]}
+        viewport={{ region: VIEWPORT }}
+        overlays={{ markers: [marker('a', 51.4742, -0.0691)], clusters: [] }}
       />
     );
 
@@ -115,10 +124,9 @@ describe('rendering', () => {
   it('marks the selected pin as selected', () => {
     renderSurface(
       <CanvasMapSurface
-        viewport={VIEWPORT}
-        markers={[marker('a', 51.4742, -0.0691)]}
-        clusters={[]}
-        selectedMarkerId="a"
+        viewport={{ region: VIEWPORT }}
+        overlays={{ markers: [marker('a', 51.4742, -0.0691)], clusters: [] }}
+        interaction={{ selectedMarkerId: 'a' }}
       />
     );
     expect(screen.getByTestId('marker-a').props.accessibilityState.selected).toBe(true);
@@ -127,19 +135,21 @@ describe('rendering', () => {
   it('renders a cluster with the label the clusterer wrote', () => {
     renderSurface(
       <CanvasMapSurface
-        viewport={VIEWPORT}
-        markers={[]}
-        clusters={[
-          {
-            id: 'c1',
-            coordinate: CENTRE,
-            count: 12,
-            bounds: { north: 51.48, south: 51.47, east: -0.06, west: -0.07 },
-            breakdown: { housing: 12 },
-            memberIds: [],
-            accessibilityLabel: '12 homes grouped together. Activate to zoom in.',
-          },
-        ]}
+        viewport={{ region: VIEWPORT }}
+        overlays={{
+          markers: [],
+          clusters: [
+            {
+              id: 'c1',
+              coordinate: CENTRE,
+              count: 12,
+              bounds: { north: 51.48, south: 51.47, east: -0.06, west: -0.07 },
+              breakdown: { housing: 12 },
+              memberIds: [],
+              accessibilityLabel: '12 homes grouped together. Activate to zoom in.',
+            },
+          ],
+        }}
       />
     );
 
@@ -154,10 +164,9 @@ describe('interaction', () => {
     const onMarkerPress = jest.fn();
     renderSurface(
       <CanvasMapSurface
-        viewport={VIEWPORT}
-        markers={[marker('a', 51.4742, -0.0691)]}
-        clusters={[]}
-        onMarkerPress={onMarkerPress}
+        viewport={{ region: VIEWPORT }}
+        overlays={{ markers: [marker('a', 51.4742, -0.0691)], clusters: [] }}
+        interaction={{ onMarkerPress }}
       />
     );
 
@@ -169,20 +178,22 @@ describe('interaction', () => {
     const onClusterPress = jest.fn();
     renderSurface(
       <CanvasMapSurface
-        viewport={VIEWPORT}
-        markers={[]}
-        clusters={[
-          {
-            id: 'c1',
-            coordinate: CENTRE,
-            count: 5,
-            bounds: { north: 51.48, south: 51.47, east: -0.06, west: -0.07 },
-            breakdown: { housing: 5 },
-            memberIds: [],
-            accessibilityLabel: '5 homes grouped together.',
-          },
-        ]}
-        onClusterPress={onClusterPress}
+        viewport={{ region: VIEWPORT }}
+        overlays={{
+          markers: [],
+          clusters: [
+            {
+              id: 'c1',
+              coordinate: CENTRE,
+              count: 5,
+              bounds: { north: 51.48, south: 51.47, east: -0.06, west: -0.07 },
+              breakdown: { housing: 5 },
+              memberIds: [],
+              accessibilityLabel: '5 homes grouped together.',
+            },
+          ],
+        }}
+        interaction={{ onClusterPress }}
       />
     );
 
@@ -289,14 +300,21 @@ describe('screen-to-coordinate', () => {
 });
 
 describe('DiasporaMap composes the surface with clustering and controls', () => {
-  function renderMap(props: Partial<React.ComponentProps<typeof DiasporaMap>> = {}) {
+  function renderMap(
+    groups: {
+      viewport?: Partial<DiasporaMapViewport>;
+      overlays?: Partial<DiasporaMapOverlays>;
+      interaction?: DiasporaMapInteraction;
+      chrome?: DiasporaMapChrome;
+    } = {}
+  ) {
     const result = render(
       <ThemeProvider>
         <DiasporaMap
-          viewport={VIEWPORT}
-          onViewportChange={jest.fn()}
-          markers={[]}
-          {...props}
+          viewport={{ region: VIEWPORT, onChange: jest.fn(), ...groups.viewport }}
+          overlays={{ markers: [], ...groups.overlays }}
+          interaction={groups.interaction}
+          chrome={groups.chrome}
         />
       </ThemeProvider>
     );
@@ -313,7 +331,7 @@ describe('DiasporaMap composes the surface with clustering and controls', () => 
       marker(`m${i}`, CENTRE.latitude + i * 0.00001, CENTRE.longitude)
     );
 
-    renderMap({ markers });
+    renderMap({ overlays: { markers } });
 
     // Twelve pins became one cluster, and the summary still reports twelve.
     const label = screen.getByTestId('canvas-map-surface').props.accessibilityLabel as string;
@@ -335,7 +353,7 @@ describe('DiasporaMap composes the surface with clustering and controls', () => 
 
   it('zooms in by halving the span', () => {
     const onViewportChange = jest.fn();
-    renderMap({ onViewportChange });
+    renderMap({ viewport: { onChange: onViewportChange } });
 
     fireEvent.press(screen.getByLabelText('Zoom in'));
 
@@ -345,7 +363,7 @@ describe('DiasporaMap composes the surface with clustering and controls', () => 
 
   it('zooms out by doubling it', () => {
     const onViewportChange = jest.fn();
-    renderMap({ onViewportChange });
+    renderMap({ viewport: { onChange: onViewportChange } });
 
     fireEvent.press(screen.getByLabelText('Zoom out'));
 
@@ -363,9 +381,11 @@ describe('DiasporaMap composes the surface with clustering and controls', () => 
     const onViewportChange = jest.fn();
 
     renderMap({
-      userLocation: { coordinate: CENTRE, timestamp: Date.now(), source: 'simulated' },
-      onFollowUserChange,
-      onViewportChange,
+      viewport: {
+        userLocation: { coordinate: CENTRE, timestamp: Date.now(), source: 'simulated' },
+        onFollowUserChange,
+        onChange: onViewportChange,
+      },
     });
 
     fireEvent.press(screen.getByLabelText('Centre the map on your position'));
@@ -376,9 +396,11 @@ describe('DiasporaMap composes the surface with clustering and controls', () => 
     const onFollowUserChange = jest.fn();
 
     renderMap({
-      userLocation: { coordinate: CENTRE, timestamp: Date.now(), source: 'simulated' },
-      followUser: true,
-      onFollowUserChange,
+      viewport: {
+        userLocation: { coordinate: CENTRE, timestamp: Date.now(), source: 'simulated' },
+        followUser: true,
+        onFollowUserChange,
+      },
     });
 
     fireEvent.press(screen.getByLabelText('Stop following your position'));
@@ -386,9 +408,49 @@ describe('DiasporaMap composes the surface with clustering and controls', () => 
   });
 
   it('says the map is empty rather than saying nothing — §54', () => {
-    renderMap({ markers: [] });
+    renderMap({ overlays: { markers: [] } });
     const label = screen.getByTestId('canvas-map-surface').props.accessibilityLabel as string;
     expect(label).toContain('no results');
     expect(label).toContain('change your filters');
+  });
+
+  // FSOLID-005 grouped the map's props, and each group is unpacked on the way in.
+  // These hold the two groups nothing else here reached: a map that stopped
+  // reading its interaction or its chrome would still draw, and say nothing.
+
+  it('passes a pin pressed on the surface to its selection handler', () => {
+    const onSelectMarker = jest.fn();
+    renderMap({
+      overlays: { markers: [marker('a', CENTRE.latitude, CENTRE.longitude)], clustering: false },
+      interaction: { onSelectMarker },
+    });
+
+    fireEvent(screen.getByTestId('marker-a'), 'responderRelease');
+
+    expect(onSelectMarker).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }));
+  });
+
+  it('marks the pin it is told is selected', () => {
+    renderMap({
+      overlays: { markers: [marker('a', CENTRE.latitude, CENTRE.longitude)], clustering: false },
+      interaction: { selectedMarkerId: 'a' },
+    });
+
+    expect(screen.getByTestId('marker-a').props.accessibilityState.selected).toBe(true);
+  });
+
+  it('hides its controls when its chrome says to', () => {
+    renderMap({ chrome: { showControls: false } });
+
+    expect(screen.queryByLabelText('Zoom in')).toBeNull();
+  });
+
+  it('offers the layer picker only when its chrome asks for one', () => {
+    const onOpenLayers = jest.fn();
+    renderMap({ chrome: { hasLayers: true, onOpenLayers } });
+
+    fireEvent.press(screen.getByLabelText('Choose a map layer'));
+
+    expect(onOpenLayers).toHaveBeenCalled();
   });
 });

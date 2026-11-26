@@ -114,13 +114,14 @@ export default function CreatorRevenueScreen() {
     <CreatorScreen
       title="Revenue"
       subtitle="What you have earned, and what has cleared"
-      isEnabled={revenue.isEnabled}
-      refusal={refusal}
-      isLoading={revenue.isLoading}
-      error={revenue.error}
-      onRetry={revenue.refetch}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{ isEnabled: revenue.isEnabled, refusal }}
+      load={{
+        isLoading: revenue.isLoading,
+        error: revenue.error,
+        onRetry: revenue.refetch,
+        onRefresh: handleRefresh,
+        isRefreshing,
+      }}
     >
       <View className="px-5 pt-5">
         {/* ── Headline ─────────────────────────────────────────────────── */}

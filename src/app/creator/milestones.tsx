@@ -100,14 +100,14 @@ export default function CreatorMilestonesScreen() {
     <CreatorScreen
       title="Milestones"
       subtitle="What you have achieved, and what is close"
-      gapKey="milestones"
-      isEnabled={query.isEnabled}
-      refusal={refusal}
-      isLoading={query.isLoading}
-      error={query.error}
-      onRetry={query.refetch}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{ gapKey: 'milestones', isEnabled: query.isEnabled, refusal }}
+      load={{
+        isLoading: query.isLoading,
+        error: query.error,
+        onRetry: query.refetch,
+        onRefresh: handleRefresh,
+        isRefreshing,
+      }}
       sticky={
         categories.length > 2 ? (
           <View

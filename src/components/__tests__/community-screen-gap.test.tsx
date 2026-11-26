@@ -27,7 +27,7 @@ import { render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
 
-import { CommunityScreen } from '../community/CommunityScreen';
+import { CommunityScreen, type CommunityAvailability } from '../community/CommunityScreen';
 
 const METRICS = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -37,19 +37,21 @@ const METRICS = {
 /** A destination the member can actually reach, standing in for the hub's nine. */
 const DESTINATION = 'Fundraising';
 
-function renderScreen(props: Partial<React.ComponentProps<typeof CommunityScreen>> = {}) {
+function renderScreen(availability: CommunityAvailability = {}) {
   return render(
     <SafeAreaProvider initialMetrics={METRICS}>
       <ThemeProvider>
         <CommunityScreen
           title="Community Life"
-          // Any genuinely unserved gap. This was the hub summary until 20 Oct
-          // 2026, when the hub began composing it from real reads; the live
-          // campaign/poll channel is still missing.
-          gapKey="communityRealtime"
-          // What a release build passes: the simulated adapter is not compiled in.
-          isEnabled={false}
-          {...props}
+          availability={{
+            // Any genuinely unserved gap. This was the hub summary until 20 Oct
+            // 2026, when the hub began composing it from real reads; the live
+            // campaign/poll channel is still missing.
+            gapKey: 'communityRealtime',
+            // What a release build passes: the simulated adapter is not compiled in.
+            isEnabled: false,
+            ...availability,
+          }}
         >
           <Text>{DESTINATION}</Text>
         </CommunityScreen>

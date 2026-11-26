@@ -147,15 +147,19 @@ export default function CommunitySearchScreen() {
   return (
     <CommunityScreen
       title="Search community life"
-      // Remediation Wave I. This was `isEnabled={isEnabled}` — the simulation
-      // switch — so a production build refused the whole screen, including the
-      // two arms that were certified even then. All three arms are certified
-      // now, and none of them can reach the development adapter, so there is
-      // nothing left for the switch to protect here.
-      isEnabled
-      isLoading={isLoading && query.trim().length > 1}
-      error={isError ? error : null}
-      onRetry={refetch}
+      availability={{
+        // Remediation Wave I. This was `isEnabled={isEnabled}` — the simulation
+        // switch — so a production build refused the whole screen, including the
+        // two arms that were certified even then. All three arms are certified
+        // now, and none of them can reach the development adapter, so there is
+        // nothing left for the switch to protect here.
+        isEnabled: true,
+      }}
+      load={{
+        isLoading: isLoading && query.trim().length > 1,
+        error: isError ? error : null,
+        onRetry: refetch,
+      }}
       sticky={
         <View
           style={{

@@ -42,10 +42,10 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design-system';
 import { AccessGate, FinancialErrorView } from '@/components/financial';
-import type { FinancialError } from '@/lib/transport/financial-errors';
 import type { CreatorRefusal } from '@/lib/domain/creator-access';
 import { CreatorGapNotice, CreatorGapUnavailable } from './CreatorGapNotice';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import type { ScreenAvailability, ScreenLoad } from '@/components/layout/screen-groups';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { backOr } from '@/lib/platform/navigation';
 
@@ -112,22 +112,19 @@ export function CreatorHeader({
   );
 }
 
+/** Whether a creator screen's feature is here at all (FSOLID-005). */
+export interface CreatorAvailability extends ScreenAvailability {
+  /** The access decision. A refusal replaces the content with an explanation. */
+  refusal?: CreatorRefusal;
+}
+
 export interface CreatorScreenProps {
   title: string;
   subtitle?: string;
-  /** Names the gap register entry. Renders the notice and the release refusal. */
-  gapKey?: string;
-  /** Overrides the notice's default sentence. */
-  gapDetail?: string;
-  /** Whether this build can reach the data at all. */
-  isEnabled?: boolean;
-  /** The access decision. A refusal replaces the content with an explanation. */
-  refusal?: CreatorRefusal;
-  isLoading?: boolean;
-  error?: FinancialError | null;
-  onRetry?: () => void;
-  onRefresh?: () => void;
-  isRefreshing?: boolean;
+  /** Whether the feature is here at all: its gap, this build's reach, the access decision. */
+  availability?: CreatorAvailability;
+  /** What the screen's data is doing. */
+  load?: ScreenLoad;
   headerRight?: React.ReactNode;
   showBack?: boolean;
   /** Rendered outside the scroll view, pinned under the header. */
@@ -146,15 +143,8 @@ export interface CreatorScreenProps {
 export function CreatorScreen({
   title,
   subtitle,
-  gapKey,
-  gapDetail,
-  isEnabled = true,
-  refusal,
-  isLoading = false,
-  error = null,
-  onRetry,
-  onRefresh,
-  isRefreshing = false,
+  availability = {},
+  load = {},
   headerRight,
   showBack = true,
   sticky,
@@ -164,6 +154,8 @@ export function CreatorScreen({
   scrollEndNavigation,
   children,
 }: CreatorScreenProps) {
+  const { gapKey, gapDetail, isEnabled = true, refusal } = availability;
+  const { isLoading = false, error = null, onRetry, onRefresh, isRefreshing = false } = load;
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset({ footerHeight: footer ? 72 : 0 });

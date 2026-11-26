@@ -42,10 +42,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '@/design-system';
 import { AccessGate, FinancialErrorView } from '@/components/financial';
 import type { AccessRefusal } from '@/lib/domain/financial-access';
-import type { FinancialError } from '@/lib/transport/financial-errors';
 import { CommunityGapNotice, CommunityGapUnavailable } from './CommunityGapNotice';
 import { COMMUNITY_GAPS } from '@/config/community-gaps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import type { ScreenAvailability, ScreenLoad } from '@/components/layout/screen-groups';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { backOr } from '@/lib/platform/navigation';
 
@@ -112,13 +112,8 @@ export function CommunityHeader({
   );
 }
 
-export interface CommunityScreenProps {
-  title: string;
-  subtitle?: string;
-  /** Names the gap register entry. Renders the notice and the release refusal. */
-  gapKey?: string;
-  /** Overrides the notice's default sentence. */
-  gapDetail?: string;
+/** Whether a community screen's feature is here at all (FSOLID-005). */
+export interface CommunityAvailability extends ScreenAvailability {
   /**
    * How much of the screen the gap actually accounts for.
    *
@@ -142,15 +137,17 @@ export interface CommunityScreenProps {
    * same defect as the communities gate in `preview-profile-hides-gates`.
    */
   gapCovers?: 'screen' | 'part';
-  /** Whether this build can reach the data at all. */
-  isEnabled?: boolean;
   /** The access decision. A refusal replaces the content with an explanation. */
   refusal?: AccessRefusal;
-  isLoading?: boolean;
-  error?: FinancialError | null;
-  onRetry?: () => void;
-  onRefresh?: () => void;
-  isRefreshing?: boolean;
+}
+
+export interface CommunityScreenProps {
+  title: string;
+  subtitle?: string;
+  /** Whether the feature is here at all: its gap, this build's reach, the access decision. */
+  availability?: CommunityAvailability;
+  /** What the screen's data is doing. */
+  load?: ScreenLoad;
   headerRight?: React.ReactNode;
   showBack?: boolean;
   /** Rendered outside the scroll view, pinned under the header. */
@@ -172,16 +169,8 @@ export interface CommunityScreenProps {
 export function CommunityScreen({
   title,
   subtitle,
-  gapKey,
-  gapDetail,
-  gapCovers = 'screen',
-  isEnabled = true,
-  refusal,
-  isLoading = false,
-  error = null,
-  onRetry,
-  onRefresh,
-  isRefreshing = false,
+  availability = {},
+  load = {},
   headerRight,
   showBack = true,
   sticky,
@@ -190,6 +179,8 @@ export function CommunityScreen({
   scrollEndNavigation,
   children,
 }: CommunityScreenProps) {
+  const { gapKey, gapDetail, gapCovers = 'screen', isEnabled = true, refusal } = availability;
+  const { isLoading = false, error = null, onRetry, onRefresh, isRefreshing = false } = load;
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
 

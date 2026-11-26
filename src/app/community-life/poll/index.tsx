@@ -47,12 +47,8 @@ export default function PollListScreen() {
     <CommunityScreen
       title="Community polls"
       subtitle="What your community is deciding"
-      gapKey="polls"
-      isEnabled={isEnabled}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      availability={{ gapKey: 'polls', isEnabled }}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
       headerRight={
         canCreate ? (
           <Ionicons

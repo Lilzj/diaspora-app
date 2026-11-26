@@ -137,10 +137,7 @@ export default function AttendeesScreen() {
     <CommunityScreen
       title="Attendees"
       subtitle={subtitle}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
     >
       <View className="px-5 pt-4">
         <ChipRow

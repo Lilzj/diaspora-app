@@ -149,13 +149,13 @@ export default function CreatorVerificationScreen() {
     <CreatorScreen
       title="Creator verification"
       subtitle="Diaspora reviews this — the app only shows you where it is"
-      gapKey="verification"
-      gapDetail="The creator programme's application, review and decision are simulated. Identity and country verification underneath are real, and this screen sends you to them rather than collecting anything itself."
-      isEnabled={query.isEnabled}
-      refusal={refusal}
-      isLoading={query.isLoading}
-      error={query.error}
-      onRetry={query.refetch}
+      availability={{
+        gapKey: 'verification',
+        gapDetail: "The creator programme's application, review and decision are simulated. Identity and country verification underneath are real, and this screen sends you to them rather than collecting anything itself.",
+        isEnabled: query.isEnabled,
+        refusal,
+      }}
+      load={{ isLoading: query.isLoading, error: query.error, onRetry: query.refetch }}
       footer={
         canApply && access.canApplyVerification ? (
           <>

@@ -37,9 +37,7 @@ export default function CampaignUpdateScreen() {
     <CommunityScreen
       title="Post an update"
       subtitle={campaign?.title}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch }}
       footer={
         campaign?.canManage ? (
           <View>

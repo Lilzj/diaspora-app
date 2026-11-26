@@ -68,10 +68,12 @@ export default function ApplicantsScreen() {
     <CommunityScreen
       title="Applicants"
       subtitle={opportunity?.title}
-      isLoading={isLoading || isLoadingOpportunity}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{
+        isLoading: isLoading || isLoadingOpportunity,
+        error: isError ? error : null,
+        onRetry: refetch,
+        onRefresh: refetch,
+      }}
     >
       {!canManage ? (
         <View className="px-5 pt-5">

@@ -28,10 +28,7 @@ export default function OrganizationPickerScreen() {
   return (
     <CommunityScreen
       title="Your organisations"
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
     >
       <View className="px-5 pt-4">
         {organizations.length === 0 && !isLoading ? (

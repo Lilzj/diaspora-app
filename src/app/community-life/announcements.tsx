@@ -64,10 +64,7 @@ export default function AnnouncementsScreen() {
   return (
     <CommunityScreen
       title="Announcements"
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
       headerRight={
         canPublish && !isComposing ? (
           <Ionicons

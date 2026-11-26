@@ -260,7 +260,7 @@ export default function CreateCampaignScreen() {
     <CommunityScreen
       title="Start a campaign"
       subtitle="Saved as a draft first"
-      refusal={refusal}
+      availability={{ refusal }}
       footer={
         <View>
           {create.isError ? (

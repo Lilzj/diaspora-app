@@ -116,12 +116,8 @@ export default function ChallengeDetailScreen() {
     <CreatorScreen
       title={challenge?.title ?? 'Challenge'}
       subtitle={challenge?.category ?? undefined}
-      gapKey="challenges"
-      isEnabled={query.isEnabled}
-      refusal={refusal}
-      isLoading={query.isLoading}
-      error={query.error}
-      onRetry={query.refetch}
+      availability={{ gapKey: 'challenges', isEnabled: query.isEnabled, refusal }}
+      load={{ isLoading: query.isLoading, error: query.error, onRetry: query.refetch }}
       footer={
         canJoin || canClaim ? (
           <>

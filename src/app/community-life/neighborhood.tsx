@@ -68,10 +68,12 @@ export default function AreaEventsScreen() {
     <CommunityScreen
       title={title}
       subtitle={point ? `Within ${radiusKm} km` : undefined}
-      isLoading={events.isLoading}
-      error={events.isError ? events.error : null}
-      onRetry={events.refetch}
-      onRefresh={events.refetch}
+      load={{
+        isLoading: events.isLoading,
+        error: events.isError ? events.error : null,
+        onRetry: events.refetch,
+        onRefresh: events.refetch,
+      }}
     >
       {!point ? (
         <View className="px-5 mt-4">

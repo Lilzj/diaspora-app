@@ -70,10 +70,7 @@ export default function OrganizationMembersScreen() {
     <CommunityScreen
       title="Members"
       subtitle={totalCount !== null ? `${totalCount} in this view` : undefined}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
       sticky={
         capabilities.canManageMembers ? (
           <View

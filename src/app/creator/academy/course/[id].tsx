@@ -115,11 +115,8 @@ export default function CourseDetailScreen() {
     <CreatorScreen
       title={course?.title ?? 'Course'}
       subtitle={course ? LEVEL_LABELS[String(course.level)] ?? String(course.level) : undefined}
-      gapKey="academy"
-      isEnabled={query.isEnabled}
-      isLoading={query.isLoading}
-      error={query.error}
-      onRetry={query.refetch}
+      availability={{ gapKey: 'academy', isEnabled: query.isEnabled }}
+      load={{ isLoading: query.isLoading, error: query.error, onRetry: query.refetch }}
       headerRight={
         course ? (
           <Pressable

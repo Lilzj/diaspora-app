@@ -127,13 +127,12 @@ export default function PollScreen() {
     <CommunityScreen
       title="Community poll"
       subtitle={poll?.organizationName ?? undefined}
-      gapKey="polls"
-      gapDetail="Polls, voting and results are simulated. Diaspora's backend has no poll aggregate, so one-member-one-vote cannot be enforced for real yet — which is exactly why the tally is never worked out on your device."
-      isEnabled={isEnabled}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      availability={{
+        gapKey: 'polls',
+        gapDetail: "Polls, voting and results are simulated. Diaspora's backend has no poll aggregate, so one-member-one-vote cannot be enforced for real yet — which is exactly why the tally is never worked out on your device.",
+        isEnabled,
+      }}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
       footer={
         poll && !showResults ? (
           <View>

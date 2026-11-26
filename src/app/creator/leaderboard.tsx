@@ -69,13 +69,14 @@ export default function CreatorLeaderboardScreen() {
     <CreatorScreen
       title="Leaderboards"
       subtitle="Where you stand"
-      gapKey="leaderboards"
-      isEnabled={query.isEnabled}
-      isLoading={query.isLoading}
-      error={query.error}
-      onRetry={query.refetch}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{ gapKey: 'leaderboards', isEnabled: query.isEnabled }}
+      load={{
+        isLoading: query.isLoading,
+        error: query.error,
+        onRetry: query.refetch,
+        onRefresh: handleRefresh,
+        isRefreshing,
+      }}
       sticky={
         <View
           style={{

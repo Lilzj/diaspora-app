@@ -82,10 +82,7 @@ export default function CampaignListScreen() {
     <CommunityScreen
       title="Fundraising"
       subtitle="Campaigns your community is running"
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
       headerRight={
         access.canCreateCampaign ? (
           <Ionicons

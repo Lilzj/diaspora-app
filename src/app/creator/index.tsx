@@ -249,28 +249,29 @@ export default function CreatorStudioScreen() {
     <CreatorScreen
       title="Creator Studio"
       subtitle="Your work, your standing, what you have earned"
-      // ── The dashboard query gates Overview, not the screen ─────────────
-      //
-      // `gapKey`, `isEnabled`, `isLoading` and `error` all describe
-      // `useCreatorDashboard`, which is Overview's data and nothing else.
-      // Workspace and Organisations read local stores; Programme is a list of
-      // routes. All three work when that query is unavailable, loading or
-      // failed.
-      //
-      // They are deliberately *not* passed to the shell, because the shell
-      // handles each by returning `frame(...)` — which renders the header and
-      // the branch and **drops `sticky`**, the section switcher. A release
-      // build without the gap flag would therefore open on Overview's
-      // "unavailable" state with no way to reach the three sections that do
-      // not need it. Same for a failed fetch, and same for the first second of
-      // every cold load.
-      //
-      // So Overview renders its own three states below, and the shell keeps
-      // only `refusal` — which genuinely gates the whole screen, because
-      // somebody who may not be a creator has no business in Workspace either.
-      refusal={refusal}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{
+        // ── The dashboard query gates Overview, not the screen ─────────────
+        //
+        // `gapKey`, `isEnabled`, `isLoading` and `error` all describe
+        // `useCreatorDashboard`, which is Overview's data and nothing else.
+        // Workspace and Organisations read local stores; Programme is a list of
+        // routes. All three work when that query is unavailable, loading or
+        // failed.
+        //
+        // They are deliberately *not* passed to the shell, because the shell
+        // handles each by returning `frame(...)` — which renders the header and
+        // the branch and **drops `sticky`**, the section switcher. A release
+        // build without the gap flag would therefore open on Overview's
+        // "unavailable" state with no way to reach the three sections that do
+        // not need it. Same for a failed fetch, and same for the first second of
+        // every cold load.
+        //
+        // So Overview renders its own three states below, and the shell keeps
+        // only `refusal` — which genuinely gates the whole screen, because
+        // somebody who may not be a creator has no business in Workspace either.
+        refusal,
+      }}
+      load={{ onRefresh: handleRefresh, isRefreshing }}
       showBack
       // ── The health badge only appears when something was assessed ──────
       //

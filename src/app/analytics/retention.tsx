@@ -97,12 +97,14 @@ export default function RetentionAnalyticsScreen() {
       subtitle="Who comes back"
       dataset={dataset}
       verdict={access.isResolved ? verdict : undefined}
-      isEnabled={retention.isEnabled}
+      availability={{ isEnabled: retention.isEnabled }}
       timezoneNote={describeTimezone(controls.range)}
-      isLoading={retention.isLoading || !access.isResolved}
-      error={retention.isError ? retention.error : null}
-      onRetry={retention.refetch}
-      onRefresh={retention.refetch}
+      load={{
+        isLoading: retention.isLoading || !access.isResolved,
+        error: retention.isError ? retention.error : null,
+        onRetry: retention.refetch,
+        onRefresh: retention.refetch,
+      }}
       sticky={
         <View>
           <RangePicker

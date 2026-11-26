@@ -149,13 +149,15 @@ export default function CommunityLifeScreen() {
       title="Community Life"
       subtitle={city ? `Around ${city}` : 'Your community'}
       showBack
-      refusal={refusal}
-      // Not the parts' loading or error state: the tiles are drawn at once and
-      // each rail appears when its list answers. One failed list is a missing
-      // rail, not a broken page.
-      onRetry={refetch}
-      onRefresh={onRefresh}
-      isRefreshing={isRefreshing}
+      availability={{ refusal }}
+      load={{
+        // Not the parts' loading or error state: the tiles are drawn at once and
+        // each rail appears when its list answers. One failed list is a missing
+        // rail, not a broken page.
+        onRetry: refetch,
+        onRefresh,
+        isRefreshing,
+      }}
       headerRight={
         <Text
           accessibilityRole="button"

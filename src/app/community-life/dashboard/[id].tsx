@@ -171,11 +171,10 @@ export default function OrganizationDashboardScreen() {
     <CommunityScreen
       title={dashboard?.organizationName ?? 'Dashboard'}
       subtitle={capabilities.role ? `You are ${capabilities.role}` : undefined}
-      gapDetail="Organisation roles, dashboards and analytics are simulated. Diaspora's backend has no membership edge between a person and an organisation, so it cannot yet say who is allowed to approve a member."
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      availability={{
+        gapDetail: "Organisation roles, dashboards and analytics are simulated. Diaspora's backend has no membership edge between a person and an organisation, so it cannot yet say who is allowed to approve a member.",
+      }}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
       headerRight={
         <Ionicons
           name="settings-outline"
