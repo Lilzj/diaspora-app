@@ -9,7 +9,7 @@
 // made it look like a network call.
 //
 // It then became a thin cache over `GET /api/v1/trust/reputation/me` with a
-// fetch of its own, beside `hooks/trust.ts`'s `useMyReputation` — two caches
+// fetch of its own, beside `hooks/trust`'s `useMyReputation` — two caches
 // for one route. The Profile tab filled this one and the reputation screen the
 // other, so opening the dashboard from the tab cost two requests out of the
 // module's ten a minute (FE-11, 23 Oct 2026).

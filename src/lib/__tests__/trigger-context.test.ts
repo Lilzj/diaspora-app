@@ -117,7 +117,7 @@ describe('the picker only offers what the platform can answer', () => {
 });
 
 describe('the platform’s verdicts are used, and only where they are better', () => {
-  const hook = stripped('hooks', 'automation.ts');
+  const hook = stripped('hooks', 'automation', 'automations.ts');
   const body = hook.slice(
     hook.indexOf('export function useAutomationSimulation'),
     hook.indexOf('export function useTriggerContext')
@@ -208,7 +208,7 @@ describe('a failed test is said, not replaced', () => {
     expect(localTestMayStandIn({ blame: 'platform' }, EVENT)).toBe(false);
   });
 
-  const hook = stripped('hooks', 'automation.ts');
+  const hook = stripped('hooks', 'automation', 'automations.ts');
   const body = hook.slice(
     hook.indexOf('export function useAutomationSimulation'),
     hook.indexOf('export function useTriggerContext')

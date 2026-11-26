@@ -25,7 +25,7 @@
 //
 //   GET /community/content/{contentType}/{contentId}/comments
 //     → `fetchContentComments` (lib/community-social-api.ts)
-//     → `useContentComments(contentType, contentId)` (hooks/community-social.ts)
+//     → `useContentComments(contentType, contentId)` (hooks/community-social)
 //
 // `app/guide/[id].tsx` calls it for real, today, and renders a real thread.
 //

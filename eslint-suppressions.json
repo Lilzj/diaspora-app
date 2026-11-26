@@ -481,7 +481,7 @@
       "count": 1
     }
   },
-  "src/hooks/analytics.ts": {
+  "src/hooks/analytics/reports.ts": {
     "react-hooks/refs": {
       "count": 1
     }
@@ -491,7 +491,7 @@
       "count": 4
     }
   },
-  "src/hooks/financial.ts": {
+  "src/hooks/financial/payments.ts": {
     "react-hooks/purity": {
       "count": 1
     },

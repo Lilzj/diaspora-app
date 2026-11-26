@@ -10,7 +10,7 @@
 //
 // It is **not** the same thing as `GET /guides/bookmarked`, and the two must not
 // be joined. That route answers "guides I saved" — a saved-items list, served by
-// `useBookmarkedGuides()` in `hooks/guides.ts`, written by
+// `useBookmarkedGuides()` in `hooks/guides`, written by
 // `PUT /guides/{id}/bookmark` via `useSetGuideBookmark()`, and already wired to
 // the "Save guide" control on the reader screen. Saving a guide says nothing
 // about how far into it you have read, and there is **no route anywhere for a

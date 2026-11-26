@@ -1007,7 +1007,7 @@ const KNOWN_STALE: readonly string[] = [
   // stayed baselined rather than resolved. The arm now exists:
   // `community-programme-api.ts` calls the campaign routes B18 maps at the
   // register's own paths and the two B15.1 giving routes at B15's, and
-  // `hooks/community-life.ts` reads them. GAP-008 is recorded PARTIAL rather
+  // `hooks/community-life` reads them. GAP-008 is recorded PARTIAL rather
   // than CONNECTED because the scheduler behind it sits on a deployment switch
   // that nothing on the wire reports — see its entry.
   //
@@ -1135,7 +1135,7 @@ const KNOWN_STALE: readonly string[] = [
   //
   // GAP-003 was closed by *reading* rather than by writing. `MembershipEndpoints
   // .cs:67` was already called by `community-programme-api.ts` and already read by
-  // `hooks/community-life.ts` — the entry was baselined here on the assumption
+  // `hooks/community-life` — the entry was baselined here on the assumption
   // that nothing consumed it, and the assumption was never checked.
   //
   // It is recorded PARTIAL, not CONNECTED, because the check found the register

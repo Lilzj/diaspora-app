@@ -160,7 +160,7 @@ describe('screens and components go through the api layer', () => {
     // Four, today: two stores, one hook and the development adapter. Asserted
     // as a named set rather than a count so that a new one is a decision.
     expect(outsideLib.sort()).toEqual([
-      'hooks/analytics.ts',
+      'hooks/analytics/insights.ts',
       'mocks/index.ts',
       'store/auth.ts',
       'store/conversation.ts',

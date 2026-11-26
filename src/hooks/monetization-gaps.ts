@@ -5,7 +5,7 @@
 //   NOTHING AT ALL IN A RELEASE BUILD. See `src/config/monetization-gaps.ts`. ⚠
 //
 // The other half of §26's split. These hooks have the same *shape* as the ones
-// in `hooks/monetization.ts` — same loading and error surface, same query-key
+// in `hooks/monetization` — same loading and error surface, same query-key
 // discipline, same "mutations never retry" rule — so a screen written against
 // them does not change when a backend phase makes them real. What changes is the
 // import path and the disappearance of the notice component.
@@ -54,7 +54,7 @@ const readOptions = {
   staleTime: 30_000,
 } as const;
 
-/** Mutations never retry. Same rule and same reason as `hooks/financial.ts`. */
+/** Mutations never retry. Same rule and same reason as `hooks/financial`. */
 const mutationOptions = { retry: 0 } as const;
 
 /** Whether this build can reach the development adapter at all. */
@@ -486,7 +486,7 @@ export function usePerformanceSummary() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Billing — MON-GAP-009: connected. Invoices and the next charge read the real
 // `/financial` routes through `useInvoices`, `useInvoice` and
-// `useUpcomingCharges` in `hooks/monetization.ts`, in every build.
+// `useUpcomingCharges` in `hooks/monetization`, in every build.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────

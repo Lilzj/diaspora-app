@@ -17,6 +17,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { conversionReasonText } from '../platform/reward-conversion-text';
+import { hookModuleFiles } from './support/hook-modules';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
@@ -27,12 +28,18 @@ const source = (...segments: string[]) =>
     .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
     .replace(new RegExp('//[^\\n]*', 'g'), ' ');
 
-const hooks = source('hooks', 'community-life.ts');
+// The community-life hooks are a directory since FSOLID-003, one file per subject. Each file is
+// read on its own, so a hook's body ends at the next export in its own file, or at the file's end.
+const SRC = path.join(process.cwd(), 'src');
+const hookFiles = hookModuleFiles('community-life').map((file) =>
+  source(...file.slice(SRC.length + 1).split(/[\\/]/))
+);
 
-/** The body of one exported hook, up to the next `export function`. */
+/** The body of one exported hook, up to the next `export function` in its file. */
 function hookBody(name: string): string {
+  const hooks = hookFiles.find((text) => text.includes(`export function ${name}(`));
+  if (!hooks) throw new Error(`no hook named ${name}`);
   const start = hooks.indexOf(`export function ${name}(`);
-  if (start < 0) throw new Error(`no hook named ${name}`);
   const next = hooks.indexOf('export function ', start + 10);
   return hooks.slice(start, next < 0 ? undefined : next);
 }

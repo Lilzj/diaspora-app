@@ -12,7 +12,7 @@
 //                             contributions and giving history
 //   `notifications-api.ts`    real B13 notifications
 //
-// `hooks/community-life.ts` is the stable domain interface above all four, and
+// `hooks/community-life` is the stable domain interface above all four, and
 // the UI does not know — and must not be able to tell — which arm answered.
 //
 // Deliberately separate from every real API module, and deliberately behind

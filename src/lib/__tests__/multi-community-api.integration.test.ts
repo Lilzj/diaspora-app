@@ -840,7 +840,7 @@ describe('the membership route, whichever shape it answers in', () => {
   });
 
   it('always returns an array, which is what every caller assumes', async () => {
-    // Nine call sites dereference `.memberships` — five in `hooks/communities.ts`
+    // Nine call sites dereference `.memberships` — five in `hooks/communities`
     // alone, two of them inside `useMemo` dependency arrays. This is the property
     // that keeps all of them safe without each one remembering.
     for (const body of [[membership], { memberships: [membership] }, {}, null]) {

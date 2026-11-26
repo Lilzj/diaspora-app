@@ -1,6 +1,6 @@
 // The community social graph's shared surfaces (Remediation Wave D-2b).
 //
-// Everything here reads `hooks/community-social.ts`, which reads
+// Everything here reads `hooks/community-social`, which reads
 // `lib/community-social-api.ts`. Nothing here reads a fixture, and nothing here
 // is a second API layer: D-2 built the client and D-2b adopts it.
 

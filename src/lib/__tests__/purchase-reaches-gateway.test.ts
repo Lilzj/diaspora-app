@@ -30,6 +30,8 @@
 // happened.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { HOOKS_ROOT, hookFiles, hookModuleFiles } from './support/hook-modules';
+
 const fs = require('fs') as {
   readFileSync(path: string, encoding: string): string;
   readdirSync(path: string): string[];
@@ -46,10 +48,15 @@ function read(...segments: string[]): string {
     .join(String.fromCharCode(10));
 }
 
-const HOOKS = read('src', 'hooks', 'financial.ts');
+// The financial hooks are a directory since FSOLID-003. Each file is read on its own, so a hook's
+// body ends at the next export in its own file, or at the file's end.
+const HOOK_SOURCES = hookModuleFiles('financial').map((file) =>
+  read(...file.slice(process.cwd().length + 1).split(/[\\/]/))
+);
 
-/** The body of one exported hook, from its declaration to the next one. */
+/** The body of one exported hook, from its declaration to the next one in its file. */
 function hookBody(name: string): string {
+  const HOOKS = HOOK_SOURCES.find((text) => text.includes(`export function ${name}`)) ?? '';
   const start = HOOKS.indexOf(`export function ${name}`);
   expect(start).toBeGreaterThan(-1);
 
@@ -161,9 +168,9 @@ describe.each(MONEY_IN)('$hook asks a gateway to take the money', ({ hook, opens
 // ─────────────────────────────────────────────────────────────────────────────
 // ...wherever the hook happens to live
 //
-// The list above names hooks in `hooks/financial.ts`. A fourth path was found on
+// The list above names hooks in `hooks/financial`. A fourth path was found on
 // a device after that list was written: `useDonateToCampaign`, in
-// `hooks/community-life.ts`, behind the campaign's own Donate button. It opened
+// `hooks/community-life`, behind the campaign's own Donate button. It opened
 // a donation and authorised nothing, so a member gave £100 to a published
 // campaign and no provider was ever asked — while the wallet route, fixed an
 // hour earlier, reached Stripe from the same screen's sibling.
@@ -193,13 +200,15 @@ function certifiedAlias(source: string): string | null {
 
 /** Every exported hook in `src/hooks` that opens an intent on the certified client. */
 function certifiedOpeners(): { file: string; name: string; body: string }[] {
-  const dir = path.join(process.cwd(), 'src', 'hooks');
   const found: { file: string; name: string; body: string }[] = [];
 
-  for (const entry of fs.readdirSync(dir)) {
-    if (!entry.endsWith('.ts') || entry.endsWith('.d.ts')) continue;
+  // Every file at every depth. The largest hook modules are directories since FSOLID-003, and a
+  // scan of one level would not see them; the canary below would fail, but only for two of them.
+  for (const full of hookFiles()) {
+    if (!full.endsWith('.ts') || full.endsWith('.d.ts')) continue;
 
-    const source = read('src', 'hooks', entry);
+    const entry = full.slice(HOOKS_ROOT.length + 1);
+    const source = read(...full.slice(process.cwd().length + 1).split(/[\\/]/));
     const alias = certifiedAlias(source);
     if (!alias) continue;
 
@@ -235,7 +244,7 @@ describe('every hook that opens a payment intent hands it to a gateway', () => {
 
     const names = openers.map((hook) => hook.name);
 
-    // The one this sweep exists for: it lives in `community-life.ts`, behind the
+    // The one this sweep exists for: it lives in the community-life hooks, behind the
     // campaign's own Donate button, and the file-scoped guard could not see it.
     expect(names).toContain('useDonateToCampaign');
     expect(names).toContain('useCreateDonation');

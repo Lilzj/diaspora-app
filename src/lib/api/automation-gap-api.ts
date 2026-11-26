@@ -5,7 +5,7 @@
 //   BACKEND. See `src/config/automation-gaps.ts`. ⚠
 //
 // The development arm of the repository split. The certified arm is
-// `automation-api.ts`; `hooks/automation.ts` is the stable interface above
+// `automation-api.ts`; `hooks/automation` is the stable interface above
 // both, and a screen cannot tell which answered except through the
 // `isSimulated` flag the data itself carries — which it is required to render
 // (§57).
@@ -562,7 +562,7 @@ export async function fetchTriggerContext(
 // importing the other's internals."*
 //
 // **Neither one imported it.** `mocks/handlers/automation-gaps.ts` does not,
-// `hooks/automation.ts` does not, and nothing else in the repository referenced
+// `hooks/automation` does not, and nothing else in the repository referenced
 // the name — so the agreement it described had never existed. The comment was
 // not stale; it described an intention that was never carried out, which is the
 // harder kind to notice, because a reader auditing this file finds a stated

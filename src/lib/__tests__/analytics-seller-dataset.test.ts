@@ -28,6 +28,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
+import { hookModuleSource } from './support/hook-modules';
 
 import { apiClient } from '@/lib/transport/apiClient';
 import {
@@ -375,8 +376,9 @@ describe('the dataset hook', () => {
   const fs = require('fs') as { readFileSync(p: string, e: string): string };
   const path = require('path') as { join(...s: string[]): string };
 
-  const hook = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'hooks', 'analytics.ts'), 'utf8')
+  // The whole analytics hooks module, as before FSOLID-003 split it into a file per subject:
+  // the dataset hook lives in `dataset.ts`, and the absences below are about all of them.
+  const hook = hookModuleSource('analytics')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 

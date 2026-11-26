@@ -5,7 +5,7 @@
 //   BACKEND. See `src/config/multi-community-gaps.ts`. ⚠
 //
 // The development arm of the repository split. The certified arm is
-// `community-directory-api.ts`; `hooks/communities.ts` is the stable interface
+// `community-directory-api.ts`; `hooks/communities` is the stable interface
 // above both, and a screen cannot tell which answered except through the
 // `isSimulated` flag it is required to render.
 //
@@ -327,7 +327,7 @@ export async function fetchCommunity(idOrSlug: string, signal?: AbortSignal): Pr
  *
  * Normalising here rather than guarding at each use site is the difference
  * between one place that knows the wire is wrong and nine that each have to
- * remember. `hooks/communities.ts` alone dereferenced `.memberships` five
+ * remember. `hooks/communities` alone dereferenced `.memberships` five
  * times, including inside two `useMemo` dependency arrays.
  *
  * When the route grows the wrapper this function keeps working: it accepts both

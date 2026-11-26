@@ -7,7 +7,7 @@
 // This is the **development arm** of §34's repository split. The backend arm is
 // `financial-api.ts` (real money, real placements, real entitlements),
 // `notifications-api.ts` (real notifications) and the real `/trust/*` routes.
-// `hooks/creator-economy.ts` is the stable domain interface above both; the UI
+// `hooks/creator-economy` is the stable domain interface above both; the UI
 // does not know — and must not be able to tell — which arm answered.
 //
 // Deliberately separate from every real API module, and deliberately behind

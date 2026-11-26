@@ -39,7 +39,7 @@ import { backOr } from '@/lib/platform/navigation';
 //
 //     GET /guides/authors/{authorId:guid}   →  the guides that author wrote
 //
-// Wrapped as `useGuidesByAuthor` in `hooks/guides.ts`. It is a **list of guides
+// Wrapped as `useGuidesByAuthor` in `hooks/guides`. It is a **list of guides
 // by an author, not an author profile**: the response carries guide cards and
 // nothing about the person. So this page can honestly answer "what has this
 // account published?" and cannot answer "who is this?" — and it now says so

@@ -26,13 +26,24 @@
 // could not see this shape, because these hooks had already been repointed.
 // -----------------------------------------------------------------------------
 
-const fs = require('fs') as {
-  readFileSync(p: string, e: string): string;
-  readdirSync(p: string): string[];
-};
+import { HOOKS_ROOT, hookFiles } from './support/hook-modules';
+
+const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
 
-const HOOKS = path.join(process.cwd(), 'src', 'hooks');
+/**
+ * Where one hook starts, exported or not.
+ *
+ * Each hook is read from its own start to the next one's. Until FSOLID-003 that was the next
+ * *exported* hook, so an internal hook's queries were read as part of whichever exported hook
+ * came before it — and a query above a file's first exported hook was read as part of none.
+ * One already was: `useGuideCardPages`, at the top of `guides.ts`. Splitting the large modules
+ * into a file per subject exported that one from `guides/shared.ts`, and put another internal
+ * hook, `useCommentThread`, above the first exported hook of `community-social/comments.ts`,
+ * where the old slicing would have stopped reading its query without a word. Every hook is its
+ * own slice now, wherever it sits.
+ */
+const HOOK_START = /^(?:export )?function (use\w+)/gm;
 
 /** A gap flag call, or the underlying one. */
 const GAP_FLAG = /\bare\w*GapsEnabled\(\)|areSimulatedFeaturesEnabled\(\)/;
@@ -109,9 +120,12 @@ function importsOf(src: string) {
 function queryBlocks(): QueryBlock[] {
   const blocks: QueryBlock[] = [];
 
-  for (const file of fs.readdirSync(HOOKS).filter((f) => f.endsWith('.ts'))) {
-    const src = fs.readFileSync(path.join(HOOKS, file), 'utf8');
-    const hooks = [...src.matchAll(/^export function (use\w+)/gm)];
+  // Every file at every depth: the split modules are directories, and a scan of one level
+  // would see none of them.
+  for (const full of hookFiles()) {
+    const file = full.slice(HOOKS_ROOT.length + 1);
+    const src = fs.readFileSync(full, 'utf8');
+    const hooks = [...src.matchAll(HOOK_START)];
 
     hooks.forEach((hook, i) => {
       const body = src.slice(hook.index, i + 1 < hooks.length ? hooks[i + 1].index : src.length);
@@ -168,10 +182,11 @@ function taintedLocals(body: string): Set<string> {
 function offenders(): string[] {
   const found: string[] = [];
 
-  for (const file of fs.readdirSync(HOOKS).filter((f) => f.endsWith('.ts'))) {
-    const src = fs.readFileSync(path.join(HOOKS, file), 'utf8');
+  for (const full of hookFiles()) {
+    const file = full.slice(HOOKS_ROOT.length + 1);
+    const src = fs.readFileSync(full, 'utf8');
     const { gapAliases, realAliases, realNames, gapNames } = importsOf(src);
-    const hooks = [...src.matchAll(/^export function (use\w+)/gm)];
+    const hooks = [...src.matchAll(HOOK_START)];
 
     hooks.forEach((hook, i) => {
       const body = src.slice(hook.index, i + 1 < hooks.length ? hooks[i + 1].index : src.length);
@@ -218,6 +233,9 @@ describe('a query over a real route runs in the build that ships', () => {
     expect(blocks.find((b) => b.hook === 'useCommunityCapabilities')!.queryFn).toMatch(
       /fetchCapabilities\(/
     );
+    // An internal hook above the first exported hook of its file, read as a hook of its own
+    // (see `HOOK_START`).
+    expect(blocks.some((b) => b.hook === 'useCommentThread')).toBe(true);
   });
 
   it('never gates a real route on the preview flag', () => {

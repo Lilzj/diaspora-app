@@ -4,7 +4,7 @@
 // ── What this store is, after Wave D-4 ───────────────────────────────────────
 //
 // **The server is authoritative for verification state, reputation, badges and
-// eligibility.** `lib/trust-api.ts` and `hooks/trust.ts` are how a screen reads
+// eligibility.** `lib/trust-api.ts` and `hooks/trust` are how a screen reads
 // them, and every screen that renders any of those now does.
 //
 // This store survives for two reasons, and only two:
@@ -58,7 +58,7 @@
 //   `submitDiasporaVerification`, `updateDiasporaVerificationStatus`
 //       → the same route with `type: 'Diaspora'`; the status is the server's.
 //   `submitVerificationAppeal`, `submitAppeal`
-//       → `POST /trust/appeals`, via `useSubmitAppeal` in `hooks/trust.ts`.
+//       → `POST /trust/appeals`, via `useSubmitAppeal` in `hooks/trust`.
 //   `resetVerificationState`
 //       → nothing. There is no local verification state left to reset.
 //   `verifyCommunityUpdate`
@@ -172,7 +172,7 @@ interface TrustState {
   /**
    * Fills the synchronous mirror from `GET /trust/profile`.
    *
-   * Called by `hooks/trust.ts` consumers once the profile resolves. This is the
+   * Called by `hooks/trust` consumers once the profile resolves. This is the
    * only way the four server-owned fields below acquire a value — there are no
    * seeded defaults any more, because a seeded default is a claim about a
    * member that nothing verified.
@@ -263,7 +263,7 @@ export const useTrustStore = create<TrustState>((set, get) => ({
   // ── Server-owned, no longer mirrored ───────────────────────────────────────
   //
   // `trustJourney` is `GET /trust/timeline` and `appeals` is
-  // `GET /trust/appeals`; both are read through `hooks/trust.ts` now. They stay
+  // `GET /trust/appeals`; both are read through `hooks/trust` now. They stay
   // declared, and empty, because removing the fields would be a breaking change
   // to a store several screens still import — and because an empty array is a
   // visibly absent journey rather than a fictional one.

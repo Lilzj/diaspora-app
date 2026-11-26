@@ -5,7 +5,7 @@
 // answers. Where a certified contract exists the type here is an adaptation of
 // that DTO; where one does not, the type is a clean frontend interface that a
 // future backend phase is expected to satisfy. **No component imports a mock
-// DTO.** The repository layer in `hooks/community-life.ts` is the only thing
+// DTO.** The repository layer in `hooks/community-life` is the only thing
 // that knows which arm answered.
 //
 // Three rules this file holds to, all from the brief:

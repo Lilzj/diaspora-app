@@ -115,7 +115,7 @@ export default function IdentityVerificationScreen() {
    * earlier version wrote `Identity → Approved` into the trust store from a
    * `setTimeout` and claimed a biometric face match had passed. Nothing had been
    * matched. The screen records nothing locally at all now: the server holds the
-   * status and `hooks/trust.ts` invalidates the profile so the Trust Centre
+   * status and `hooks/trust` invalidates the profile so the Trust Centre
    * reads it back.
    *
    * **It does not name a vendor.** Which verification provider a deployment uses
