@@ -92,9 +92,7 @@ export default function MembershipProgrammeScreen() {
     <CommunityScreen
       title={programme?.organizationName ?? 'Membership'}
       subtitle={programme ? `${programme.memberCount.toLocaleString()} members` : undefined}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch }}
       footer={
         programme && programme.isOpen ? (
           canApply ? (

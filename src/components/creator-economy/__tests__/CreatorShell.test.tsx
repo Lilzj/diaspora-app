@@ -73,7 +73,7 @@ const unavailable = new FinancialError({
 describe('the screen shell refuses before the content renders', () => {
   it('shows the content when everything is fine', () => {
     renderWithTheme(
-      <CreatorScreen title="Milestones" isEnabled>
+      <CreatorScreen title="Milestones" availability={{ isEnabled: true }}>
         <Text>The milestone list</Text>
       </CreatorScreen>
     );
@@ -88,7 +88,7 @@ describe('the screen shell refuses before the content renders', () => {
       // still open. It has moved twice: `milestones` shipped, then `analytics`
       // turned out to be served all along at /analytics/creators/me. `revenue`
       // has no equivalent route on the deployment.
-      <CreatorScreen title="Revenue" gapKey="revenue" isEnabled={false}>
+      <CreatorScreen title="Revenue" availability={{ gapKey: 'revenue', isEnabled: false }}>
         <Text>The milestone list</Text>
       </CreatorScreen>
     );
@@ -102,11 +102,13 @@ describe('the screen shell refuses before the content renders', () => {
     renderWithTheme(
       <CreatorScreen
         title="Rewards"
-        refusal={{
-          allowed: false,
-          reason: 'creatorSuspended',
-          message: 'Your creator account is suspended, so this is paused.',
-          action: 'appeal',
+        availability={{
+          refusal: {
+            allowed: false,
+            reason: 'creatorSuspended',
+            message: 'Your creator account is suspended, so this is paused.',
+            action: 'appeal',
+          },
         }}
       >
         <Text>Redeem a reward</Text>
@@ -122,10 +124,12 @@ describe('the screen shell refuses before the content renders', () => {
     renderWithTheme(
       <CreatorScreen
         title="Challenges"
-        refusal={{
-          allowed: false,
-          reason: 'creatorRestricted',
-          message: 'Some creator features are paused while we review your account.',
+        availability={{
+          refusal: {
+            allowed: false,
+            reason: 'creatorRestricted',
+            message: 'Some creator features are paused while we review your account.',
+          },
         }}
       >
         <Text>Join a challenge</Text>
@@ -139,11 +143,13 @@ describe('the screen shell refuses before the content renders', () => {
     renderWithTheme(
       <CreatorScreen
         title="Revenue"
-        refusal={{
-          allowed: false,
-          reason: 'signedOut',
-          message: 'Sign in to use your creator dashboard.',
-          action: 'signIn',
+        availability={{
+          refusal: {
+            allowed: false,
+            reason: 'signedOut',
+            message: 'Sign in to use your creator dashboard.',
+            action: 'signIn',
+          },
         }}
       >
         <Text>Your earnings</Text>
@@ -158,7 +164,7 @@ describe('the screen shell refuses before the content renders', () => {
 
   it('renders an error rather than swallowing it', () => {
     renderWithTheme(
-      <CreatorScreen title="Milestones" error={unavailable} onRetry={jest.fn()}>
+      <CreatorScreen title="Milestones" load={{ error: unavailable, onRetry: jest.fn() }}>
         <Text>The milestone list</Text>
       </CreatorScreen>
     );
@@ -172,7 +178,7 @@ describe('the screen shell refuses before the content renders', () => {
     // `GET /grants/applications/{applicationId}` was served and CREATOR-GAP-005
     // became connected — at which point its notice correctly renders nothing.
     renderWithTheme(
-      <CreatorScreen title="Suggestions" gapKey="recommendations" isEnabled>
+      <CreatorScreen title="Suggestions" availability={{ gapKey: 'recommendations', isEnabled: true }}>
         <Text>What to do next</Text>
       </CreatorScreen>
     );
@@ -183,7 +189,7 @@ describe('the screen shell refuses before the content renders', () => {
 
   it('says nothing about grants now every grant route is served', () => {
     renderWithTheme(
-      <CreatorScreen title="Grants" gapKey="grants" isEnabled>
+      <CreatorScreen title="Grants" availability={{ gapKey: 'grants', isEnabled: true }}>
         <Text>Open grants</Text>
       </CreatorScreen>
     );
@@ -194,7 +200,7 @@ describe('the screen shell refuses before the content renders', () => {
 
   it('shows a loading state instead of the content, without an error', () => {
     renderWithTheme(
-      <CreatorScreen title="Analytics" isLoading>
+      <CreatorScreen title="Analytics" load={{ isLoading: true }}>
         <Text>The figures</Text>
       </CreatorScreen>
     );

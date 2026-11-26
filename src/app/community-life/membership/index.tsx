@@ -89,9 +89,7 @@ export default function MembershipDiscoveryScreen() {
     <CommunityScreen
       title="Find a community"
       subtitle={totalCount !== null ? `${totalCount} with membership` : undefined}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch }}
       sticky={
         <View
           style={{

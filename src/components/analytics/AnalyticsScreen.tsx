@@ -47,7 +47,7 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design-system';
 import { FinancialErrorView } from '@/components/financial';
-import type { FinancialError } from '@/lib/transport/financial-errors';
+import type { ScreenAvailability, ScreenLoad } from '@/components/layout/screen-groups';
 import type { AnalyticsDataset } from '@/types/analytics';
 import type { AnalyticsVerdict } from '@/lib/analytics/access';
 import { AnalyticsGapUnavailable, AnalyticsProvenanceHeader, hasSuppressedMetrics } from './AnalyticsNotices';
@@ -131,19 +131,12 @@ export interface AnalyticsScreenProps {
   dataset: AnalyticsDataset | null;
   /** The access decision. A refusal replaces the content. */
   verdict?: AnalyticsVerdict;
-  /** Whether this build can reach the data at all. */
-  isEnabled?: boolean;
-  /** The gap key for the release-build refusal. */
-  gapKey?: string;
-  /** Overrides the gap notice's default sentence. */
-  gapDetail?: string;
+  /** Whether the feature is here at all: its gap, and this build's reach. */
+  availability?: ScreenAvailability;
   /** §58's sentence, from the range. */
   timezoneNote?: string | null;
-  isLoading?: boolean;
-  isRefreshing?: boolean;
-  error?: FinancialError | null;
-  onRetry?: () => void;
-  onRefresh?: () => void;
+  /** What the screen's data is doing. */
+  load?: ScreenLoad;
   headerRight?: React.ReactNode;
   showBack?: boolean;
   /** Rendered outside the scroll view, pinned under the header. */
@@ -156,21 +149,17 @@ export function AnalyticsScreen({
   subtitle,
   dataset,
   verdict,
-  isEnabled = true,
-  gapKey,
-  gapDetail,
+  availability = {},
   timezoneNote,
-  isLoading = false,
-  isRefreshing = false,
-  error = null,
-  onRetry,
-  onRefresh,
+  load = {},
   headerRight,
   scrollEndNavigation,
   showBack = true,
   sticky,
   children,
 }: AnalyticsScreenProps) {
+  const { gapKey, gapDetail, isEnabled = true } = availability;
+  const { isLoading = false, error = null, onRetry, onRefresh, isRefreshing = false } = load;
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset({ gutter: 40 });

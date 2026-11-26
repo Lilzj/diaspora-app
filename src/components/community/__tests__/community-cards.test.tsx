@@ -351,7 +351,7 @@ describe('CommunityScreen', () => {
 
   it('puts the gap notice above the content it describes', () => {
     renderWithTheme(
-      <CommunityScreen title="Membership" gapKey="eventRegistration">
+      <CommunityScreen title="Membership" availability={{ gapKey: 'eventRegistration' }}>
         <Text>Body</Text>
       </CommunityScreen>
     );
@@ -364,7 +364,7 @@ describe('CommunityScreen', () => {
     // The release-build case. Not an error, and not a spinner that never
     // resolves — a screen that says the capability does not exist yet.
     renderWithTheme(
-      <CommunityScreen title="Membership" gapKey="eventRegistration" isEnabled={false}>
+      <CommunityScreen title="Membership" availability={{ gapKey: 'eventRegistration', isEnabled: false }}>
         <Text>Body</Text>
       </CommunityScreen>
     );
@@ -377,11 +377,13 @@ describe('CommunityScreen', () => {
     renderWithTheme(
       <CommunityScreen
         title="Donate"
-        refusal={{
-          allowed: false,
-          reason: 'restricted',
-          message: 'Your account is restricted.',
-          action: 'appeal',
+        availability={{
+          refusal: {
+            allowed: false,
+            reason: 'restricted',
+            message: 'Your account is restricted.',
+            action: 'appeal',
+          },
         }}
       >
         <Text>Body</Text>
@@ -394,7 +396,7 @@ describe('CommunityScreen', () => {
 
   it('shows a loading state instead of the content, keeping the header', () => {
     renderWithTheme(
-      <CommunityScreen title="Polls" isLoading>
+      <CommunityScreen title="Polls" load={{ isLoading: true }}>
         <Text>Body</Text>
       </CommunityScreen>
     );

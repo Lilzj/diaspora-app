@@ -82,13 +82,8 @@ export default function CreatorChallengesScreen() {
     <CreatorScreen
       title="Challenges"
       subtitle="Time-limited goals with rewards attached"
-      gapKey="challenges"
-      isEnabled={query.isEnabled}
-      refusal={refusal}
-      error={query.error}
-      onRetry={query.refetch}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{ gapKey: 'challenges', isEnabled: query.isEnabled, refusal }}
+      load={{ error: query.error, onRetry: query.refetch, onRefresh: handleRefresh, isRefreshing }}
       sticky={
         <View
           style={{

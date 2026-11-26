@@ -144,15 +144,19 @@ export default function CreatorAnalyticsScreen() {
       // the name of the hub it is reached from.
       title="Your creator dashboard"
       subtitle="How your work is doing"
-      gapKey="analytics"
-      gapDetail="Views, saves, comments, shares, helpful votes, actions taken and new followers are counted by Diaspora. Reach, follower totals, profile views and revenue are not measured yet — they are named below the figures rather than shown as zero."
-      isEnabled={analytics.isEnabled}
-      refusal={refusal}
-      isLoading={analytics.isLoading}
-      error={analytics.error}
-      onRetry={analytics.refetch}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{
+        gapKey: 'analytics',
+        gapDetail: 'Views, saves, comments, shares, helpful votes, actions taken and new followers are counted by Diaspora. Reach, follower totals, profile views and revenue are not measured yet — they are named below the figures rather than shown as zero.',
+        isEnabled: analytics.isEnabled,
+        refusal,
+      }}
+      load={{
+        isLoading: analytics.isLoading,
+        error: analytics.error,
+        onRetry: analytics.refetch,
+        onRefresh: handleRefresh,
+        isRefreshing,
+      }}
       sticky={
         <View
           style={{

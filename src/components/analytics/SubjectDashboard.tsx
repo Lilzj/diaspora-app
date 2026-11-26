@@ -279,7 +279,7 @@ export function SubjectDashboard({
         title={title}
         subtitle={subtitle ?? SUBJECT_LABELS[subject.type]}
         dataset={null}
-        isLoading={false}
+        load={{ isLoading: false }}
         showBack={showBack}
       >
         <AnalyticsEmptyState
@@ -299,15 +299,15 @@ export function SubjectDashboard({
       subtitle={subtitle ?? SUBJECT_LABELS[subject.type]}
       dataset={dataset}
       verdict={access.isResolved ? verdict : undefined}
-      isEnabled={isEnabled}
-      gapKey={dataset?.gapKey ?? undefined}
-      gapDetail={gapDetail}
+      availability={{ isEnabled, gapKey: dataset?.gapKey ?? undefined, gapDetail }}
       timezoneNote={describeTimezone(controls.range)}
-      isLoading={isLoading || Boolean(holdings?.isLoading) || (!access.isResolved && !dataset)}
-      isRefreshing={isFetching && !isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{
+        isLoading: isLoading || Boolean(holdings?.isLoading) || (!access.isResolved && !dataset),
+        isRefreshing: isFetching && !isLoading,
+        error: isError ? error : null,
+        onRetry: refetch,
+        onRefresh: refetch,
+      }}
       showBack={showBack}
       headerRight={
         access.access.canExport ? <ExportHeaderButton onPress={() => setExportOpen(true)} /> : undefined

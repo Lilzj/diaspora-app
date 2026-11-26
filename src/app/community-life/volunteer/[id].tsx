@@ -112,10 +112,7 @@ export default function OpportunityScreen() {
     <CommunityScreen
       title={opportunity?.title ?? 'Volunteering'}
       subtitle={opportunity?.organizationName}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
       footer={
         opportunity ? (
           <View>

@@ -135,10 +135,7 @@ export default function SeriesDetailScreen() {
     <CommunityScreen
       title={series?.title ?? 'Event series'}
       subtitle={series?.recurrence.description ?? undefined}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
       footer={
         series?.nextOccurrence ? (
           <PrimaryButton

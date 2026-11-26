@@ -148,7 +148,9 @@ describe('dead gap props', () => {
   ];
 
   it.each(screens)('%s carries no gap key', (...segments: string[]) => {
-    expect(source('app', 'community-life', ...segments)).not.toMatch(/gapKey=/);
+    // `gapKey: ...` inside `availability={{ ... }}` since FSOLID-005, or the flat
+    // `gapKey=` it was. Either one is a gap key.
+    expect(source('app', 'community-life', ...segments)).not.toMatch(/\bgapKey\s*[=:]/);
   });
 });
 

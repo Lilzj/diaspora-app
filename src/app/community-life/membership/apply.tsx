@@ -145,10 +145,8 @@ export default function MembershipApplyScreen() {
     <CommunityScreen
       title="Join this community"
       subtitle={programme?.organizationName}
-      refusal={refusal}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
+      availability={{ refusal }}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch }}
       footer={
         tier ? (
           <View>

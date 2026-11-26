@@ -262,15 +262,13 @@ export default function CommunityAlertsScreen() {
       {showMap ? (
         <View style={{ flex: displayMode === 'split' ? 1 : 3 }}>
           <DiasporaMap
-            viewport={viewport}
-            onViewportChange={setViewport}
-            markers={markers}
-            circles={circles.length > 0 ? circles : undefined}
-            selectedMarkerId={selected ? `alert:${selected.id}` : null}
-            onSelectMarker={(marker) =>
-              setSelectedId(marker ? marker.entityId ?? null : null)
-            }
-            userLocation={deviceLocation}
+            viewport={{ region: viewport, onChange: setViewport, userLocation: deviceLocation }}
+            overlays={{ markers, circles: circles.length > 0 ? circles : undefined }}
+            interaction={{
+              selectedMarkerId: selected ? `alert:${selected.id}` : null,
+              onSelectMarker: (marker) =>
+                setSelectedId(marker ? marker.entityId ?? null : null),
+            }}
             accessibilityLabel={`Map showing ${markers.length} active community alert${
               markers.length === 1 ? '' : 's'
             }. Switch to list view to read them.`}

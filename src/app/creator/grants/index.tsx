@@ -101,13 +101,13 @@ export default function CommunityGrantsScreen() {
     <CreatorScreen
       title="Community grants"
       subtitle="Funding for work that helps the community"
-      gapKey="grants"
-      isEnabled={grants.isEnabled}
-      refusal={refusal}
-      error={grants.error}
-      onRetry={grants.refetch}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{ gapKey: 'grants', isEnabled: grants.isEnabled, refusal }}
+      load={{
+        error: grants.error,
+        onRetry: grants.refetch,
+        onRefresh: handleRefresh,
+        isRefreshing,
+      }}
       sticky={
         <View
           style={{

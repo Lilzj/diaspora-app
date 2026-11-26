@@ -112,8 +112,8 @@ export default function CreatePollScreen() {
     <CommunityScreen
       title="Ask a question"
       subtitle="Let your community decide"
-      gapKey="polls"
-      isLoading={isLoadingOrgs}
+      availability={{ gapKey: 'polls' }}
+      load={{ isLoading: isLoadingOrgs }}
       footer={
         organizations.length > 0 ? (
           <View>

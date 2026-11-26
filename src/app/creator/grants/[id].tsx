@@ -205,12 +205,12 @@ export default function GrantDetailScreen() {
     <CreatorScreen
       title={grant?.title ?? 'Grant'}
       subtitle={grant?.category}
-      gapKey="grants"
-      isEnabled={grantQuery.isEnabled}
-      refusal={refusal}
-      isLoading={grantQuery.isLoading}
-      error={grantQuery.error}
-      onRetry={grantQuery.refetch}
+      availability={{ gapKey: 'grants', isEnabled: grantQuery.isEnabled, refusal }}
+      load={{
+        isLoading: grantQuery.isLoading,
+        error: grantQuery.error,
+        onRetry: grantQuery.refetch,
+      }}
       footer={
         isApplying && form ? (
           <>

@@ -194,7 +194,7 @@ export default function CreateOpportunityScreen() {
     <CommunityScreen
       title="New opportunity"
       subtitle="Ask your community for help"
-      isLoading={isLoadingOrgs}
+      load={{ isLoading: isLoadingOrgs }}
       footer={
         organizations.length > 0 ? (
           <View>

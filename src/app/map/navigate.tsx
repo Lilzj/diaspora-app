@@ -238,15 +238,15 @@ export default function NavigationScreen() {
       <View style={{ flex: 1 }}>
         {viewport ? (
           <DiasporaMap
-            viewport={viewport}
-            onViewportChange={setViewport}
-            markers={markers}
-            polylines={polylines}
-            userLocation={state.position ?? deviceLocation}
-            // The camera follows during navigation, which is the one situation
-            // where a member wants it to. Released the moment they pan away.
-            followUser
-            clustering={false}
+            viewport={{
+              region: viewport,
+              onChange: setViewport,
+              userLocation: state.position ?? deviceLocation,
+              // The camera follows during navigation, which is the one situation
+              // where a member wants it to. Released the moment they pan away.
+              followUser: true,
+            }}
+            overlays={{ markers, polylines, clustering: false }}
             accessibilityLabel={`Navigation map. The current instruction and remaining distance are announced below the map.`}
           />
         ) : (

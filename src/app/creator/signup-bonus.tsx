@@ -74,12 +74,12 @@ export default function SignupBonusScreen() {
     <CreatorScreen
       title="Welcome bonus"
       subtitle="Points for getting set up"
-      gapKey="signupBonus"
-      gapDetail="The bonus state and its requirements are simulated. Diaspora has no sign-up bonus yet — and when it does, the points will be awarded by Diaspora, never by this app."
-      isEnabled={query.isEnabled}
-      isLoading={query.isLoading}
-      error={query.error}
-      onRetry={query.refetch}
+      availability={{
+        gapKey: 'signupBonus',
+        gapDetail: 'The bonus state and its requirements are simulated. Diaspora has no sign-up bonus yet — and when it does, the points will be awarded by Diaspora, never by this app.',
+        isEnabled: query.isEnabled,
+      }}
+      load={{ isLoading: query.isLoading, error: query.error, onRetry: query.refetch }}
       footer={
         canAccept ? (
           <>

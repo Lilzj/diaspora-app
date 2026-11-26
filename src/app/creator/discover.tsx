@@ -81,10 +81,8 @@ export default function CreatorDiscoverScreen() {
     <CreatorScreen
       title="Find creators"
       subtitle="People who write about what you need"
-      gapKey="discovery"
-      isEnabled={directory.isEnabled}
-      error={directory.error}
-      onRetry={directory.refetch}
+      availability={{ gapKey: 'discovery', isEnabled: directory.isEnabled }}
+      load={{ error: directory.error, onRetry: directory.refetch }}
       sticky={
         <View
           style={{

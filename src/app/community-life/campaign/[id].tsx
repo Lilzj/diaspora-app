@@ -116,11 +116,8 @@ export default function CampaignScreen() {
     <CommunityScreen
       title={campaign?.title ?? 'Campaign'}
       subtitle={campaign?.organizerName}
-      isEnabled={isEnabled}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      availability={{ isEnabled }}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
       footer={
         campaign ? (
           campaign.canDonate && campaign.causeCode ? (

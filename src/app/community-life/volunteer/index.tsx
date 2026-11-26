@@ -67,10 +67,7 @@ export default function VolunteerListScreen() {
     <CommunityScreen
       title="Volunteering"
       subtitle={city && useCity ? `Around ${city}` : 'Everywhere'}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
       headerRight={
         <Ionicons
           name="person-circle-outline"

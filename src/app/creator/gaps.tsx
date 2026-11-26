@@ -47,9 +47,11 @@ export default function CreatorGapRegisterScreen() {
     <CreatorScreen
       title="Backend gap register"
       subtitle={`${gaps.length} creator capabilities with no contract behind them`}
-      isEnabled={areCreatorGapsEnabled()}
-      gapKey="profile"
-      gapDetail="This is the register itself — the list of what Phase 7 built without a backend, and what each one would need. It is a development tool, not a member-facing screen."
+      availability={{
+        isEnabled: areCreatorGapsEnabled(),
+        gapKey: 'profile',
+        gapDetail: 'This is the register itself — the list of what Phase 7 built without a backend, and what each one would need. It is a development tool, not a member-facing screen.',
+      }}
     >
       <View className="px-5 pt-5">
         <View className="flex-row flex-wrap -mx-1 mb-5">

@@ -71,10 +71,7 @@ export default function SeriesListScreen() {
     <CommunityScreen
       title="Recurring events"
       subtitle={city && useCity ? `In ${city}` : 'Everywhere'}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
     >
       <View className="px-5 pt-4">
         <ChipRow

@@ -98,13 +98,14 @@ export default function FunnelDetailScreen() {
       subtitle="Where people go, and where they stop"
       dataset={dataset}
       verdict={access.isResolved ? verdict : undefined}
-      isEnabled={funnel.isEnabled}
-      gapKey="funnelAnalytics"
+      availability={{ isEnabled: funnel.isEnabled, gapKey: 'funnelAnalytics' }}
       timezoneNote={describeTimezone(controls.range)}
-      isLoading={funnel.isLoading || !access.isResolved}
-      error={funnel.isError ? funnel.error : null}
-      onRetry={funnel.refetch}
-      onRefresh={funnel.refetch}
+      load={{
+        isLoading: funnel.isLoading || !access.isResolved,
+        error: funnel.isError ? funnel.error : null,
+        onRetry: funnel.refetch,
+        onRefresh: funnel.refetch,
+      }}
       sticky={
         <View>
           <RangePicker

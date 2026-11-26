@@ -93,12 +93,8 @@ export default function SponsoredContentScreen() {
     <CreatorScreen
       title="Sponsored content"
       subtitle="Promoting your best work"
-      isEnabled={query.isEnabled}
-      refusal={refusal}
-      error={query.error}
-      onRetry={query.refetch}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{ isEnabled: query.isEnabled, refusal }}
+      load={{ error: query.error, onRetry: query.refetch, onRefresh: handleRefresh, isRefreshing }}
       sticky={
         <View
           style={{

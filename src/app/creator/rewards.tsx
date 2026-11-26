@@ -147,15 +147,19 @@ export default function CreatorRewardsScreen() {
     <CreatorScreen
       title="Rewards"
       subtitle="What you have earned, and what it is worth"
-      gapKey="pointRules"
-      gapDetail="Your points balance and history come from Phase 5's rewards adapter. The catalogue of how points are earned and what they can be spent on is simulated — Diaspora serves neither yet."
-      isEnabled={catalogue.isEnabled}
-      refusal={refusal}
-      isLoading={points.isLoading}
-      error={points.error}
-      onRetry={points.refetch}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{
+        gapKey: 'pointRules',
+        gapDetail: "Your points balance and history come from Phase 5's rewards adapter. The catalogue of how points are earned and what they can be spent on is simulated — Diaspora serves neither yet.",
+        isEnabled: catalogue.isEnabled,
+        refusal,
+      }}
+      load={{
+        isLoading: points.isLoading,
+        error: points.error,
+        onRetry: points.refetch,
+        onRefresh: handleRefresh,
+        isRefreshing,
+      }}
     >
       <View className="px-5 pt-5">
         {points.data ? (

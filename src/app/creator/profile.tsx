@@ -235,12 +235,12 @@ export default function CreatorProfileScreen() {
       title="Creator profile"
       scrollRef={scrollRef}
       subtitle="What the community sees, and what you are working toward"
-      gapKey="profile"
-      isEnabled={profileQuery.isEnabled}
-      refusal={refusal}
-      isLoading={profileQuery.isLoading}
-      error={profileQuery.error}
-      onRetry={profileQuery.refetch}
+      availability={{ gapKey: 'profile', isEnabled: profileQuery.isEnabled, refusal }}
+      load={{
+        isLoading: profileQuery.isLoading,
+        error: profileQuery.error,
+        onRetry: profileQuery.refetch,
+      }}
       footer={
         isDirty ? (
           <Pressable

@@ -95,15 +95,19 @@ export default function CreatorReferralsScreen() {
     <CreatorScreen
       title="Invite people"
       subtitle="What you have earned by bringing people in"
-      gapKey="referrals"
-      gapDetail="The referral code, the counts and every referral below are simulated. Diaspora has no referral programme yet — no code is issued at signup and no reward is owed."
-      isEnabled={programme.isEnabled}
-      refusal={refusal}
-      isLoading={programme.isLoading}
-      error={programme.error}
-      onRetry={programme.refetch}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{
+        gapKey: 'referrals',
+        gapDetail: 'The referral code, the counts and every referral below are simulated. Diaspora has no referral programme yet — no code is issued at signup and no reward is owed.',
+        isEnabled: programme.isEnabled,
+        refusal,
+      }}
+      load={{
+        isLoading: programme.isLoading,
+        error: programme.error,
+        onRetry: programme.refetch,
+        onRefresh: handleRefresh,
+        isRefreshing,
+      }}
       footer={
         data && shareRefusal.allowed ? (
           <Pressable

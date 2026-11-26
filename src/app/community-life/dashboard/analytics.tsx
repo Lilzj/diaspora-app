@@ -56,10 +56,7 @@ export default function OrganizationAnalyticsScreen() {
     <CommunityScreen
       title="Analytics"
       subtitle={analytics ? `Computed ${readableDate(analytics.computedAt)}` : undefined}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
     >
       {!capabilities.canViewAnalytics ? (
         <View className="px-5 pt-5">

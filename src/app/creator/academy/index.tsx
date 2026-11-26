@@ -106,14 +106,18 @@ export default function CreatorAcademyScreen() {
     <CreatorScreen
       title="Creator Academy"
       subtitle="How to do this well, from people who already do"
-      gapKey="academy"
-      gapDetail="The courses, lessons and quizzes come from a development content provider. Diaspora has no content service yet, so nothing here is versioned or persisted beyond this session."
-      isEnabled={academy.isEnabled}
-      isLoading={academy.isLoading}
-      error={academy.error}
-      onRetry={academy.refetch}
-      onRefresh={handleRefresh}
-      isRefreshing={isRefreshing}
+      availability={{
+        gapKey: 'academy',
+        gapDetail: 'The courses, lessons and quizzes come from a development content provider. Diaspora has no content service yet, so nothing here is versioned or persisted beyond this session.',
+        isEnabled: academy.isEnabled,
+      }}
+      load={{
+        isLoading: academy.isLoading,
+        error: academy.error,
+        onRetry: academy.refetch,
+        onRefresh: handleRefresh,
+        isRefreshing,
+      }}
       sticky={
         academy.sections.length > 0 ? (
           <View

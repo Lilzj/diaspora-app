@@ -50,10 +50,7 @@ export default function MyMembershipsScreen() {
   return (
     <CommunityScreen
       title="My memberships"
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
     >
       {memberships.length === 0 && !isLoading ? (
         <EmptyState

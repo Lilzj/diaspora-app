@@ -34,7 +34,7 @@ function Profile({ isDirty }: { isDirty: boolean }) {
   return (
     <SafeAreaProvider initialMetrics={METRICS}>
       <ThemeProvider>
-        <CreatorScreen title="Creator profile" isEnabled footer={isDirty ? <Text>Save changes</Text> : undefined}>
+        <CreatorScreen title="Creator profile" availability={{ isEnabled: true }} footer={isDirty ? <Text>Save changes</Text> : undefined}>
           <Content />
         </CreatorScreen>
       </ThemeProvider>

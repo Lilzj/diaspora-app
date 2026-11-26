@@ -127,7 +127,37 @@ export interface MapPolygonOverlay {
  * change behaviour, only appearance.
  */
 export interface MapSurfaceProps {
-  viewport: MapViewport;
+  viewport: MapSurfaceViewport;
+  overlays: MapSurfaceOverlays;
+  interaction?: MapSurfaceInteraction;
+  /** Passed through to the root view for the accessibility tree. */
+  accessibilityLabel?: string;
+  testID?: string;
+  style?: object;
+}
+
+/**
+ * Where a surface looks, and the member's place on it (FSOLID-005).
+ *
+ * The surface's props were twenty flat members. They are grouped by what they
+ * are about: this, what is drawn, and what a touch reports.
+ */
+export interface MapSurfaceViewport {
+  /** The region on screen. */
+  region: MapViewport;
+  /** Drawn as the "you are here" puck with its accuracy ring. */
+  userLocation?: DeviceLocation | null;
+  /** Keeps the camera on `userLocation` until the member pans away. */
+  followUser?: boolean;
+  onChange?: (viewport: MapViewport) => void;
+  /** Fires when the camera settles, which is what viewport search listens to. */
+  onSettled?: (viewport: MapViewport) => void;
+  /** Reported when the member pans, so follow mode can be released. */
+  onUserPan?: () => void;
+}
+
+/** What a surface draws (FSOLID-005). */
+export interface MapSurfaceOverlays {
   markers: MapMarker[];
   clusters: MapCluster[];
   polylines?: MapPolyline[];
@@ -135,26 +165,15 @@ export interface MapSurfaceProps {
   polygons?: MapPolygonOverlay[];
   /** Heat layers, drawn beneath markers. */
   heatLayers?: HeatMapLayerData[];
-  selectedMarkerId?: string | null;
-  /** Drawn as the "you are here" puck with its accuracy ring. */
-  userLocation?: DeviceLocation | null;
-  /** Keeps the camera on `userLocation` until the member pans away. */
-  followUser?: boolean;
+}
 
-  onViewportChange?: (viewport: MapViewport) => void;
-  /** Fires when the camera settles, which is what viewport search listens to. */
-  onViewportSettled?: (viewport: MapViewport) => void;
+/** What a touch on a surface reports (FSOLID-005). */
+export interface MapSurfaceInteraction {
+  selectedMarkerId?: string | null;
   onMarkerPress?: (marker: MapMarker) => void;
   onClusterPress?: (cluster: MapCluster) => void;
   onMapPress?: (coordinate: GeoCoordinate) => void;
   onLongPress?: (coordinate: GeoCoordinate) => void;
-  /** Reported when the member pans, so follow mode can be released. */
-  onUserPan?: () => void;
-
-  /** Passed through to the root view for the accessibility tree. */
-  accessibilityLabel?: string;
-  testID?: string;
-  style?: object;
 }
 
 /** What the registry returns: a component plus what it is. */

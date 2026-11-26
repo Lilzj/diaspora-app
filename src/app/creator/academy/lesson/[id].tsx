@@ -132,11 +132,12 @@ export default function LessonViewerScreen() {
       subtitle={
         lesson ? `${String(lesson.kind)} · about ${lesson.estimatedMinutes} minutes` : undefined
       }
-      gapKey="academy"
-      isEnabled={lessonQuery.isEnabled}
-      isLoading={lessonQuery.isLoading}
-      error={lessonQuery.error}
-      onRetry={lessonQuery.refetch}
+      availability={{ gapKey: 'academy', isEnabled: lessonQuery.isEnabled }}
+      load={{
+        isLoading: lessonQuery.isLoading,
+        error: lessonQuery.error,
+        onRetry: lessonQuery.refetch,
+      }}
       footer={
         lesson && !isQuiz ? (
           <>

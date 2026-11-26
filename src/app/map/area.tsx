@@ -146,20 +146,21 @@ export default function AreaScreen() {
         {viewport && chosen ? (
           <View style={{ height: 180 }}>
             <DiasporaMap
-              viewport={viewport}
-              onViewportChange={() => undefined}
-              markers={[]}
-              circles={[
-                {
-                  id: 'area-circle',
-                  center: { latitude: chosen.latitude, longitude: chosen.longitude },
-                  radiusMetres: radiusKm * 1000,
-                  fillColor: `${tokens.color.primary[500]}18`,
-                  strokeColor: `${tokens.color.primary[500]}66`,
-                },
-              ]}
-              clustering={false}
-              showControls={false}
+              viewport={{ region: viewport, onChange: () => undefined }}
+              overlays={{
+                markers: [],
+                circles: [
+                  {
+                    id: 'area-circle',
+                    center: { latitude: chosen.latitude, longitude: chosen.longitude },
+                    radiusMetres: radiusKm * 1000,
+                    fillColor: `${tokens.color.primary[500]}18`,
+                    strokeColor: `${tokens.color.primary[500]}66`,
+                  },
+                ],
+                clustering: false,
+              }}
+              chrome={{ showControls: false }}
               accessibilityLabel={`Map of the area within ${radiusKm} km of ${title}.`}
             />
           </View>

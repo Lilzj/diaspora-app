@@ -281,11 +281,8 @@ export default function DonateScreen() {
     <CommunityScreen
       title="Donate"
       subtitle={campaign?.title}
-      isEnabled={isEnabled}
-      refusal={refusal}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
+      availability={{ isEnabled, refusal }}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch }}
       footer={
         canCollect ? (
           <View>

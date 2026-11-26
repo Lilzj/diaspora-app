@@ -41,28 +41,25 @@ import type { MapCircleOverlay, MapPolyline, MapPolygonOverlay } from '@/lib/map
 import { trackMapsEvent } from '@/lib/maps/analytics';
 import { MapAttributionBar, MapControls } from './MapPrimitives';
 
-export interface DiasporaMapProps {
-  viewport: MapViewport;
-  onViewportChange: (viewport: MapViewport) => void;
-  /** Fires when the camera settles. Viewport search listens to this, not the above. */
-  onViewportSettled?: (viewport: MapViewport) => void;
+/** Where the map looks, and the member's place on it. */
+export interface DiasporaMapViewport {
+  /** The region on screen. */
+  region: MapViewport;
+  onChange: (viewport: MapViewport) => void;
+  /** Fires when the camera settles. Viewport search listens to this, not `onChange`. */
+  onSettled?: (viewport: MapViewport) => void;
+  userLocation?: DeviceLocation | null;
+  followUser?: boolean;
+  onFollowUserChange?: (follow: boolean) => void;
+}
 
+/** What the map draws. */
+export interface DiasporaMapOverlays {
   markers: MapMarker[];
   polylines?: MapPolyline[];
   circles?: MapCircleOverlay[];
   polygons?: MapPolygonOverlay[];
   heatLayers?: HeatMapLayerData[];
-
-  selectedMarkerId?: string | null;
-  onSelectMarker?: (marker: MapMarker | null) => void;
-
-  userLocation?: DeviceLocation | null;
-  followUser?: boolean;
-  onFollowUserChange?: (follow: boolean) => void;
-
-  onMapPress?: (coordinate: GeoCoordinate) => void;
-  onLongPress?: (coordinate: GeoCoordinate) => void;
-
   /** Turn clustering off for a map showing a handful of deliberate pins. */
   clustering?: boolean;
   /**
@@ -72,25 +69,52 @@ export interface DiasporaMapProps {
    */
   serverClusters?: MapCluster[] | null;
   /**
+   * Credits for data drawn on the map — the licence of an outline in `polygons`,
+   * say. Shown in the attribution strip while the data is on screen.
+   */
+  dataAttributions?: readonly string[];
+}
+
+/** What a touch on the map does. */
+export interface DiasporaMapInteraction {
+  selectedMarkerId?: string | null;
+  onSelectMarker?: (marker: MapMarker | null) => void;
+  onMapPress?: (coordinate: GeoCoordinate) => void;
+  onLongPress?: (coordinate: GeoCoordinate) => void;
+  /**
    * What a tap on one of `serverClusters` does. Left unset, it zooms in as a
    * device cluster does. The discovery map opens the area around the cell's
    * centre instead (14 Oct 2026): a grid cell is a count, not a list of rows.
    */
   onServerClusterPress?: (cluster: MapCluster) => void;
-  /**
-   * Credits for data drawn on the map — the licence of an outline in `polygons`,
-   * say. Shown in the attribution strip while the data is on screen.
-   */
-  dataAttributions?: readonly string[];
+}
+
+/** The controls and strips drawn over the map. */
+export interface DiasporaMapChrome {
+  showControls?: boolean;
+  onOpenLayers?: () => void;
+  hasLayers?: boolean;
   /**
    * The phone's chrome over the bottom of the map — the gesture bar — when the
    * map runs to the bottom of the screen. The attribution strip sits above it.
    */
-  chromeBottomInset?: number;
-  showControls?: boolean;
-  onOpenLayers?: () => void;
-  hasLayers?: boolean;
+  bottomInset?: number;
+}
 
+/**
+ * The map's props, grouped by concern (FSOLID-005).
+ *
+ * There were 27 flat members, and a caller that only set markers read all 27
+ * to find the ones it needed. Grouped, a caller fills the groups it uses and
+ * leaves the rest unmentioned. Each group is read down to plain values on the
+ * way in, so a group object built afresh on every render changes nothing the
+ * map memoises on.
+ */
+export interface DiasporaMapProps {
+  viewport: DiasporaMapViewport;
+  overlays: DiasporaMapOverlays;
+  interaction?: DiasporaMapInteraction;
+  chrome?: DiasporaMapChrome;
   /** Extra chrome — the "search this area" button, a legend, a sheet. */
   children?: React.ReactNode;
   accessibilityLabel?: string;
@@ -99,29 +123,32 @@ export interface DiasporaMapProps {
 }
 
 export function DiasporaMap({
-  viewport,
-  onViewportChange,
-  onViewportSettled,
-  markers,
-  polylines,
-  circles,
-  polygons,
-  heatLayers,
-  selectedMarkerId = null,
-  onSelectMarker,
-  userLocation,
-  followUser = false,
-  onFollowUserChange,
-  onMapPress,
-  onLongPress,
-  clustering = true,
-  serverClusters = null,
-  onServerClusterPress,
-  dataAttributions,
-  chromeBottomInset = 0,
-  showControls = true,
-  onOpenLayers,
-  hasLayers,
+  viewport: {
+    region: viewport,
+    onChange: onViewportChange,
+    onSettled: onViewportSettled,
+    userLocation,
+    followUser = false,
+    onFollowUserChange,
+  },
+  overlays: {
+    markers,
+    polylines,
+    circles,
+    polygons,
+    heatLayers,
+    clustering = true,
+    serverClusters = null,
+    dataAttributions,
+  },
+  interaction: {
+    selectedMarkerId = null,
+    onSelectMarker,
+    onMapPress,
+    onLongPress,
+    onServerClusterPress,
+  } = {},
+  chrome: { showControls = true, onOpenLayers, hasLayers, bottomInset: chromeBottomInset = 0 } = {},
   children,
   accessibilityLabel,
   testID,
@@ -215,26 +242,32 @@ export function DiasporaMap({
   return (
     <View style={[{ flex: 1 }, style]} testID={testID ?? 'diaspora-map'}>
       <Surface
-        viewport={viewport}
-        markers={clustered.markers}
-        clusters={clustered.clusters}
-        polylines={polylines}
-        circles={circles}
-        polygons={polygons}
-        heatLayers={heatLayers}
-        selectedMarkerId={selectedMarkerId}
-        userLocation={userLocation}
-        followUser={followUser}
-        onViewportChange={onViewportChange}
-        onViewportSettled={onViewportSettled}
-        onMarkerPress={handleMarkerPress}
-        onClusterPress={handleClusterPress}
-        onMapPress={handleMapPress}
-        onLongPress={onLongPress}
-        // A pan is the member taking the camera back. Snapping to their
-        // position a moment later is the single most irritating thing a map can
-        // do, so follow mode releases here rather than fighting them.
-        onUserPan={() => followUser && onFollowUserChange?.(false)}
+        viewport={{
+          region: viewport,
+          userLocation,
+          followUser,
+          onChange: onViewportChange,
+          onSettled: onViewportSettled,
+          // A pan is the member taking the camera back. Snapping to their
+          // position a moment later is the single most irritating thing a map can
+          // do, so follow mode releases here rather than fighting them.
+          onUserPan: () => followUser && onFollowUserChange?.(false),
+        }}
+        overlays={{
+          markers: clustered.markers,
+          clusters: clustered.clusters,
+          polylines,
+          circles,
+          polygons,
+          heatLayers,
+        }}
+        interaction={{
+          selectedMarkerId,
+          onMarkerPress: handleMarkerPress,
+          onClusterPress: handleClusterPress,
+          onMapPress: handleMapPress,
+          onLongPress,
+        }}
         accessibilityLabel={
           accessibilityLabel ??
           mapSummaryLabel(clustered.totalCount, clustered.clusters.length, clustered.truncated)

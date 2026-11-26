@@ -109,10 +109,7 @@ export default function CommunityImpactScreen() {
     <CommunityScreen
       title="Community impact"
       subtitle={impact?.scopeName}
-      isLoading={isLoading}
-      error={isError ? error : null}
-      onRetry={refetch}
-      onRefresh={refetch}
+      load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
     >
       <View className="px-5 pt-4">
         <ChipRow

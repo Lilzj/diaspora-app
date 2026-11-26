@@ -118,10 +118,12 @@ export default function WalletAnalyticsScreen() {
       title="Your money"
       subtitle="From your own statement"
       dataset={dataset}
-      isLoading={walletLoading || walletAnalytics.isLoading}
-      error={walletAnalytics.isError ? walletAnalytics.error : null}
-      onRetry={walletAnalytics.refetch}
-      onRefresh={walletAnalytics.refetch}
+      load={{
+        isLoading: walletLoading || walletAnalytics.isLoading,
+        error: walletAnalytics.isError ? walletAnalytics.error : null,
+        onRetry: walletAnalytics.refetch,
+        onRefresh: walletAnalytics.refetch,
+      }}
       timezoneNote={describeTimezone(controls.range)}
       sticky={
         <RangePicker

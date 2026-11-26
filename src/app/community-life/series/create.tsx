@@ -209,7 +209,7 @@ export default function CreateSeriesScreen() {
     <CommunityScreen
       title={seriesId ? 'Edit series' : 'New recurring event'}
       subtitle="Set it up once, and it repeats"
-      refusal={refusal}
+      availability={{ refusal }}
       footer={
         <View>
           {create.isError ? (
