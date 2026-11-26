@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { RequireMember } from '@/components/RequireMember';
 
 /**
  * The wallet stack.
@@ -12,5 +13,9 @@ import { Stack } from 'expo-router';
  * mean every billing notification falling back to the inbox.
  */
 export default function WalletLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <RequireMember>
+      <Stack screenOptions={{ headerShown: false }} />
+    </RequireMember>
+  );
 }

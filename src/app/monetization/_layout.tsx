@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { RequireMember } from '@/components/RequireMember';
 
 /**
  * The monetization stack.
@@ -17,5 +18,9 @@ import { Stack } from 'expo-router';
  * `/wallet/placements/{id}` — keep working and lead here for management.
  */
 export default function MonetizationLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <RequireMember>
+      <Stack screenOptions={{ headerShown: false }} />
+    </RequireMember>
+  );
 }

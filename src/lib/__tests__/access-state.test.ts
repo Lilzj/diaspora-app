@@ -52,6 +52,7 @@
 import {
   DEFAULT_ACCOUNT_STATE,
   KNOWN_ACCESS_STATES,
+  confinesToGateway,
   grantsCommunityAccess,
   requiresAccessGateway,
   toAccountState,
@@ -319,5 +320,50 @@ describe('every account state is reachable', () => {
       expect(declared).toContain(state);
       expect(reason.length).toBeGreaterThan(40);
     }
+  });
+});
+
+describe('who is held at the gateway (FARCH-006)', () => {
+  /** The union, read from where it is declared rather than copied here. */
+  const UNION = /export type AccountState =([^;]+);/;
+
+  let declared: AccountState[] = [];
+
+  beforeAll(() => {
+    const union = UNION.exec(readFileSync(join(SOURCE_ROOT, 'types', 'trust.ts'), 'utf8'));
+
+    if (union === null) throw new Error('AccountState is no longer declared as a union in types/trust.ts.');
+
+    declared = [...union[1].matchAll(/'([A-Za-z]+)'/g)].map((match) => match[1] as AccountState);
+  });
+
+  it('holds the seven states the root layout held when it kept its own list', () => {
+    // The list moved here from the root layout's gateway effect unchanged, so
+    // every member-only group could withhold itself on the same terms. Changing
+    // who is held is a decision, and this is where it shows.
+    expect(declared.filter(confinesToGateway).sort()).toEqual(
+      [
+        'AppealPending',
+        'DiasporaVerificationPending',
+        'RequiresMoreInformation',
+        'Restricted',
+        'Suspended',
+        'VerificationRejected',
+        'VerificationUnderReview',
+      ].sort()
+    );
+  });
+
+  it('never holds a member the feature gate admits', () => {
+    for (const state of declared.filter(confinesToGateway)) {
+      expect(grantsCommunityAccess(state)).toBe(false);
+    }
+  });
+
+  it('holds nobody whose state is not known yet', () => {
+    // A session whose profile read failed has no account state. The root layout
+    // has always let it be, and its tokens are good.
+    expect(confinesToGateway(undefined)).toBe(false);
+    expect(confinesToGateway(null)).toBe(false);
   });
 });

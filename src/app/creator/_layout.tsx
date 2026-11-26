@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { RequireMember } from '@/components/RequireMember';
 
 /**
  * The creator stack.
@@ -23,5 +24,9 @@ import { Stack } from 'expo-router';
  * it. Phase 7 was explicitly not to create a second creator system.
  */
 export default function CreatorLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <RequireMember>
+      <Stack screenOptions={{ headerShown: false }} />
+    </RequireMember>
+  );
 }

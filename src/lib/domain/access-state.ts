@@ -101,6 +101,30 @@ export function isAwaitingDecision(state: AccountState | null | undefined): bool
   );
 }
 
+/**
+ * Whether a member in this state is held at the access gateway: their account
+ * needs a decision or an action before the rest of the app opens to them.
+ *
+ * The root layout sends a held member to `/access-gateway` from wherever they
+ * are, unless they chose to explore with limited access, and every member-only
+ * route group withholds itself on the same terms (`memberRouteDecision`). One
+ * predicate, so the two cannot disagree about who is held. It was a seven-line
+ * list written out in the root layout.
+ *
+ * Narrower than {@link requiresAccessGateway} on purpose. That one decides where
+ * a member lands on signing in, and sends everyone not yet verified to the
+ * gateway, where a member with limited access can choose to explore. This one
+ * decides who may not leave it.
+ */
+export function confinesToGateway(state: AccountState | null | undefined): boolean {
+  return (
+    isAwaitingDecision(state) ||
+    state === 'VerificationRejected' ||
+    state === 'Suspended' ||
+    state === 'Restricted'
+  );
+}
+
 /** Whether a state grants the contributor surface `FeatureGate` protects. */
 export function grantsCommunityAccess(state: AccountState): boolean {
   return state === 'DiasporaVerified';

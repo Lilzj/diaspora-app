@@ -8,7 +8,7 @@ import { View } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { keepSessionAlive, useAuthStore } from '@/store/auth';
-import { isAwaitingDecision } from '@/lib/domain/access-state';
+import { confinesToGateway, isAwaitingDecision } from '@/lib/domain/access-state';
 import { hasExpired, lastActivity, persistActivity, recordActivity } from '@/lib/platform/inactivity';
 import { startTelemetryDelivery } from '@/lib/api/telemetry-api';
 import { AppProvider } from '@/providers/app-provider';
@@ -84,6 +84,10 @@ export default function RootLayout() {
    * winning the race against the restore that would have kept them where they
    * were. `unknown` and `restoring` mean *not yet known*, and the correct
    * behaviour for not-yet-known is to do nothing.
+   *
+   * The navigating stays here. The member-only route groups (`RequireMember`)
+   * withhold themselves on this effect's rule (`memberRouteDecision`), so
+   * nothing of them is drawn while it is deciding or after it has decided.
    */
   useEffect(() => {
     if (status === 'unknown' || status === 'restoring' || status === 'refreshing') return;
@@ -212,20 +216,13 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, [isAuthenticated, accountState]);
 
+  // A held member goes to the access gateway from wherever they are, unless they
+  // chose to explore. `confinesToGateway` is the list of held states, shared with
+  // every member-only route group (`RequireMember`), which withholds itself on
+  // the same terms (FARCH-006).
   useEffect(() => {
-    if (isAuthenticated && accountState && !isExploringLimited) {
-      if (
-        accountState === 'DiasporaVerificationPending' ||
-        accountState === 'VerificationUnderReview' ||
-        accountState === 'VerificationRejected' ||
-        accountState === 'RequiresMoreInformation' ||
-        accountState === 'Suspended' ||
-        accountState === 'Restricted' ||
-        accountState === 'AppealPending'
-      ) {
-        // Intercept navigation and direct to gateway dashboard
-        router.replace('/access-gateway');
-      }
+    if (isAuthenticated && !isExploringLimited && confinesToGateway(accountState)) {
+      router.replace('/access-gateway');
     }
   }, [isAuthenticated, accountState, isExploringLimited]);
 
