@@ -9,6 +9,12 @@
  * never received.
  */
 import { act, renderHook } from '@testing-library/react-native';
+import * as ImagePicker from 'expo-image-picker';
+
+import { usePhotoUpload } from '../photo-upload';
+import type { ChosenPhoto } from '@/types/media';
+
+// The mocks below are hoisted above these imports, and read only when a hook runs.
 
 const mockShowAlert = jest.fn();
 jest.mock('@/providers/notification-provider', () => ({
@@ -36,10 +42,6 @@ jest.mock('@/hooks/media', () => ({
   ...jest.requireActual('@/hooks/media'),
   useMediaUpload: () => mockUpload,
 }));
-
-import * as ImagePicker from 'expo-image-picker';
-import { usePhotoUpload } from '../photo-upload';
-import type { ChosenPhoto } from '@/types/media';
 
 const picker = ImagePicker as jest.Mocked<typeof ImagePicker>;
 const ASSET = { uri: 'file:///cache/photo.jpg', width: 1200, height: 900, fileName: 'photo.jpg', mimeType: 'image/jpeg' };
