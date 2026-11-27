@@ -17,10 +17,11 @@
 // is not an action anybody can take on somebody's behalf, staff included.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 
 import { Button } from '@/components/Button';
 import { ListState } from '@/components/ListState';
@@ -54,6 +55,9 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
 /** Whether to show only the applications still under consideration. */
 type Filter = 'all' | 'active';
 
+/** Stable, so a list with no rows to draw is the same empty list on every render. */
+const NO_APPLICATIONS: ApplicationCardResponse[] = [];
+
 export default function MyApplicationsScreen() {
   const bottomInset = useBottomInset();
   const { showAlert } = useNotification();
@@ -66,6 +70,12 @@ export default function MyApplicationsScreen() {
     useMyApplications({ activeOnly: filter === 'active' });
 
   const { withdraw, isWithdrawing } = useWithdrawApplication();
+  // `withdraw` is a new function on every render, and the row renderer below must
+  // keep its identity, so the handler reads the latest one when it runs (FARCH-004).
+  const withdrawRef = useRef(withdraw);
+  useLayoutEffect(() => {
+    withdrawRef.current = withdraw;
+  });
 
   const waitingCount = useMemo(
     () => applications.filter(isAwaitingFirstView).length,
@@ -85,7 +95,7 @@ export default function MyApplicationsScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
-                await withdraw(application.applicationId);
+                await withdrawRef.current(application.applicationId);
               } catch {
                 // The server refuses a withdrawal on an application that has
                 // already reached an ending. Reporting success there would tell
@@ -109,91 +119,111 @@ export default function MyApplicationsScreen() {
         ],
       });
     },
-    [showAlert, withdraw]
+    [showAlert]
   );
+
+  // Stable, so the list redraws an application's row only when the application,
+  // or whether a withdrawal is in flight, changes (FARCH-004).
+  const renderApplication = useCallback(
+    ({ item: application }: ListRenderItemInfo<ApplicationCardResponse>) => (
+      <View className="px-4">
+        <ApplicationRow
+          application={application}
+          isWithdrawing={isWithdrawing}
+          onWithdraw={() => confirmWithdraw(application)}
+        />
+      </View>
+    ),
+    [confirmWithdraw, isWithdrawing]
+  );
+
+  // The rows, unless the list is saying it is loading, could not be read, or is empty.
+  const listed = !isLoading && !(error && applications.length === 0) && !isEmpty;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="My applications" />
 
-      <ScrollView
-        className="flex-1"
+      <FlashList
+        // The applications page, so the list recycles its rows rather than keeping
+        // every page mounted (FARCH-004, 27 Nov 2026). The filter and the count
+        // above the rows are its header.
+        data={listed ? applications : NO_APPLICATIONS}
+        keyExtractor={(application) => application.applicationId}
+        renderItem={renderApplication}
         contentContainerStyle={{ paddingBottom: bottomInset }}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} />}
         showsVerticalScrollIndicator={false}
-      >
-        {/* The error state is its own block rather than a replacement for the
-            list: a failed refresh must not blank rows the member was reading.
-            With no rows to keep, the list below says it could not be read. */}
-        {error && applications.length > 0 ? (
-          <View className="mx-4 mt-4 p-4 rounded-xl bg-surface-muted border border-error-default">
-            <Text className="text-sm font-bold text-error-default">{error}</Text>
-            <Button label="Try again" variant="outline" size="sm" className="mt-3" onPress={refresh} />
-          </View>
-        ) : null}
+        ListHeaderComponent={
+          <>
+            {/* The error state is its own block rather than a replacement for the
+                list: a failed refresh must not blank rows the member was reading.
+                With no rows to keep, the list below says it could not be read. */}
+            {error && applications.length > 0 ? (
+              <View className="mx-4 mt-4 p-4 rounded-xl bg-surface-muted border border-error-default">
+                <Text className="text-sm font-bold text-error-default">{error}</Text>
+                <Button label="Try again" variant="outline" size="sm" className="mt-3" onPress={refresh} />
+              </View>
+            ) : null}
 
-        <View className="flex-row gap-2 px-4 pt-4">
-          {(['all', 'active'] as const).map((value) => (
-            <TouchableOpacity
-              key={value}
-              onPress={() => setFilter(value)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: filter === value }}
-              className={`px-4 py-2 rounded-full border ${
-                filter === value ? 'bg-primary-500 border-primary-500' : 'border-line'
-              }`}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  filter === value ? 'text-white' : 'text-content-tertiary'
-                }`}
-              >
-                {value === 'all' ? 'All' : 'Still open'}
+            <View className="flex-row gap-2 px-4 pt-4">
+              {(['all', 'active'] as const).map((value) => (
+                <TouchableOpacity
+                  key={value}
+                  onPress={() => setFilter(value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: filter === value }}
+                  className={`px-4 py-2 rounded-full border ${
+                    filter === value ? 'bg-primary-500 border-primary-500' : 'border-line'
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold ${
+                      filter === value ? 'text-white' : 'text-content-tertiary'
+                    }`}
+                  >
+                    {value === 'all' ? 'All' : 'Still open'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* `totalCount` is what the SERVER said the population is. It is null
+                when the route declined to count, and null is not zero — so the line
+                is omitted rather than rendered as "0 applications". */}
+            {typeof totalCount === 'number' ? (
+              <Text className="px-4 pt-3 text-xs font-semibold text-content-faint">
+                {totalCount} {totalCount === 1 ? 'application' : 'applications'}
+                {waitingCount > 0 ? ` · ${waitingCount} not opened yet` : ''}
               </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            ) : null}
 
-        {/* `totalCount` is what the SERVER said the population is. It is null
-            when the route declined to count, and null is not zero — so the line
-            is omitted rather than rendered as "0 applications". */}
-        {typeof totalCount === 'number' ? (
-          <Text className="px-4 pt-3 text-xs font-semibold text-content-faint">
-            {totalCount} {totalCount === 1 ? 'application' : 'applications'}
-            {waitingCount > 0 ? ` · ${waitingCount} not opened yet` : ''}
-          </Text>
-        ) : null}
-
-        {/* Loading, unread and empty through the shared list state (FARCH-007,
-            27 Nov 2026); the filter and the count above stay while it loads. */}
-        <ListState
-          loading={isLoading}
-          loadingLabel="Loading your applications…"
-          error={error && applications.length === 0 ? { title: 'Applications could not be loaded', message: error } : null}
-          onRetry={refresh}
-          isEmpty={isEmpty}
-          empty={{
-            icon: 'document-text-outline',
-            title: filter === 'active' ? 'Nothing open right now' : 'No applications yet',
-            message:
-              filter === 'active'
-                ? 'Applications you have withdrawn or that were decided are still under "All".'
-                : 'When you apply to a role it appears here, along with whether the employer has opened it.',
-            action: { label: 'Browse jobs', onPress: () => router.push('/(tabs)/explore') },
-          }}
-        >
-          <View className="px-4 pt-3">
-            {applications.map((application) => (
-              <ApplicationRow
-                key={application.applicationId}
-                application={application}
-                isWithdrawing={isWithdrawing}
-                onWithdraw={() => confirmWithdraw(application)}
-              />
-            ))}
-          </View>
-
-          {hasMore ? (
+            {/* Above the first row: the padding of the view that held the rows. */}
+            {listed ? <View className="pt-3" /> : null}
+          </>
+        }
+        ListEmptyComponent={
+          // Loading, unread and empty through the shared list state (FARCH-007,
+          // 27 Nov 2026); the filter and the count above stay while it loads.
+          <ListState
+            loading={isLoading}
+            loadingLabel="Loading your applications…"
+            error={error && applications.length === 0 ? { title: 'Applications could not be loaded', message: error } : null}
+            onRetry={refresh}
+            isEmpty={isEmpty}
+            empty={{
+              icon: 'document-text-outline',
+              title: filter === 'active' ? 'Nothing open right now' : 'No applications yet',
+              message:
+                filter === 'active'
+                  ? 'Applications you have withdrawn or that were decided are still under "All".'
+                  : 'When you apply to a role it appears here, along with whether the employer has opened it.',
+              action: { label: 'Browse jobs', onPress: () => router.push('/(tabs)/explore') },
+            }}
+          />
+        }
+        ListFooterComponent={
+          listed && hasMore ? (
             <View className="px-4 py-4">
               <Button
                 label={isFetchingMore ? 'Loading…' : 'Show more'}
@@ -202,9 +232,9 @@ export default function MyApplicationsScreen() {
                 onPress={loadMore}
               />
             </View>
-          ) : null}
-        </ListState>
-      </ScrollView>
+          ) : null
+        }
+      />
     </SafeAreaView>
   );
 }

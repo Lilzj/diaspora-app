@@ -88,7 +88,13 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
         <View className="w-13 h-13 rounded-full bg-surface-muted border border-subtle items-center justify-center overflow-hidden"
           style={{ width: 52, height: 52 }}>
           {other?.avatarUrl ? (
-            <Image source={{ uri: other.avatarUrl }} style={{ width: 52, height: 52 }} contentFit="cover" />
+            <Image
+              source={{ uri: other.avatarUrl }}
+              // Blank, rather than the last conversation's face, while a recycled row loads this one.
+              recyclingKey={other.avatarUrl}
+              style={{ width: 52, height: 52 }}
+              contentFit="cover"
+            />
           ) : (
             <Text className="text-lg font-black text-warning-default">{initials}</Text>
           )}

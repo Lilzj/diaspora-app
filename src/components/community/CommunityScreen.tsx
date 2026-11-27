@@ -47,6 +47,7 @@ import { COMMUNITY_GAPS } from '@/config/community-gaps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import type { ScreenAvailability, ScreenLoad } from '@/components/layout/screen-groups';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { ScreenListBody, type ScreenList } from '@/components/layout/screen-list';
 import { backOr } from '@/lib/platform/navigation';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
@@ -141,7 +142,7 @@ export interface CommunityAvailability extends ScreenAvailability {
   refusal?: AccessRefusal;
 }
 
-export interface CommunityScreenProps {
+export interface CommunityScreenProps<T = unknown> {
   title: string;
   subtitle?: string;
   /** Whether the feature is here at all: its gap, this build's reach, the access decision. */
@@ -157,6 +158,12 @@ export interface CommunityScreenProps {
   /** Set false where the screen supplies its own list. */
   scrollable?: boolean;
   /**
+   * The screen's long list (FARCH-004, 27 Nov 2026). The shell draws the
+   * screen as one FlashList, with the children above the rows, so a list that
+   * pages recycles its rows instead of keeping every page mounted.
+   */
+  list?: ScreenList<T>;
+  /**
    * Raise the shared navigation bar at the end of the content.
    *
    * Defaults to on. A screen passing `footer` gets it off automatically — see
@@ -166,7 +173,7 @@ export interface CommunityScreenProps {
   children: React.ReactNode;
 }
 
-export function CommunityScreen({
+export function CommunityScreen<T = unknown>({
   title,
   subtitle,
   availability = {},
@@ -177,8 +184,9 @@ export function CommunityScreen({
   footer,
   scrollable = true,
   scrollEndNavigation,
+  list,
   children,
-}: CommunityScreenProps) {
+}: CommunityScreenProps<T>) {
   const { gapKey, gapDetail, gapCovers = 'screen', isEnabled = true, refusal } = availability;
   const { isLoading = false, error = null, onRetry, onRefresh, isRefreshing = false } = load;
   const { tokens } = useTheme();
@@ -243,13 +251,19 @@ export function CommunityScreen({
     return frame(<FinancialErrorView error={error} onRetry={onRetry} />);
   }
 
+  const gapNotice = gapKey ? (
+    <View className="px-5 pt-4">
+      <CommunityGapNotice gapKey={gapKey} detail={gapDetail} />
+    </View>
+  ) : null;
+
+  const refreshControl = onRefresh ? (
+    <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={tokens.color.primary[500]} />
+  ) : undefined;
+
   const bodyContent = (
     <>
-      {gapKey ? (
-        <View className="px-5 pt-4">
-          <CommunityGapNotice gapKey={gapKey} detail={gapDetail} />
-        </View>
-      ) : null}
+      {gapNotice}
 
       {/* The list state every list draws, since 27 Nov 2026 (FARCH-007). */}
       <ListState loading={isLoading} loadingLabel="Loading">
@@ -271,7 +285,26 @@ export function CommunityScreen({
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       {sticky}
 
-      {scrollable ? (
+      {list ? (
+        // A long list: the same body, as one FlashList with the gap notice and
+        // the screen's children above the rows. As in the scroll view, the gap
+        // notice stays above the first read's spinner, and a pull works during it.
+        <ScreenListBody
+          list={list}
+          loading={isLoading}
+          header={
+            <>
+              {gapNotice}
+              <ListState loading={isLoading} loadingLabel="Loading">
+                {children}
+              </ListState>
+            </>
+          }
+          scrollEnd={useScrollEndNav}
+          footerHeight={footer ? 72 : 0}
+          refreshControl={refreshControl}
+        />
+      ) : scrollable ? (
         <Body
           showsVerticalScrollIndicator={false}
           // Without this the first tap on the footer's submit button is spent
@@ -283,15 +316,7 @@ export function CommunityScreen({
             // app. `footerHeight` is the pinned footer this screen renders.
             paddingBottom: bottomInset,
           }}
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={onRefresh}
-                tintColor={tokens.color.primary[500]}
-              />
-            ) : undefined
-          }
+          refreshControl={refreshControl}
         >
           {bodyContent}
         </Body>

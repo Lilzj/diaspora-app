@@ -15,7 +15,8 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, Touchab
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -57,6 +58,12 @@ const REWARD_RANGES: { key: RewardRange; label: string; accessibilityLabel: stri
   { key: '90d', label: '90 days', accessibilityLabel: 'Show the last ninety days' },
   { key: 'all', label: 'All', accessibilityLabel: 'Show every entry' },
 ];
+
+/** One entry. Module-level, so the list keeps a row until its entry changes (FARCH-004). */
+function renderReward({ item }: ListRenderItemInfo<RewardHistoryEntry>) {
+  return <RewardRow entry={item} />;
+}
+
 export default function RewardsScreen() {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
@@ -151,13 +158,11 @@ export default function RewardsScreen() {
     >
       <ScreenHeader title="Rewards" showBack />
 
-      <ScrollEndFlatList
+      {/* A FlashList since 27 Nov 2026 (FARCH-004): the history pages as the member
+          scrolls, and its rows are recycled rather than every page staying mounted. */}
+      <ScrollEndFlashList
         data={entries}
         keyExtractor={(item) => item.entryId}
-        initialNumToRender={12}
-        maxToRenderPerBatch={10}
-        windowSize={7}
-        removeClippedSubviews
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={tokens.color.primary[500]} />
@@ -357,7 +362,7 @@ export default function RewardsScreen() {
             )}
           </View>
         }
-        renderItem={({ item }) => <RewardRow entry={item} />}
+        renderItem={renderReward}
         // A failed history read said "No points yet" (FARCH-007, 27 Nov 2026): the
         // empty branch was the only one there was.
         ListEmptyComponent={

@@ -8,11 +8,16 @@
 // Private programmes are absent because the *server* withholds them. Nothing in
 // this screen filters by visibility — a client-side filter would mean the
 // private group had already been sent to the device.
+//
+// The programmes page, so the screen is one FlashList (FARCH-004, 27 Nov 2026):
+// the filters are drawn above the rows, and the rows are recycled as they
+// scroll rather than every page staying mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import {
@@ -26,6 +31,7 @@ import { useMembershipDiscovery } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { OrgCategory } from '@/types/community-life';
+import type { MembershipProgramme } from '@/types/community-advanced';
 
 const CATEGORIES: { value: OrgCategory | 'All'; label: string }[] = [
   { value: 'All', label: 'All' },
@@ -44,6 +50,18 @@ const PRICE_BANDS: { value: 'any' | 'free' | 'paid'; label: string }[] = [
   { value: 'free', label: 'Free' },
   { value: 'paid', label: 'Paid' },
 ];
+
+/** One programme. Module-level, so the list keeps a row until its programme changes. */
+function renderProgramme({ item }: ListRenderItemInfo<MembershipProgramme>) {
+  return (
+    <View className="px-5 mb-3">
+      <MembershipProgrammeCard
+        programme={item}
+        onPress={() => router.push(`/community-life/membership/${item.organizationId}` as never)}
+      />
+    </View>
+  );
+}
 
 export default function MembershipDiscoveryScreen() {
   const { tokens } = useTheme();
@@ -130,8 +148,61 @@ export default function MembershipDiscoveryScreen() {
           </View>
         </View>
       }
+      list={{
+        data: programmes,
+        keyExtractor: (programme) => programme.organizationId,
+        renderItem: renderProgramme,
+        // The shell draws the list's loading and error; the list says when it is empty.
+        ListEmptyComponent: (
+          <View className="px-5">
+            <ListState
+              isEmpty
+              empty={{
+                icon: 'search-outline',
+                title: 'No membership programmes match that',
+                // This screen searches *membership programmes* — the ones an
+                // organisation runs and you pay or apply for. It does not search the
+                // community directory, and saying "no community near you" made an
+                // empty programme table read as an empty platform. There are twelve
+                // communities to join; none of them charges for it.
+                message: hasFilters
+                  ? 'Try widening your filters — a nearby organisation may take a different kind of member.'
+                  : 'No organisation near you runs a paid or approved membership yet. Communities you can simply join are in the directory.',
+                action: {
+                  label: hasFilters ? 'Clear filters' : 'Browse communities',
+                  onPress: () => {
+                    if (!hasFilters) {
+                      router.push('/community');
+                      return;
+                    }
+                    setQuery('');
+                    setCategory('All');
+                    setPriceBand('any');
+                    setEligibleOnly(false);
+                  },
+                },
+              }}
+            />
+          </View>
+        ),
+        ListFooterComponent: (
+          <View className="px-5">
+            {hasNextPage && programmes.length > 0 ? (
+              <View className="mt-2 mb-4">
+                {isFetchingNextPage ? (
+                  <View className="py-4 items-center" accessibilityLabel="Loading more">
+                    <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                  </View>
+                ) : (
+                  <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+                )}
+              </View>
+            ) : null}
+          </View>
+        ),
+      }}
     >
-      <View className="px-5 pt-4">
+      <View className="px-5 pt-4 pb-4">
         <Text style={{ color: tokens.color.text.placeholder }} className="text-[11px] font-bold mb-2">
           Category
         </Text>
@@ -180,61 +251,6 @@ export default function MembershipDiscoveryScreen() {
             />
           </View>
         ) : null}
-      </View>
-
-      <View className="px-5 mt-4">
-        {/* The shell draws the list's loading and error; the list says when it is empty. */}
-        <ListState
-          isEmpty={programmes.length === 0}
-          empty={{
-            icon: 'search-outline',
-            title: 'No membership programmes match that',
-            // This screen searches *membership programmes* — the ones an
-            // organisation runs and you pay or apply for. It does not search the
-            // community directory, and saying "no community near you" made an
-            // empty programme table read as an empty platform. There are twelve
-            // communities to join; none of them charges for it.
-            message: hasFilters
-              ? 'Try widening your filters — a nearby organisation may take a different kind of member.'
-              : 'No organisation near you runs a paid or approved membership yet. Communities you can simply join are in the directory.',
-            action: {
-              label: hasFilters ? 'Clear filters' : 'Browse communities',
-              onPress: () => {
-                if (!hasFilters) {
-                  router.push('/community');
-                  return;
-                }
-                setQuery('');
-                setCategory('All');
-                setPriceBand('any');
-                setEligibleOnly(false);
-              },
-            },
-          }}
-        >
-          {programmes.map((programme) => (
-            <View key={programme.organizationId} className="mb-3">
-              <MembershipProgrammeCard
-                programme={programme}
-                onPress={() =>
-                  router.push(`/community-life/membership/${programme.organizationId}` as never)
-                }
-              />
-            </View>
-          ))}
-
-          {hasNextPage ? (
-            <View className="mt-2 mb-4">
-              {isFetchingNextPage ? (
-                <View className="py-4 items-center" accessibilityLabel="Loading more">
-                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                </View>
-              ) : (
-                <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-              )}
-            </View>
-          ) : null}
-        </ListState>
       </View>
     </CommunityScreen>
   );

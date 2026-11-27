@@ -35,7 +35,7 @@
 // screen, which has `author` on its response.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { router } from 'expo-router';
 
@@ -54,7 +54,9 @@ const DIFFICULTY_LABEL: Record<GuideCardResponse['difficulty'], string> = {
   Advanced: 'Advanced',
 };
 
-export function GuideResultCard({ guide, categoryName }: GuideResultCardProps) {
+// Memoised (FARCH-004, 27 Nov 2026): a card is drawn once per row of a long list,
+// and a parent re-render that hands it the same props should not draw it again.
+export const GuideResultCard = memo(function GuideResultCard({ guide, categoryName }: GuideResultCardProps) {
   const updated = guide.updatedAt ?? guide.publishedAt;
 
   return (
@@ -142,7 +144,7 @@ export function GuideResultCard({ guide, categoryName }: GuideResultCardProps) {
       ) : null}
     </Pressable>
   );
-}
+});
 
 /**
  * A short relative date.

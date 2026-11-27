@@ -22,13 +22,14 @@ import React from 'react';
 import { ActivityIndicator, Linking, Text, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { JobCard } from '@/components/JobCard';
 import { ListState } from '@/components/ListState';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
 import { useTheme } from '@/design-system';
 import { useEmployerJobs, useEmployerProfile } from '@/hooks/employer-profile';
 import { useRefreshControl } from '@/hooks/usePullToRefresh';
@@ -42,6 +43,20 @@ import {
 } from '@/lib/api/employer-profile-api';
 import { employerKindLabel, employerResponsiveness } from '@/lib/api/job-detail-api';
 import { backOr } from '@/lib/platform/navigation';
+import type { JobCardResponse } from '@/types/jobs-hiring';
+
+/** Stable, so a list with no jobs to draw is the same empty list on every render. */
+const NO_JOBS: JobCardResponse[] = [];
+
+/** One open job. Module-level, so the list keeps a row until its job changes. */
+function renderEmployerJob({ item }: ListRenderItemInfo<JobCardResponse>) {
+  return (
+    <View className="px-4">
+      {/* `JobCard` reads the wire card shape first; see its header. */}
+      <JobCard job={item} />
+    </View>
+  );
+}
 
 export default function EmployerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -105,181 +120,195 @@ export default function EmployerProfileScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Employer" />
 
-      <ScrollEndScrollView refreshControl={refreshControl} className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
-        {/* Who they are. */}
-        <View className="mx-4 mt-4 p-5 rounded-2xl bg-surface-card border border-subtle">
-          <View className="flex-row items-center">
-            {/* An initial, not a logo: the logo is a media id, and a link to it is
-                minted per reader by Media — a request this page does not make yet. */}
-            <View
-              className="w-14 h-14 rounded-full bg-surface-muted items-center justify-center"
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-            >
-              <Text className="text-2xl font-black text-primary-600">{initial}</Text>
-            </View>
-            <View className="flex-1 ml-4">
-              <Text className="text-xl font-black text-content-primary leading-tight" accessibilityRole="header">
-                {employer.displayName}
-              </Text>
-              <Text className="text-xs font-semibold text-content-muted mt-1">{employerKindLabel(employer)}</Text>
-            </View>
-          </View>
-
-          <View className="flex-row flex-wrap items-center gap-2 mt-3">
-            {/* The chip is the server's `isVerified`; the badge beside it is Trust's
-                own label, printed only when Trust granted one. */}
-            {employer.isVerified ? (
-              <View className="bg-surface-muted px-2 py-0.5 rounded-full">
-                <Text className="text-[10px] font-black uppercase text-info-default">✓ Verified employer</Text>
+      <ScrollEndFlashList
+        // The open jobs page, so the list recycles its rows rather than keeping
+        // every page mounted (FARCH-004, 27 Nov 2026). The profile is its header.
+        data={jobs.isLoading ? NO_JOBS : jobs.jobs}
+        keyExtractor={(job) => job.jobId}
+        renderItem={renderEmployerJob}
+        refreshControl={refreshControl}
+        showsVerticalScrollIndicator={false}
+        activeTab="discover"
+        ListHeaderComponent={
+          <>
+            {/* Who they are. */}
+            <View className="mx-4 mt-4 p-5 rounded-2xl bg-surface-card border border-subtle">
+              <View className="flex-row items-center">
+                {/* An initial, not a logo: the logo is a media id, and a link to it is
+                    minted per reader by Media — a request this page does not make yet. */}
+                <View
+                  className="w-14 h-14 rounded-full bg-surface-muted items-center justify-center"
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                >
+                  <Text className="text-2xl font-black text-primary-600">{initial}</Text>
+                </View>
+                <View className="flex-1 ml-4">
+                  <Text className="text-xl font-black text-content-primary leading-tight" accessibilityRole="header">
+                    {employer.displayName}
+                  </Text>
+                  <Text className="text-xs font-semibold text-content-muted mt-1">{employerKindLabel(employer)}</Text>
+                </View>
               </View>
-            ) : (
-              <View className="bg-surface-muted px-2 py-0.5 rounded-full">
-                <Text className="text-[10px] font-black uppercase text-content-muted">Not verified by Diaspora</Text>
+
+              <View className="flex-row flex-wrap items-center gap-2 mt-3">
+                {/* The chip is the server's `isVerified`; the badge beside it is Trust's
+                    own label, printed only when Trust granted one. */}
+                {employer.isVerified ? (
+                  <View className="bg-surface-muted px-2 py-0.5 rounded-full">
+                    <Text className="text-[10px] font-black uppercase text-info-default">✓ Verified employer</Text>
+                  </View>
+                ) : (
+                  <View className="bg-surface-muted px-2 py-0.5 rounded-full">
+                    <Text className="text-[10px] font-black uppercase text-content-muted">Not verified by Diaspora</Text>
+                  </View>
+                )}
+                {employer.isIntermediary ? (
+                  <View className="bg-surface-muted px-2 py-0.5 rounded-full">
+                    <Text className="text-[10px] font-black uppercase text-warning-default">Recruiter or agency</Text>
+                  </View>
+                ) : null}
               </View>
-            )}
-            {employer.isIntermediary ? (
-              <View className="bg-surface-muted px-2 py-0.5 rounded-full">
-                <Text className="text-[10px] font-black uppercase text-warning-default">Recruiter or agency</Text>
-              </View>
-            ) : null}
-          </View>
 
-          {employer.isVerified && employer.verificationBadge ? (
-            <Text className="text-xs font-bold text-info-default mt-2">{employer.verificationBadge}</Text>
-          ) : null}
+              {employer.isVerified && employer.verificationBadge ? (
+                <Text className="text-xs font-bold text-info-default mt-2">{employer.verificationBadge}</Text>
+              ) : null}
 
-          {employer.tagline ? (
-            <Text className="text-sm text-content-secondary mt-3 leading-relaxed">{employer.tagline}</Text>
-          ) : null}
+              {employer.tagline ? (
+                <Text className="text-sm text-content-secondary mt-3 leading-relaxed">{employer.tagline}</Text>
+              ) : null}
 
-          {employer.isIntermediary ? (
-            <Text className="text-xs text-content-muted mt-2 leading-relaxed">
-              Jobs posted here are for other employers, so you would be dealing with a recruiter rather than the
-              employer directly.
-            </Text>
-          ) : null}
-        </View>
-
-        {statusNotice ? (
-          <View className="mx-4 mt-3 p-4 rounded-2xl border bg-surface-muted border-warning-default">
-            <Text className="text-sm font-bold text-warning-default">
-              {employer.status === 'Closed' ? 'Closed' : 'Suspended'}
-            </Text>
-            <Text className="text-sm text-content-secondary mt-1 leading-relaxed">{statusNotice}</Text>
-          </View>
-        ) : null}
-
-        {/* The team's view. `viewerRole` is set only for a member. */}
-        {teamSentence ? (
-          <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
-            <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">Your employer</Text>
-            <Text className="text-sm text-content-secondary mt-1">{teamSentence}</Text>
-            {employer.legalName || employer.registrationNumber ? (
-              <Text className="text-xs text-content-muted mt-2 leading-relaxed">
-                {[
-                  employer.legalName ? `Registered as ${employer.legalName}` : '',
-                  employer.registrationNumber ? `number ${employer.registrationNumber}` : '',
-                ]
-                  .filter(Boolean)
-                  .join(', ')}
-                . Only your team sees this.
-              </Text>
-            ) : null}
-            <Text className="text-xs text-content-muted mt-2 leading-relaxed">
-              Everyone else sees this page without your team or registration details.
-            </Text>
-            <View className="gap-2 mt-4">
-              <Button label="See applicants" variant="outline" onPress={() => router.push('/job/hiring')} />
-              <Button label="Post a job" variant="outline" onPress={() => router.push('/job/create')} />
-            </View>
-          </View>
-        ) : null}
-
-        {employer.description || employer.foundedYear || since ? (
-          <Section title="About">
-            {employer.description ? (
-              <Text className="text-sm text-content-secondary leading-relaxed">{employer.description}</Text>
-            ) : null}
-            {employer.foundedYear ? (
-              <Text className="text-sm text-content-secondary mt-2">Founded in {employer.foundedYear}</Text>
-            ) : null}
-            {since ? <Text className="text-xs text-content-muted mt-2">{since}</Text> : null}
-          </Section>
-        ) : null}
-
-        {/* Measured, never claimed — and only once there is enough to measure. */}
-        <Section title="How they treat applicants">
-          {responsiveness.length > 0 ? (
-            <>
-              {responsiveness.map((line) => (
-                <Text key={line} className="text-sm text-content-secondary mb-1.5">
-                  {line}
+              {employer.isIntermediary ? (
+                <Text className="text-xs text-content-muted mt-2 leading-relaxed">
+                  Jobs posted here are for other employers, so you would be dealing with a recruiter rather than the
+                  employer directly.
                 </Text>
-              ))}
-              <Text className="text-xs text-content-faint mt-1">
-                Measured by Diaspora from {employer.responsiveness.decidedCount} decided{' '}
-                {employer.responsiveness.decidedCount === 1 ? 'application' : 'applications'}.
-              </Text>
-            </>
-          ) : (
-            <Text className="text-sm text-content-muted leading-relaxed">
-              Not enough applications yet to show how quickly this employer replies.
-            </Text>
-          )}
-        </Section>
-
-        {regions.length > 0 ? (
-          <Section title="Where they hire">
-            {regions.map((line) => (
-              <Text key={line} className="text-sm text-content-secondary mb-1.5">
-                {line}
-              </Text>
-            ))}
-          </Section>
-        ) : null}
-
-        {contacts.length > 0 ? (
-          <Section title="Contact">
-            <View className="flex-row flex-wrap gap-2">
-              {contacts.map((link) => (
-                <Button
-                  key={link.kind}
-                  label={link.label}
-                  variant="outline"
-                  size="sm"
-                  fullWidth={false}
-                  onPress={() => void Linking.openURL(link.url)}
-                />
-              ))}
+              ) : null}
             </View>
-          </Section>
-        ) : null}
 
-        {/* What they are hiring for now. A failure here is this section's, not the page's. */}
-        <View className="px-4 pt-6 pb-10">
-          <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary mb-3">
-            {openJobsLabel(employer.openJobCount)}
-          </Text>
+            {statusNotice ? (
+              <View className="mx-4 mt-3 p-4 rounded-2xl border bg-surface-muted border-warning-default">
+                <Text className="text-sm font-bold text-warning-default">
+                  {employer.status === 'Closed' ? 'Closed' : 'Suspended'}
+                </Text>
+                <Text className="text-sm text-content-secondary mt-1 leading-relaxed">{statusNotice}</Text>
+              </View>
+            ) : null}
 
-          <ListState
-            loading={jobs.isLoading}
-            loadingLabel="Loading this employer’s jobs"
-            error={jobs.error && jobs.jobs.length === 0 ? { title: 'We could not load this employer’s jobs.' } : null}
-            onRetry={() => void jobs.refresh()}
-            isEmpty={jobs.jobs.length === 0}
-            empty={{
-              icon: 'briefcase-outline',
-              title: employer.viewerRole
-                ? 'None of your jobs are open right now.'
-                : 'This employer is not hiring through Diaspora right now.',
-            }}
-          >
-            {jobs.jobs.map((job) => (
-              // `JobCard` reads the wire card shape first; see its header.
-              <JobCard key={job.jobId} job={job} />
-            ))}
-            {jobs.hasMore ? (
+            {/* The team's view. `viewerRole` is set only for a member. */}
+            {teamSentence ? (
+              <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
+                <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">Your employer</Text>
+                <Text className="text-sm text-content-secondary mt-1">{teamSentence}</Text>
+                {employer.legalName || employer.registrationNumber ? (
+                  <Text className="text-xs text-content-muted mt-2 leading-relaxed">
+                    {[
+                      employer.legalName ? `Registered as ${employer.legalName}` : '',
+                      employer.registrationNumber ? `number ${employer.registrationNumber}` : '',
+                    ]
+                      .filter(Boolean)
+                      .join(', ')}
+                    . Only your team sees this.
+                  </Text>
+                ) : null}
+                <Text className="text-xs text-content-muted mt-2 leading-relaxed">
+                  Everyone else sees this page without your team or registration details.
+                </Text>
+                <View className="gap-2 mt-4">
+                  <Button label="See applicants" variant="outline" onPress={() => router.push('/job/hiring')} />
+                  <Button label="Post a job" variant="outline" onPress={() => router.push('/job/create')} />
+                </View>
+              </View>
+            ) : null}
+
+            {employer.description || employer.foundedYear || since ? (
+              <Section title="About">
+                {employer.description ? (
+                  <Text className="text-sm text-content-secondary leading-relaxed">{employer.description}</Text>
+                ) : null}
+                {employer.foundedYear ? (
+                  <Text className="text-sm text-content-secondary mt-2">Founded in {employer.foundedYear}</Text>
+                ) : null}
+                {since ? <Text className="text-xs text-content-muted mt-2">{since}</Text> : null}
+              </Section>
+            ) : null}
+
+            {/* Measured, never claimed — and only once there is enough to measure. */}
+            <Section title="How they treat applicants">
+              {responsiveness.length > 0 ? (
+                <>
+                  {responsiveness.map((line) => (
+                    <Text key={line} className="text-sm text-content-secondary mb-1.5">
+                      {line}
+                    </Text>
+                  ))}
+                  <Text className="text-xs text-content-faint mt-1">
+                    Measured by Diaspora from {employer.responsiveness.decidedCount} decided{' '}
+                    {employer.responsiveness.decidedCount === 1 ? 'application' : 'applications'}.
+                  </Text>
+                </>
+              ) : (
+                <Text className="text-sm text-content-muted leading-relaxed">
+                  Not enough applications yet to show how quickly this employer replies.
+                </Text>
+              )}
+            </Section>
+
+            {regions.length > 0 ? (
+              <Section title="Where they hire">
+                {regions.map((line) => (
+                  <Text key={line} className="text-sm text-content-secondary mb-1.5">
+                    {line}
+                  </Text>
+                ))}
+              </Section>
+            ) : null}
+
+            {contacts.length > 0 ? (
+              <Section title="Contact">
+                <View className="flex-row flex-wrap gap-2">
+                  {contacts.map((link) => (
+                    <Button
+                      key={link.kind}
+                      label={link.label}
+                      variant="outline"
+                      size="sm"
+                      fullWidth={false}
+                      onPress={() => void Linking.openURL(link.url)}
+                    />
+                  ))}
+                </View>
+              </Section>
+            ) : null}
+
+            {/* What they are hiring for now. A failure here is this section's, not the page's. */}
+            <View className="px-4 pt-6">
+              <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary mb-3">
+                {openJobsLabel(employer.openJobCount)}
+              </Text>
+            </View>
+          </>
+        }
+        ListEmptyComponent={
+          <View className="px-4">
+            <ListState
+              loading={jobs.isLoading}
+              loadingLabel="Loading this employer’s jobs"
+              error={jobs.error && jobs.jobs.length === 0 ? { title: 'We could not load this employer’s jobs.' } : null}
+              onRetry={() => void jobs.refresh()}
+              isEmpty={jobs.jobs.length === 0}
+              empty={{
+                icon: 'briefcase-outline',
+                title: employer.viewerRole
+                  ? 'None of your jobs are open right now.'
+                  : 'This employer is not hiring through Diaspora right now.',
+              }}
+            />
+          </View>
+        }
+        ListFooterComponent={
+          <View className="px-4 pb-10">
+            {!jobs.isLoading && jobs.jobs.length > 0 && jobs.hasMore ? (
               <Button
                 label="Show more jobs"
                 variant="ghost"
@@ -287,9 +316,9 @@ export default function EmployerProfileScreen() {
                 onPress={jobs.loadMore}
               />
             ) : null}
-          </ListState>
-        </View>
-      </ScrollEndScrollView>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 }

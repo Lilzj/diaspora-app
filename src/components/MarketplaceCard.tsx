@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, Share, Platform, Alert, type GestureResponderEvent } from 'react-native';
 import { placeOf } from '@/lib/platform/listing-place';
 import { router } from 'expo-router';
@@ -18,7 +18,9 @@ interface MarketplaceCardProps {
   variant?: 'list' | 'featured' | 'grid';
 }
 
-export function MarketplaceCard({ listing: given, variant = 'list' }: MarketplaceCardProps) {
+// Memoised (FARCH-004, 27 Nov 2026): a card is drawn once per row of a long list,
+// and a parent re-render that hands it the same props should not draw it again.
+export const MarketplaceCard = memo(function MarketplaceCard({ listing: given, variant = 'list' }: MarketplaceCardProps) {
   const listing = asMarketplaceCardListing(given);
   const {
     id,
@@ -267,5 +269,5 @@ export function MarketplaceCard({ listing: given, variant = 'list' }: Marketplac
       </View>
     </TouchableOpacity>
   );
-}
+});
 export default MarketplaceCard;

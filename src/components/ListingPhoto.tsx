@@ -39,7 +39,7 @@
 // rather than leaving a blank box that looks like a slow one.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text } from 'react-native';
 import { Image } from 'expo-image';
 import type { ImageStyle, StyleProp, ViewStyle } from 'react-native';
@@ -80,22 +80,33 @@ export function ListingPhoto({
   showLabel = true,
 }: ListingPhotoProps) {
   const source = photoUriOf(uri, variant);
-  const [failed, setFailed] = useState(false);
 
-  // A different photograph gets its own chance to load.
-  useEffect(() => {
-    setFailed(false);
-  }, [source]);
+  // ── A failure belongs to the photograph that failed ────────────────────────
+  //
+  // Held as *which* address failed rather than as a flag, so a different
+  // photograph gets its own chance to load in the same render. A flag was
+  // cleared by an effect after the render, and a list that recycles its rows
+  // (FlashList, FARCH-004) hands this component the next listing's photograph:
+  // for one frame that listing said "Photo unavailable" about a picture it had
+  // not yet tried to load.
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  const failed = source !== null && source === failedSource;
 
   if (source && !failed) {
     return (
       <Image
         source={{ uri: source }}
+        // Blank, rather than the previous listing's photograph, while a
+        // recycled row loads this one.
+        recyclingKey={source}
         style={style}
         contentFit="cover"
-        transition={150}
+        // Faded in when it is fetched, and shown at once from the cache: a row
+        // scrolled back into view is handed its photograph again, and it should
+        // not fade in a second time.
+        transition={{ duration: 150, skipOnCacheHit: 'all' }}
         accessibilityLabel="Photo"
-        onError={() => setFailed(true)}
+        onError={() => setFailedSource(source)}
       />
     );
   }

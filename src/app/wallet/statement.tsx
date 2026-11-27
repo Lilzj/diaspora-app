@@ -18,7 +18,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ListEmpty, ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
@@ -32,7 +33,7 @@ import { useLedger, usePrimaryWallet } from '@/hooks/financial';
 import { checkAccess, FinancialPermissions } from '@/lib/domain/financial-access';
 import { useAuthStore } from '@/store/auth';
 import type { FinancialError } from '@/lib/transport/financial-errors';
-import type { Wallet } from '@/types/financial';
+import type { LedgerEntry, Wallet } from '@/types/financial';
 
 const ENTRY_FILTERS: { key: string | undefined; label: string }[] = [
   { key: undefined, label: 'Everything' },
@@ -42,6 +43,11 @@ const ENTRY_FILTERS: { key: string | undefined; label: string }[] = [
   { key: 'Commission', label: 'Commission' },
   { key: 'Fee', label: 'Fees' },
 ];
+
+/** One entry. Module-level, so the list keeps a row until its entry changes (FARCH-004). */
+function renderEntry({ item }: ListRenderItemInfo<LedgerEntry>) {
+  return <LedgerEntryRow entry={item} />;
+}
 
 export default function StatementScreen() {
   const { tokens } = useTheme();
@@ -183,16 +189,13 @@ export default function StatementScreen() {
         isEmpty={!activeWallet}
         empty={{ icon: 'wallet-outline', title: 'You do not have a wallet yet' }}
       >
-        <ScrollEndFlatList
+        {/* Virtualisation matters here more than anywhere: a long-standing
+            member's statement is unbounded by construction. A FlashList since
+            27 Nov 2026 (FARCH-004), so its rows are recycled as it pages. */}
+        <ScrollEndFlashList
           data={entries}
           keyExtractor={(item) => item.entryId}
-          renderItem={({ item }) => <LedgerEntryRow entry={item} />}
-          // Virtualisation matters here more than anywhere: a long-standing
-          // member's statement is unbounded by construction.
-          initialNumToRender={14}
-          maxToRenderPerBatch={12}
-          windowSize={9}
-          removeClippedSubviews
+          renderItem={renderEntry}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.6}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}

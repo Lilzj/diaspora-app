@@ -10,12 +10,17 @@
 // So this tab lists and routes. It does not create a second event model, a
 // second card, or a second create flow — "+ Host event" pushes Community
 // Life's own composer with the organisation pre-selected.
+//
+// The tab pages, so its rows are the sheet's list (FARCH-004, 27 Nov 2026):
+// `useEventsTab` hands the sheet what it draws above them, the two groups as
+// rows, and the next page below them.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Text, View } from 'react-native';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 
-import { EmptyState, SecondaryButton, SeriesCard } from '@/components/community';
+import { SecondaryButton, SeriesCard } from '@/components/community';
 import { useTheme } from '@/design-system';
 import { useSeriesList } from '@/hooks/community-life';
 import type { OrganizationCapabilities } from '@/types/community-advanced';
@@ -27,20 +32,27 @@ import {
   TabLoading,
   TabUnavailable,
 } from './OrganizationTabShared';
+import { NO_ROWS, type EventsHeading, type OrganizationRow, type OrganizationTabList } from './OrganizationRows';
 
 interface EventsTabProps {
   organizationId: string;
   organizationName: string;
   capabilities: OrganizationCapabilities;
   onOpenRoute: (route: string) => void;
+  /** Whether Events is the tab in view. Only the tab in view fetches (§40). */
+  active: boolean;
 }
 
-export function EventsTab({
+const UPCOMING: EventsHeading = { heading: 'Upcoming' };
+const DORMANT: EventsHeading = { heading: 'Nothing scheduled' };
+
+export function useEventsTab({
   organizationId,
   organizationName,
   capabilities,
   onOpenRoute,
-}: EventsTabProps) {
+  active,
+}: EventsTabProps): OrganizationTabList {
   const { tokens } = useTheme();
 
   const {
@@ -53,110 +65,114 @@ export function EventsTab({
     hasNextPage,
     isFetchingNextPage,
     refetch,
-  } = useSeriesList({ organizationId });
+  } = useSeriesList({ organizationId }, active);
 
   const canManage = capabilities.canManageEvents;
-
-  if (!isEnabled) return <TabUnavailable label="Events" />;
-  if (isLoading) return <TabLoading label="events" />;
-  if (isError)
-    return (
-      <TabError
-        label="Events"
-        subject="seeing its events"
-        kind={error?.kind}
-        onRetry={() => void refetch()}
-      />
-    );
+  // Read, and readable: until then the tab's loading, its failure or its
+  // unavailability stands in for all of it, as each did.
+  const listed = isEnabled && !isLoading && !isError;
 
   // A series carries its next occurrence, so "upcoming" is answerable without a
   // second request per series — which is the reason `nextOccurrence` is on the
   // model at all.
-  const upcoming = series.filter((entry) => entry.nextOccurrence);
-  const dormant = series.filter((entry) => !entry.nextOccurrence);
+  const rows = useMemo((): readonly OrganizationRow[] => {
+    if (!listed) return NO_ROWS;
+    const upcoming = series.filter((entry) => entry.nextOccurrence);
+    const dormant = series.filter((entry) => !entry.nextOccurrence);
+    return [...(upcoming.length > 0 ? [UPCOMING, ...upcoming] : []), ...(dormant.length > 0 ? [DORMANT, ...dormant] : [])];
+  }, [listed, series]);
 
-  return (
-    <View>
-      <TabGapNote>
-        Event series come from a development adapter. Opening one takes you to Community Life,
-        which owns events — this tab does not hold a second copy of them.
-      </TabGapNote>
+  // A group's label or one series. Kept while the theme and the sheet's route
+  // opener are, so a row is redrawn only when its record changes.
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<OrganizationRow>) => {
+      if ('heading' in item) {
+        return (
+          <Text
+            style={{ color: tokens.color.text.placeholder }}
+            className={
+              item.heading === 'Upcoming'
+                ? 'text-[9px] font-black uppercase tracking-widest mb-2'
+                : 'text-[9px] font-black uppercase tracking-widest mb-2 mt-3'
+            }
+          >
+            {item.heading}
+          </Text>
+        );
+      }
+      if (!('seriesId' in item)) return null;
 
-      <TabHeading
-        title="Events"
-        count={series.length}
-        action={canManage ? '+ Host event' : undefined}
-        onAction={
-          canManage
-            ? () => onOpenRoute(`/community-life/series/create?organizationId=${organizationId}`)
-            : undefined
-        }
-      />
+      return (
+        <View className="mb-2">
+          <SeriesCard
+            series={item}
+            onPress={() => onOpenRoute(`/community-life/series/${item.seriesId}`)}
+          />
+        </View>
+      );
+    },
+    [tokens, onOpenRoute]
+  );
 
-      {series.length === 0 ? (
-        <EmptyState
-          icon="calendar-outline"
-          title="No events yet"
-          body={
-            canManage
-              ? `Run something for ${organizationName} — a one-off, or a series that repeats. Members and followers see it in the community calendar.`
-              : `${organizationName} has not scheduled anything. When it does, it will appear here and in the community calendar.`
-          }
-          action={canManage ? 'Host the first event' : undefined}
+  return {
+    header: listed ? (
+      <View>
+        <TabGapNote>
+          Event series come from a development adapter. Opening one takes you to Community Life,
+          which owns events — this tab does not hold a second copy of them.
+        </TabGapNote>
+
+        <TabHeading
+          title="Events"
+          count={series.length}
+          action={canManage ? '+ Host event' : undefined}
           onAction={
             canManage
               ? () => onOpenRoute(`/community-life/series/create?organizationId=${organizationId}`)
               : undefined
           }
         />
-      ) : null}
-
-      {upcoming.length > 0 ? (
-        <>
-          <Text
-            style={{ color: tokens.color.text.placeholder }}
-            className="text-[9px] font-black uppercase tracking-widest mb-2"
-          >
-            Upcoming
-          </Text>
-          {upcoming.map((entry) => (
-            <View key={entry.seriesId} className="mb-2">
-              <SeriesCard
-                series={entry}
-                onPress={() => onOpenRoute(`/community-life/series/${entry.seriesId}`)}
-              />
-            </View>
-          ))}
-        </>
-      ) : null}
-
-      {dormant.length > 0 ? (
-        <>
-          <Text
-            style={{ color: tokens.color.text.placeholder }}
-            className="text-[9px] font-black uppercase tracking-widest mb-2 mt-3"
-          >
-            Nothing scheduled
-          </Text>
-          {dormant.map((entry) => (
-            <View key={entry.seriesId} className="mb-2">
-              <SeriesCard
-                series={entry}
-                onPress={() => onOpenRoute(`/community-life/series/${entry.seriesId}`)}
-              />
-            </View>
-          ))}
-        </>
-      ) : null}
-
-      {hasNextPage ? (
+      </View>
+    ) : null,
+    rows,
+    renderItem,
+    state: {
+      // Unavailable first, as it was: nothing was asked, so nothing is loading.
+      loading: isEnabled && isLoading,
+      skeleton: <TabLoading label="events" />,
+      error: !isEnabled ? (
+        <TabUnavailable label="Events" />
+      ) : isError ? (
+        <TabError
+          label="Events"
+          subject="seeing its events"
+          kind={error?.kind}
+          onRetry={() => void refetch()}
+        />
+      ) : null,
+      isEmpty: series.length === 0,
+      empty: {
+        icon: 'calendar-outline',
+        title: 'No events yet',
+        message: canManage
+          ? `Run something for ${organizationName} — a one-off, or a series that repeats. Members and followers see it in the community calendar.`
+          : `${organizationName} has not scheduled anything. When it does, it will appear here and in the community calendar.`,
+        action: canManage
+          ? {
+              label: 'Host the first event',
+              onPress: () => onOpenRoute(`/community-life/series/create?organizationId=${organizationId}`),
+            }
+          : undefined,
+      },
+    },
+    footer:
+      listed && hasNextPage ? (
         <SecondaryButton
           label={isFetchingNextPage ? 'Loading…' : 'Load more events'}
           icon="arrow-down-circle-outline"
           disabled={isFetchingNextPage}
           onPress={() => void fetchNextPage()}
         />
-      ) : null}
-    </View>
-  );
+      ) : null,
+  };
 }

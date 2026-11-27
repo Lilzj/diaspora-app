@@ -1,9 +1,10 @@
-import React from 'react';
-import { FlatList, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 
-import { ContributorDirectory } from '@/components/knowledge/ContributorDirectory';
+import { ContributorRow, useContributorDirectory } from '@/components/knowledge/ContributorDirectory';
 import { useKnowledgeSearchStore } from '@/store/knowledge-search';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { ListState } from '@/components/ListState';
@@ -15,6 +16,7 @@ import {
   knowledgeCountryKeys,
   type KnowledgeCountrySummary,
 } from '@/lib/api/knowledge-countries-api';
+import type { PublicCreator } from '@/types/creator-economy';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Knowledge Hub, "Contributors" tab
@@ -53,7 +55,38 @@ import {
 // the whole list is in hand and narrowing it locally cannot hide a row the
 // server did not send. That is the opposite of the client-side narrowing
 // `community-directory-api.ts` warns about, where the server had paged first.
+//
+// ── One list for the whole tab (FARCH-004, 27 Nov 2026) ──────────────────────
+//
+// The contributor directory pages ("Show more contributors"), and it drew its
+// rows with `.map()` in the header of this tab's country list, so every page a
+// member asked for stayed mounted. The tab is one FlashList now: the
+// contributors are its first rows and the countries its last, and what sits
+// between them (the end of the directory, the chosen country's figures and
+// "Browse by country") is one row of its own. Each kind is its own item type,
+// so a contributor's row is never recycled into a country's.
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** A contributor, what sits between the contributors and the countries, or a country. */
+type TabRow =
+  | { kind: 'contributor'; key: string; creator: PublicCreator }
+  | { kind: 'between'; key: string; content: React.ReactElement }
+  | { kind: 'country'; key: string; country: KnowledgeCountrySummary };
+
+/** Module-level, so the list keeps a row until its item changes. */
+function renderTabRow({ item }: ListRenderItemInfo<TabRow>) {
+  switch (item.kind) {
+    case 'contributor':
+      return <ContributorRow creator={item.creator} />;
+    case 'between':
+      return item.content;
+    case 'country':
+      return <CountryRow country={item.country} />;
+  }
+}
+
+const tabRowKey = (row: TabRow) => row.key;
+const tabRowType = (row: TabRow) => row.kind;
 
 export default function KnowledgeContributorsScreen() {
   const tokens = useThemeTokens();
@@ -63,6 +96,9 @@ export default function KnowledgeContributorsScreen() {
   const bottomInset = useBottomInset({ chrome: 'tab-bar' });
 
   const { searchQuery, selectedCountryCode } = useKnowledgeSearchStore();
+
+  // The contributor directory, which exists (20 Oct 2026).
+  const directory = useContributorDirectory({ query: searchQuery, countryCode: selectedCountryCode });
 
   const countries = useQuery({
     queryKey: knowledgeCountryKeys.list(),
@@ -84,93 +120,136 @@ export default function KnowledgeContributorsScreen() {
 
   const query = searchQuery.trim().toLowerCase();
 
-  const visibleCountries = (countries.data ?? []).filter((country) =>
-    query
-      ? country.displayName.toLowerCase().includes(query) ||
-        country.countryCode.toLowerCase().includes(query)
-      : true
+  const visibleCountries = useMemo(
+    () =>
+      (countries.data ?? []).filter((country) =>
+        query
+          ? country.displayName.toLowerCase().includes(query) ||
+            country.countryCode.toLowerCase().includes(query)
+          : true
+      ),
+    [countries.data, query]
   );
+
+  // Built from what they show, so a row is redrawn only when its contributor or
+  // its country changes.
+  const contributorRows = useMemo(
+    () =>
+      directory.rows.map(
+        (creator): TabRow => ({ kind: 'contributor', key: `contributor:${creator.creatorId}`, creator })
+      ),
+    [directory.rows]
+  );
+  const countryRows = useMemo(
+    () =>
+      visibleCountries.map(
+        (country): TabRow => ({ kind: 'country', key: `country:${country.countryCode}`, country })
+      ),
+    [visibleCountries]
+  );
+
+  // Rebuilt on every render, and the only row that is: the figures and "Show
+  // more contributors" change under it.
+  const between: TabRow = {
+    kind: 'between',
+    key: 'between',
+    content: (
+      <View>
+        {directory.footer}
+
+        {/* Real figures for the chosen country, from the statistics route */}
+        {selectedCountryCode ? (
+          <View className="bg-surface-card rounded-3xl border border-subtle p-5 mb-5">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
+              {countryFlagEmoji(selectedCountryCode)} {selectedCountryCode} · Knowledge
+            </Text>
+
+            {statistics.isLoading ? (
+              <ActivityIndicator color={tokens.color.text.placeholder} />
+            ) : statistics.isError ? (
+              <Text className="text-xs text-content-muted leading-relaxed">
+                We could not load the figures for this country just now.
+              </Text>
+            ) : statistics.data ? (
+              <View>
+                <View className="flex-row flex-wrap">
+                  <Figure value={statistics.data.totalGuides} label="Guides" />
+                  <Figure value={statistics.data.verifiedGuides} label="Verified" />
+                  <Figure value={statistics.data.officialGuides} label="Official" />
+                  <Figure value={statistics.data.communityGuides} label="Community" />
+                  <Figure value={statistics.data.categoryCount} label="Categories" />
+                  <Figure value={statistics.data.learningPathCount} label="Learning paths" />
+                </View>
+
+                {statistics.data.languages.length > 0 && (
+                  <Text className="text-[11px] text-content-faint mt-3 leading-relaxed">
+                    Written in {statistics.data.languages.join(', ')}
+                  </Text>
+                )}
+
+                {/*
+                  `lastPublishedAt` is nullable on the wire and null means
+                  "nobody has published here yet" — not "we could not read
+                  it". The two need different sentences.
+                */}
+                <Text className="text-[11px] text-content-faint mt-1 leading-relaxed">
+                  {statistics.data.lastPublishedAt
+                    ? `Last published ${new Date(statistics.data.lastPublishedAt).toLocaleDateString()}`
+                    : 'Nothing published for this country yet'}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
+          🌍 Browse by country
+        </Text>
+      </View>
+    ),
+  };
 
   return (
     <View className="flex-1 bg-surface-background">
-      <FlatList
-        data={visibleCountries}
-        keyExtractor={(item) => item.countryCode}
+      <FlashList
+        data={[...contributorRows, between, ...countryRows]}
+        keyExtractor={tabRowKey}
+        getItemType={tabRowType}
+        renderItem={renderTabRow}
         contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
-        ListHeaderComponent={() => (
-          <View>
-            {/* The contributor directory, which exists (20 Oct 2026). */}
-            <ContributorDirectory query={searchQuery} countryCode={selectedCountryCode} />
-
-            {/* Real figures for the chosen country, from the statistics route */}
-            {selectedCountryCode ? (
-              <View className="bg-surface-card rounded-3xl border border-subtle p-5 mb-5">
-                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
-                  {countryFlagEmoji(selectedCountryCode)} {selectedCountryCode} · Knowledge
-                </Text>
-
-                {statistics.isLoading ? (
-                  <ActivityIndicator color={tokens.color.text.placeholder} />
-                ) : statistics.isError ? (
-                  <Text className="text-xs text-content-muted leading-relaxed">
-                    We could not load the figures for this country just now.
-                  </Text>
-                ) : statistics.data ? (
-                  <View>
-                    <View className="flex-row flex-wrap">
-                      <Figure value={statistics.data.totalGuides} label="Guides" />
-                      <Figure value={statistics.data.verifiedGuides} label="Verified" />
-                      <Figure value={statistics.data.officialGuides} label="Official" />
-                      <Figure value={statistics.data.communityGuides} label="Community" />
-                      <Figure value={statistics.data.categoryCount} label="Categories" />
-                      <Figure value={statistics.data.learningPathCount} label="Learning paths" />
-                    </View>
-
-                    {statistics.data.languages.length > 0 && (
-                      <Text className="text-[11px] text-content-faint mt-3 leading-relaxed">
-                        Written in {statistics.data.languages.join(', ')}
-                      </Text>
-                    )}
-
-                    {/*
-                      `lastPublishedAt` is nullable on the wire and null means
-                      "nobody has published here yet" — not "we could not read
-                      it". The two need different sentences.
-                    */}
-                    <Text className="text-[11px] text-content-faint mt-1 leading-relaxed">
-                      {statistics.data.lastPublishedAt
-                        ? `Last published ${new Date(statistics.data.lastPublishedAt).toLocaleDateString()}`
-                        : 'Nothing published for this country yet'}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-
-            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
-              🌍 Browse by country
-            </Text>
-          </View>
-        )}
-        renderItem={({ item }) => <CountryRow country={item} />}
-        // The list stays mounted under its header (the directory and the country
-        // figures), so the country list's own states are drawn in its empty slot.
-        ListEmptyComponent={() => (
-          <ListState
-            loading={countries.isLoading}
-            loadingLabel="Loading countries"
-            error={countries.isError && { icon: 'earth-outline', title: 'We could not load the country list' }}
-            onRetry={() => void countries.refetch()}
-            isEmpty
-            empty={{
-              icon: 'earth-outline',
-              title: 'No countries match',
-              message: query
-                ? 'Try a different search term to find a country page.'
-                : 'The platform does not hold knowledge for any country yet.',
-            }}
-          />
-        )}
+        // A page of contributors arrives above what follows them. Held in place,
+        // a "Show more contributors" at the top of the screen would stay under the
+        // member's finger while the rows it asked for loaded out of sight above
+        // it. They appear where the button was, as before this was a FlashList.
+        maintainVisibleContentPosition={{ disabled: true }}
+        ListHeaderComponent={
+          <>
+            {directory.heading}
+            {/* The directory's first read, a failed read, or nobody listed, where its rows would be. */}
+            {contributorRows.length === 0 ? <ListState {...directory.state} /> : null}
+          </>
+        }
+        // The country list's own states, where its rows would be. The list
+        // itself is never empty: the contributors, and what follows them, are
+        // rows too.
+        ListFooterComponent={
+          countryRows.length === 0 ? (
+            <ListState
+              loading={countries.isLoading}
+              loadingLabel="Loading countries"
+              error={countries.isError && { icon: 'earth-outline', title: 'We could not load the country list' }}
+              onRetry={() => void countries.refetch()}
+              isEmpty
+              empty={{
+                icon: 'earth-outline',
+                title: 'No countries match',
+                message: query
+                  ? 'Try a different search term to find a country page.'
+                  : 'The platform does not hold knowledge for any country yet.',
+              }}
+            />
+          ) : null
+        }
       />
     </View>
   );

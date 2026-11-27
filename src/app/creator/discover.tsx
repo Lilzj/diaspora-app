@@ -14,12 +14,16 @@
 // The result type is `PublicCreator`, which has no audience internals and no
 // completeness score. A component here could not print a private field if it
 // tried.
+//
+// The directory pages, so the screen is one FlashList (FARCH-004, 27 Nov 2026):
+// the rows are recycled as they scroll rather than every page staying mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { useTheme } from '@/design-system';
 import { CreatorCardSkeleton, CreatorDirectoryCard, CreatorScreen } from '@/components/creator-economy';
 import { ListState } from '@/components/ListState';
@@ -36,6 +40,25 @@ const CATEGORIES = [
   { key: 'work', label: 'Work' },
   { key: 'community', label: 'Community' },
 ];
+
+/** Stable, so an empty list is the same empty list on every render. */
+const NO_CREATORS: PublicCreator[] = [];
+
+function openCreator(creator: PublicCreator) {
+  // The public contributor profile already exists and is real. The creator
+  // directory is a different way in to the same person, not a second profile.
+  // The page is keyed by the member (20 Oct 2026); creatorId found no guides.
+  router.push(`/contributor/${creator.userId ?? creator.creatorId}` as never);
+}
+
+/** One creator. Module-level, so the list keeps a row until its creator changes. */
+function renderCreator({ item }: ListRenderItemInfo<PublicCreator>) {
+  return (
+    <View className="px-5">
+      <CreatorDirectoryCard creator={item} onPress={openCreator} />
+    </View>
+  );
+}
 
 export default function CreatorDiscoverScreen() {
   const { tokens } = useTheme();
@@ -64,14 +87,9 @@ export default function CreatorDiscoverScreen() {
     });
   }, [category, query, verifiedOnly]);
 
-  const open = useCallback((creator: PublicCreator) => {
-    // The public contributor profile already exists and is real. The creator
-    // directory is a different way in to the same person, not a second profile.
-    // The page is keyed by the member (20 Oct 2026); creatorId found no guides.
-    router.push(`/contributor/${creator.userId ?? creator.creatorId}` as never);
-  }, []);
-
   const hasFilters = submitted.length > 0 || category !== 'all' || verifiedOnly;
+  // The skeleton stands in for the rows while the first page loads, as it did.
+  const creators = directory.isLoading ? NO_CREATORS : directory.creators;
 
   return (
     <CreatorScreen
@@ -181,68 +199,76 @@ export default function CreatorDiscoverScreen() {
           </ScrollView>
         </View>
       }
-    >
-      <View className="px-5 pt-5">
-        {/* The error is the shell's (`load.error`); the list draws the rest. */}
-        <ListState
-          loading={directory.isLoading}
-          loadingLabel="Loading creators"
-          skeleton={<CreatorCardSkeleton rows={4} />}
-          isEmpty={directory.creators.length === 0}
-          empty={{
-            icon: 'people-outline',
-            title: 'Nobody matches',
-            message: hasFilters
-              ? 'Try a different search, or clear the filters.'
-              : 'No creators are listed yet.',
-            action: hasFilters
-              ? {
-                  label: 'Clear filters',
-                  onPress: () => {
-                    setQuery('');
-                    setSubmitted('');
-                    setCategory('all');
-                    setVerifiedOnly(false);
-                  },
-                }
-              : undefined,
-          }}
-        >
-          {directory.creators.map((creator) => (
-            <CreatorDirectoryCard key={creator.creatorId} creator={creator} onPress={open} />
-          ))}
+      list={{
+        data: creators,
+        keyExtractor: (creator) => creator.creatorId,
+        renderItem: renderCreator,
+        // The error is the shell's (`load.error`); the list draws the rest.
+        ListEmptyComponent: (
+          <View className="px-5">
+            <ListState
+              loading={directory.isLoading}
+              loadingLabel="Loading creators"
+              skeleton={<CreatorCardSkeleton rows={4} />}
+              isEmpty
+              empty={{
+                icon: 'people-outline',
+                title: 'Nobody matches',
+                message: hasFilters
+                  ? 'Try a different search, or clear the filters.'
+                  : 'No creators are listed yet.',
+                action: hasFilters
+                  ? {
+                      label: 'Clear filters',
+                      onPress: () => {
+                        setQuery('');
+                        setSubmitted('');
+                        setCategory('all');
+                        setVerifiedOnly(false);
+                      },
+                    }
+                  : undefined,
+              }}
+            />
+          </View>
+        ),
+        ListFooterComponent: (
+          <View className="px-5">
+            {directory.hasNextPage && creators.length > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Load more creators"
+                accessibilityState={{ busy: directory.isFetchingNextPage }}
+                disabled={directory.isFetchingNextPage}
+                onPress={() => directory.fetchNextPage()}
+                className="py-4 items-center"
+              >
+                {directory.isFetchingNextPage ? (
+                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                ) : (
+                  <Text
+                    style={{ color: tokens.color.primary[500] }}
+                    className="text-[11px] font-black uppercase tracking-wider"
+                  >
+                    Load more
+                  </Text>
+                )}
+              </Pressable>
+            ) : null}
 
-          {directory.hasNextPage ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Load more creators"
-              accessibilityState={{ busy: directory.isFetchingNextPage }}
-              disabled={directory.isFetchingNextPage}
-              onPress={() => directory.fetchNextPage()}
-              className="py-4 items-center"
+            <Text
+              style={{ color: tokens.color.text.disabled }}
+              className="text-[10px] font-semibold text-center mt-2 mb-4 leading-relaxed"
             >
-              {directory.isFetchingNextPage ? (
-                <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-              ) : (
-                <Text
-                  style={{ color: tokens.color.primary[500] }}
-                  className="text-[11px] font-black uppercase tracking-wider"
-                >
-                  Load more
-                </Text>
-              )}
-            </Pressable>
-          ) : null}
-        </ListState>
-
-        <Text
-          style={{ color: tokens.color.text.disabled }}
-          className="text-[10px] font-semibold text-center mt-2 mb-4 leading-relaxed"
-        >
-          Creators who have turned off discovery are not in these results at all. Diaspora decides
-          who is listed.
-        </Text>
-      </View>
+              Creators who have turned off discovery are not in these results at all. Diaspora decides
+              who is listed.
+            </Text>
+          </View>
+        ),
+      }}
+    >
+      {/* The space the list starts with: the search and the filters are pinned above it. */}
+      <View className="pt-5" />
     </CreatorScreen>
   );
 }

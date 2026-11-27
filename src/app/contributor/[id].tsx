@@ -1,10 +1,13 @@
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
+import { ListState } from '@/components/ListState';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useGuidesByAuthor } from '@/hooks/guides';
 import { ContributorHeader } from '@/components/knowledge/ContributorHeader';
+import type { GuideCardResponse } from '@/types/guides';
 import { useThemeTokens } from '@/design-system';
 import { trackProfileViewed } from '@/lib/analytics/content-events';
 import { backOr } from '@/lib/platform/navigation';
@@ -71,6 +74,53 @@ import { backOr } from '@/lib/platform/navigation';
  */
 const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Stable, so a list with no guides to draw is the same empty list on every render. */
+const NO_GUIDES: GuideCardResponse[] = [];
+
+/** One guide the account wrote. Module-level, so the list keeps a row until its guide changes. */
+function renderAuthoredGuide({ item: guide }: ListRenderItemInfo<GuideCardResponse>) {
+  return (
+    <View className="px-6">
+      <TouchableOpacity
+        onPress={() => router.push(`/guide/${guide.guideId}`)}
+        className="bg-surface-card border border-subtle rounded-2xl p-4 mb-2.5"
+        accessibilityRole="button"
+        accessibilityLabel={`Open guide: ${guide.title}`}
+      >
+        <Text className="text-sm font-black text-content-primary leading-snug">
+          {guide.title}
+        </Text>
+
+        {guide.excerpt ? (
+          <Text className="text-xs text-content-muted mt-1.5 leading-relaxed" numberOfLines={2}>
+            {guide.excerpt}
+          </Text>
+        ) : null}
+
+        <View className="flex-row items-center flex-wrap gap-x-2 gap-y-1 mt-3">
+          <Text className="text-[10px] font-bold text-content-faint uppercase tracking-wide">
+            {guide.countryCode}
+          </Text>
+          <Text className="text-[10px] text-content-faint">·</Text>
+          <Text className="text-[10px] font-bold text-content-faint">
+            {guide.readingTimeMinutes} min read
+          </Text>
+          {guide.isVerified && (
+            <Text className="text-[9px] font-black text-success-default bg-surface-muted px-1.5 py-0.5 rounded">
+              VERIFIED
+            </Text>
+          )}
+          {guide.isFeatured && (
+            <Text className="text-[9px] font-black text-primary-500 bg-surface-muted px-1.5 py-0.5 rounded">
+              FEATURED
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export default function ContributorProfileScreen() {
   const tokens = useThemeTokens();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -93,6 +143,9 @@ export default function ContributorProfileScreen() {
   // `enabled` is driven by the id the hook is handed: a non-GUID id passes null
   // and no request leaves the device.
   const authored = useGuidesByAuthor(isAddressable ? authorId : null);
+  // The rows, once the guides have been read and there are some. Loading, a
+  // failed read and none at all are each said in their place.
+  const guidesShown = !authored.isLoading && !authored.error && !authored.isEmpty;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -131,124 +184,113 @@ export default function ContributorProfileScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
-          {/*
-            Said before the list, not after it. A member arriving from a byline
-            expects a person; they are told immediately that this page is the
-            author's work rather than the author.
-          */}
-          {/* Who they are, and following them (20 Oct 2026). */}
-          <ContributorHeader userId={authorId} />
+        <ScrollEndFlashList
+          // The guides page, so the list recycles its rows rather than keeping
+          // every page mounted (FARCH-004, 27 Nov 2026). Who they are is its header.
+          data={guidesShown ? authored.guides : NO_GUIDES}
+          keyExtractor={(guide) => guide.guideId}
+          renderItem={renderAuthoredGuide}
+          showsVerticalScrollIndicator={false}
+          activeTab="discover"
+          ListHeaderComponent={
+            <>
+              {/*
+                Said before the list, not after it. A member arriving from a byline
+                expects a person; they are told immediately that this page is the
+                author's work rather than the author.
+              */}
+              {/* Who they are, and following them (20 Oct 2026). */}
+              <ContributorHeader userId={authorId} />
 
-          <View className="px-6 py-5">
-            {authored.isLoading ? (
-              <View className="items-center py-12">
-                <ActivityIndicator color={tokens.color.text.placeholder} />
-                <Text className="text-xs text-content-faint font-bold mt-3">Loading guides…</Text>
-              </View>
-            ) : authored.error ? (
-              <View className="bg-surface-card rounded-3xl border border-subtle p-6 items-center">
-                <Text className="text-sm font-bold text-content-strong text-center">
-                  We could not load this member&apos;s guides
-                </Text>
-                <Text className="text-xs text-content-muted text-center mt-1.5 leading-relaxed">
-                  {authored.error}
-                </Text>
-                <TouchableOpacity
-                  onPress={authored.refresh}
-                  className="bg-primary-500 px-5 py-2.5 rounded-xl mt-4"
-                  accessibilityRole="button"
-                  accessibilityLabel="Try again"
-                >
-                  <Text className="text-white font-black text-xs">Try again</Text>
-                </TouchableOpacity>
-              </View>
-            ) : authored.isEmpty ? (
-              // The server answered, and the answer was none. Distinguished from
-              // the error branch above on purpose: "nothing published" and "we
-              // could not ask" need different words.
-              <View className="bg-surface-card rounded-3xl border border-subtle p-6 items-center">
-                <Text className="text-3xl mb-1.5" accessibilityElementsHidden importantForAccessibility="no">
-                  📖
-                </Text>
-                <Text className="text-sm font-bold text-content-strong text-center">
-                  Nothing published yet
-                </Text>
-                <Text className="text-xs text-content-muted text-center mt-1.5 leading-relaxed">
-                  This account has no published guides, or none that are visible to you.
-                </Text>
-              </View>
-            ) : (
-              <>
-                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
-                  {/*
-                    `totalCount` is `int?` on the wire and the route declines to
-                    count — so null is **not** zero, and the honest fallback is
-                    the number received rather than a total we do not have.
-                  */}
-                  {authored.totalCount ?? authored.guides.length} guide
-                  {(authored.totalCount ?? authored.guides.length) === 1 ? '' : 's'}
-                </Text>
-
-                {authored.guides.map((guide) => (
-                  <TouchableOpacity
-                    key={guide.guideId}
-                    onPress={() => router.push(`/guide/${guide.guideId}`)}
-                    className="bg-surface-card border border-subtle rounded-2xl p-4 mb-2.5"
-                    accessibilityRole="button"
-                    accessibilityLabel={`Open guide: ${guide.title}`}
-                  >
-                    <Text className="text-sm font-black text-content-primary leading-snug">
-                      {guide.title}
-                    </Text>
-
-                    {guide.excerpt ? (
-                      <Text className="text-xs text-content-muted mt-1.5 leading-relaxed" numberOfLines={2}>
-                        {guide.excerpt}
-                      </Text>
-                    ) : null}
-
-                    <View className="flex-row items-center flex-wrap gap-x-2 gap-y-1 mt-3">
-                      <Text className="text-[10px] font-bold text-content-faint uppercase tracking-wide">
-                        {guide.countryCode}
-                      </Text>
-                      <Text className="text-[10px] text-content-faint">·</Text>
-                      <Text className="text-[10px] font-bold text-content-faint">
-                        {guide.readingTimeMinutes} min read
-                      </Text>
-                      {guide.isVerified && (
-                        <Text className="text-[9px] font-black text-success-default bg-surface-muted px-1.5 py-0.5 rounded">
-                          VERIFIED
-                        </Text>
-                      )}
-                      {guide.isFeatured && (
-                        <Text className="text-[9px] font-black text-primary-500 bg-surface-muted px-1.5 py-0.5 rounded">
-                          FEATURED
-                        </Text>
-                      )}
+              {guidesShown ? (
+                <View className="px-6 pt-5">
+                  <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
+                    {/*
+                      `totalCount` is `int?` on the wire and the route declines to
+                      count — so null is **not** zero, and the honest fallback is
+                      the number received rather than a total we do not have.
+                    */}
+                    {authored.totalCount ?? authored.guides.length} guide
+                    {(authored.totalCount ?? authored.guides.length) === 1 ? '' : 's'}
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          }
+          ListEmptyComponent={
+            guidesShown ? null : (
+              <View className="px-6 py-5">
+                <ListState
+                  loading={authored.isLoading}
+                  skeleton={
+                    <View className="items-center py-12">
+                      <ActivityIndicator color={tokens.color.text.placeholder} />
+                      <Text className="text-xs text-content-faint font-bold mt-3">Loading guides…</Text>
                     </View>
-                  </TouchableOpacity>
-                ))}
-
-                {authored.hasMore && (
-                  <TouchableOpacity
-                    onPress={authored.loadMore}
-                    disabled={authored.isFetchingMore}
-                    className="bg-surface-card border border-subtle rounded-2xl py-3 items-center mt-2"
-                    accessibilityRole="button"
-                    accessibilityLabel="Load more guides"
-                  >
-                    <Text className="text-xs font-black text-primary-500">
-                      {authored.isFetchingMore ? 'Loading…' : 'Load more'}
+                  }
+                  error={
+                    authored.error ? (
+                      <View className="bg-surface-card rounded-3xl border border-subtle p-6 items-center">
+                        <Text className="text-sm font-bold text-content-strong text-center">
+                          We could not load this member&apos;s guides
+                        </Text>
+                        <Text className="text-xs text-content-muted text-center mt-1.5 leading-relaxed">
+                          {authored.error}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={authored.refresh}
+                          className="bg-primary-500 px-5 py-2.5 rounded-xl mt-4"
+                          accessibilityRole="button"
+                          accessibilityLabel="Try again"
+                        >
+                          <Text className="text-white font-black text-xs">Try again</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null
+                  }
+                >
+                  {/* The server answered, and the answer was none. Distinguished from
+                      the error branch above on purpose: "nothing published" and "we
+                      could not ask" need different words. */}
+                  <View className="bg-surface-card rounded-3xl border border-subtle p-6 items-center">
+                    <Text className="text-3xl mb-1.5" accessibilityElementsHidden importantForAccessibility="no">
+                      📖
                     </Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </View>
+                    <Text className="text-sm font-bold text-content-strong text-center">
+                      Nothing published yet
+                    </Text>
+                    <Text className="text-xs text-content-muted text-center mt-1.5 leading-relaxed">
+                      This account has no published guides, or none that are visible to you.
+                    </Text>
+                  </View>
+                </ListState>
+              </View>
+            )
+          }
+          ListFooterComponent={
+            <>
+              {guidesShown ? (
+                <View className="px-6 pb-5">
+                  {authored.hasMore && (
+                    <TouchableOpacity
+                      onPress={authored.loadMore}
+                      disabled={authored.isFetchingMore}
+                      className="bg-surface-card border border-subtle rounded-2xl py-3 items-center mt-2"
+                      accessibilityRole="button"
+                      accessibilityLabel="Load more guides"
+                    >
+                      <Text className="text-xs font-black text-primary-500">
+                        {authored.isFetchingMore ? 'Loading…' : 'Load more'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : null}
 
-          <View className="h-8" />
-        </ScrollEndScrollView>
+              <View className="h-8" />
+            </>
+          }
+        />
       )}
     </SafeAreaView>
   );

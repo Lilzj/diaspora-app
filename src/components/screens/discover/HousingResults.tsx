@@ -1,50 +1,59 @@
 // Discover: the Housing tab's results.
-// Lifted out of `app/(tabs)/discover.tsx` (FSOLID-001), which composes it.
+// Lifted out of `app/(tabs)/discover.tsx` (FSOLID-001), which composes it. The
+// screen's one virtualised list draws the rows, each a `HousingCard`
+// (FARCH-004, 27 Nov 2026); this file gives it the notes above the rows, what
+// the list says in place of rows, and the next page below them.
 
 import React from 'react';
-import { View, Text } from 'react-native';
-import { HousingCard } from '@/components/HousingCard';
+import { Text } from 'react-native';
 import { ListState } from '@/components/ListState';
 import { ShowMoreButton, couldNotLoad, noMatch } from '@/components/screens/discover/ResultStates';
 import type { ListingSearches } from '@/components/screens/discover/useListingSearches';
 import type { OriginFilter } from '@/components/screens/discover/useOriginFilter';
 import type { DiscoverSearch } from '@/components/screens/discover/useDiscoverSearch';
 
-interface HousingResultsProps {
-  listings: ListingSearches;
-  origin: OriginFilter;
-  search: DiscoverSearch;
+/** Whether the tab says it could not ask, in place of its rows. */
+export function housingFailed({ housingError }: ListingSearches): boolean {
+  return Boolean(housingError);
 }
 
-export function HousingResults({ listings, origin, search }: HousingResultsProps) {
-  const {
-    housingError, housingCursor, housingMore, loadMoreHousing, housingDistanceNote, refresh,
-  } = listings;
-  const { displayedHousingListings, housingRatingNote } = origin;
-  const { emptyStatePlace } = search;
+/** Above the rows: how far the distances reach, and what the ratings mean. */
+export function HousingNotes({ listings, origin }: { listings: ListingSearches; origin: OriginFilter }) {
+  const { housingDistanceNote } = listings;
+  const { housingRatingNote } = origin;
 
   return (
-    <View>
+    <>
       {housingDistanceNote ? (
         <Text className="text-xs text-content-secondary mb-3">{housingDistanceNote}</Text>
       ) : null}
       {housingRatingNote ? (
         <Text className="text-xs text-content-secondary mb-3">{housingRatingNote}</Text>
       ) : null}
-      {/* The screen's pull re-runs this read, so its error says so as well as offering the button. */}
-      <ListState
-        error={housingError ? couldNotLoad('homes & housing', housingError, true) : null}
-        onRetry={refresh}
-        isEmpty={displayedHousingListings.length === 0}
-        empty={noMatch('homes & housing', emptyStatePlace)}
-      >
-        {displayedHousingListings.map((item) => (
-          <HousingCard key={item.id} listing={item} />
-        ))}
-      </ListState>
-      {housingCursor ? (
-        <ShowMoreButton label="Show more homes" state={housingMore} onPress={loadMoreHousing} />
-      ) : null}
-    </View>
+    </>
   );
+}
+
+/** In place of the rows. The screen's pull re-runs this read, so its error says so as well as offering the button. */
+export function HousingState({ listings, origin, search }: { listings: ListingSearches; origin: OriginFilter; search: DiscoverSearch }) {
+  const { housingError, refresh } = listings;
+  const { displayedHousingListings } = origin;
+  const { emptyStatePlace } = search;
+
+  return (
+    <ListState
+      error={housingError ? couldNotLoad('homes & housing', housingError, true) : null}
+      onRetry={refresh}
+      isEmpty={displayedHousingListings.length === 0}
+      empty={noMatch('homes & housing', emptyStatePlace)}
+    />
+  );
+}
+
+/** Below the rows: the next page, on request. */
+export function HousingMore({ listings }: { listings: ListingSearches }) {
+  const { housingCursor, housingMore, loadMoreHousing } = listings;
+  return housingCursor ? (
+    <ShowMoreButton label="Show more homes" state={housingMore} onPress={loadMoreHousing} />
+  ) : null;
 }

@@ -29,10 +29,11 @@
 // invalidates the membership set and not just this list.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -75,6 +76,9 @@ function couldHoldIt(member: CommunityMember): boolean {
   if (member.roles.includes('Owner')) return false;
   return member.roles.includes('Moderator') || member.roles.includes('Administrator');
 }
+
+/** Stable, so a list with no candidates to draw is the same empty list on every render. */
+const NO_CANDIDATES: CommunityMember[] = [];
 
 export default function CommunityOwnershipScreen() {
   const bottomInset = useBottomInset();
@@ -202,6 +206,63 @@ export default function CommunityOwnershipScreen() {
       ],
     });
 
+  // Stable, so the list redraws a candidate only when the candidate, or which one
+  // is chosen, changes (FARCH-004). The choice is held by member, so a recycled
+  // row never shows somebody else as chosen.
+  const renderCandidate = useCallback(
+    ({ item: member }: ListRenderItemInfo<CommunityMember>) => {
+      const isChosen = chosen?.userId === member.userId;
+
+      return (
+        <TouchableOpacity
+          accessible
+          accessibilityRole="radio"
+          accessibilityState={{ selected: isChosen }}
+          accessibilityLabel={`Offer the community to ${member.displayName ?? 'this member'}`}
+          testID={`ownership-candidate-${member.userId}`}
+          onPress={() => setChosen(isChosen ? null : member)}
+          style={{
+            backgroundColor: tokens.color.surface.card,
+            borderColor: isChosen
+              ? tokens.color.primary[500]
+              : tokens.color.surface.border,
+          }}
+          className="flex-row items-center rounded-xl border px-3 py-3 mb-2"
+        >
+          <Ionicons
+            name={isChosen ? 'radio-button-on' : 'radio-button-off'}
+            size={18}
+            color={isChosen ? tokens.color.primary[600] : tokens.color.text.placeholder}
+          />
+
+          <View className="flex-1 ml-3">
+            <Text
+              style={{ color: tokens.color.text.primary }}
+              className="text-sm font-black"
+              numberOfLines={1}
+            >
+              {member.displayName ?? 'A member'}
+            </Text>
+            <View className="flex-row flex-wrap mt-1">
+              {rolesForDisplay(member.roles).map((role) => (
+                <View key={role} className="mr-1.5">
+                  <CommunityRoleBadge role={role} size="xs" />
+                </View>
+              ))}
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [chosen, tokens]
+  );
+
+  // The candidates as rows, once they have been read and there are some to offer.
+  const candidateRows =
+    mayHandOver && !members.isLoading && !(members.isError && members.members.length === 0)
+      ? candidates
+      : NO_CANDIDATES;
+
   if (community.isLoading || capabilities.isLoading) {
     return (
       <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
@@ -226,114 +287,124 @@ export default function CommunityOwnershipScreen() {
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
       <ScreenHeader onBack={() => backOr()} title="Hand this community over" />
 
-      <ScrollEndScrollView
+      <ScrollEndFlashList
+        // The candidates page, so the list recycles its rows rather than keeping
+        // every page mounted (FARCH-004, 27 Nov 2026). The offers waiting on this
+        // member, and what the owner is asked to do, are its header.
+        data={candidateRows}
+        keyExtractor={(member) => member.userId}
+        renderItem={renderCandidate}
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}
-      >
-        {/* ── Offers waiting on this member's answer ────────────────────── */}
-        {/* Through the shared list state (FARCH-007, 27 Nov 2026): a failed read
-            is said where the offers would be, not at the foot of the screen, and
-            an empty list still draws nothing. */}
-        <ListState
-          loading={offers.isLoading}
-          loadingLabel="Loading the offers waiting on you"
-          error={
-            offers.isError && offers.offers.length === 0
-              ? {
-                  title: 'We could not read the offers waiting on you.',
-                  message: 'This is not the same as there being none.',
-                }
-              : null
-          }
-          onRetry={() => void offers.refetch()}
-        >
-          {waitingOnMe.length > 0 ? (
-            <View className="mb-6">
-              <Text
-                accessibilityRole="header"
-                style={{ color: tokens.color.text.primary }}
-                className="text-sm font-black mb-2"
-              >
-                {waitingOnMe.length === 1 ? 'You have been asked to take over a community' : 'You have been asked to take over these communities'}
-              </Text>
-
-              {waitingOnMe.map((item) => (
-                <View
-                  key={item.id}
-                  testID={`ownership-offer-${item.id}`}
-                  style={{
-                    backgroundColor: tokens.color.surface.card,
-                    borderColor: tokens.color.primary[500],
-                  }}
-                  className="rounded-2xl border p-4 mb-2"
-                >
-                  <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
-                    {item.communityName}
-                  </Text>
-                  <Text
-                    style={{ color: tokens.color.text.secondary }}
-                    className="text-[11px] font-semibold mt-0.5"
-                  >
-                    Offered by {item.offeredByName ?? 'its owner'} · answer by {formatDate(item.expiresAt)}
-                  </Text>
-
-                  {item.message ? (
-                    <Text
-                      style={{ color: tokens.color.text.secondary }}
-                      className="text-xs font-semibold leading-relaxed mt-2"
-                    >
-                      “{item.message}”
-                    </Text>
-                  ) : null}
-
-                  <View className="flex-row mt-3">
-                    <TouchableOpacity
-                      accessible
-                      accessibilityRole="button"
-                      accessibilityLabel={`Accept ${item.communityName}`}
-                      disabled={decide.isPending}
-                      onPress={() => answer(item, true)}
-                      style={{ backgroundColor: tokens.color.primary[600], opacity: decide.isPending ? 0.6 : 1 }}
-                      className="flex-1 rounded-xl px-4 py-2.5 items-center mr-2"
-                    >
-                      <Text className="text-xs font-black" style={{ color: '#ffffff' }}>
-                        Accept
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      accessible
-                      accessibilityRole="button"
-                      accessibilityLabel={`Decline ${item.communityName}`}
-                      disabled={decide.isPending}
-                      onPress={() => answer(item, false)}
-                      style={{ borderColor: tokens.color.border.default }}
-                      className="flex-1 rounded-xl border px-4 py-2.5 items-center"
-                    >
-                      <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-black">
-                        Decline
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : null}
-        </ListState>
-
-        {/* ── The owner's side ──────────────────────────────────────────── */}
-        {mayHandOver ? (
-          <View>
-            <Text
-              style={{ color: tokens.color.text.secondary }}
-              className="text-xs font-semibold leading-relaxed mb-3"
+        ListHeaderComponent={
+          <>
+            {/* ── Offers waiting on this member's answer ────────────────────── */}
+            {/* Through the shared list state (FARCH-007, 27 Nov 2026): a failed read
+                is said where the offers would be, not at the foot of the screen, and
+                an empty list still draws nothing. */}
+            <ListState
+              loading={offers.isLoading}
+              loadingLabel="Loading the offers waiting on you"
+              error={
+                offers.isError && offers.offers.length === 0
+                  ? {
+                      title: 'We could not read the offers waiting on you.',
+                      message: 'This is not the same as there being none.',
+                    }
+                  : null
+              }
+              onRetry={() => void offers.refetch()}
             >
-              Choose a moderator or administrator to offer {community.data?.name ?? 'this community'}{' '}
-              to. They are notified, and they decide — nothing changes until
-              they accept. If they accept, you stay on as an administrator.
-            </Text>
+              {waitingOnMe.length > 0 ? (
+                <View className="mb-6">
+                  <Text
+                    accessibilityRole="header"
+                    style={{ color: tokens.color.text.primary }}
+                    className="text-sm font-black mb-2"
+                  >
+                    {waitingOnMe.length === 1 ? 'You have been asked to take over a community' : 'You have been asked to take over these communities'}
+                  </Text>
 
-            {/* Through the shared list state (FARCH-007, 27 Nov 2026). A failed
-                read keeps the community panel, which now offers "Try again". */}
+                  {waitingOnMe.map((item) => (
+                    <View
+                      key={item.id}
+                      testID={`ownership-offer-${item.id}`}
+                      style={{
+                        backgroundColor: tokens.color.surface.card,
+                        borderColor: tokens.color.primary[500],
+                      }}
+                      className="rounded-2xl border p-4 mb-2"
+                    >
+                      <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
+                        {item.communityName}
+                      </Text>
+                      <Text
+                        style={{ color: tokens.color.text.secondary }}
+                        className="text-[11px] font-semibold mt-0.5"
+                      >
+                        Offered by {item.offeredByName ?? 'its owner'} · answer by {formatDate(item.expiresAt)}
+                      </Text>
+
+                      {item.message ? (
+                        <Text
+                          style={{ color: tokens.color.text.secondary }}
+                          className="text-xs font-semibold leading-relaxed mt-2"
+                        >
+                          “{item.message}”
+                        </Text>
+                      ) : null}
+
+                      <View className="flex-row mt-3">
+                        <TouchableOpacity
+                          accessible
+                          accessibilityRole="button"
+                          accessibilityLabel={`Accept ${item.communityName}`}
+                          disabled={decide.isPending}
+                          onPress={() => answer(item, true)}
+                          style={{ backgroundColor: tokens.color.primary[600], opacity: decide.isPending ? 0.6 : 1 }}
+                          className="flex-1 rounded-xl px-4 py-2.5 items-center mr-2"
+                        >
+                          <Text className="text-xs font-black" style={{ color: '#ffffff' }}>
+                            Accept
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          accessible
+                          accessibilityRole="button"
+                          accessibilityLabel={`Decline ${item.communityName}`}
+                          disabled={decide.isPending}
+                          onPress={() => answer(item, false)}
+                          style={{ borderColor: tokens.color.border.default }}
+                          className="flex-1 rounded-xl border px-4 py-2.5 items-center"
+                        >
+                          <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-black">
+                            Decline
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </ListState>
+
+            {/* ── The owner's side ──────────────────────────────────────────── */}
+            {mayHandOver ? (
+              <Text
+                style={{ color: tokens.color.text.secondary }}
+                className="text-xs font-semibold leading-relaxed mb-3"
+              >
+                Choose a moderator or administrator to offer {community.data?.name ?? 'this community'}{' '}
+                to. They are notified, and they decide — nothing changes until
+                they accept. If they accept, you stay on as an administrator.
+              </Text>
+            ) : null}
+          </>
+        }
+        ListEmptyComponent={
+          mayHandOver ? (
+            // Through the shared list state (FARCH-007, 27 Nov 2026). A failed
+            // read keeps the community panel, which now offers "Try again".
             <ListState
               loading={members.isLoading}
               loadingLabel="Loading the members"
@@ -358,141 +429,98 @@ export default function CommunityOwnershipScreen() {
                   onPress: () => router.push(`/community/${slug}/members` as never),
                 },
               }}
-            >
-              <>
-                {candidates.map((member) => {
-                  const isChosen = chosen?.userId === member.userId;
-
-                  return (
-                    <TouchableOpacity
-                      key={member.userId}
-                      accessible
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: isChosen }}
-                      accessibilityLabel={`Offer the community to ${member.displayName ?? 'this member'}`}
-                      testID={`ownership-candidate-${member.userId}`}
-                      onPress={() => setChosen(isChosen ? null : member)}
-                      style={{
-                        backgroundColor: tokens.color.surface.card,
-                        borderColor: isChosen
-                          ? tokens.color.primary[500]
-                          : tokens.color.surface.border,
-                      }}
-                      className="flex-row items-center rounded-xl border px-3 py-3 mb-2"
-                    >
-                      <Ionicons
-                        name={isChosen ? 'radio-button-on' : 'radio-button-off'}
-                        size={18}
-                        color={isChosen ? tokens.color.primary[600] : tokens.color.text.placeholder}
-                      />
-
-                      <View className="flex-1 ml-3">
-                        <Text
-                          style={{ color: tokens.color.text.primary }}
-                          className="text-sm font-black"
-                          numberOfLines={1}
-                        >
-                          {member.displayName ?? 'A member'}
-                        </Text>
-                        <View className="flex-row flex-wrap mt-1">
-                          {rolesForDisplay(member.roles).map((role) => (
-                            <View key={role} className="mr-1.5">
-                              <CommunityRoleBadge role={role} size="xs" />
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-
-                {members.hasMore ? (
-                  <TouchableOpacity
-                    accessible
-                    accessibilityRole="button"
-                    onPress={members.loadMore}
-                    className="items-center py-3"
-                  >
-                    {members.isFetchingMore ? (
-                      <ActivityIndicator color={tokens.color.primary[500]} />
-                    ) : (
-                      <Text style={{ color: tokens.color.primary[600] }} className="text-xs font-black">
-                        Show more members
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                ) : null}
-
-                {chosen ? (
-                  <View className="mt-3">
-                    <Text
-                      style={{ color: tokens.color.text.primary }}
-                      className="text-xs font-bold mb-1"
-                      nativeID="ownership-message"
-                    >
-                      A note for {chosen.displayName ?? 'them'} (optional)
-                    </Text>
-                    <TextInput
-                      accessibilityLabel="A note to send with the offer, optional"
-                      accessibilityLabelledBy="ownership-message"
-                      value={message}
-                      onChangeText={setMessage}
-                      multiline
-                      numberOfLines={4}
-                      maxLength={MAX_MESSAGE}
-                      placeholder="Why you are asking them, and anything they should know before they answer."
-                      placeholderTextColor={tokens.color.text.placeholder}
-                      style={{
-                        backgroundColor: tokens.color.surface.card,
-                        borderColor: tokens.color.border.default,
-                        color: tokens.color.text.primary,
-                        minHeight: 96,
-                        textAlignVertical: 'top',
-                      }}
-                      className="rounded-2xl border px-3 py-3 text-sm font-semibold"
-                    />
-
-                    <TouchableOpacity
-                      accessible
-                      accessibilityRole="button"
-                      accessibilityLabel="Send the offer"
-                      testID="ownership-offer-submit"
-                      disabled={offer.isPending}
-                      onPress={send}
-                      style={{
-                        backgroundColor: tokens.color.primary[600],
-                        opacity: offer.isPending ? 0.6 : 1,
-                      }}
-                      className="rounded-2xl px-4 py-3.5 mt-3 items-center"
-                    >
-                      {offer.isPending ? (
-                        <ActivityIndicator color="#ffffff" />
-                      ) : (
-                        <Text className="text-sm font-black" style={{ color: '#ffffff' }}>
-                          Offer it to {chosen.displayName ?? 'them'}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                ) : null}
-
+            />
+          ) : null
+        }
+        ListFooterComponent={
+          candidateRows.length > 0 ? (
+            <>
+              {members.hasMore ? (
                 <TouchableOpacity
                   accessible
                   accessibilityRole="button"
-                  accessibilityLabel="Take back an offer that is already open"
-                  disabled={withdrawOffer.isPending}
-                  onPress={takeBack}
-                  className="items-center py-4 mt-1"
+                  onPress={members.loadMore}
+                  className="items-center py-3"
                 >
-                  <Text style={{ color: tokens.color.text.secondary }} className="text-[11px] font-black">
-                    Take back an offer I already made
-                  </Text>
+                  {members.isFetchingMore ? (
+                    <ActivityIndicator color={tokens.color.primary[500]} />
+                  ) : (
+                    <Text style={{ color: tokens.color.primary[600] }} className="text-xs font-black">
+                      Show more members
+                    </Text>
+                  )}
                 </TouchableOpacity>
-              </>
-            </ListState>
-          </View>
-        ) : null}
-      </ScrollEndScrollView>
+              ) : null}
+
+              {chosen ? (
+                <View className="mt-3">
+                  <Text
+                    style={{ color: tokens.color.text.primary }}
+                    className="text-xs font-bold mb-1"
+                    nativeID="ownership-message"
+                  >
+                    A note for {chosen.displayName ?? 'them'} (optional)
+                  </Text>
+                  <TextInput
+                    accessibilityLabel="A note to send with the offer, optional"
+                    accessibilityLabelledBy="ownership-message"
+                    value={message}
+                    onChangeText={setMessage}
+                    multiline
+                    numberOfLines={4}
+                    maxLength={MAX_MESSAGE}
+                    placeholder="Why you are asking them, and anything they should know before they answer."
+                    placeholderTextColor={tokens.color.text.placeholder}
+                    style={{
+                      backgroundColor: tokens.color.surface.card,
+                      borderColor: tokens.color.border.default,
+                      color: tokens.color.text.primary,
+                      minHeight: 96,
+                      textAlignVertical: 'top',
+                    }}
+                    className="rounded-2xl border px-3 py-3 text-sm font-semibold"
+                  />
+
+                  <TouchableOpacity
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel="Send the offer"
+                    testID="ownership-offer-submit"
+                    disabled={offer.isPending}
+                    onPress={send}
+                    style={{
+                      backgroundColor: tokens.color.primary[600],
+                      opacity: offer.isPending ? 0.6 : 1,
+                    }}
+                    className="rounded-2xl px-4 py-3.5 mt-3 items-center"
+                  >
+                    {offer.isPending ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text className="text-sm font-black" style={{ color: '#ffffff' }}>
+                        Offer it to {chosen.displayName ?? 'them'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Take back an offer that is already open"
+                disabled={withdrawOffer.isPending}
+                onPress={takeBack}
+                className="items-center py-4 mt-1"
+              >
+                <Text style={{ color: tokens.color.text.secondary }} className="text-[11px] font-black">
+                  Take back an offer I already made
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : null
+        }
+      />
     </SafeAreaView>
   );
 }

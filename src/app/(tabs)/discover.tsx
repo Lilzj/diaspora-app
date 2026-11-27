@@ -53,7 +53,8 @@
 //                  and `amenities`, and neither is a category list
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { View, ScrollView } from 'react-native';
+import { View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // Hyperlocal Discovery Engine Integrations
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
@@ -94,7 +95,17 @@ import { RadiusControl } from '@/components/screens/discover/RadiusControl';
 import { SearchSuggestions } from '@/components/screens/discover/SearchSuggestions';
 import { CategoryChips } from '@/components/screens/discover/CategoryChips';
 import { MapPreview } from '@/components/screens/discover/MapPreview';
-import { DiscoverResults } from '@/components/screens/discover/DiscoverResults';
+import {
+  DiscoverResultsEmpty,
+  DiscoverResultsFooter,
+  DiscoverResultsHeader,
+} from '@/components/screens/discover/DiscoverResults';
+import {
+  discoverRowKey,
+  discoverRowType,
+  renderDiscoverRow,
+  useDiscoverRows,
+} from '@/components/screens/discover/DiscoverRows';
 import { DiscoverFilterSheet } from '@/components/screens/discover/DiscoverFilterSheet';
 
 export default function DiscoverScreen() {
@@ -114,6 +125,8 @@ export default function DiscoverScreen() {
   const guides = useGuideTab(search);
   const categories = useDiscoverCategories(search);
   const map = useMapPins(search, origin);
+  const results = { categories, guides, jobs, listings, origin, providers, search, view };
+  const rows = useDiscoverRows(results);
 
   const { searchQuery, selectedCategory, activeTab, recentSearches, suggestions } = search;
   const { isLocationSelectorOpen, setIsLocationSelectorOpen, isMapView } = view;
@@ -125,69 +138,66 @@ export default function DiscoverScreen() {
       {/* Search Header Area */}
       <DiscoverHeader search={search} view={view} />
 
-      {/* Main Container */}
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}
+      {/* One virtualised list holds the screen (FARCH-004, 27 Nov 2026): the
+          sections are its header and the tab's rows its data. The tabs drew
+          their rows with `.map()` inside a ScrollView, so every row of every
+          page a member asked for stayed mounted, photograph and all. */}
+      <FlashList
+        data={rows}
+        renderItem={renderDiscoverRow}
+        keyExtractor={discoverRowKey}
+        getItemType={discoverRowType}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}
-        refreshControl={refreshControl}>
-        
-        {/* Tab Row (Providers, Jobs, Housing, Marketplace, Guides, Updates) */}
-        <DiscoverTabRow search={search} />
+        refreshControl={refreshControl}
+        ListHeaderComponent={
+          <>
+            {/* Tab Row (Providers, Jobs, Housing, Marketplace, Guides, Updates) */}
+            <DiscoverTabRow search={search} />
 
-        {/* Frontend Phase 13, §15. The one reusable community filter, on the
-            platform's main discovery surface. Reads and writes the same context
-            store every other community filter in the app does — §15 forbids a
-            separate incompatible filter per feature, and there is only one
-            component to mount. */}
-        <View className="bg-surface-card border-b border-faint mb-2">
-          <CommunityFilterBar compact />
-        </View>
+            {/* Frontend Phase 13, §15. The one reusable community filter, on the
+                platform's main discovery surface. Reads and writes the same context
+                store every other community filter in the app does — §15 forbids a
+                separate incompatible filter per feature, and there is only one
+                component to mount. */}
+            <View className="bg-surface-card border-b border-faint mb-2">
+              <CommunityFilterBar compact />
+            </View>
 
-        {/* §2 / GAP-009. Where a community scope narrowed the list, say so — and
-            say that the narrowing was done by country of origin rather than by a
-            community anybody declared. A list that implied otherwise would be the
-            exact conflation this phase exists to remove. */}
-        {originFilter.source === 'community' ? (
-          <View className="px-4 mb-2">
-            <CommunityScopeNote projection={communityProjection} compact />
-          </View>
-        ) : null}
+            {/* §2 / GAP-009. Where a community scope narrowed the list, say so — and
+                say that the narrowing was done by country of origin rather than by a
+                community anybody declared. A list that implied otherwise would be the
+                exact conflation this phase exists to remove. */}
+            {originFilter.source === 'community' ? (
+              <View className="px-4 mb-2">
+                <CommunityScopeNote projection={communityProjection} compact />
+              </View>
+            ) : null}
 
-        {/* Radius configuration slider */}
-        {activeTab !== 'Guides' && activeTab !== 'Community' && (
-          <RadiusControl search={search} view={view} />
-        )}
+            {/* Radius configuration slider */}
+            {activeTab !== 'Guides' && activeTab !== 'Community' && (
+              <RadiusControl search={search} view={view} />
+            )}
 
-        {/* Suggestions Panel (shown only when query is empty and no category is selected) */}
-        {/* Both lists start empty now, so the panel itself has to be conditional —
-            otherwise a new member gets an empty bordered box with two headings. */}
-        {!searchQuery && !selectedCategory && (recentSearches.length > 0 || suggestions.length > 0) && (
-          <SearchSuggestions search={search} />
-        )}
+            {/* Suggestions Panel (shown only when query is empty and no category is selected) */}
+            {/* Both lists start empty now, so the panel itself has to be conditional —
+                otherwise a new member gets an empty bordered box with two headings. */}
+            {!searchQuery && !selectedCategory && (recentSearches.length > 0 || suggestions.length > 0) && (
+              <SearchSuggestions search={search} />
+            )}
 
-        {/* Category Filters row (mainly for Providers, Jobs, Guides, & Housing) */}
-        {activeTab !== 'Updates' && activeTab !== 'Community' && (
-          <CategoryChips categories={categories} search={search} />
-        )}
+            {/* Category Filters row (mainly for Providers, Jobs, Guides, & Housing) */}
+            {activeTab !== 'Updates' && activeTab !== 'Community' && (
+              <CategoryChips categories={categories} search={search} />
+            )}
 
-
-
-        {/* Map View Simulation */}
-        {isMapView ? (
-          <MapPreview map={map} search={search} />
-        ) : (
-          /* List View Results */
-          <DiscoverResults
-            categories={categories}
-            guides={guides}
-            jobs={jobs}
-            listings={listings}
-            origin={origin}
-            providers={providers}
-            search={search}
-            view={view}
-          />
-        )}
-      </ScrollView>
+            {/* The map draws its own results; the list view draws the tab's notes above its rows. */}
+            {isMapView ? <MapPreview map={map} search={search} /> : <DiscoverResultsHeader {...results} />}
+          </>
+        }
+        ListEmptyComponent={<DiscoverResultsEmpty {...results} />}
+        ListFooterComponent={<DiscoverResultsFooter {...results} />}
+      />
 
       {/* Filter Bottom Sheet Modal */}
       {/* The filter sheet carries four fields, including the price range, and

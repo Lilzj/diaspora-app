@@ -191,7 +191,10 @@ describe('guide/[id].tsx renders the server’s guide', () => {
 
   it('still reads its discussion from Community’s content thread', () => {
     expect(READER).toContain("useContentComments('guide'");
-    expect(READER).toContain('<CommentThread');
+    // Its comments are the rows of the guide's own list since FARCH-004, drawn by
+    // the thread's list hook, with the thread's composer above them.
+    expect(READER).toContain('useCommentThreadList(');
+    expect(READER).toContain('<CommentThreadComposer');
   });
 
   it('still reports through Community’s report sheet', () => {

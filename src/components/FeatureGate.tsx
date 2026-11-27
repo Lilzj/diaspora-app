@@ -12,14 +12,25 @@ interface FeatureGateProps {
   fullScreen?: boolean;
 }
 
+/**
+ * Whether the member may see what the gate guards.
+ *
+ * The predicate is shared with the translation that produces these values, so
+ * the gate and the mapping cannot disagree about what "verified" means. A screen
+ * that cannot wrap what it gates asks this instead: a virtualised list draws its
+ * rows one at a time, so Discover draws the locked card in the list's empty slot
+ * and gives the list no rows (FARCH-004, 27 Nov 2026).
+ */
+export function useCommunityAccess(): boolean {
+  const accountState = useAuthStore((s) => s.user?.accountState) || 'LimitedAccess';
+  return grantsCommunityAccess(accountState);
+}
+
 export function FeatureGate({ children, featureName, fullScreen = true }: FeatureGateProps) {
-  const user = useAuthStore((s) => s.user);
-  const accountState = user?.accountState || 'LimitedAccess';
+  const unlocked = useCommunityAccess();
 
   // If the user has full verified access, render the child component directly.
-  // The predicate is shared with the translation that produces these values, so
-  // the gate and the mapping cannot disagree about what "verified" means.
-  if (grantsCommunityAccess(accountState)) {
+  if (unlocked) {
     return <>{children}</>;
   }
 

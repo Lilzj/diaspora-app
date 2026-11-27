@@ -31,14 +31,26 @@
 // sentences that turned out to be stale are replaced below; the one that did
 // not — activity history, which really has no read route — is marked as
 // re-checked so the next sweep does not have to re-derive it.
+//
+// ── The one list here that pages (FARCH-004, 27 Nov 2026) ────────────────────
+//
+// The Timeline Log asks for its history a page at a time, and it was drawn with
+// `.map()` inside the screen's ScrollView, so every page a member asked for
+// stayed mounted. The screen is one FlashList now, and `useWorkspaceSection`
+// gives it the two parts: the section as it always was, above the rows
+// (`WorkspaceSectionHeader`), and the list, whose rows are the Timeline Log's
+// while it is the view in front. Everything else here is read in one go and is
+// drawn as it was.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 
 import { useAuthStore } from '@/store/auth';
 
+import type { ScreenList } from '@/components/layout/screen-list';
 import { ArchiveCard } from '@/components/creator/ArchiveCard';
 import { BulkActionToolbar } from '@/components/creator/BulkActionToolbar';
 import { CommentManagementModal } from '@/components/creator/CommentManagementModal';
@@ -55,27 +67,220 @@ import { useCreatorDraftStore } from '@/store/creator-draft';
 import { useDeviceDrafts } from '@/lib/platform/device-drafts';
 import { useCreatorTimelineStore } from '@/store/creator-timeline';
 import { useCreatorWorkspaceStore } from '@/store/creator-workspace';
-import type { UnifiedContentItem } from '@/types/creator';
+import type { CreatorTimelineEvent, UnifiedContentItem } from '@/types/creator';
 
-interface WorkspaceSectionProps {
+type WorkspaceView = 'grid' | 'timeline';
+
+/** Stable, so a timeline that is not in view is the same empty list on every render. */
+const NO_EVENTS: CreatorTimelineEvent[] = [];
+
+const eventKey = (event: CreatorTimelineEvent) => event.id;
+
+interface WorkspaceSectionOptions {
   /** Raised so the host screen can open the health centre from elsewhere. */
   onOpenHealthCentre?: () => void;
 }
 
-export function WorkspaceSection({ onOpenHealthCentre }: WorkspaceSectionProps) {
+/** The section, as the two parts the screen it sits in draws. */
+export interface WorkspaceSectionParts {
+  /** Everything above the Timeline Log's rows: null while another section is open. */
+  header: React.ReactNode;
+  /** The screen's list: the Timeline Log's rows while it is the view in front, and none otherwise. */
+  list: ScreenList<CreatorTimelineEvent>;
+}
+
+export function useWorkspaceSection(
+  active: boolean,
+  { onOpenHealthCentre }: WorkspaceSectionOptions = {}
+): WorkspaceSectionParts {
+  const user = useAuthStore((state) => state.user);
+  const timelineStore = useCreatorTimelineStore();
+  const activeCategory = useCreatorWorkspaceStore((state) => state.activeCategory);
+  const contentItems = useContentManagementStore((state) => state.items);
+
+  // Local, as it was: the store holds filters and selection, not the view
+  // toggle, and the toggle is a per-visit preference rather than app state.
+  const [viewMode, setViewMode] = useState<WorkspaceView>('grid');
+  const [selectedQuickActionItem, setSelectedQuickActionItem] = useState<UnifiedContentItem | null>(null);
+
+  // ── Per visit, still ──────────────────────────────────────────────────────
+  //
+  // These two lived in the section's own component, which unmounted when the
+  // member opened another section, so every visit began in Cards View with no
+  // item menu open. They are held here now, because the screen's list draws the
+  // timeline's rows, and leaving the section clears them as unmounting did.
+  const [visiting, setVisiting] = useState(active);
+  if (visiting !== active) {
+    setVisiting(active);
+    setViewMode('grid');
+    setSelectedQuickActionItem(null);
+  }
+
+  // A timeline entry opens the menu of the item it is about.
+  const openItemActions = useCallback(
+    (contentId: string) => {
+      const target = contentItems.find((i) => i.id === contentId);
+      if (target) setSelectedQuickActionItem(target);
+    },
+    [contentItems]
+  );
+
+  // One entry. Stable, so the list redraws a row only when its entry changes.
+  const renderEvent = useCallback(
+    ({ item }: ListRenderItemInfo<CreatorTimelineEvent>) => (
+      <View className="px-5">
+        <TimelineItem event={item} onPressContent={openItemActions} />
+      </View>
+    ),
+    [openItemActions]
+  );
+
+  const showsTimeline =
+    active && viewMode === 'timeline' && activeCategory !== 'drafts' && activeCategory !== 'archived';
+
+  return {
+    header: active ? (
+      <WorkspaceSectionHeader
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        selectedQuickActionItem={selectedQuickActionItem}
+        setSelectedQuickActionItem={setSelectedQuickActionItem}
+        onOpenHealthCentre={onOpenHealthCentre}
+      />
+    ) : null,
+    list: {
+      data: showsTimeline ? timelineStore.events : NO_EVENTS,
+      keyExtractor: eventKey,
+      renderItem: renderEvent,
+      // In place of the entries: the first read, or a history with nothing in it.
+      ListEmptyComponent: showsTimeline ? (
+        <View className="px-5">
+          {/*
+            The timeline used to be `mockTimelineEvents` — a fabricated
+            history of publications, status changes and milestones on every
+            account. The platform does record real activity
+            (`CreatorActivityEntry`) and serves no route to read it back, so
+            the log is empty and says which of those two things is the
+            problem.
+          */}
+          {/*
+            Four states, and they are four because an empty list on this
+            screen is genuinely ambiguous.
+
+            The sentence that used to stand here — "Diaspora cannot show your
+            activity history yet … the platform records what you publish, but
+            serves no route to read that history back" — was true when written
+            and was the last true one in this file. BG-06 closed it:
+            `GET /creators/me/activity` is cursor-paged, newest first, and the
+            store reads it.
+
+            `isCreator` is what separates the two empty states. "You have not
+            started publishing" and "nothing you have done is recognised yet"
+            are different sentences and an empty array cannot tell them apart,
+            which is why the route carries the flag.
+          */}
+          {timelineStore.isLoading && timelineStore.events.length === 0 && (
+            <View className="items-center py-10 bg-surface-card border border-subtle rounded-3xl p-6">
+              <ActivityIndicator />
+              <Text className="text-[11px] text-content-muted text-center mt-3">
+                Reading your activity history…
+              </Text>
+            </View>
+          )}
+
+          {!timelineStore.isLoading
+            && !timelineStore.isUnavailable
+            && timelineStore.events.length === 0 && (
+            <View className="items-center py-10 bg-surface-card border border-subtle rounded-3xl p-6">
+              <Text className="text-3xl mb-2">🕓</Text>
+              <Text className="text-xs font-bold text-content-strong text-center">
+                {timelineStore.isCreator
+                  ? 'Nothing recognised yet'
+                  : 'Your history starts with your first publication'}
+              </Text>
+              <Text className="text-[11px] text-content-muted text-center leading-relaxed mt-1 max-w-[280px]">
+                {timelineStore.isCreator
+                  ? 'Diaspora records publishing, hosting and contributing. Nothing you '
+                    + 'have done has been recognised yet — it appears here as soon as it is.'
+                  : 'Publish a guide, list something, post an event or write an update, and '
+                    + 'it appears here.'}
+              </Text>
+            </View>
+          )}
+        </View>
+      ) : null,
+      // After the entries, or in their place: a read that failed, and the next page.
+      ListFooterComponent: showsTimeline ? (
+        <View className="px-5">
+          {!timelineStore.isLoading && timelineStore.isUnavailable && (
+            <View className="items-center py-10 bg-surface-card border border-subtle rounded-3xl p-6">
+              <Text className="text-3xl mb-2">⚠️</Text>
+              <Text className="text-xs font-bold text-content-strong text-center">
+                Your activity history could not be loaded
+              </Text>
+              <Text className="text-[11px] text-content-muted text-center leading-relaxed mt-1 max-w-[280px]">
+                {timelineStore.unavailableReason}
+              </Text>
+              <TouchableOpacity
+                onPress={() => timelineStore.load(user?.fullName ?? '')}
+                accessibilityRole="button"
+                accessibilityLabel="Try loading your activity history again"
+                className="mt-4 px-4 py-2 rounded-full bg-surface-elevated border border-subtle"
+              >
+                <Text className="text-[11px] font-bold text-content-strong">Try again</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {timelineStore.hasMore && timelineStore.events.length > 0 && (
+            <TouchableOpacity
+              onPress={() => timelineStore.loadMore(user?.fullName ?? '')}
+              disabled={timelineStore.isLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Load more activity"
+              className="items-center py-3 mt-2 rounded-2xl bg-surface-card border border-subtle"
+            >
+              <Text className="text-[11px] font-bold text-content-strong">
+                {timelineStore.isLoading ? 'Loading…' : 'Show earlier activity'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : null,
+    },
+  };
+}
+
+interface WorkspaceSectionHeaderProps {
+  viewMode: WorkspaceView;
+  setViewMode: (view: WorkspaceView) => void;
+  /** The item whose menu is open. The screen holds it, since a timeline row opens it too. */
+  selectedQuickActionItem: UnifiedContentItem | null;
+  setSelectedQuickActionItem: (item: UnifiedContentItem | null) => void;
+  /** Raised so the host screen can open the health centre from elsewhere. */
+  onOpenHealthCentre?: () => void;
+}
+
+/**
+ * The section as it always was, above the Timeline Log's rows: the chips, the
+ * search, the draft and archive centres, the cards, and the section's sheets.
+ * Mounted while the section is open, as the whole section used to be.
+ */
+function WorkspaceSectionHeader({
+  viewMode,
+  setViewMode,
+  selectedQuickActionItem,
+  setSelectedQuickActionItem,
+  onOpenHealthCentre,
+}: WorkspaceSectionHeaderProps) {
   const workspaceStore = useCreatorWorkspaceStore();
   const contentStore = useContentManagementStore();
   const draftStore = useCreatorDraftStore();
   // Unfinished business, home and marketplace wizards, kept on this phone (14 Oct 2026).
   const deviceDrafts = useDeviceDrafts();
-  const timelineStore = useCreatorTimelineStore();
 
-  // Local, as it was: the store holds filters and selection, not the view
-  // toggle, and the toggle is a per-visit preference rather than app state.
-  const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isHealthCenterOpen, setIsHealthCenterOpen] = useState(false);
-  const [selectedQuickActionItem, setSelectedQuickActionItem] = useState<UnifiedContentItem | null>(null);
   const [selectedCommentItem, setSelectedCommentItem] = useState<UnifiedContentItem | null>(null);
   const [selectedInsightItem, setSelectedInsightItem] = useState<UnifiedContentItem | null>(null);
 
@@ -438,124 +643,22 @@ export function WorkspaceSection({ onOpenHealthCentre }: WorkspaceSectionProps) 
         </View>
       )}
 
-      {/* Published content */}
-      {workspaceStore.activeCategory !== 'drafts' && workspaceStore.activeCategory !== 'archived' && (
+      {/* Published content. The Timeline Log's rows are the screen's list, below (FARCH-004). */}
+      {workspaceStore.activeCategory !== 'drafts' && workspaceStore.activeCategory !== 'archived' && viewMode === 'grid' && (
         <View>
-          {viewMode === 'grid' ? (
-            filteredContentItems.map((item: UnifiedContentItem) => (
-              <ContentCard
-                key={item.id}
-                item={item}
-                isMultiSelectMode={workspaceStore.isMultiSelectMode}
-                isSelected={workspaceStore.selectedItemIds.includes(item.id)}
-                onToggleSelect={(id) => workspaceStore.toggleSelectItem(id)}
-                onOpenQuickActions={(target) => setSelectedQuickActionItem(target)}
-                onOpenHealthModal={openHealthCentre}
-                onOpenComments={(target) => setSelectedCommentItem(target)}
-                onCardPress={(target) => setSelectedInsightItem(target)}
-              />
-            ))
-          ) : (
-            <View>
-              {timelineStore.events.map((evt) => (
-                <TimelineItem
-                  key={evt.id}
-                  event={evt}
-                  onPressContent={(cid) => {
-                    const target = contentStore.items.find((i) => i.id === cid);
-                    if (target) setSelectedQuickActionItem(target);
-                  }}
-                />
-              ))}
-
-              {/*
-                The timeline used to be `mockTimelineEvents` — a fabricated
-                history of publications, status changes and milestones on every
-                account. The platform does record real activity
-                (`CreatorActivityEntry`) and serves no route to read it back, so
-                the log is empty and says which of those two things is the
-                problem.
-              */}
-              {/*
-                Four states, and they are four because an empty list on this
-                screen is genuinely ambiguous.
-
-                The sentence that used to stand here — "Diaspora cannot show your
-                activity history yet … the platform records what you publish, but
-                serves no route to read that history back" — was true when written
-                and was the last true one in this file. BG-06 closed it:
-                `GET /creators/me/activity` is cursor-paged, newest first, and the
-                store reads it.
-
-                `isCreator` is what separates the two empty states. "You have not
-                started publishing" and "nothing you have done is recognised yet"
-                are different sentences and an empty array cannot tell them apart,
-                which is why the route carries the flag.
-              */}
-              {timelineStore.isLoading && timelineStore.events.length === 0 && (
-                <View className="items-center py-10 bg-surface-card border border-subtle rounded-3xl p-6">
-                  <ActivityIndicator />
-                  <Text className="text-[11px] text-content-muted text-center mt-3">
-                    Reading your activity history…
-                  </Text>
-                </View>
-              )}
-
-              {!timelineStore.isLoading && timelineStore.isUnavailable && (
-                <View className="items-center py-10 bg-surface-card border border-subtle rounded-3xl p-6">
-                  <Text className="text-3xl mb-2">⚠️</Text>
-                  <Text className="text-xs font-bold text-content-strong text-center">
-                    Your activity history could not be loaded
-                  </Text>
-                  <Text className="text-[11px] text-content-muted text-center leading-relaxed mt-1 max-w-[280px]">
-                    {timelineStore.unavailableReason}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => timelineStore.load(user?.fullName ?? '')}
-                    accessibilityRole="button"
-                    accessibilityLabel="Try loading your activity history again"
-                    className="mt-4 px-4 py-2 rounded-full bg-surface-elevated border border-subtle"
-                  >
-                    <Text className="text-[11px] font-bold text-content-strong">Try again</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {!timelineStore.isLoading
-                && !timelineStore.isUnavailable
-                && timelineStore.events.length === 0 && (
-                <View className="items-center py-10 bg-surface-card border border-subtle rounded-3xl p-6">
-                  <Text className="text-3xl mb-2">🕓</Text>
-                  <Text className="text-xs font-bold text-content-strong text-center">
-                    {timelineStore.isCreator
-                      ? 'Nothing recognised yet'
-                      : 'Your history starts with your first publication'}
-                  </Text>
-                  <Text className="text-[11px] text-content-muted text-center leading-relaxed mt-1 max-w-[280px]">
-                    {timelineStore.isCreator
-                      ? 'Diaspora records publishing, hosting and contributing. Nothing you '
-                        + 'have done has been recognised yet — it appears here as soon as it is.'
-                      : 'Publish a guide, list something, post an event or write an update, and '
-                        + 'it appears here.'}
-                  </Text>
-                </View>
-              )}
-
-              {timelineStore.hasMore && timelineStore.events.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => timelineStore.loadMore(user?.fullName ?? '')}
-                  disabled={timelineStore.isLoading}
-                  accessibilityRole="button"
-                  accessibilityLabel="Load more activity"
-                  className="items-center py-3 mt-2 rounded-2xl bg-surface-card border border-subtle"
-                >
-                  <Text className="text-[11px] font-bold text-content-strong">
-                    {timelineStore.isLoading ? 'Loading…' : 'Show earlier activity'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+          {filteredContentItems.map((item: UnifiedContentItem) => (
+            <ContentCard
+              key={item.id}
+              item={item}
+              isMultiSelectMode={workspaceStore.isMultiSelectMode}
+              isSelected={workspaceStore.selectedItemIds.includes(item.id)}
+              onToggleSelect={(id) => workspaceStore.toggleSelectItem(id)}
+              onOpenQuickActions={(target) => setSelectedQuickActionItem(target)}
+              onOpenHealthModal={openHealthCentre}
+              onOpenComments={(target) => setSelectedCommentItem(target)}
+              onCardPress={(target) => setSelectedInsightItem(target)}
+            />
+          ))}
 
           {filteredContentItems.length === 0 && viewMode === 'grid' && (
             <View className="items-center py-12 bg-surface-card border border-subtle rounded-3xl p-6 my-4">

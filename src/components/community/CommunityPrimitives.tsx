@@ -75,6 +75,8 @@ export function CommunityCover({
     return (
       <Image
         source={{ uri: url }}
+        // Blank, rather than the last row's cover, while a recycled row loads this one.
+        recyclingKey={url}
         style={{ width: '100%', height, borderRadius: radius }}
         contentFit="cover"
         accessibilityIgnoresInvertColors

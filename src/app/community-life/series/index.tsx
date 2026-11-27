@@ -4,11 +4,16 @@
 // Series only. One-time events live in the existing B12 events directory and are
 // reached from there; §58.2 says extend rather than duplicate, and a second
 // events list would be a duplicate.
+//
+// The list pages, so the screen is one FlashList (FARCH-004, 27 Nov 2026): the
+// filters are drawn above the rows, and the rows are recycled as they scroll
+// rather than every page staying mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { router } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { useTheme } from '@/design-system';
 import {
   ChipRow,
@@ -20,6 +25,7 @@ import {
 import { ListState } from '@/components/ListState';
 import { useCommunityAccess, useSeriesList } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
+import type { EventSeries } from '@/types/community-advanced';
 
 const STATUSES = [
   { value: '' as const, label: 'All' },
@@ -27,6 +33,18 @@ const STATUSES = [
   { value: 'Draft' as const, label: 'Drafts' },
   { value: 'Paused' as const, label: 'Paused' },
 ];
+
+/** One series. Module-level, so the list keeps a row until its series changes. */
+function renderSeries({ item }: ListRenderItemInfo<EventSeries>) {
+  return (
+    <View className="px-5 mb-3">
+      <SeriesCard
+        series={item}
+        onPress={() => router.push(`/community-life/series/${item.seriesId}` as never)}
+      />
+    </View>
+  );
+}
 
 export default function SeriesListScreen() {
   const { tokens } = useTheme();
@@ -72,8 +90,55 @@ export default function SeriesListScreen() {
       title="Recurring events"
       subtitle={city && useCity ? `In ${city}` : 'Everywhere'}
       load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
+      list={{
+        data: series,
+        keyExtractor: (item) => item.seriesId,
+        renderItem: renderSeries,
+        // The shell draws the list's loading and error; the list says when it is empty.
+        ListEmptyComponent: (
+          <View className="px-5">
+            <ListState
+              isEmpty
+              empty={{
+                icon: 'repeat-outline',
+                title: 'No recurring events',
+                message:
+                  'Weekly meetups, monthly meetings and fortnightly matches all show up here once somebody sets one up.',
+                action: access.canCreateSeries
+                  ? { label: 'Set one up', onPress: () => router.push('/community-life/series/create') }
+                  : undefined,
+              }}
+            />
+          </View>
+        ),
+        ListFooterComponent: (
+          <View className="px-5">
+            {hasNextPage && series.length > 0 ? (
+              <View className="mt-2 mb-4">
+                {isFetchingNextPage ? (
+                  <View className="py-4 items-center" accessibilityLabel="Loading more">
+                    <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                  </View>
+                ) : (
+                  <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+                )}
+              </View>
+            ) : null}
+
+            {access.canCreateSeries && series.length > 0 ? (
+              <View className="mt-4">
+                <PrimaryButton
+                  label="Create a recurring event"
+                  icon="add"
+                  onPress={() => router.push('/community-life/series/create')}
+                />
+              </View>
+            ) : null}
+          </View>
+        ),
+      }}
     >
-      <View className="px-5 pt-4">
+      <View className="px-5 pt-4 pb-4">
         <ChipRow
           accessibilityLabel="Filter by status"
           options={STATUSES}
@@ -90,53 +155,6 @@ export default function SeriesListScreen() {
               ]}
               value={useCity ? 'city' : 'anywhere'}
               onChange={(value) => setUseCity(value === 'city')}
-            />
-          </View>
-        ) : null}
-      </View>
-
-      <View className="px-5 mt-4">
-        {/* The shell draws the list's loading and error; the list says when it is empty. */}
-        <ListState
-          isEmpty={series.length === 0}
-          empty={{
-            icon: 'repeat-outline',
-            title: 'No recurring events',
-            message:
-              'Weekly meetups, monthly meetings and fortnightly matches all show up here once somebody sets one up.',
-            action: access.canCreateSeries
-              ? { label: 'Set one up', onPress: () => router.push('/community-life/series/create') }
-              : undefined,
-          }}
-        >
-          {series.map((item) => (
-            <View key={item.seriesId} className="mb-3">
-              <SeriesCard
-                series={item}
-                onPress={() => router.push(`/community-life/series/${item.seriesId}` as never)}
-              />
-            </View>
-          ))}
-
-          {hasNextPage ? (
-            <View className="mt-2 mb-4">
-              {isFetchingNextPage ? (
-                <View className="py-4 items-center" accessibilityLabel="Loading more">
-                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                </View>
-              ) : (
-                <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-              )}
-            </View>
-          ) : null}
-        </ListState>
-
-        {access.canCreateSeries && series.length > 0 ? (
-          <View className="mt-4">
-            <PrimaryButton
-              label="Create a recurring event"
-              icon="add"
-              onPress={() => router.push('/community-life/series/create')}
             />
           </View>
         ) : null}

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { NotificationItem } from '@/components/NotificationItem';
 import { ListEmpty, ListState } from '@/components/ListState';
@@ -54,20 +55,22 @@ export default function NotificationsScreen() {
 
   const { notifications, isLoading, isError, hasMore, isFetchingMore, loadMore, refetch } =
     useNotificationInbox();
-  const markRead = useMarkNotificationRead();
+  const { mutate: markRead } = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
-  const remove = useDeleteNotification();
-  const recordClick = useRecordNotificationClick();
+  const { mutate: removeNotification } = useDeleteNotification();
+  const { mutate: recordClick } = useRecordNotificationClick();
   const refreshControl = useRefreshControl(refetch);
   const { showToast } = useNotification();
   const queryClient = useQueryClient();
 
-  const handlePressNotification = (item: NotificationResponse) => {
-    if (!item.isRead) markRead.mutate(item.id);
+  // Stable, like the row renderer below that names it: the list redraws a row
+  // only when its notification or the renderer changes (FARCH-004).
+  const handlePressNotification = useCallback((item: NotificationResponse) => {
+    if (!item.isRead) markRead(item.id);
 
     // The platform counts the click; the client still owns the routing, so this
     // is fired alongside the navigation rather than awaited before it.
-    recordClick.mutate({ id: item.id });
+    recordClick({ id: item.id });
 
     /*
       B15's billing notifications deep-link into the wallet surface —
@@ -104,7 +107,24 @@ export default function NotificationsScreen() {
         });
       }
     }
-  };
+  }, [markRead, recordClick, queryClient, showToast]);
+
+  const renderNotification = useCallback(
+    ({ item, index }: ListRenderItemInfo<NotificationResponse>) => (
+      <NotificationItem
+        id={item.id}
+        title={item.title}
+        body={item.body}
+        category={item.category}
+        isRead={item.isRead}
+        createdAt={item.createdAt}
+        onPress={() => handlePressNotification(item)}
+        onDelete={() => removeNotification(item.id)}
+        shouldPeek={index === 0 && !item.isRead} // Peek the first unread item to teach swipe
+      />
+    ),
+    [handlePressNotification, removeNotification]
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-surface-background" edges={['top', 'left', 'right']}>
@@ -187,7 +207,7 @@ export default function NotificationsScreen() {
         }
         onRetry={() => void refetch()}
       >
-        <ScrollEndFlatList
+        <ScrollEndFlashList
           data={notifications}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: bottomInset }}
@@ -208,18 +228,7 @@ export default function NotificationsScreen() {
               </View>
             ) : undefined
           }
-          renderItem={({ item, index }) => (
-            <NotificationItem
-              title={item.title}
-              body={item.body}
-              category={item.category}
-              isRead={item.isRead}
-              createdAt={item.createdAt}
-              onPress={() => handlePressNotification(item)}
-              onDelete={() => remove.mutate(item.id)}
-              shouldPeek={index === 0 && !item.isRead} // Peek the first unread item to teach swipe
-            />
-          )}
+          renderItem={renderNotification}
         />
       </ListState>
     </SafeAreaView>

@@ -157,7 +157,10 @@ const CEILING: Record<string, number> = {
   // Five fewer since 27 Nov 2026 (FARCH-007): the effect five draft wizards each
   // ran on opening to show the banner. The shared draft hook starts with it
   // shown when the session holds a draft, and shows it once a stored one is read.
-  'react-hooks/set-state-in-effect': 70,
+  // One fewer the same day (FARCH-004): `ListingPhoto` cleared a failed load in an
+  // effect after the render; it now holds which photograph failed, so a recycled
+  // row's next photograph is never "unavailable" for a frame.
+  'react-hooks/set-state-in-effect': 69,
   // Three fewer since 27 Nov 2026 (FARCH-007): the location search's "No locations
   // found" sentence, an apostrophe and two quotes in JSX text, is a string the
   // shared list state draws now.

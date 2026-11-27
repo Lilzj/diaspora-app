@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
 /**
  * `ReanimatedSwipeable`, not `Swipeable`.
@@ -37,6 +37,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { relativeTime } from '@/components/community-social';
 
 interface NotificationItemProps {
+  /** The notification drawn, so a recycled row knows it has been handed another. */
+  id: string;
   title: string;
   body: string;
   category: string;
@@ -108,6 +110,7 @@ function DeleteAction({
 }
 
 export function NotificationItem({
+  id,
   title,
   body,
   category,
@@ -119,6 +122,21 @@ export function NotificationItem({
 }: NotificationItemProps) {
   const peekAnim = useRef(new Animated.Value(0)).current;
   const swipeableRef = useRef<SwipeableMethods>(null);
+
+  // ── A recycled row arrives closed ───────────────────────────────────────
+  //
+  // The inbox is a FlashList (FARCH-004, 27 Nov 2026), which hands this
+  // component the next notification as one scrolls out of view instead of
+  // mounting a fresh row. A row swiped open, or caught mid-peek, would carry
+  // that into the notification it is handed, with Delete showing on a
+  // notification nobody swiped. Before paint, so it is never drawn open.
+  useLayoutEffect(() => {
+    swipeableRef.current?.reset();
+    peekAnim.stopAnimation();
+    peekAnim.setValue(0);
+    // A ref-held Animated.Value, left out for the reason given on the peek below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   useEffect(() => {
     if (shouldPeek) {
@@ -143,7 +161,7 @@ export function NotificationItem({
     // render, so naming it trades this rule for that one. It never changes
     // identity, so nothing is lost by leaving it out.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldPeek]);
+  }, [shouldPeek, id]);
 
   const renderRightActions = (
     _progress: SharedValue<number>,

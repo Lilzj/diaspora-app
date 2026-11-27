@@ -8,11 +8,16 @@
 // display name and a registration state and nothing else — no contact details,
 // no membership status, nothing that would let an organizer's device become a
 // copy of the member directory.
+//
+// The list pages, so the screen is one FlashList (FARCH-004, 27 Nov 2026): the
+// filter is drawn above the rows, and the rows are recycled as they scroll
+// rather than every page staying mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import {
@@ -20,11 +25,11 @@ import {
   ChipRow,
   CommunityScreen,
   CommunityStatusBadge,
-  EmptyState,
   InlineRefusal,
   PrimaryButton,
   SecondaryButton,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useCheckIn, useEventAttendees } from '@/hooks/community-life';
 import { describeRegistration } from '@/lib/domain/community-state';
 import type { RegistrationStatus } from '@/types/community-advanced';
@@ -71,7 +76,7 @@ export default function AttendeesScreen() {
     refetch,
   } = useEventAttendees(subjectId);
 
-  const checkIn = useCheckIn(subjectId);
+  const { mutateAsync: checkInAsync, isPending: isCheckingIn } = useCheckIn(subjectId);
 
   const filtered = useMemo(
     () => (filter ? attendees.filter((attendee) => attendee.status === filter) : attendees),
@@ -96,7 +101,7 @@ export default function AttendeesScreen() {
    * codebase keeps being bitten by, and it is worse at a door with a queue
    * behind it.
    */
-  const handleCheckIn = async (attendee: EventAttendee) => {
+  const handleCheckIn = useCallback(async (attendee: EventAttendee) => {
     const rsvpId = (attendee as { rsvpId?: string }).rsvpId;
 
     if (!rsvpId) {
@@ -109,7 +114,7 @@ export default function AttendeesScreen() {
     }
 
     try {
-      await checkIn.mutateAsync({ rsvpId });
+      await checkInAsync({ rsvpId });
       showAlert({
         type: 'success',
         title: 'Checked in',
@@ -123,7 +128,7 @@ export default function AttendeesScreen() {
         message: detail?.trim() || 'That could not be recorded. Try again in a moment.',
       });
     }
-  };
+  }, [checkInAsync, showAlert]);
 
   const counts = useMemo(() => {
     const tally: Partial<Record<RegistrationStatus, number>> = {};
@@ -133,13 +138,130 @@ export default function AttendeesScreen() {
     return tally;
   }, [attendees]);
 
+  // One attendee. Stable, so the list redraws a row only when its attendee, or
+  // what the row offers (check-in open, a check-in in flight), changes.
+  const renderAttendee = useCallback(
+    ({ item: attendee }: ListRenderItemInfo<EventAttendee>) => {
+      const state = describeRegistration(attendee.status);
+
+      return (
+        <View className="px-5 mb-2.5">
+          <Card
+            accessibilityLabel={`${attendee.displayName}. ${state.label}.${
+              attendee.guestCount > 0
+                ? ` Bringing ${attendee.guestCount} ${attendee.guestCount === 1 ? 'guest' : 'guests'}.`
+                : ''
+            }`}
+          >
+            <View className="flex-row items-center">
+              <View
+                style={{ backgroundColor: tokens.color.surface.elevated }}
+                className="w-10 h-10 rounded-full items-center justify-center"
+              >
+                <Ionicons name="person-outline" size={17} color={tokens.color.text.placeholder} />
+              </View>
+
+              <View className="flex-1 ml-3">
+                <Text
+                  style={{ color: tokens.color.text.primary }}
+                  className="text-sm font-bold"
+                  numberOfLines={1}
+                >
+                  {attendee.displayName}
+                </Text>
+                {attendee.guestCount > 0 ? (
+                  <Text
+                    style={{ color: tokens.color.text.placeholder }}
+                    className="text-[11px] font-semibold mt-0.5"
+                  >
+                    + {attendee.guestCount} {attendee.guestCount === 1 ? 'guest' : 'guests'}
+                  </Text>
+                ) : null}
+              </View>
+
+              <CommunityStatusBadge state={state} size="small" />
+            </View>
+
+            {attendee.status === 'Registered' ? (
+              <View className="mt-3">
+                {acceptsCheckIn ? (
+                  <PrimaryButton
+                    label="Check in"
+                    icon="enter-outline"
+                    busy={isCheckingIn}
+                    onPress={() => handleCheckIn(attendee)}
+                  />
+                ) : (
+                  // **Not offered before the door opens.** The platform
+                  // refuses a check-in outside the window and says so,
+                  // and a button that is always refused until a date is
+                  // an affordance that always fails. It says when
+                  // instead.
+                  <Text
+                    style={{ color: tokens.color.text.placeholder }}
+                    className="text-[11px] font-semibold"
+                  >
+                    {checkInOpensAt
+                      ? `Check-in opens ${formatRelativeTime(checkInOpensAt)}`
+                      : 'Check-in is not open yet'}
+                  </Text>
+                )}
+              </View>
+            ) : null}
+          </Card>
+        </View>
+      );
+    },
+    [tokens, acceptsCheckIn, checkInOpensAt, isCheckingIn, handleCheckIn]
+  );
+
   return (
     <CommunityScreen
       title="Attendees"
       subtitle={subtitle}
       load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
+      list={{
+        data: filtered,
+        keyExtractor: (attendee) => attendee.userId,
+        renderItem: renderAttendee,
+        // The shell draws the list's loading and error; the list says when it is empty.
+        ListEmptyComponent: (
+          <View className="px-5">
+            <ListState
+              isEmpty
+              empty={{
+                icon: 'people-outline',
+                title: 'Nobody yet',
+                message: filter
+                  ? 'No attendee is in this state.'
+                  : 'Nobody has registered for this yet. Share it and they will.',
+              }}
+            />
+          </View>
+        ),
+        ListFooterComponent: (
+          <View className="px-5">
+            {hasNextPage ? (
+              <View className="mb-4">
+                {isFetchingNextPage ? (
+                  <View className="py-4 items-center" accessibilityLabel="Loading more">
+                    <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                  </View>
+                ) : (
+                  <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+                )}
+              </View>
+            ) : null}
+
+            <InlineRefusal
+              icon="shield-outline"
+              reason="Diaspora shows you who is coming and nothing more. Contact details stay with the member unless they choose to share them."
+            />
+          </View>
+        ),
+      }}
     >
-      <View className="px-5 pt-4">
+      <View className="px-5 pt-4 pb-3">
         <ChipRow
           accessibilityLabel="Filter attendees"
           options={[
@@ -150,109 +272,6 @@ export default function AttendeesScreen() {
           ]}
           value={filter}
           onChange={setFilter}
-        />
-      </View>
-
-      <View className="px-5 mt-3">
-        {filtered.length === 0 && !isLoading ? (
-          <EmptyState
-            icon="people-outline"
-            title="Nobody yet"
-            body={
-              filter
-                ? 'No attendee is in this state.'
-                : 'Nobody has registered for this yet. Share it and they will.'
-            }
-          />
-        ) : (
-          filtered.map((attendee) => {
-            const state = describeRegistration(attendee.status);
-
-            return (
-              <View key={attendee.userId} className="mb-2.5">
-                <Card
-                  accessibilityLabel={`${attendee.displayName}. ${state.label}.${
-                    attendee.guestCount > 0
-                      ? ` Bringing ${attendee.guestCount} ${attendee.guestCount === 1 ? 'guest' : 'guests'}.`
-                      : ''
-                  }`}
-                >
-                  <View className="flex-row items-center">
-                    <View
-                      style={{ backgroundColor: tokens.color.surface.elevated }}
-                      className="w-10 h-10 rounded-full items-center justify-center"
-                    >
-                      <Ionicons name="person-outline" size={17} color={tokens.color.text.placeholder} />
-                    </View>
-
-                    <View className="flex-1 ml-3">
-                      <Text
-                        style={{ color: tokens.color.text.primary }}
-                        className="text-sm font-bold"
-                        numberOfLines={1}
-                      >
-                        {attendee.displayName}
-                      </Text>
-                      {attendee.guestCount > 0 ? (
-                        <Text
-                          style={{ color: tokens.color.text.placeholder }}
-                          className="text-[11px] font-semibold mt-0.5"
-                        >
-                          + {attendee.guestCount} {attendee.guestCount === 1 ? 'guest' : 'guests'}
-                        </Text>
-                      ) : null}
-                    </View>
-
-                    <CommunityStatusBadge state={state} size="small" />
-                  </View>
-
-                  {attendee.status === 'Registered' ? (
-                    <View className="mt-3">
-                      {acceptsCheckIn ? (
-                        <PrimaryButton
-                          label="Check in"
-                          icon="enter-outline"
-                          busy={checkIn.isPending}
-                          onPress={() => handleCheckIn(attendee)}
-                        />
-                      ) : (
-                        // **Not offered before the door opens.** The platform
-                        // refuses a check-in outside the window and says so,
-                        // and a button that is always refused until a date is
-                        // an affordance that always fails. It says when
-                        // instead.
-                        <Text
-                          style={{ color: tokens.color.text.placeholder }}
-                          className="text-[11px] font-semibold"
-                        >
-                          {checkInOpensAt
-                            ? `Check-in opens ${formatRelativeTime(checkInOpensAt)}`
-                            : 'Check-in is not open yet'}
-                        </Text>
-                      )}
-                    </View>
-                  ) : null}
-                </Card>
-              </View>
-            );
-          })
-        )}
-
-        {hasNextPage ? (
-          <View className="mb-4">
-            {isFetchingNextPage ? (
-              <View className="py-4 items-center" accessibilityLabel="Loading more">
-                <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-              </View>
-            ) : (
-              <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-            )}
-          </View>
-        ) : null}
-
-        <InlineRefusal
-          icon="shield-outline"
-          reason="Diaspora shows you who is coming and nothing more. Contact details stay with the member unless they choose to share them."
         />
       </View>
     </CommunityScreen>

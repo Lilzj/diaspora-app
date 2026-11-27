@@ -34,15 +34,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SAVED_COLLECTION_CONFIG, type SavedContentType } from '@/types/saved';
 import { useSavedStore } from '@/store/saved';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { ScrollEndFlashList, ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ListState } from '@/components/ListState';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { resolveSavedItems, type ResolvedSavedItem } from '@/lib/platform/saved-resolver';
 import { useBookmarkedGuides } from '@/hooks/guides';
 import { backOr } from '@/lib/platform/navigation';
+import type { GuideCardResponse } from '@/types/guides';
 
 export default function SavedCategoryScreen() {
   const { category } = useLocalSearchParams<{ category: string }>();
@@ -81,47 +83,62 @@ function SavedRow({ title, subtitle, onPress }: { title: string; subtitle?: stri
   );
 }
 
+/** Stable, so a list with no guides to draw is the same empty list on every render. */
+const NO_GUIDES: GuideCardResponse[] = [];
+
+/** One saved guide. Module-level, so the list keeps a row until its guide changes. */
+function renderSavedGuide({ item: guide }: ListRenderItemInfo<GuideCardResponse>) {
+  return (
+    <SavedRow
+      title={guide.title}
+      subtitle={[guide.countryCode, guide.cityName].filter(Boolean).join(' · ')}
+      onPress={() => router.push(`/guide/${guide.guideId}` as never)}
+    />
+  );
+}
+
 function SavedGuides() {
   const bottomInset = useBottomInset();
   const { guides, isLoading, error, hasMore, isFetchingMore, loadMore, refresh } = useBookmarkedGuides();
+  // The rows, once the guides have been read and there are some.
+  const listed = !isLoading && guides.length > 0;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <SavedHeader category="Guide" />
-      <ScrollEndScrollView
-        className="flex-1 p-6"
+      <ScrollEndFlashList
+        // Saved guides page, so the list recycles its rows rather than keeping
+        // every page mounted (FARCH-004, 27 Nov 2026). The scroll view's `p-6` is
+        // the list's content padding now: a FlashList takes no className.
+        data={listed ? guides : NO_GUIDES}
+        keyExtractor={(guide) => guide.guideId}
+        renderItem={renderSavedGuide}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomInset }}
-      >
-        {/* A failed "Show more" keeps the guides already read, and says so beside them. */}
-        {error && guides.length > 0 ? (
-          <Text className="text-xs text-error-default mb-3" accessibilityRole="alert">
-            {error}
-          </Text>
-        ) : null}
-
-        <ListState
-          loading={isLoading}
-          loadingLabel="Loading your saved guides"
-          error={error && guides.length === 0 ? { title: 'Your saved guides could not be loaded', message: error } : null}
-          onRetry={refresh}
-          isEmpty={guides.length === 0}
-          empty={{
-            icon: 'bookmark-outline',
-            title: 'Nothing saved here yet',
-            message: 'Tap Save guide at the end of any guide to keep it here.',
-          }}
-        >
-          {guides.map((guide) => (
-            <SavedRow
-              key={guide.guideId}
-              title={guide.title}
-              subtitle={[guide.countryCode, guide.cityName].filter(Boolean).join(' · ')}
-              onPress={() => router.push(`/guide/${guide.guideId}` as never)}
-            />
-          ))}
-
-          {hasMore ? (
+        contentContainerStyle={{ padding: 24, paddingBottom: bottomInset }}
+        ListHeaderComponent={
+          // A failed "Show more" keeps the guides already read, and says so beside them.
+          error && guides.length > 0 ? (
+            <Text className="text-xs text-error-default mb-3" accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null
+        }
+        ListEmptyComponent={
+          <ListState
+            loading={isLoading}
+            loadingLabel="Loading your saved guides"
+            error={error && guides.length === 0 ? { title: 'Your saved guides could not be loaded', message: error } : null}
+            onRetry={refresh}
+            isEmpty={guides.length === 0}
+            empty={{
+              icon: 'bookmark-outline',
+              title: 'Nothing saved here yet',
+              message: 'Tap Save guide at the end of any guide to keep it here.',
+            }}
+          />
+        }
+        ListFooterComponent={
+          listed && hasMore ? (
             <TouchableOpacity
               onPress={() => loadMore()}
               disabled={isFetchingMore}
@@ -132,9 +149,9 @@ function SavedGuides() {
                 {isFetchingMore ? 'Loading…' : 'Show more'}
               </Text>
             </TouchableOpacity>
-          ) : null}
-        </ListState>
-      </ScrollEndScrollView>
+          ) : null
+        }
+      />
     </SafeAreaView>
   );
 }

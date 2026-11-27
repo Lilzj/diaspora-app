@@ -48,14 +48,16 @@ import { View, Text, TouchableOpacity, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
 import { EmptyState } from '@/components/EmptyState';
+import { ListState } from '@/components/ListState';
 import { Skeleton } from '@/components/Skeleton';
 import { Avatar } from '@/components/Avatar';
 import {
-  CommentThread,
+  CommentThreadComposer,
   CommunityPostCard,
   ReportContentSheet,
+  useCommentThreadList,
 } from '@/components/community-social';
 import { useClosePost, useDeletePost, usePost, usePostComments, useShare, useVotePoll } from '@/hooks/community-social';
 import { formatRelativeTime } from '@/utils/format';
@@ -88,6 +90,18 @@ export default function UpdateDetailScreen() {
     contentType: CommunityContentType;
     contentId: string;
   } | null>(null);
+
+  // The discussion's comments are the rows of the screen's one list
+  // (FARCH-004), so only those near the screen are drawn. There are none until
+  // the post itself is on screen, as there was no thread before it.
+  const comments = useCommentThreadList({
+    target: { contentType: 'post', contentId: post?.postId ?? '' },
+    thread,
+    contentAuthorId: post?.authorId ?? null,
+    onReport: (commentId) => setReportTarget({ contentType: 'comment', contentId: commentId }),
+    inset: 24,
+    hidden: isLoading || Boolean(error) || !post,
+  });
 
   const vote = useCallback(
     async (optionIds: string[]) => {
@@ -206,182 +220,194 @@ export default function UpdateDetailScreen() {
         ) : null}
       </View>
 
-      <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
-        {isLoading ? (
-          <DetailSkeleton />
-        ) : error ? (
-          <EmptyState
-            icon={isSignedOut ? '🔑' : '📡'}
-            title={isSignedOut ? 'Sign in to read this' : 'We could not load this post'}
-            description={error}
-            action={
-              <TouchableOpacity
-                accessible
-                accessibilityRole="button"
-                accessibilityLabel={isSignedOut ? 'Sign in' : 'Try again'}
-                onPress={() => (isSignedOut ? router.push('/login') : refresh())}
-                className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
-              >
-                <Text className="text-white font-extrabold text-sm">
-                  {isSignedOut ? 'Sign in' : 'Try again'}
-                </Text>
-              </TouchableOpacity>
-            }
-          />
-        ) : !post ? (
-          <EmptyState
-            icon="🕳️"
-            title="This post is gone"
-            description="It was removed, or the link is wrong."
-            action={
-              <TouchableOpacity
-                accessible
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-                onPress={() => backOr()}
-                className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
-              >
-                <Text className="text-white font-extrabold text-sm">Go back</Text>
-              </TouchableOpacity>
-            }
-          />
-        ) : (
-          <View className="p-6">
-            {closedStatus ? (
-              <View
-                accessible
-                accessibilityRole="text"
-                testID="post-closed-banner"
-                className="bg-surface-muted border border-warning-default rounded-2xl p-4 mb-4"
-              >
-                <Text className="text-sm font-black text-content-primary">
-                  {closedStatus === 'withdrawn' ? 'Withdrawn by its author' : 'Cancelled by its author'}
-                </Text>
-                <Text className="text-xs font-semibold text-content-secondary mt-1 leading-relaxed">
-                  {closedStatus === 'withdrawn'
-                    ? 'The person who posted this says the report was wrong.'
-                    : 'The person who posted this says it is over or will not happen.'}
-                  {post.closedAt ? ` ${formatRelativeTime(post.closedAt)}.` : ''}
-                </Text>
-              </View>
-            ) : null}
-
-            <CommunityPostCard
-              post={post}
-              expanded
-              onVotePoll={(optionIds) => void vote(optionIds)}
-              isVotingPoll={polling.isPending}
-              pollError={polling.error}
-              viewerId={user?.userId ?? null}
-            />
-
-            {/* The author, by name: the post carries `author` (14 Oct 2026; this
-                said "A community member" for everybody). An organisation post
-                names the organisation. */}
-            <TouchableOpacity
-              accessible
-              accessibilityRole="button"
-              accessibilityLabel="Open this contributor's profile"
-              onPress={() => router.push(`/contributor/${post.authorId}`)}
-              className="flex-row items-center bg-surface-card border border-subtle rounded-2xl p-4 mt-4"
-            >
-              <Avatar
-                uri={post.author?.organizationName ? null : post.author?.avatarUrl}
-                name={post.author?.organizationName ?? post.author?.name ?? 'Community member'}
-                size={40}
-              />
-              <View className="flex-1 ml-3">
-                <Text className="text-[10px] font-black text-content-faint uppercase tracking-wider">
-                  Posted by
-                </Text>
-                <Text className="text-sm font-bold text-content-primary mt-0.5">
-                  {post.author?.organizationName ?? post.author?.name ?? (post.organizationId ? 'An organisation' : 'A community member')}
-                </Text>
-              </View>
-              <Text className="text-content-faint">›</Text>
-            </TouchableOpacity>
-
-            {post.canCancel || post.canWithdraw ? (
-              <View className="flex-row gap-2 mt-4" testID="post-close-actions">
-                {post.canCancel ? (
-                  <TouchableOpacity
-                    accessible
-                    accessibilityRole="button"
-                    accessibilityLabel="Mark this alert as over"
-                    accessibilityState={{ disabled: closing.isPending }}
-                    disabled={closing.isPending}
-                    onPress={() => close('cancel')}
-                    className="flex-1 bg-surface-card border border-subtle rounded-xl py-3 items-center"
-                  >
-                    <Text className="text-xs font-extrabold text-content-primary">It is over</Text>
-                  </TouchableOpacity>
-                ) : null}
-                {post.canWithdraw ? (
-                  <TouchableOpacity
-                    accessible
-                    accessibilityRole="button"
-                    accessibilityLabel="Withdraw this alert because the report was wrong"
-                    accessibilityState={{ disabled: closing.isPending }}
-                    disabled={closing.isPending}
-                    onPress={() => close('withdraw')}
-                    className="flex-1 bg-surface-card border border-subtle rounded-xl py-3 items-center"
-                  >
-                    <Text className="text-xs font-extrabold text-error-default">Withdraw report</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            ) : null}
-
-            {sharing.error ? (
-              <Text className="text-[11px] font-bold text-error-default mt-2">{sharing.error}</Text>
-            ) : null}
-
-            <View className="mt-8">
-              <Text className="text-lg font-black text-content-primary mb-4">💬 Discussion</Text>
-              <CommentThread
-                target={{ contentType: 'post', contentId: post.postId }}
-                thread={thread}
-                contentAuthorId={post.authorId}
-                onReport={(commentId) =>
-                  setReportTarget({ contentType: 'comment', contentId: commentId })
-                }
-              />
-            </View>
-
-            {/* The author removes their update; nobody reports their own (13 Oct
-                2026). `canEdit` is the server's word — the app's `authorId`
-                is not on the wire, so comparing it would always say no. */}
-            {post.canEdit ? (
-              <>
-                {/* And corrects it without losing its comments (14 Oct 2026). */}
+      <ScrollEndFlashList
+        {...comments.list}
+        showsVerticalScrollIndicator={false}
+        activeTab="discover"
+        ListHeaderComponent={
+          isLoading ? (
+            <DetailSkeleton />
+          ) : error ? (
+            <EmptyState
+              icon={isSignedOut ? '🔑' : '📡'}
+              title={isSignedOut ? 'Sign in to read this' : 'We could not load this post'}
+              description={error}
+              action={
                 <TouchableOpacity
-                  onPress={() => router.push(`/update/edit/${post.postId}`)}
+                  accessible
                   accessibilityRole="button"
-                  accessibilityLabel="Edit update"
-                  className="items-center py-4"
+                  accessibilityLabel={isSignedOut ? 'Sign in' : 'Try again'}
+                  onPress={() => (isSignedOut ? router.push('/login') : refresh())}
+                  className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
                 >
-                  <Text className="text-sm font-bold text-primary-500">Edit update</Text>
+                  <Text className="text-white font-extrabold text-sm">
+                    {isSignedOut ? 'Sign in' : 'Try again'}
+                  </Text>
                 </TouchableOpacity>
-                <OwnerRemoveButton noun="update" onRemove={() => deletePost(post.postId)} />
-              </>
-            ) : (
+              }
+            />
+          ) : !post ? (
+            <EmptyState
+              icon="🕳️"
+              title="This post is gone"
+              description="It was removed, or the link is wrong."
+              action={
+                <TouchableOpacity
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel="Go back"
+                  onPress={() => backOr()}
+                  className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
+                >
+                  <Text className="text-white font-extrabold text-sm">Go back</Text>
+                </TouchableOpacity>
+              }
+            />
+          ) : (
+            <View className="px-6 pt-6">
+              {closedStatus ? (
+                <View
+                  accessible
+                  accessibilityRole="text"
+                  testID="post-closed-banner"
+                  className="bg-surface-muted border border-warning-default rounded-2xl p-4 mb-4"
+                >
+                  <Text className="text-sm font-black text-content-primary">
+                    {closedStatus === 'withdrawn' ? 'Withdrawn by its author' : 'Cancelled by its author'}
+                  </Text>
+                  <Text className="text-xs font-semibold text-content-secondary mt-1 leading-relaxed">
+                    {closedStatus === 'withdrawn'
+                      ? 'The person who posted this says the report was wrong.'
+                      : 'The person who posted this says it is over or will not happen.'}
+                    {post.closedAt ? ` ${formatRelativeTime(post.closedAt)}.` : ''}
+                  </Text>
+                </View>
+              ) : null}
+
+              <CommunityPostCard
+                post={post}
+                expanded
+                onVotePoll={(optionIds) => void vote(optionIds)}
+                isVotingPoll={polling.isPending}
+                pollError={polling.error}
+                viewerId={user?.userId ?? null}
+              />
+
+              {/* The author, by name: the post carries `author` (14 Oct 2026; this
+                  said "A community member" for everybody). An organisation post
+                  names the organisation. */}
               <TouchableOpacity
                 accessible
                 accessibilityRole="button"
-                accessibilityLabel="Report this post"
-                onPress={() => setReportTarget({ contentType: 'post', contentId: post.postId })}
-                className="items-center py-8"
+                accessibilityLabel="Open this contributor's profile"
+                onPress={() => router.push(`/contributor/${post.authorId}`)}
+                className="flex-row items-center bg-surface-card border border-subtle rounded-2xl p-4 mt-4"
               >
-                <Text className="text-xs text-content-faint font-extrabold uppercase">
-                  Report this post
-                </Text>
+                <Avatar
+                  uri={post.author?.organizationName ? null : post.author?.avatarUrl}
+                  name={post.author?.organizationName ?? post.author?.name ?? 'Community member'}
+                  size={40}
+                />
+                <View className="flex-1 ml-3">
+                  <Text className="text-[10px] font-black text-content-faint uppercase tracking-wider">
+                    Posted by
+                  </Text>
+                  <Text className="text-sm font-bold text-content-primary mt-0.5">
+                    {post.author?.organizationName ?? post.author?.name ?? (post.organizationId ? 'An organisation' : 'A community member')}
+                  </Text>
+                </View>
+                <Text className="text-content-faint">›</Text>
               </TouchableOpacity>
-            )}
-          </View>
-        )}
 
-        <View className="h-8" />
-      </ScrollEndScrollView>
+              {post.canCancel || post.canWithdraw ? (
+                <View className="flex-row gap-2 mt-4" testID="post-close-actions">
+                  {post.canCancel ? (
+                    <TouchableOpacity
+                      accessible
+                      accessibilityRole="button"
+                      accessibilityLabel="Mark this alert as over"
+                      accessibilityState={{ disabled: closing.isPending }}
+                      disabled={closing.isPending}
+                      onPress={() => close('cancel')}
+                      className="flex-1 bg-surface-card border border-subtle rounded-xl py-3 items-center"
+                    >
+                      <Text className="text-xs font-extrabold text-content-primary">It is over</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {post.canWithdraw ? (
+                    <TouchableOpacity
+                      accessible
+                      accessibilityRole="button"
+                      accessibilityLabel="Withdraw this alert because the report was wrong"
+                      accessibilityState={{ disabled: closing.isPending }}
+                      disabled={closing.isPending}
+                      onPress={() => close('withdraw')}
+                      className="flex-1 bg-surface-card border border-subtle rounded-xl py-3 items-center"
+                    >
+                      <Text className="text-xs font-extrabold text-error-default">Withdraw report</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {sharing.error ? (
+                <Text className="text-[11px] font-bold text-error-default mt-2">{sharing.error}</Text>
+              ) : null}
+
+              <View className="mt-8">
+                <Text className="text-lg font-black text-content-primary mb-4">💬 Discussion</Text>
+                <CommentThreadComposer {...comments.composer} />
+              </View>
+            </View>
+          )
+        }
+        ListEmptyComponent={
+          <View className="px-6">
+            <ListState {...comments.states} />
+          </View>
+        }
+        ListFooterComponent={
+          <>
+            {!isLoading && !error && post ? (
+              <View className="px-6 pb-6">
+                {comments.footer}
+
+                {/* The author removes their update; nobody reports their own (13 Oct
+                    2026). `canEdit` is the server's word — the app's `authorId`
+                    is not on the wire, so comparing it would always say no. */}
+                {post.canEdit ? (
+                  <>
+                    {/* And corrects it without losing its comments (14 Oct 2026). */}
+                    <TouchableOpacity
+                      onPress={() => router.push(`/update/edit/${post.postId}`)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Edit update"
+                      className="items-center py-4"
+                    >
+                      <Text className="text-sm font-bold text-primary-500">Edit update</Text>
+                    </TouchableOpacity>
+                    <OwnerRemoveButton noun="update" onRemove={() => deletePost(post.postId)} />
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel="Report this post"
+                    onPress={() => setReportTarget({ contentType: 'post', contentId: post.postId })}
+                    className="items-center py-8"
+                  >
+                    <Text className="text-xs text-content-faint font-extrabold uppercase">
+                      Report this post
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null}
+
+            <View className="h-8" />
+          </>
+        }
+      />
 
       <ReportContentSheet
         visible={reportTarget !== null}

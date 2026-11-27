@@ -15,15 +15,19 @@
 // unpublish, and there is no draft state on an announcement. §11 says to build
 // the intended flow and document the gap rather than silently omit it, so the
 // composer is here and the row actions say what they are waiting for.
+//
+// The tab pages, so its rows are the sheet's list (FARCH-004, 27 Nov 2026):
+// `usePostsTab` hands the sheet the composer and the heading above them, the
+// posts as rows, and the next page below them.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 
 import {
   AnnouncementCard,
   Card,
-  EmptyState,
   PrimaryButton,
   SecondaryButton,
 } from '@/components/community';
@@ -39,26 +43,44 @@ import {
   TabLoading,
   TabUnavailable,
 } from './OrganizationTabShared';
+import { NO_ROWS, type OrganizationRow, type OrganizationTabList } from './OrganizationRows';
 
 interface PostsTabProps {
   organizationId: string;
   organizationName: string;
   capabilities: OrganizationCapabilities;
   onOpenRoute: (route: string) => void;
+  /** Whether Posts is the tab in view. */
+  active: boolean;
 }
 
-export function PostsTab({
+export function usePostsTab({
   organizationId,
   organizationName,
   capabilities,
   onOpenRoute,
-}: PostsTabProps) {
+  active,
+}: PostsTabProps): OrganizationTabList {
   const { tokens } = useTheme();
   const { showToast, showAlert } = useNotification();
   const [isComposing, setComposing] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
 
+  // The composer was the tab's own, and closed, empty, when the member left the
+  // tab. The sheet holds it now (its list draws the posts), and leaving the tab
+  // still closes it.
+  const [visiting, setVisiting] = useState(active);
+  if (visiting !== active) {
+    setVisiting(active);
+    setComposing(false);
+    setTitle('');
+    setBody('');
+  }
+
+  // Read for as long as the sheet is open, whichever tab is in view:
+  // `useAnnouncements` takes no switch, and Timeline, the tab the sheet opens
+  // on, reads the same query under the same key.
   const {
     announcements,
     isLoading,
@@ -113,140 +135,157 @@ export function PostsTab({
     );
   };
 
-  if (!isEnabled) return <TabUnavailable label="Posts" />;
-  if (isLoading) return <TabLoading label="posts" />;
-  if (isError)
-    return (
-      <TabError
-        label="Posts"
-        subject="reading what it has published"
-        kind={error?.kind}
-        onRetry={() => void refetch()}
-      />
-    );
+  // Read, and readable: until then the tab's loading, its failure or its
+  // unavailability stands in for all of it, as each did.
+  const listed = isEnabled && !isLoading && !isError;
 
-  return (
-    <View>
-      <TabGapNote>
-        Posts are the organisation&apos;s announcements. Listing and publishing are wired to a
-        development adapter; editing and deleting have no contract yet.
-      </TabGapNote>
-
-      <TabHeading
-        title="Posts"
-        count={announcements.length}
-        action={canPublish && !isComposing ? '+ New post' : undefined}
-        onAction={canPublish ? () => setComposing(true) : undefined}
-      />
-
-      {/* ── Composer ─────────────────────────────────────────────────────── */}
-      {isComposing ? (
-        <Card style={{ marginBottom: 12 }}>
-          <Text
-            style={{ color: tokens.color.text.placeholder }}
-            className="text-[9px] font-black uppercase tracking-widest mb-2"
-          >
-            Posting as {organizationName}
-          </Text>
-
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Title"
-            placeholderTextColor={tokens.color.text.placeholder}
-            accessibilityLabel="Post title"
-            style={{
-              color: tokens.color.text.primary,
-              backgroundColor: tokens.color.surface.background,
-              borderColor: tokens.color.border.default,
-            }}
-            className="rounded-2xl border px-3.5 py-2.5 text-[12px] font-bold mb-2"
-          />
-
-          <TextInput
-            value={body}
-            onChangeText={setBody}
-            placeholder="What do you want the organisation to say?"
-            placeholderTextColor={tokens.color.text.placeholder}
-            accessibilityLabel="Post body"
-            multiline
-            numberOfLines={4}
-            style={{
-              color: tokens.color.text.primary,
-              backgroundColor: tokens.color.surface.background,
-              borderColor: tokens.color.border.default,
-              minHeight: 88,
-              textAlignVertical: 'top',
-            }}
-            className="rounded-2xl border px-3.5 py-2.5 text-[12px] font-semibold mb-3"
-          />
-
-          <PrimaryButton
-            label="Publish"
-            disabled={!isValid || publish.isPending}
-            busy={publish.isPending}
-            onPress={submit}
-          />
-          <View className="mt-2">
-            <SecondaryButton
-              label="Cancel"
-              onPress={() => {
-                setComposing(false);
-                setTitle('');
-                setBody('');
-              }}
-            />
-          </View>
-        </Card>
-      ) : null}
-
-      {/* ── The list ─────────────────────────────────────────────────────── */}
-      {announcements.length === 0 && !isComposing ? (
-        <EmptyState
-          icon="megaphone-outline"
-          title="No posts yet"
-          body={`Share updates, announcements and community news from ${organizationName}. Members see them in their inbox.`}
-          action={canPublish ? 'Write the first post' : undefined}
-          onAction={canPublish ? () => setComposing(true) : undefined}
-        />
-      ) : null}
-
-      {announcements.map((announcement) => (
-        <View key={announcement.announcementId} className="mb-2">
+  // One post. Kept while the route opener and the alert are, so a row is
+  // redrawn only when its post changes.
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<OrganizationRow>) =>
+      'announcementId' in item ? (
+        <View className="mb-2">
           <AnnouncementCard
-            announcement={announcement}
+            announcement={item}
             onPress={() =>
-              announcement.actionRoute
-                ? onOpenRoute(announcement.actionRoute)
+              item.actionRoute
+                ? onOpenRoute(item.actionRoute)
                 : showAlert({
                     type: 'info',
-                    title: announcement.title,
-                    message: announcement.body,
+                    title: item.title,
+                    message: item.body,
                     buttons: [{ text: 'Close', style: 'cancel' }],
                   })
             }
           />
         </View>
-      ))}
-
-      {hasNextPage ? (
-        <SecondaryButton
-          label={isFetchingNextPage ? 'Loading…' : 'Load more posts'}
-          icon="arrow-down-circle-outline"
-          disabled={isFetchingNextPage}
-          onPress={() => void fetchNextPage()}
-        />
-      ) : null}
-
-      {announcements.length > 0 && canPublish ? (
-        <Text
-          style={{ color: tokens.color.text.placeholder }}
-          className="text-[10px] font-medium leading-relaxed mt-2 px-1"
-        >
-          Editing and deleting a published post are not available yet — the organisation service
-          exposes publishing and listing only.
-        </Text>
-      ) : null}
-    </View>
+      ) : null,
+    [onOpenRoute, showAlert]
   );
+
+  return {
+    header: listed ? (
+      <View>
+        <TabGapNote>
+          Posts are the organisation&apos;s announcements. Listing and publishing are wired to a
+          development adapter; editing and deleting have no contract yet.
+        </TabGapNote>
+
+        <TabHeading
+          title="Posts"
+          count={announcements.length}
+          action={canPublish && !isComposing ? '+ New post' : undefined}
+          onAction={canPublish ? () => setComposing(true) : undefined}
+        />
+
+        {/* ── Composer ─────────────────────────────────────────────────────── */}
+        {isComposing ? (
+          <Card style={{ marginBottom: 12 }}>
+            <Text
+              style={{ color: tokens.color.text.placeholder }}
+              className="text-[9px] font-black uppercase tracking-widest mb-2"
+            >
+              Posting as {organizationName}
+            </Text>
+
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Title"
+              placeholderTextColor={tokens.color.text.placeholder}
+              accessibilityLabel="Post title"
+              style={{
+                color: tokens.color.text.primary,
+                backgroundColor: tokens.color.surface.background,
+                borderColor: tokens.color.border.default,
+              }}
+              className="rounded-2xl border px-3.5 py-2.5 text-[12px] font-bold mb-2"
+            />
+
+            <TextInput
+              value={body}
+              onChangeText={setBody}
+              placeholder="What do you want the organisation to say?"
+              placeholderTextColor={tokens.color.text.placeholder}
+              accessibilityLabel="Post body"
+              multiline
+              numberOfLines={4}
+              style={{
+                color: tokens.color.text.primary,
+                backgroundColor: tokens.color.surface.background,
+                borderColor: tokens.color.border.default,
+                minHeight: 88,
+                textAlignVertical: 'top',
+              }}
+              className="rounded-2xl border px-3.5 py-2.5 text-[12px] font-semibold mb-3"
+            />
+
+            <PrimaryButton
+              label="Publish"
+              disabled={!isValid || publish.isPending}
+              busy={publish.isPending}
+              onPress={submit}
+            />
+            <View className="mt-2">
+              <SecondaryButton
+                label="Cancel"
+                onPress={() => {
+                  setComposing(false);
+                  setTitle('');
+                  setBody('');
+                }}
+              />
+            </View>
+          </Card>
+        ) : null}
+      </View>
+    ) : null,
+    rows: listed ? announcements : NO_ROWS,
+    renderItem,
+    state: {
+      // Unavailable first, as it was: nothing was asked, so nothing is loading.
+      loading: isEnabled && isLoading,
+      skeleton: <TabLoading label="posts" />,
+      error: !isEnabled ? (
+        <TabUnavailable label="Posts" />
+      ) : isError ? (
+        <TabError
+          label="Posts"
+          subject="reading what it has published"
+          kind={error?.kind}
+          onRetry={() => void refetch()}
+        />
+      ) : null,
+      // Nothing in place of the posts while the composer is open above them.
+      isEmpty: announcements.length === 0 && !isComposing,
+      empty: {
+        icon: 'megaphone-outline',
+        title: 'No posts yet',
+        message: `Share updates, announcements and community news from ${organizationName}. Members see them in their inbox.`,
+        action: canPublish ? { label: 'Write the first post', onPress: () => setComposing(true) } : undefined,
+      },
+    },
+    footer: listed ? (
+      <>
+        {hasNextPage ? (
+          <SecondaryButton
+            label={isFetchingNextPage ? 'Loading…' : 'Load more posts'}
+            icon="arrow-down-circle-outline"
+            disabled={isFetchingNextPage}
+            onPress={() => void fetchNextPage()}
+          />
+        ) : null}
+
+        {announcements.length > 0 && canPublish ? (
+          <Text
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-[10px] font-medium leading-relaxed mt-2 px-1"
+          >
+            Editing and deleting a published post are not available yet — the organisation service
+            exposes publishing and listing only.
+          </Text>
+        ) : null}
+      </>
+    ) : null,
+  };
 }

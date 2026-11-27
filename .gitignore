@@ -119,3 +119,7 @@ docs/uat/android/*
 
 # The CI bundle export (FARCH-001). Local runs land here too.
 dist-ci/
+
+# Scroll profiles from scripts/profile-list-scroll.js (FARCH-004). Measured on a
+# device and compared; the comparison is the record, not the raw files.
+list-profiles/

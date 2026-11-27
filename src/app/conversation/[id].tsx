@@ -18,10 +18,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import {
-  View, FlatList, KeyboardAvoidingView, Platform,
+  View, KeyboardAvoidingView, Platform,
   Clipboard, TouchableOpacity, Text, Modal, Pressable, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlashList, type FlashListRef, type ListRenderItemInfo } from '@shopify/flash-list';
 import { ReportModal } from '@/components/ReportModal';
 import { useLocalSearchParams } from 'expo-router';
 import { useConversationStore } from '@/store/conversation';
@@ -33,7 +34,7 @@ import { currentUserIdIn, isOwnMessage, withAuthors } from '@/lib/domain/convers
 import { ConversationHeader } from '@/components/conversation/ConversationHeader';
 import { ContextCard } from '@/components/conversation/ContextCard';
 import { TrustBanner } from '@/components/conversation/TrustBanner';
-import { MessageBubble } from '@/components/conversation/MessageBubble';
+import { ThreadMessage } from '@/components/conversation/ThreadMessage';
 import { TypingIndicator } from '@/components/conversation/TypingIndicator';
 import { MessageComposer } from '@/components/conversation/MessageComposer';
 import { MessageActionSheet } from '@/components/conversation/MessageActionSheet';
@@ -45,41 +46,11 @@ import { Button } from '@/components/Button';
 import type { Message, ConnectionState, ReplyReference, Conversation } from '@/types/conversation';
 import { useTheme } from '@/design-system';
 
-// ---------------------------------------------------------------------------
-// DATE SEPARATOR
-// ---------------------------------------------------------------------------
+// The day separator is drawn by `ThreadMessage`, where its rule now lives.
+export { formatDateSeparator } from '@/components/conversation/ThreadMessage';
 
-/**
- * "Today", "Yesterday", a weekday, or a date — by calendar day on the phone.
- *
- * This counted whole 24-hour periods, so a message sent at 13:09 yesterday read
- * "Today" at 10:27 the next morning. Midnight is the boundary a member means.
- */
-export function formatDateSeparator(iso: string, now: Date = new Date()): string {
-  const date = new Date(iso);
-  const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
-  // Rounded, because a day that crosses a clock change is 23 or 25 hours long.
-  const days = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
-
-  if (days <= 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return date.toLocaleDateString('en-GB', { weekday: 'long' });
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: days > 365 ? 'numeric' : undefined });
-}
-
-function shouldShowDateSeparator(current: Message, previous?: Message): boolean {
-  if (!previous) return true;
-  const a = new Date(previous.createdAt);
-  const b = new Date(current.createdAt);
-  return a.toDateString() !== b.toDateString();
-}
-
-function shouldShowAvatar(messages: Message[], index: number): boolean {
-  if (index === 0) return true;
-  const current = messages[index];
-  const prev = messages[index - 1];
-  return prev.senderId !== current.senderId;
-}
+/** One empty thread, so a thread not yet loaded is the same array on every render. */
+const NO_MESSAGES: Message[] = [];
 
 // ---------------------------------------------------------------------------
 // SCREEN
@@ -89,7 +60,7 @@ export default function ConversationScreen() {
   const { tokens } = useTheme();
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const flatListRef = useRef<FlatList>(null);
+  const listRef = useRef<FlashListRef<Message>>(null);
   const isAtBottom = useRef(true);
 
   const { conversations, messages, isLoadingMessages, messagesError, loadMessages, markConversationRead } =
@@ -97,7 +68,7 @@ export default function ConversationScreen() {
   const { getTypingLabel } = useTypingStore();
 
   const conversation = conversations.find((c) => c.conversationId === id) as Conversation | undefined;
-  const convMessages = messages[id] || [];
+  const convMessages = messages[id] ?? NO_MESSAGES;
   const typingLabel = getTypingLabel(id);
 
   // ── Whose message is whose ─────────────────────────────────────────────────
@@ -198,7 +169,7 @@ export default function ConversationScreen() {
   }, [convMessages.length]);
 
   const scrollToBottom = useCallback(() => {
-    flatListRef.current?.scrollToEnd({ animated: true });
+    listRef.current?.scrollToEnd({ animated: true });
     setNewMessageCount(0);
     isAtBottom.current = true;
   }, []);
@@ -215,6 +186,19 @@ export default function ConversationScreen() {
     setSelectedMessage(message);
     setActionSheetVisible(true);
   }, []);
+
+  const jumpToMessage = useCallback((messageId: string) => {
+    const index = convMessages.findIndex((m) => m.messageId === messageId);
+    if (index >= 0) void listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+  }, [convMessages]);
+
+  // Not a closure re-made on every render: typing, the connection and the new-message badge
+  // re-render this screen, and the list redraws its rows only when this changes (FARCH-004).
+  const renderMessage = useCallback(({ item, index }: ListRenderItemInfo<Message>) => (
+    <ThreadMessage message={item} previous={index > 0 ? convMessages[index - 1] : undefined}
+      currentUserId={currentUserId} participants={conversation?.participants}
+      onLongPress={handleLongPress} onReplyPress={jumpToMessage} />
+  ), [convMessages, currentUserId, conversation?.participants, handleLongPress, jumpToMessage]);
 
   const handleReply = useCallback(() => {
     if (!selectedMessage) return;
@@ -595,47 +579,15 @@ export default function ConversationScreen() {
           loading={isLoadingMessages[id] && convMessages.length === 0} loadingLabel="Loading this conversation"
           error={!!messagesError[id] && convMessages.length === 0 && { title: 'This conversation could not be loaded', message: messagesError[id] }}
           onRetry={() => void loadMessages(id)}>
-          <FlatList
-            ref={flatListRef}
+          <FlashList
+            ref={listRef}
             data={convMessages}
             // Who is who can resolve after the messages do — the conversation
             // arrives with them, or the account restores a moment later — and a
             // list that only watches `data` would keep the old attribution.
             extraData={`${currentUserId ?? ''}|${conversation?.participants.length ?? 0}`}
             keyExtractor={(item) => item.messageId}
-            renderItem={({ item, index }) => {
-              const prevMsg = index > 0 ? convMessages[index - 1] : undefined;
-              const showDate = shouldShowDateSeparator(item, prevMsg);
-              const isCurrentUser = isOwnMessage(item, currentUserId);
-              const showAvatar = !isCurrentUser && shouldShowAvatar(convMessages, index);
-
-              return (
-                <View>
-                  {showDate && (
-                    <View className="items-center my-4">
-                      <View className="bg-subtle px-3 py-1 rounded-full">
-                        <Text className="text-[11px] text-content-tertiary font-semibold">
-                          {formatDateSeparator(item.createdAt)}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                  <MessageBubble
-                    message={withAuthors(item, conversation?.participants, currentUserId)}
-                    isCurrentUser={isCurrentUser}
-                    showAvatar={showAvatar}
-                    onLongPress={handleLongPress}
-                    onReplyPress={(msgId) => {
-                      const target = convMessages.find((m) => m.messageId === msgId);
-                      if (target) {
-                        const targetIndex = convMessages.findIndex((m) => m.messageId === msgId);
-                        flatListRef.current?.scrollToIndex({ index: targetIndex, animated: true, viewPosition: 0.5 });
-                      }
-                    }}
-                  />
-                </View>
-              );
-            }}
+            renderItem={renderMessage}
             ListHeaderComponent={
               conversation ? (
                 <View className="pt-4">
@@ -663,16 +615,15 @@ export default function ConversationScreen() {
             contentContainerStyle={{ paddingVertical: 8 }}
             // ── No `initialScrollIndex` ──────────────────────────────────────
             //
-            // It was set to the last message. Without `getItemLayout` a
-            // virtualised list then renders *from* that index, and a thread
-            // shorter than the screen can never scroll up to ask for the rest —
-            // so every conversation showed only its latest message. Found on 15
-            // Sep 2026: a thread of five messages displayed "How much?" alone.
-            // The list starts at the top and `onContentSizeChange` above takes
-            // it to the end, which is what the index was for.
-            onScrollToIndexFailed={() => {
-              flatListRef.current?.scrollToEnd({ animated: false });
-            }}
+            // It was set to the last message. Without `getItemLayout` the
+            // FlatList this used to be then rendered *from* that index, and a
+            // thread shorter than the screen could never scroll up to ask for
+            // the rest — so every conversation showed only its latest message.
+            // Found on 15 Sep 2026: a thread of five messages displayed "How
+            // much?" alone. The list starts at the top and
+            // `onContentSizeChange` above takes it to the end. A FlashList
+            // measures its rows, so a jump to a quoted message cannot fail and
+            // needs no fallback.
           />
         </ListState>
 

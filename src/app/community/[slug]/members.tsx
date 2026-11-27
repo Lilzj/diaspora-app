@@ -28,7 +28,9 @@
 import React, { useCallback } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
+import { ListState } from '@/components/ListState';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -64,6 +66,9 @@ const ROLE_EFFECT: Record<AssignableCommunityRole, string> = {
     'They will be able to change rules, publish notices and give other members moderator and ambassador roles.',
 };
 
+/** Stable, so a list with no rows to draw is the same empty list on every render. */
+const NO_MEMBERS: CommunityMember[] = [];
+
 export default function CommunityMembersScreen() {
   const bottomInset = useBottomInset();
   const { tokens } = useTheme();
@@ -78,7 +83,9 @@ export default function CommunityMembersScreen() {
   const canAppointAdministrators = canPerform('appoint-administrators', capabilities.data);
 
   const members = useCommunityMembers(slug, canView);
-  const changeRole = useChangeCommunityRole(slug);
+  // `mutate` keeps its identity where the mutation's result object does not, and
+  // the row renderer below depends on what it calls (FARCH-004).
+  const { mutate: changeRole, isPending: isChangingRole } = useChangeCommunityRole(slug);
 
   const offerRoles = useCallback(
     (member: CommunityMember) => {
@@ -89,7 +96,7 @@ export default function CommunityMembersScreen() {
         : ['Moderator', 'Ambassador'];
 
       const apply = (role: AssignableCommunityRole, granted: boolean) =>
-        changeRole.mutate(
+        changeRole(
           { userId: member.userId, role, granted },
           {
             onSuccess: () =>
@@ -146,7 +153,73 @@ export default function CommunityMembersScreen() {
     [canAppointAdministrators, changeRole, showAlert]
   );
 
+  // Stable, so the list redraws a member's row only when the member, or what the
+  // row offers, changes: a FlashList hands a row the next member rather than
+  // mounting a new one (FARCH-004).
+  const renderMember = useCallback(
+    ({ item: member }: ListRenderItemInfo<CommunityMember>) => {
+      // Owner is never offered; your own roles are changed by someone else.
+      const canChangeThisOne = canManage && !member.isYou && !member.roles.includes('Owner');
+
+      return (
+        <View
+          testID={`community-member-${member.userId}`}
+          style={{
+            backgroundColor: tokens.color.surface.card,
+            borderColor: tokens.color.surface.border,
+          }}
+          className="flex-row items-center rounded-xl border px-3 py-3 mb-2"
+        >
+          <View className="flex-1">
+            <Text
+              style={{ color: tokens.color.text.primary }}
+              className="text-sm font-black"
+              numberOfLines={1}
+            >
+              {/* Never the id. A GUID where a name belongs is what the
+                  organisation members screen shows today. */}
+              {member.displayName ?? 'A member'}
+              {member.isYou ? ' (you)' : ''}
+            </Text>
+
+            {rolesForDisplay(member.roles).length > 0 ? (
+              <View className="flex-row flex-wrap mt-1.5">
+                {rolesForDisplay(member.roles).map((role) => (
+                  <View key={role} className="mr-1.5">
+                    <CommunityRoleBadge role={role} size="xs" />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+
+          {canChangeThisOne ? (
+            <TouchableOpacity
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={`Change roles for ${member.displayName ?? 'this member'}`}
+              disabled={isChangingRole}
+              onPress={() => offerRoles(member)}
+              style={{ borderColor: tokens.color.surface.border }}
+              className="rounded-full border px-3 py-1.5"
+            >
+              <Text
+                style={{ color: tokens.color.primary[600] }}
+                className="text-xs font-black"
+              >
+                Roles
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      );
+    },
+    [canManage, isChangingRole, offerRoles, tokens]
+  );
+
   const record = community.data;
+  // The rows, unless the list is still being read or could not be.
+  const membersShown = !members.isLoading && !members.isError;
 
   return (
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
@@ -189,100 +262,47 @@ export default function CommunityMembersScreen() {
         // Members only. Not an empty list, which would read as an empty community.
         <CommunityUnavailablePanel reason="forbidden" subject="the member list" />
       ) : (
-        <ScrollEndScrollView
+        <ScrollEndFlashList
+          // The list pages, so it recycles its rows rather than keeping every page
+          // mounted (FARCH-004, 27 Nov 2026). The note above the rows is its header.
+          data={membersShown ? members.members : NO_MEMBERS}
+          keyExtractor={(member) => member.userId}
+          renderItem={renderMember}
           contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}
-        >
-          <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-bold mb-3">
-            {canManage
-              ? 'Only members who have chosen to be visible to the community appear here. Tap Roles to give someone a role or take one away.'
-              : 'Only members who have chosen to be visible to the community appear here.'}
-          </Text>
-
-          {members.isLoading ? (
-            <ActivityIndicator color={tokens.color.primary[500]} style={{ marginTop: 24 }} />
-          ) : members.isError ? (
-            <CommunityUnavailablePanel reason="error" subject="the members" />
-          ) : (
-            <>
-              {members.members.map((member) => {
-                // Owner is never offered; your own roles are changed by someone else.
-                const canChangeThisOne =
-                  canManage && !member.isYou && !member.roles.includes('Owner');
-
-                return (
-                  <View
-                    key={member.userId}
-                    testID={`community-member-${member.userId}`}
-                    style={{
-                      backgroundColor: tokens.color.surface.card,
-                      borderColor: tokens.color.surface.border,
-                    }}
-                    className="flex-row items-center rounded-xl border px-3 py-3 mb-2"
-                  >
-                    <View className="flex-1">
-                      <Text
-                        style={{ color: tokens.color.text.primary }}
-                        className="text-sm font-black"
-                        numberOfLines={1}
-                      >
-                        {/* Never the id. A GUID where a name belongs is what the
-                            organisation members screen shows today. */}
-                        {member.displayName ?? 'A member'}
-                        {member.isYou ? ' (you)' : ''}
-                      </Text>
-
-                      {rolesForDisplay(member.roles).length > 0 ? (
-                        <View className="flex-row flex-wrap mt-1.5">
-                          {rolesForDisplay(member.roles).map((role) => (
-                            <View key={role} className="mr-1.5">
-                              <CommunityRoleBadge role={role} size="xs" />
-                            </View>
-                          ))}
-                        </View>
-                      ) : null}
-                    </View>
-
-                    {canChangeThisOne ? (
-                      <TouchableOpacity
-                        accessible
-                        accessibilityRole="button"
-                        accessibilityLabel={`Change roles for ${member.displayName ?? 'this member'}`}
-                        disabled={changeRole.isPending}
-                        onPress={() => offerRoles(member)}
-                        style={{ borderColor: tokens.color.surface.border }}
-                        className="rounded-full border px-3 py-1.5"
-                      >
-                        <Text
-                          style={{ color: tokens.color.primary[600] }}
-                          className="text-xs font-black"
-                        >
-                          Roles
-                        </Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                );
-              })}
-
-              {members.hasMore ? (
-                <TouchableOpacity
-                  accessible
-                  accessibilityRole="button"
-                  onPress={members.loadMore}
-                  className="items-center py-3"
-                >
-                  {members.isFetchingMore ? (
-                    <ActivityIndicator color={tokens.color.primary[500]} />
-                  ) : (
-                    <Text style={{ color: tokens.color.primary[600] }} className="text-xs font-black">
-                      Show more members
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ) : null}
-            </>
-          )}
-        </ScrollEndScrollView>
+          ListHeaderComponent={
+            <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-bold mb-3">
+              {canManage
+                ? 'Only members who have chosen to be visible to the community appear here. Tap Roles to give someone a role or take one away.'
+                : 'Only members who have chosen to be visible to the community appear here.'}
+            </Text>
+          }
+          ListEmptyComponent={
+            // In place of the rows, as they were: the screen's own spinner and panel.
+            <ListState
+              loading={members.isLoading}
+              skeleton={<ActivityIndicator color={tokens.color.primary[500]} style={{ marginTop: 24 }} />}
+              error={members.isError ? <CommunityUnavailablePanel reason="error" subject="the members" /> : null}
+            />
+          }
+          ListFooterComponent={
+            membersShown && members.hasMore ? (
+              <TouchableOpacity
+                accessible
+                accessibilityRole="button"
+                onPress={members.loadMore}
+                className="items-center py-3"
+              >
+                {members.isFetchingMore ? (
+                  <ActivityIndicator color={tokens.color.primary[500]} />
+                ) : (
+                  <Text style={{ color: tokens.color.primary[600] }} className="text-xs font-black">
+                    Show more members
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ) : null
+          }
+        />
       )}
     </SafeAreaView>
   );

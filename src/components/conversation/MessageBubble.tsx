@@ -44,7 +44,11 @@ function formatVoiceDuration(secs: number): string {
 const VOICE_TRACK = Array.from({ length: 20 }, (_, index) => `bar-${index}`);
 
 export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLongPress, onReplyPress, onImagePress }: Props) {
-  const [voicePlaying, setVoicePlaying] = useState(false);
+  // Which voice note is playing, not whether one is: the thread is a FlashList
+  // (FARCH-004), which hands this bubble the next message as one scrolls away,
+  // and a flag would have carried "playing" onto a voice note nobody pressed.
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const voicePlaying = playingId === message.messageId;
   const tokens = useThemeTokens();
 
   // System messages
@@ -86,7 +90,12 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLon
       {!isCurrentUser && showAvatar && (
         <View className="w-7 h-7 rounded-full bg-surface-muted border border-subtle items-center justify-center mr-2 mb-1 overflow-hidden">
           {message.senderAvatarUrl ? (
-            <Image source={{ uri: message.senderAvatarUrl }} style={{ width: 28, height: 28 }} contentFit="cover" />
+            <Image
+              source={{ uri: message.senderAvatarUrl }}
+              recyclingKey={message.senderAvatarUrl}
+              style={{ width: 28, height: 28 }}
+              contentFit="cover"
+            />
           ) : (
             // No "?" about a real person. The screen names the author from the
             // conversation's participants; with no name there are no initials.
@@ -122,6 +131,8 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLon
             <TouchableOpacity onPress={() => onImagePress?.(message.attachment?.url || '')} activeOpacity={0.9}>
               <Image
                 source={{ uri: message.attachment.url }}
+                // Blank, rather than another message's photograph, while a recycled row loads this one.
+                recyclingKey={message.attachment.url}
                 style={{ width: 220, height: 170 }}
                 contentFit="cover"
               />
@@ -135,7 +146,7 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLon
           {!message.isDeleted && message.type === 'voice' && message.attachment?.type === 'voice' && (
             <View className="px-4 py-3 flex-row items-center" style={{ minWidth: 160 }}>
               <TouchableOpacity
-                onPress={() => setVoicePlaying(!voicePlaying)}
+                onPress={() => setPlayingId(voicePlaying ? null : message.messageId)}
                 className="w-9 h-9 rounded-full items-center justify-center mr-3"
                 style={{ backgroundColor: isCurrentUser ? 'rgba(255,255,255,0.25)' : '#F59300' }}
               >

@@ -92,6 +92,8 @@ export function MembershipProgrammeCard({
       <View className="flex-row">
         <Image
           source={{ uri: programme.organizationLogo ?? PLACEHOLDER }}
+          // Blank, rather than the last programme's logo, while a recycled row loads this one.
+          recyclingKey={programme.organizationLogo ?? PLACEHOLDER}
           style={{ width: 52, height: 52, borderRadius: 14 }}
           contentFit="cover"
           accessibilityIgnoresInvertColors
@@ -159,6 +161,8 @@ export function MembershipCard({
       <View className="flex-row items-center">
         <Image
           source={{ uri: membership.organizationLogo ?? PLACEHOLDER }}
+          // Blank, rather than the last membership's logo, while a recycled row loads this one.
+          recyclingKey={membership.organizationLogo ?? PLACEHOLDER}
           style={{ width: 44, height: 44, borderRadius: 12 }}
           contentFit="cover"
           accessibilityIgnoresInvertColors
@@ -368,6 +372,8 @@ export function SeriesCard({ series, onPress }: { series: EventSeries; onPress: 
       <View className="flex-row">
         <Image
           source={{ uri: series.coverImage }}
+          // Blank, rather than the last series' cover, while a recycled row loads this one.
+          recyclingKey={series.coverImage}
           style={{ width: 72, height: 72, borderRadius: 14 }}
           contentFit="cover"
           accessibilityIgnoresInvertColors
@@ -875,6 +881,7 @@ export function RecommendationCard({
       {recommendation.imageUrl ? (
         <Image
           source={{ uri: recommendation.imageUrl }}
+          recyclingKey={recommendation.imageUrl}
           style={{ width: '100%', height: 96, borderRadius: 10, marginBottom: 10 }}
           contentFit="cover"
           accessibilityIgnoresInvertColors

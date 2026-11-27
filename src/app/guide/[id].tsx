@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, TouchableOpacity, Modal, FlatList, Share, ScrollView, TouchableWithoutFeedback, KeyboardAvoidingView, ActivityIndicator, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
@@ -44,7 +44,7 @@ import { Ionicons } from '@expo/vector-icons';
 //
 // The comment thread and the report sheet are untouched. They are Community's,
 // they were correct, and a guide's discussion is not a Guides route.
-import { CommentThread, ReportContentSheet } from '@/components/community-social';
+import { CommentThreadComposer, ReportContentSheet, useCommentThreadList, type CommentListRef } from '@/components/community-social';
 import { useContentComments } from '@/hooks/community-social';
 import type { CommunityContentType } from '@/types/community-social';
 import { GuideBody } from '@/components/guides/GuideBody';
@@ -124,7 +124,7 @@ export default function GuideReaderScreen() {
   const recordView = useRecordGuideView();
   const recordShare = useRecordGuideShare();
 
-  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const scrollRef = useRef<CommentListRef>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [tocOpen, setTocOpen] = useState(false);
   const [showResumeBanner, setShowResumeBanner] = useState(false);
@@ -147,6 +147,10 @@ export default function GuideReaderScreen() {
     contentType: CommunityContentType;
     contentId: string;
   } | null>(null);
+  const comments = useCommentThreadList({
+    target: { contentType: 'guide', contentId: guide?.guideId ?? '' }, thread, inset: 24,
+    onReport: (commentId) => setReportTarget({ contentType: 'comment', contentId: commentId }),
+  });
 
   // Reading position is genuinely device-local — the platform has no route for
   // "where in this guide is this person" and inventing one would be inventing a
@@ -207,7 +211,7 @@ export default function GuideReaderScreen() {
     setShowResumeBanner(false);
     if (!scrollRef.current || height <= 0) return;
     setTimeout(() => {
-      scrollRef.current?.scrollTo({ y: Math.max(0, contentTop + top + position * height - 200), animated: true });
+      scrollRef.current?.scrollToOffset({ offset: Math.max(0, contentTop + top + position * height - 200), animated: true });
     }, 100);
   };
 
@@ -368,7 +372,6 @@ export default function GuideReaderScreen() {
   /** The signed-in member wrote this guide: they edit and remove it, never vote on or report it. */
   const isAuthor = viewerId !== null && guide.authorId === viewerId;
 
-
   const categoryName =
     categories.find((category) => category.key === guide.categoryKey)?.name ?? guide.categoryKey;
 
@@ -526,362 +529,362 @@ export default function GuideReaderScreen() {
       {/* The comment box and every reply box sit at the bottom of a long
           article, so on Android 15+ — where the window does not resize — a
           member who taps one is typing into a field the keyboard is covering.
-          The scroll view keeps its scroll-end navigation behaviour; the
+          The list keeps its scroll-end navigation behaviour; the
           avoiding view only supplies the inset it cannot know about. */}
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-      <ScrollEndScrollView
+      <ScrollEndFlashList
         ref={scrollRef}
-        className="flex-1"
+        {...comments.list}
         bounces={false}
-        scrollEventThrottle={16}
         onScroll={handleScroll}
         activeTab="knowledge"
-      >
-        {/* Cover image. `mediaReferences` carries a **`mediaId`**, never a URL
-            (ADR-005), so it is resolved through Media rather than rendered from
-            a field. Hidden in dark reading mode to focus on text. */}
-        {(!isReadingMode || readingTheme !== 'dark') && (
-          hero.url ? (
-            <Image
-              source={{ uri: hero.url }}
-              style={{ width: '100%', height: 240 }}
-              contentFit="cover"
-              transition={200}
-            />
-          ) : (
-            <View className="w-full h-[200px] bg-surface-muted items-center justify-center">
-              <Text className="text-4xl">📖</Text>
-            </View>
-          )
-        )}
-
-        {/* Kindle-Style Position Resume Banner */}
-        {showResumeBanner && (
-          <View className="bg-surface-muted border-b border-subtle px-6 py-3.5 flex-row items-center justify-between">
-            <Text className="text-xs font-bold text-content-strong flex-1 mr-4">
-              📖 Resume from {Math.round((resumeFrom.current ?? 0) * 100)}% through?
-            </Text>
-            <View className="flex-row">
-              <TouchableOpacity onPress={resumeReading} className="bg-primary-500 px-3 py-1.5 rounded-lg mr-2">
-                <Text className="text-[10px] font-black text-white">Resume</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowResumeBanner(false)} className="bg-surface-card border border-subtle px-3 py-1.5 rounded-lg">
-                <Text className="text-[10px] font-bold text-content-tertiary">Dismiss</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        <View
-          className="p-6"
-          onLayout={(event) => {
-            bodyFrame.current.contentTop = event.nativeEvent.layout.y;
-          }}
-        >
-          {/* Category & Offline Saved toggle */}
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-[10px] text-primary-500 font-extrabold uppercase tracking-widest">
-              {/* The catalogue's name for the key, or the key itself. There is
-                  no country name or flag on this contract — only a code. */}
-              {categoryName} · {guide.countryCode}
-              {guide.cityName ? ` · ${guide.cityName}` : ''}
-            </Text>
-
-            {/* Offline Saved trigger */}
-            <TouchableOpacity
-              onPress={toggleOfflineDownload}
-              className={`px-2.5 py-1 rounded-lg border ${
-                isDownloadedOffline ? 'bg-surface-muted border-subtle' : 'bg-surface-card border-subtle'
-              }`}
-            >
-              <Text className={`text-[9px] font-black ${isDownloadedOffline ? 'text-success-default' : 'text-content-muted'}`}>
-                {isDownloadedOffline ? '✓ OFFLINE SAVED' : '📥 DOWNLOAD OFFLINE'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text className={`text-2xl font-black mb-2 leading-snug ${getThemeTitleColor()}`}>
-            {guide.title}
-          </Text>
-          
-          <View className="flex-row items-center mb-6 flex-wrap">
-            <Text className="text-xs text-content-faint font-bold">🕐 {remainingTimeMinutes} mins left</Text>
-            <Text className="text-xs text-content-faint mx-2">·</Text>
-            {/* `trustMark.verifiedAt` — Trust's decision, and null when there has
-                never been one. "Not verified" is the honest reading of that;
-                the fixture screen printed "N/A", which reads as a missing field
-                rather than as an unverified guide. */}
-            <Text className="text-xs text-content-faint font-bold">
-              {guide.trustMark.verifiedAt
-                ? `Verified ${new Date(guide.trustMark.verifiedAt).toLocaleDateString()}`
-                : 'Not verified'}
-            </Text>
-          </View>
-
-          {/* ── The byline ───────────────────────────────────────────────────
-              `GuideAuthorResponse` is **Trust's projection**: an id, two
-              booleans, an opaque level label and badges. There is no name, no
-              avatar, no follower count and no expertise list on this contract,
-              and no author route in this module — so `AuthorExpertise`, which
-              needs all five, cannot be fed without inventing them. What the
-              server does say is rendered, and the byline links to the author's
-              other guides, which `GET /guides/authors/{id}` really serves. */}
-          <TouchableOpacity
-            onPress={() => router.push(`/contributor/${guide.authorId}`)}
-            className="bg-surface-background border border-faint rounded-2xl p-4 mb-2 flex-row items-center justify-between"
-            accessibilityRole="button"
-            accessibilityLabel="View this author"
-          >
-            {/* The author's photo, which the server sends since 4 Nov 2026. */}
-            <View className="mr-3">
-              <Avatar uri={guide.author?.avatarUrl} name={guide.author?.name ?? undefined} size={40} />
-            </View>
-            <View className="flex-1 mr-3">
-              <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-1">
-                Written by
-              </Text>
-              {/* The author's name, which the server sends since 14 Oct 2026. */}
-              {(guide.author as { name?: string | null } | null | undefined)?.name ? (
-                <Text className="text-sm font-black text-content-primary mb-1">
-                  {(guide.author as { name?: string | null }).name}
-                </Text>
-              ) : null}
-              <View className="flex-row items-center flex-wrap">
-                {guide.author?.trustLevel ? (
-                  <Text className="text-xs font-black text-content-strong mr-2">
-                    {guide.author.trustLevel}
-                  </Text>
-                ) : null}
-                {guide.author?.isApprovedContributor ? (
-                  <Text className="text-[10px] font-black text-success-default mr-2">
-                    ✓ APPROVED CONTRIBUTOR
-                  </Text>
-                ) : null}
-                {guide.author?.isCommunityGuide ? (
-                  <Text className="text-[10px] font-black text-primary-500 mr-2">
-                    ★ COMMUNITY GUIDE
-                  </Text>
-                ) : null}
-                {!guide.author ? (
-                  <Text className="text-xs text-content-muted font-semibold">
-                    A community member
-                  </Text>
-                ) : null}
-              </View>
-              {guide.author && guide.author.badges.length > 0 ? (
-                <View className="flex-row flex-wrap mt-1.5">
-                  {guide.author.badges.map((badge) => (
-                    <View
-                      key={`${badge.badge}-${badge.countryCode ?? 'global'}`}
-                      className="bg-surface-muted rounded-md px-2 py-0.5 mr-1.5 mb-1"
-                    >
-                      <Text className="text-[10px] font-bold text-content-tertiary">
-                        {trustBadgeLabel(badge.badge)}
-                        {badge.countryCode ? ` · ${badge.countryCode}` : ''}
-                      </Text>
-                    </View>
-                  ))}
+        ListHeaderComponent={
+          <>
+            {/* Cover image. `mediaReferences` carries a **`mediaId`**, never a URL
+                (ADR-005), so it is resolved through Media rather than rendered from
+                a field. Hidden in dark reading mode to focus on text. */}
+            {(!isReadingMode || readingTheme !== 'dark') && (
+              hero.url ? (
+                <Image
+                  source={{ uri: hero.url }}
+                  recyclingKey={hero.url}
+                  style={{ width: '100%', height: 240 }}
+                  contentFit="cover"
+                  transition={200}
+                />
+              ) : (
+                <View className="w-full h-[200px] bg-surface-muted items-center justify-center">
+                  <Text className="text-4xl">📖</Text>
                 </View>
-              ) : null}
-            </View>
-            <Text className="text-content-faint text-lg">›</Text>
-          </TouchableOpacity>
+              )
+            )}
 
-          {/* Version dashboard. `currentVersion` is the published version number
-              and is **zero until first publication** — a draft preview shows no
-              history rather than "v0". */}
-          <View className="bg-surface-background rounded-2xl p-4 my-4 border border-faint flex-row justify-between items-center">
-            <View className="flex-1 mr-3">
-              <View className="flex-row items-center mb-1">
-                <Text className="text-[10px] font-black text-content-faint uppercase tracking-wide mr-1.5">
-                  Version Timeline
+            {/* Kindle-Style Position Resume Banner */}
+            {showResumeBanner && (
+              <View className="bg-surface-muted border-b border-subtle px-6 py-3.5 flex-row items-center justify-between">
+                <Text className="text-xs font-bold text-content-strong flex-1 mr-4">
+                  📖 Resume from {Math.round((resumeFrom.current ?? 0) * 100)}% through?
                 </Text>
-                {guide.currentVersion > 0 ? (
-                  <TouchableOpacity
-                    onPress={() => setVersionModalOpen(true)}
-                    className="bg-subtle px-2 py-0.5 rounded"
-                  >
-                    <Text className="text-[9px] font-extrabold text-content-secondary">
-                      v{guide.currentVersion} History →
-                    </Text>
+                <View className="flex-row">
+                  <TouchableOpacity onPress={resumeReading} className="bg-primary-500 px-3 py-1.5 rounded-lg mr-2">
+                    <Text className="text-[10px] font-black text-white">Resume</Text>
                   </TouchableOpacity>
-                ) : (
-                  <Text className="text-[9px] font-extrabold text-content-faint">
-                    Not published yet
-                  </Text>
-                )}
+                  <TouchableOpacity onPress={() => setShowResumeBanner(false)} className="bg-surface-card border border-subtle px-3 py-1.5 rounded-lg">
+                    <Text className="text-[10px] font-bold text-content-tertiary">Dismiss</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <Text className="text-[10px] text-content-muted">
-                {guide.updatedAt
-                  ? `Updated: ${new Date(guide.updatedAt).toLocaleDateString()}`
-                  : `Created: ${new Date(guide.createdAt).toLocaleDateString()}`}
-              </Text>
-            </View>
-            {/* The `GuideQualityBadge` that stood here rendered a
-                `qualityLabel` the platform does not have. What it does have is a
-                verification state, and that is Trust's, not a score. */}
+            )}
+
             <View
-              className={`px-2.5 py-1 rounded-lg border ${
-                guide.trustMark.state === 'Verified'
-                  ? 'bg-surface-muted border-subtle'
-                  : 'bg-surface-card border-subtle'
-              }`}
+              className="px-6 pt-6"
+              onLayout={(event) => {
+                bodyFrame.current.contentTop = event.nativeEvent.layout.y;
+              }}
             >
-              <Text
-                className={`text-[10px] font-black uppercase ${
-                  guide.trustMark.state === 'Verified'
-                    ? 'text-success-default'
-                    : 'text-content-muted'
-                }`}
-              >
-                {guide.trustMark.state === 'Verified'
-                  ? `🛡️ ${guide.trustMark.badge ?? 'Verified'}`
-                  : guide.trustMark.state}
-              </Text>
-            </View>
-          </View>
-
-          {/* Content body — the platform's sections and blocks, each rendered
-              by its kind. It used to be `guide.content`, one fixture string. */}
-          <View
-            className="mb-8"
-            onLayout={(event) => {
-              bodyFrame.current.top = event.nativeEvent.layout.y;
-              bodyFrame.current.height = event.nativeEvent.layout.height;
-            }}
-          >
-            <GuideBody
-              sections={guide.sections}
-              textClassName={`${getThemeTextColor()} ${getTextSizeClass()}`}
-              headingClassName={getThemeTitleColor()}
-            />
-          </View>
-
-          {/* Community Reactions & trust confidence details */}
-          <View className="bg-surface-background rounded-2xl p-4 mb-8 border border-faint">
-            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Community Confidence Signals</Text>
-            <View className="flex-row justify-between mb-4 flex-wrap">
-              {/* Every one of these is a server counter. The screen used to show
-                  a `useState` seeded from a fixture beside the words "Verified
-                  by Local Residents" — rendered unconditionally, over unverified
-                  guides as readily as verified ones. */}
-              <Text className="text-xs text-content-tertiary font-semibold">
-                👍 {helpfulCount} helpful · 👀 {guide.engagement.views} views · 🔖{' '}
-                {guide.engagement.bookmarkCount} saved
-              </Text>
-            </View>
-            <View className="flex-row gap-2">
-              {/* No vote on your own guide: the server refuses it, so the author
-                  is not offered the button (16 Oct 2026). */}
-              {isAuthor ? null : (
-              <TouchableOpacity
-                onPress={handleHelpfulPress}
-                disabled={vote.isPending}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: vote.isPending, selected: isHelpfulActive }}
-                className={`flex-1 border py-3 rounded-xl items-center flex-row justify-center gap-1.5 ${
-                  isHelpfulActive ? 'bg-surface-muted border-subtle' : 'bg-surface-card border-subtle'
-                }`}
-              >
-                <Text className="text-base">{isHelpfulActive ? '❤️' : '👍'}</Text>
-                <Text className={`text-xs font-bold ${isHelpfulActive ? 'text-primary-500' : 'text-content-secondary'}`}>
-                  {vote.isPending ? 'Sending…' : isHelpfulActive ? 'Marked Helpful' : 'Mark Helpful'}
+              {/* Category & Offline Saved toggle */}
+              <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-[10px] text-primary-500 font-extrabold uppercase tracking-widest">
+                  {/* The catalogue's name for the key, or the key itself. There is
+                      no country name or flag on this contract — only a code. */}
+                  {categoryName} · {guide.countryCode}
+                  {guide.cityName ? ` · ${guide.cityName}` : ''}
                 </Text>
-              </TouchableOpacity>
-              )}
-              {/* "Confirm Details" used to show a success alert and do nothing.
-                  There is no "confirm" route on this module — the two things a
-                  reader can actually do to a guide are vote and save it, so the
-                  second control is the save, which is
-                  `PUT /guides/{id}/bookmark`. */}
-              <TouchableOpacity
-                onPress={handleBookmarkPress}
-                disabled={setBookmark.isPending}
-                accessibilityRole="button"
-                accessibilityLabel={viewerState.isSaved ? 'Saved. Tap to remove from Saved' : saveControl.label}
-                accessibilityState={{ disabled: setBookmark.isPending, selected: viewerState.isSaved }}
-                className="flex-1 bg-surface-card border border-subtle py-3 rounded-xl items-center flex-row justify-center gap-1.5"
-              >
-                <Text className="text-base">{saveControl.icon}</Text>
-                <Text
-                  className={`text-xs font-bold ${
-                    viewerState.isSaved ? 'text-success-default' : 'text-content-secondary'
+
+                {/* Offline Saved trigger */}
+                <TouchableOpacity
+                  onPress={toggleOfflineDownload}
+                  className={`px-2.5 py-1 rounded-lg border ${
+                    isDownloadedOffline ? 'bg-surface-muted border-subtle' : 'bg-surface-card border-subtle'
                   }`}
                 >
-                  {saveControl.label}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+                  <Text className={`text-[9px] font-black ${isDownloadedOffline ? 'text-success-default' : 'text-content-muted'}`}>
+                    {isDownloadedOffline ? '✓ OFFLINE SAVED' : '📥 DOWNLOAD OFFLINE'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-          {/* ── Threaded discussion ────────────────────────────────────────
-              One component for every comment thread in the application. It
-              indents by `renderedDepth` — clamped at six by the server, where
-              `depth` is unbounded — and it renders deleted comments as
-              tombstones rather than dropping them, because dropping one would
-              take its replies off the screen with it. */}
-          <View className="mb-8">
-            <Text className="text-lg font-black text-content-primary mb-4">💬 Discussion</Text>
-            <CommentThread
-              target={{ contentType: 'guide', contentId: guide.guideId }}
-              thread={thread}
-              onReport={(commentId) =>
-                setReportTarget({ contentType: 'comment', contentId: commentId })
-              }
-            />
-          </View>
-          {/* More in the same category.
-              It used to be `mockGuides.filter(g => g.guideId !== guide.guideId)
-              .slice(0, 3)` — literally every other fixture, labelled "Related".
-              There is no related-guides route in this module, so this is the
-              category browse, and the heading says which. */}
-          {relatedGuides.length > 0 ? (
-            <View className="border-t border-faint pt-6 mb-8">
-              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
-                More in {categoryName}
+              <Text className={`text-2xl font-black mb-2 leading-snug ${getThemeTitleColor()}`}>
+                {guide.title}
               </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-3">
-                {relatedGuides.map((rel) => (
-                  <TouchableOpacity
-                    key={rel.guideId}
-                    onPress={() => router.push(`/guide/${rel.guideId}`)}
-                    className="bg-surface-card border border-subtle rounded-2xl p-4 w-[240px] mr-3 shadow-sm"
+              
+              <View className="flex-row items-center mb-6 flex-wrap">
+                <Text className="text-xs text-content-faint font-bold">🕐 {remainingTimeMinutes} mins left</Text>
+                <Text className="text-xs text-content-faint mx-2">·</Text>
+                {/* `trustMark.verifiedAt` — Trust's decision, and null when there has
+                    never been one. "Not verified" is the honest reading of that;
+                    the fixture screen printed "N/A", which reads as a missing field
+                    rather than as an unverified guide. */}
+                <Text className="text-xs text-content-faint font-bold">
+                  {guide.trustMark.verifiedAt
+                    ? `Verified ${new Date(guide.trustMark.verifiedAt).toLocaleDateString()}`
+                    : 'Not verified'}
+                </Text>
+              </View>
+
+              {/* ── The byline ───────────────────────────────────────────────────
+                  `GuideAuthorResponse` is **Trust's projection**: an id, two
+                  booleans, an opaque level label and badges. There is no name, no
+                  avatar, no follower count and no expertise list on this contract,
+                  and no author route in this module — so `AuthorExpertise`, which
+                  needs all five, cannot be fed without inventing them. What the
+                  server does say is rendered, and the byline links to the author's
+                  other guides, which `GET /guides/authors/{id}` really serves. */}
+              <TouchableOpacity
+                onPress={() => router.push(`/contributor/${guide.authorId}`)}
+                className="bg-surface-background border border-faint rounded-2xl p-4 mb-2 flex-row items-center justify-between"
+                accessibilityRole="button"
+                accessibilityLabel="View this author"
+              >
+                {/* The author's photo, which the server sends since 4 Nov 2026. */}
+                <View className="mr-3">
+                  <Avatar uri={guide.author?.avatarUrl} name={guide.author?.name ?? undefined} size={40} />
+                </View>
+                <View className="flex-1 mr-3">
+                  <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-1">
+                    Written by
+                  </Text>
+                  {/* The author's name, which the server sends since 14 Oct 2026. */}
+                  {(guide.author as { name?: string | null } | null | undefined)?.name ? (
+                    <Text className="text-sm font-black text-content-primary mb-1">
+                      {(guide.author as { name?: string | null }).name}
+                    </Text>
+                  ) : null}
+                  <View className="flex-row items-center flex-wrap">
+                    {guide.author?.trustLevel ? (
+                      <Text className="text-xs font-black text-content-strong mr-2">
+                        {guide.author.trustLevel}
+                      </Text>
+                    ) : null}
+                    {guide.author?.isApprovedContributor ? (
+                      <Text className="text-[10px] font-black text-success-default mr-2">
+                        ✓ APPROVED CONTRIBUTOR
+                      </Text>
+                    ) : null}
+                    {guide.author?.isCommunityGuide ? (
+                      <Text className="text-[10px] font-black text-primary-500 mr-2">
+                        ★ COMMUNITY GUIDE
+                      </Text>
+                    ) : null}
+                    {!guide.author ? (
+                      <Text className="text-xs text-content-muted font-semibold">
+                        A community member
+                      </Text>
+                    ) : null}
+                  </View>
+                  {guide.author && guide.author.badges.length > 0 ? (
+                    <View className="flex-row flex-wrap mt-1.5">
+                      {guide.author.badges.map((badge) => (
+                        <View
+                          key={`${badge.badge}-${badge.countryCode ?? 'global'}`}
+                          className="bg-surface-muted rounded-md px-2 py-0.5 mr-1.5 mb-1"
+                        >
+                          <Text className="text-[10px] font-bold text-content-tertiary">
+                            {trustBadgeLabel(badge.badge)}
+                            {badge.countryCode ? ` · ${badge.countryCode}` : ''}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+                <Text className="text-content-faint text-lg">›</Text>
+              </TouchableOpacity>
+
+              {/* Version dashboard. `currentVersion` is the published version number
+                  and is **zero until first publication** — a draft preview shows no
+                  history rather than "v0". */}
+              <View className="bg-surface-background rounded-2xl p-4 my-4 border border-faint flex-row justify-between items-center">
+                <View className="flex-1 mr-3">
+                  <View className="flex-row items-center mb-1">
+                    <Text className="text-[10px] font-black text-content-faint uppercase tracking-wide mr-1.5">
+                      Version Timeline
+                    </Text>
+                    {guide.currentVersion > 0 ? (
+                      <TouchableOpacity
+                        onPress={() => setVersionModalOpen(true)}
+                        className="bg-subtle px-2 py-0.5 rounded"
+                      >
+                        <Text className="text-[9px] font-extrabold text-content-secondary">
+                          v{guide.currentVersion} History →
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text className="text-[9px] font-extrabold text-content-faint">
+                        Not published yet
+                      </Text>
+                    )}
+                  </View>
+                  <Text className="text-[10px] text-content-muted">
+                    {guide.updatedAt
+                      ? `Updated: ${new Date(guide.updatedAt).toLocaleDateString()}`
+                      : `Created: ${new Date(guide.createdAt).toLocaleDateString()}`}
+                  </Text>
+                </View>
+                {/* The `GuideQualityBadge` that stood here rendered a
+                    `qualityLabel` the platform does not have. What it does have is a
+                    verification state, and that is Trust's, not a score. */}
+                <View
+                  className={`px-2.5 py-1 rounded-lg border ${
+                    guide.trustMark.state === 'Verified'
+                      ? 'bg-surface-muted border-subtle'
+                      : 'bg-surface-card border-subtle'
+                  }`}
+                >
+                  <Text
+                    className={`text-[10px] font-black uppercase ${
+                      guide.trustMark.state === 'Verified'
+                        ? 'text-success-default'
+                        : 'text-content-muted'
+                    }`}
                   >
-                    <Text className="text-[9px] font-extrabold text-primary-500 uppercase">
-                      {rel.countryCode}
-                    </Text>
-                    <Text className="text-sm font-bold text-content-primary mt-1 leading-snug" numberOfLines={2}>
-                      {rel.title}
-                    </Text>
-                    <Text className="text-[10px] text-content-muted mt-2">
-                      🕐 {rel.readingTimeMinutes} min read
+                    {guide.trustMark.state === 'Verified'
+                      ? `🛡️ ${guide.trustMark.badge ?? 'Verified'}`
+                      : guide.trustMark.state}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Content body — the platform's sections and blocks, each rendered
+                  by its kind. It used to be `guide.content`, one fixture string. */}
+              <View
+                className="mb-8"
+                onLayout={(event) => {
+                  bodyFrame.current.top = event.nativeEvent.layout.y;
+                  bodyFrame.current.height = event.nativeEvent.layout.height;
+                }}
+              >
+                <GuideBody
+                  sections={guide.sections}
+                  textClassName={`${getThemeTextColor()} ${getTextSizeClass()}`}
+                  headingClassName={getThemeTitleColor()}
+                />
+              </View>
+
+              {/* Community Reactions & trust confidence details */}
+              <View className="bg-surface-background rounded-2xl p-4 mb-8 border border-faint">
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Community Confidence Signals</Text>
+                <View className="flex-row justify-between mb-4 flex-wrap">
+                  {/* Every one of these is a server counter. The screen used to show
+                      a `useState` seeded from a fixture beside the words "Verified
+                      by Local Residents" — rendered unconditionally, over unverified
+                      guides as readily as verified ones. */}
+                  <Text className="text-xs text-content-tertiary font-semibold">
+                    👍 {helpfulCount} helpful · 👀 {guide.engagement.views} views · 🔖{' '}
+                    {guide.engagement.bookmarkCount} saved
+                  </Text>
+                </View>
+                <View className="flex-row gap-2">
+                  {/* No vote on your own guide: the server refuses it, so the author
+                      is not offered the button (16 Oct 2026). */}
+                  {isAuthor ? null : (
+                  <TouchableOpacity
+                    onPress={handleHelpfulPress}
+                    disabled={vote.isPending}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: vote.isPending, selected: isHelpfulActive }}
+                    className={`flex-1 border py-3 rounded-xl items-center flex-row justify-center gap-1.5 ${
+                      isHelpfulActive ? 'bg-surface-muted border-subtle' : 'bg-surface-card border-subtle'
+                    }`}
+                  >
+                    <Text className="text-base">{isHelpfulActive ? '❤️' : '👍'}</Text>
+                    <Text className={`text-xs font-bold ${isHelpfulActive ? 'text-primary-500' : 'text-content-secondary'}`}>
+                      {vote.isPending ? 'Sending…' : isHelpfulActive ? 'Marked Helpful' : 'Mark Helpful'}
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          ) : null}
+                  )}
+                  {/* "Confirm Details" used to show a success alert and do nothing.
+                      There is no "confirm" route on this module — the two things a
+                      reader can actually do to a guide are vote and save it, so the
+                      second control is the save, which is
+                      `PUT /guides/{id}/bookmark`. */}
+                  <TouchableOpacity
+                    onPress={handleBookmarkPress}
+                    disabled={setBookmark.isPending}
+                    accessibilityRole="button"
+                    accessibilityLabel={viewerState.isSaved ? 'Saved. Tap to remove from Saved' : saveControl.label}
+                    accessibilityState={{ disabled: setBookmark.isPending, selected: viewerState.isSaved }}
+                    className="flex-1 bg-surface-card border border-subtle py-3 rounded-xl items-center flex-row justify-center gap-1.5"
+                  >
+                    <Text className="text-base">{saveControl.icon}</Text>
+                    <Text
+                      className={`text-xs font-bold ${
+                        viewerState.isSaved ? 'text-success-default' : 'text-content-secondary'
+                      }`}
+                    >
+                      {saveControl.label}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-          {/* The author corrects their guide where they read it (14 Oct 2026). */}
-          {isAuthor ? (
-            <TouchableOpacity
-              onPress={() => router.push(`/guide/edit/${guide.guideId}`)}
-              accessibilityRole="button"
-              accessibilityLabel="Edit guide"
-              className="items-center py-4"
-            >
-              <Text className="text-sm font-bold text-primary-500">Edit guide</Text>
-            </TouchableOpacity>
-          ) : null}
-          {isAuthor ? (
-            <OwnerRemoveButton
-              noun="guide"
-              onRemove={() => performWorkspaceAction('delete', 'Guide', guide.guideId)}
-            />
-          ) : null}
-        </View>
-        <View className="h-10" />
-      </ScrollEndScrollView>
+              {/* ── Threaded discussion ────────────────────────────────────────
+                  One component for every comment thread in the application. It
+                  indents by `renderedDepth` (clamped at six by the server; `depth`
+                  is unbounded) and draws deleted comments as tombstones, since
+                  dropping one would take its replies with it. Its comments are
+                  this list's rows (FARCH-004); the compose box ends the header. */}
+              <Text className="text-lg font-black text-content-primary mb-4">💬 Discussion</Text>
+              <CommentThreadComposer {...comments.composer} />
+            </View>
+          </>
+        }
+        ListEmptyComponent={<View className="px-6"><ListState {...comments.states} /></View>}
+        ListFooterComponent={
+          <View className="px-6 pb-16">
+            <View className="mb-8">{comments.footer}</View>
+            {/* More in the same category.
+                It used to be `mockGuides.filter(g => g.guideId !== guide.guideId)
+                .slice(0, 3)` — literally every other fixture, labelled "Related".
+                There is no related-guides route in this module, so this is the
+                category browse, and the heading says which. */}
+            {relatedGuides.length > 0 ? (
+              <View className="border-t border-faint pt-6 mb-8">
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
+                  More in {categoryName}
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-3">
+                  {relatedGuides.map((rel) => (
+                    <TouchableOpacity
+                      key={rel.guideId}
+                      onPress={() => router.push(`/guide/${rel.guideId}`)}
+                      className="bg-surface-card border border-subtle rounded-2xl p-4 w-[240px] mr-3 shadow-sm"
+                    >
+                      <Text className="text-[9px] font-extrabold text-primary-500 uppercase">
+                        {rel.countryCode}
+                      </Text>
+                      <Text className="text-sm font-bold text-content-primary mt-1 leading-snug" numberOfLines={2}>
+                        {rel.title}
+                      </Text>
+                      <Text className="text-[10px] text-content-muted mt-2">
+                        🕐 {rel.readingTimeMinutes} min read
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
+
+            {/* The author corrects their guide where they read it (14 Oct 2026). */}
+            {isAuthor ? (
+              <TouchableOpacity
+                onPress={() => router.push(`/guide/edit/${guide.guideId}`)}
+                accessibilityRole="button"
+                accessibilityLabel="Edit guide"
+                className="items-center py-4"
+              >
+                <Text className="text-sm font-bold text-primary-500">Edit guide</Text>
+              </TouchableOpacity>
+            ) : null}
+            {isAuthor ? (
+              <OwnerRemoveButton
+                noun="guide"
+                onRemove={() => performWorkspaceAction('delete', 'Guide', guide.guideId)}
+              />
+            ) : null}
+          </View>
+        }
+      />
       </KeyboardAvoidingView>
 
       {/* Table of Contents Modal Drawer */}
@@ -890,7 +893,6 @@ export default function GuideReaderScreen() {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setTocOpen(false)}
-      
         statusBarTranslucent
         navigationBarTranslucent>
         <TouchableOpacity
@@ -918,10 +920,7 @@ export default function GuideReaderScreen() {
                       // knowable without measuring the rendered blocks — but it
                       // is now scaled by what each section actually contains
                       // rather than by a flat 250 per section.
-                      scrollRef.current?.scrollTo({
-                        y: item.order * 250,
-                        animated: true,
-                      });
+                      scrollRef.current?.scrollToOffset({ offset: item.order * 250, animated: true });
                     }}
                     className="py-4 border-b border-faint flex-row items-center justify-between"
                   >
@@ -943,7 +942,6 @@ export default function GuideReaderScreen() {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setVersionModalOpen(false)}
-      
         statusBarTranslucent
         navigationBarTranslucent>
         <TouchableOpacity

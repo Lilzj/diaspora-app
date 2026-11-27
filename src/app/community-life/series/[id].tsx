@@ -10,6 +10,10 @@
 //
 // The recurrence sentence comes from `series.recurrence.description`, written by
 // the backend that owns the semantics. §10: the client does not compose one.
+//
+// The dates page, so the screen is one FlashList (FARCH-004, 27 Nov 2026): the
+// series is drawn above the dates as the list's header, and the dates are
+// recycled as they scroll rather than every page staying mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
@@ -17,6 +21,7 @@ import { useNotification } from '@/providers/notification-provider';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import {
@@ -39,8 +44,24 @@ import { useCancelSeries, useOccurrences, useSeries } from '@/hooks/community-li
 import { describeSeries } from '@/lib/domain/community-state';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import { publishEventSeries } from '@/lib/api/community-life-api';
+import type { EventOccurrence } from '@/types/community-advanced';
 
 type Tab = 'upcoming' | 'past' | 'cancelled';
+
+/** The list's rows while there is no series to list the dates of. */
+const NO_DATES: EventOccurrence[] = [];
+
+/** One date. Module-level, so the list keeps a row until its date changes. */
+function renderOccurrence({ item }: ListRenderItemInfo<EventOccurrence>) {
+  return (
+    <View className="px-5 mb-2.5">
+      <OccurrenceRow
+        occurrence={item}
+        onPress={() => router.push(`/community-life/occurrence/${item.occurrenceId}` as never)}
+      />
+    </View>
+  );
+}
 
 export default function SeriesDetailScreen() {
   const { showAlert } = useNotification();
@@ -82,7 +103,7 @@ export default function SeriesDetailScreen() {
   }, [series?.seriesId]);
 
   const state = describeSeries(series?.status ?? 'Draft');
-  const list = tab === 'upcoming' ? upcoming : tab === 'past' ? past : cancelled;
+  const dates = tab === 'upcoming' ? upcoming : tab === 'past' ? past : cancelled;
   const canManage = Boolean(series && series.status !== 'Cancelled' && series.status !== 'Completed');
 
   const [isPublishing, setIsPublishing] = useState(false);
@@ -152,6 +173,88 @@ export default function SeriesDetailScreen() {
           />
         ) : null
       }
+      list={{
+        data: series ? dates : NO_DATES,
+        keyExtractor: (occurrence) => occurrence.occurrenceId,
+        renderItem: renderOccurrence,
+        ListEmptyComponent: series ? (
+          <View className="px-5">
+            {/* A failed read used to fall through to "No upcoming dates". The error is
+                drawn only with no dates at all: a tab may be empty while others are not. */}
+            <ListState
+              loading={isLoadingOccurrences}
+              loadingLabel="Loading dates"
+              error={
+                isOccurrencesError && occurrences.length === 0
+                  ? { title: 'Dates could not be loaded', message: occurrencesError?.message }
+                  : null
+              }
+              onRetry={() => void refetchOccurrences()}
+              isEmpty
+              empty={{
+                icon: 'calendar-outline',
+                title:
+                  tab === 'upcoming'
+                    ? 'No upcoming dates'
+                    : tab === 'past'
+                      ? 'Nothing has happened yet'
+                      : 'Nothing cancelled',
+                message:
+                  tab === 'upcoming'
+                    ? 'The organiser has not scheduled any more of these.'
+                    : tab === 'past'
+                      ? 'This series has not run yet.'
+                      : 'Every date in this series is going ahead.',
+              }}
+            />
+          </View>
+        ) : null,
+        ListFooterComponent: series ? (
+          <>
+            {hasNextPage && tab === 'upcoming' && dates.length > 0 ? (
+              <View className="px-5 mt-1 mb-3">
+                {isFetchingNextPage ? (
+                  <View className="py-3 items-center" accessibilityLabel="Loading more dates">
+                    <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                  </View>
+                ) : (
+                  <SecondaryButton label="Show more dates" onPress={() => void fetchNextPage()} />
+                )}
+              </View>
+            ) : null}
+
+            {/* Organizer controls */}
+            {canManage ? (
+              <View className="px-5 mt-6">
+                <SecondaryButton
+                  label="Edit this series"
+                  icon="create-outline"
+                  onPress={() =>
+                    router.push(`/community-life/series/create?seriesId=${series.seriesId}` as never)
+                  }
+                />
+                <View className="mt-3">
+                  <SecondaryButton
+                    label="Cancel the whole series"
+                    icon="close-circle-outline"
+                    disabled={cancelSeries.isPending}
+                    onPress={() =>
+                      showAlert({ type: 'error', title: 'Cancel the whole series?', message: 'Every upcoming date will be cancelled and everyone registered will be told. This cannot be undone.', buttons: [
+                          { text: 'Keep it', style: 'cancel' },
+                          {
+                            text: 'Cancel series',
+                            style: 'destructive',
+                            onPress: () => cancelSeries.mutate({ seriesId: series.seriesId }),
+                          },
+                        ] })
+                    }
+                  />
+                </View>
+              </View>
+            ) : null}
+          </>
+        ) : null,
+      }}
     >
       {!series ? (
         <EmptyState
@@ -163,6 +266,7 @@ export default function SeriesDetailScreen() {
         <View>
           <Image
             source={{ uri: series.coverImage }}
+            recyclingKey={series.coverImage}
             style={{ width: '100%', height: 180 }}
             contentFit="cover"
             accessibilityIgnoresInvertColors
@@ -316,7 +420,7 @@ export default function SeriesDetailScreen() {
             title="All dates"
             subtitle={`${series.occurrenceCount} in total · ${series.completedCount} already happened`}
           >
-            <View className="px-5">
+            <View className="px-5 pb-2">
               <ChipRow
                 accessibilityLabel="Filter dates"
                 options={[
@@ -327,92 +431,8 @@ export default function SeriesDetailScreen() {
                 value={tab}
                 onChange={setTab}
               />
-
-              <View className="mt-2">
-                {/* A failed read used to fall through to "No upcoming dates". The error is
-                    drawn only with no dates at all: a tab may be empty while others are not. */}
-                <ListState
-                  loading={isLoadingOccurrences}
-                  loadingLabel="Loading dates"
-                  error={
-                    isOccurrencesError && occurrences.length === 0
-                      ? { title: 'Dates could not be loaded', message: occurrencesError?.message }
-                      : null
-                  }
-                  onRetry={() => void refetchOccurrences()}
-                  isEmpty={list.length === 0}
-                  empty={{
-                    icon: 'calendar-outline',
-                    title:
-                      tab === 'upcoming'
-                        ? 'No upcoming dates'
-                        : tab === 'past'
-                          ? 'Nothing has happened yet'
-                          : 'Nothing cancelled',
-                    message:
-                      tab === 'upcoming'
-                        ? 'The organiser has not scheduled any more of these.'
-                        : tab === 'past'
-                          ? 'This series has not run yet.'
-                          : 'Every date in this series is going ahead.',
-                  }}
-                >
-                  {list.map((occurrence) => (
-                    <View key={occurrence.occurrenceId} className="mb-2.5">
-                      <OccurrenceRow
-                        occurrence={occurrence}
-                        onPress={() =>
-                          router.push(`/community-life/occurrence/${occurrence.occurrenceId}` as never)
-                        }
-                      />
-                    </View>
-                  ))}
-
-                  {hasNextPage && tab === 'upcoming' ? (
-                    <View className="mt-1 mb-3">
-                      {isFetchingNextPage ? (
-                        <View className="py-3 items-center" accessibilityLabel="Loading more dates">
-                          <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                        </View>
-                      ) : (
-                        <SecondaryButton label="Show more dates" onPress={() => void fetchNextPage()} />
-                      )}
-                    </View>
-                  ) : null}
-                </ListState>
-              </View>
             </View>
           </Section>
-
-          {/* Organizer controls */}
-          {canManage ? (
-            <View className="px-5 mt-6">
-              <SecondaryButton
-                label="Edit this series"
-                icon="create-outline"
-                onPress={() =>
-                  router.push(`/community-life/series/create?seriesId=${series.seriesId}` as never)
-                }
-              />
-              <View className="mt-3">
-                <SecondaryButton
-                  label="Cancel the whole series"
-                  icon="close-circle-outline"
-                  disabled={cancelSeries.isPending}
-                  onPress={() =>
-                    showAlert({ type: 'error', title: 'Cancel the whole series?', message: 'Every upcoming date will be cancelled and everyone registered will be told. This cannot be undone.', buttons: [
-                        { text: 'Keep it', style: 'cancel' },
-                        {
-                          text: 'Cancel series',
-                          style: 'destructive',
-                          onPress: () => cancelSeries.mutate({ seriesId: series.seriesId }),
-                        },
-                      ] })
-                  }
-                />
-              </View>
-            </View>
-          ) : null}
         </View>
       )}
     </CommunityScreen>

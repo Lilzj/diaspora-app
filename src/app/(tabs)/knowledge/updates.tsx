@@ -40,8 +40,9 @@
 // filter the member can see is switched on.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useMemo } from 'react';
-import { FlatList, View, Text, Switch, RefreshControl, ActivityIndicator } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { View, Text, Switch, RefreshControl, ActivityIndicator } from 'react-native';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 
 import { CommunityPostCard } from '@/components/community-social';
 import { ListEmpty, ListState } from '@/components/ListState';
@@ -50,7 +51,7 @@ import { useCommunityFeed } from '@/hooks/community-social';
 import { useAuthStore } from '@/store/auth';
 import { useKnowledgeSearchStore } from '@/store/knowledge-search';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import type { CommunityFeedRanking } from '@/types/community-social';
+import type { CommunityFeedRanking, CommunityPost } from '@/types/community-social';
 import { router } from 'expo-router';
 
 /**
@@ -91,6 +92,14 @@ export default function KnowledgeUpdatesScreen() {
   const hasInapplicableFilter = searchQuery.trim().length > 0 || selectedCategory !== null;
 
   const isSignedOut = feed.error === 'Sign in to take part in the community.';
+
+  // Stable for the signed-in member: the list redraws a card only when its post
+  // or this renderer changes (FARCH-004).
+  const viewerId = user?.userId ?? null;
+  const renderPost = useCallback(
+    ({ item }: ListRenderItemInfo<CommunityPost>) => <CommunityPostCard post={item} viewerId={viewerId} />,
+    [viewerId]
+  );
 
   return (
     <View className="flex-1 bg-surface-background">
@@ -138,7 +147,9 @@ export default function KnowledgeUpdatesScreen() {
         }
         onRetry={isSignedOut ? undefined : feed.refresh}
       >
-        <FlatList
+        {/* A FlashList since 27 Nov 2026 (FARCH-004): the feed pages as the member
+            scrolls, and its cards are recycled rather than every page staying mounted. */}
+        <FlashList
           data={feed.posts}
           // `postId`. `updateId` is the same value under the module's older
           // name, and keying on it would be keying on the same thing twice.
@@ -152,9 +163,7 @@ export default function KnowledgeUpdatesScreen() {
           // would append the first page to itself for ever. The hook knows.
           onEndReached={feed.loadMore}
           onEndReachedThreshold={0.4}
-          renderItem={({ item }) => (
-            <CommunityPostCard post={item} viewerId={user?.userId ?? null} />
-          )}
+          renderItem={renderPost}
           ListFooterComponent={
             feed.isFetchingMore ? (
               <View className="py-4 items-center">
