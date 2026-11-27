@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
 import { WizardFooter } from '@/components/forms/WizardFooter';
+import { DraftBanner } from '@/components/forms/DraftBanner';
 import { ContactChoice } from '@/components/forms/ContactChoice';
 import { coordinatesOf, ownPinOrTown } from '@/lib/platform/place-coordinates';
 import { Input } from '@/components/Input';
@@ -37,7 +38,7 @@ import { useMemberCurrency } from '@/lib/domain/member-currency';
 import { useMarketplaceCategories } from '@/hooks/marketplace-categories';
 import { useDonationCauses } from '@/hooks/financial';
 import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/domain/marketplace-categories';
-import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/platform/device-drafts';
+import { useDeviceDraft } from '@/lib/platform/device-drafts';
 import { currencySymbol as symbolFor } from '@/lib/domain/money';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
@@ -93,9 +94,6 @@ const pickFromCamera = async (showAlert: ShowAlert): Promise<ImagePicker.ImagePi
   return null;
 };
 
-// Module-level global draft store
-let globalMarketplaceDraft: any = null;
-
 const steps = [
   'What are you listing?',
   'Category and condition',
@@ -121,6 +119,40 @@ const CONDITIONS = [
   { label: 'Good', desc: 'Some wear and tear, but works perfectly' },
   { label: 'Fair', desc: 'Visible wear, scratches or issues, but still usable' },
 ] as const;
+
+/** What a listing is for: the five offered above, and `Wanted`, which this screen still handles. */
+type ListingIntent = 'Selling' | 'Buying Request' | 'Giving Away' | 'Exchange / Swap' | 'Wanted' | 'Donation';
+
+/** One of the conditions above, as the wizard shows it. */
+type ConditionLabel = (typeof CONDITIONS)[number]['label'];
+
+/**
+ * A marketplace draft as this wizard writes it. The fields read with a fallback
+ * when it is restored may be missing from drafts saved before they existed. Its
+ * currency is kept but never restored: prices are always the member's own.
+ */
+interface MarketplaceDraftData {
+  intent: ListingIntent;
+  category?: string | null;
+  subcategory: string;
+  brand?: string;
+  condition: ConditionLabel;
+  title: string;
+  description: string;
+  price: string;
+  currency: string;
+  negotiable: boolean;
+  quantity?: string;
+  cityName: string;
+  townPin?: { latitude: number | null; longitude: number | null };
+  landmark?: string;
+  causeId?: string;
+  coverPhoto?: ChosenPhoto | null;
+  galleryPhotos?: ChosenPhoto[];
+  contactPhone?: string;
+  preferredContactMethod?: 'in_app' | 'phone' | 'email';
+  currentStep?: number;
+}
 
 
 // Remediation Wave E: `MOCK_COVER_PHOTOS` and `MOCK_GALLERY_PHOTOS` stood here —
@@ -200,7 +232,9 @@ export default function CreateListingScreen() {
 
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [draftBannerVisible, setDraftBannerVisible] = useState(false);
+  // Kept on the phone since 14 Oct 2026, so a draft outlives the app being closed.
+  const { bannerVisible: draftBannerVisible, save, restore, discard: discardDraft, clear: clearDraft } =
+    useDeviceDraft<MarketplaceDraftData>('marketplace');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
 
@@ -216,7 +250,7 @@ export default function CreateListingScreen() {
   const memberName = useAuthStore((state) => state.user?.fullName);
   const sellerDisplayName = (memberName ?? '').trim() || 'Diaspora member';
 
-  const [intent, setIntent] = useState<'Selling' | 'Buying Request' | 'Giving Away' | 'Exchange / Swap' | 'Wanted' | 'Donation'>('Selling');
+  const [intent, setIntent] = useState<ListingIntent>('Selling');
 
   // STEP 2: Category & Condition
   /**
@@ -246,7 +280,7 @@ export default function CreateListingScreen() {
   // `subcategory` one of its children, from `GET /marketplace/categories`.
   const categoryCatalogue = useMarketplaceCategories();
   const [brand, setBrand] = useState('');
-  const [condition, setCondition] = useState<'New' | 'Like New' | 'Very Good' | 'Good' | 'Fair'>('New');
+  const [condition, setCondition] = useState<ConditionLabel>('New');
 
 
   // STEP 3: Product Information
@@ -311,21 +345,6 @@ export default function CreateListingScreen() {
   useEffect(() => {
     setAiSuggestions(null);
   }, [intent, category, condition, title, description, price, maxPrice, coverPhoto, galleryPhotos]);
-
-  // Check draft on mount
-  useEffect(() => {
-    if (globalMarketplaceDraft) {
-      setDraftBannerVisible(true);
-      return;
-    }
-    // Kept on the phone since 14 Oct 2026, so a draft outlives the app being closed.
-    void loadDeviceDraft('marketplace').then((saved) => {
-      if (saved && !globalMarketplaceDraft) {
-        globalMarketplaceDraft = saved;
-        setDraftBannerVisible(true);
-      }
-    });
-  }, []);
 
   /** What this kind of listing asks (Android UAT, 3 Nov 2026). */
   const fields = listingFieldsFor(intent);
@@ -400,15 +419,14 @@ export default function CreateListingScreen() {
   // was never in the effect's, so the stored draft held whichever step the
   // member was on when some *other* field last changed.
   const saveDraft = useCallback(() => {
-    globalMarketplaceDraft = {
+    save({
       intent, category, subcategory, brand, condition, title, description, price,
       currency, negotiable, quantity, cityName, townPin, landmark, causeId,
       coverPhoto, galleryPhotos, contactPhone, preferredContactMethod,
       currentStep
-    };
-    void saveDeviceDraft('marketplace', globalMarketplaceDraft, title);
+    }, title);
   }, [
-    intent, category, subcategory, brand, condition, title, description, price,
+    save, intent, category, subcategory, brand, condition, title, description, price,
     currency, negotiable, quantity, cityName, townPin, landmark, causeId,
     coverPhoto, galleryPhotos, contactPhone, preferredContactMethod,
     currentStep
@@ -444,8 +462,8 @@ export default function CreateListingScreen() {
   }, [saveDraft, title, description, category, price]);
 
   const restoreDraft = () => {
-    if (globalMarketplaceDraft) {
-      const d = globalMarketplaceDraft;
+    const d = restore();
+    if (d) {
       setIntent(d.intent);
       setCategory(draftCategoryKey(d.category));
       // A draft's subcategory was a free-text label before 13 Oct 2026, not a key.
@@ -470,14 +488,7 @@ export default function CreateListingScreen() {
       setContactPhone(d.contactPhone || '');
       setPreferredContactMethod(d.preferredContactMethod || 'in_app');
       setCurrentStep(d.currentStep || 0);
-      setDraftBannerVisible(false);
     }
-  };
-
-  const discardDraft = () => {
-    globalMarketplaceDraft = null;
-    void clearDeviceDraft('marketplace');
-    setDraftBannerVisible(false);
   };
 
   /**
@@ -828,9 +839,7 @@ export default function CreateListingScreen() {
         },
       });
 
-      globalMarketplaceDraft = null;
-
-      void clearDeviceDraft('marketplace');
+      clearDraft();
       setIsSubmitting(false);
 
       if (outcome.kind === 'published') {
@@ -960,22 +969,11 @@ export default function CreateListingScreen() {
       >
         {/* Draft Restore Alert */}
         {draftBannerVisible && currentStep === 0 && (
-          <View className="bg-surface-muted border-b border-subtle px-6 py-4 flex-row items-center justify-between">
-            <View className="flex-1 mr-4">
-              <Text className="text-sm font-bold text-content-strong">✏️ Unfinished Draft</Text>
-              <Text className="text-xs text-content-tertiary mt-0.5">
-                Restore your previously saved marketplace draft details?
-              </Text>
-            </View>
-            <View className="flex-row">
-              <TouchableOpacity onPress={restoreDraft} className="bg-primary-500 px-3.5 py-2 rounded-xl mr-2">
-                <Text className="text-xs font-bold text-white">Restore</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={discardDraft} className="bg-surface-muted border border-subtle px-3.5 py-2 rounded-xl">
-                <Text className="text-xs font-bold text-content-tertiary">Discard</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <DraftBanner
+            message="Restore your previously saved marketplace draft details?"
+            onRestore={restoreDraft}
+            onDiscard={discardDraft}
+          />
         )}
 
         <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>

@@ -75,6 +75,8 @@ import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeTokens } from '@/design-system';
 import { useGuideCategories, usePublishNewGuide } from '@/hooks/guides';
+import { useDeviceDraft } from '@/lib/platform/device-drafts';
+import { DraftBanner } from '@/components/forms/DraftBanner';
 import {
   GUIDE_SUMMARY_MAX_LENGTH,
   GUIDE_TITLE_MAX_LENGTH,
@@ -91,8 +93,19 @@ import {
   newDocumentId,
 } from '@/lib/platform/guide-composer';
 
-// Module-level global storage for guide drafts
-let globalGuideDraft: any = null;
+/**
+ * A guide draft as this wizard writes it. It is held for the session only, so
+ * it is always this shape: no draft from an older version can be waiting.
+ */
+interface GuideDraftData {
+  selectedCountry: string | null;
+  selectedCategory: string | null;
+  title: string;
+  summary: string;
+  coverImage: string | null;
+  content: string;
+  currentStep: number;
+}
 
 // No Country step since 14 Oct 2026: a guide is filed under the country the
 // member lives in. The step offered residence and origin both, and a member
@@ -132,7 +145,9 @@ export default function CreateGuideScreen() {
   const publish = usePublishNewGuide();
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [draftBannerVisible, setDraftBannerVisible] = useState(false);
+  // Held for this session only, as it always was: see `device-drafts`.
+  const { bannerVisible: draftBannerVisible, save, restore, discard: discardDraft, clear: clearDraft, hasDraft } =
+    useDeviceDraft<GuideDraftData>('guide');
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Form States
@@ -178,21 +193,15 @@ export default function CreateGuideScreen() {
   const [aiLoadingText, setAiLoadingText] = useState('');
   const [aiSuggestions, setAiSuggestions] = useState<string | null>(null);
 
-  // Check draft on mount. The country is auto-selected in its own effect below,
-  // because the profile it depends on arrives after this one runs.
-  useEffect(() => {
-    if (globalGuideDraft) {
-      setDraftBannerVisible(true);
-    }
-  }, []);
-
   // Start on the country the member lives in.
   //
   // `selectedCountry` holds the **code**, not the name: `CreateGuideRequest`
   // takes an upper-case ISO 3166-1 alpha-2 and refuses anything else with
   // `guides.country.invalid`. The screen renders the name beside the flag.
+  //
+  // Not once a draft is held: a restored draft's country is the member's choice.
   useEffect(() => {
-    if (globalGuideDraft) return;
+    if (hasDraft()) return;
     if (residenceCountry && selectedCountry !== residenceCountry) {
       setSelectedCountry(residenceCountry);
       return;
@@ -204,7 +213,7 @@ export default function CreateGuideScreen() {
     // `residenceCountry` belongs here: if the member's residence changes, the
     // default country should follow it. It cannot loop — the branch above sets
     // the two equal, so the next run falls through.
-  }, [countryOptions, selectedCountry, residenceCountry]);
+  }, [hasDraft, countryOptions, selectedCountry, residenceCountry]);
 
   // Save draft state periodically
   // Memoised so the effect below can name it. `currentStep` is in this list and
@@ -213,7 +222,7 @@ export default function CreateGuideScreen() {
   // steps without editing anything left the saved step behind. Naming every
   // value the draft is built from is what fixes that.
   const saveDraft = useCallback(() => {
-    globalGuideDraft = {
+    save({
       selectedCountry,
       selectedCategory,
       title,
@@ -221,8 +230,8 @@ export default function CreateGuideScreen() {
       coverImage,
       content,
       currentStep,
-    };
-  }, [selectedCountry, selectedCategory, title, summary, coverImage, content, currentStep]);
+    });
+  }, [save, selectedCountry, selectedCategory, title, summary, coverImage, content, currentStep]);
 
   useEffect(() => {
     if (title || content || selectedCountry) {
@@ -231,8 +240,8 @@ export default function CreateGuideScreen() {
   }, [saveDraft, title, content, selectedCountry]);
 
   const restoreDraft = () => {
-    if (globalGuideDraft) {
-      const d = globalGuideDraft;
+    const d = restore();
+    if (d) {
       setSelectedCountry(d.selectedCountry);
       setSelectedCategory(d.selectedCategory);
       setTitle(d.title);
@@ -240,13 +249,7 @@ export default function CreateGuideScreen() {
       setCoverImage(d.coverImage);
       setContent(d.content);
       setCurrentStep(d.currentStep || 0);
-      setDraftBannerVisible(false);
     }
-  };
-
-  const discardDraft = () => {
-    globalGuideDraft = null;
-    setDraftBannerVisible(false);
   };
 
   // AI Assistant helpers
@@ -522,7 +525,7 @@ export default function CreateGuideScreen() {
           // The draft is cleared **here**, and nowhere else. It used to be
           // cleared before anything was attempted, so a member whose publish
           // failed lost the text as well as the guide.
-          globalGuideDraft = null;
+          clearDraft();
 
           // The local trust record now describes something that happened.
           trustStore.addAuditLog(
@@ -664,22 +667,11 @@ export default function CreateGuideScreen() {
       >
         {/* Draft Recovery banner warning */}
         {draftBannerVisible && currentStep === 0 && (
-          <View className="bg-surface-muted border-b border-subtle px-6 py-4 flex-row items-center justify-between">
-            <View className="flex-1 mr-4">
-              <Text className="text-sm font-bold text-content-strong">✏️ Guide Draft Detected</Text>
-              <Text className="text-xs text-content-tertiary mt-0.5">
-                Restore your previous guide draft?
-              </Text>
-            </View>
-            <View className="flex-row">
-              <TouchableOpacity onPress={restoreDraft} className="bg-primary-500 px-3 py-2 rounded-xl mr-2">
-                <Text className="text-xs font-bold text-white">Restore</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={discardDraft} className="bg-surface-muted border border-subtle px-3 py-2 rounded-xl">
-                <Text className="text-xs font-bold text-content-tertiary">Discard</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <DraftBanner
+            message="Restore your previous guide draft?"
+            onRestore={restoreDraft}
+            onDiscard={discardDraft}
+          />
         )}
 
         <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled">

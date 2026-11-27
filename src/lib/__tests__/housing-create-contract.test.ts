@@ -31,6 +31,15 @@ function withoutComments(source: string): string {
     .join('\n');
 }
 
+/**
+ * Type declarations name a field without sending it. The housing draft is typed
+ * since 27 Nov 2026 (FARCH-007), and its interface names the contact fields the
+ * draft keeps; a check for what the payload sends reads around declarations.
+ */
+function withoutInterfaces(source: string): string {
+  return source.replace(/^(?:export )?interface \w+[^{]*\{[\s\S]*?^\}/gm, '');
+}
+
 // A screen is read whole: its route and every part it composes from (FSOLID-001).
 const SOURCE = withoutComments(
   screenSource(path.join(process.cwd(), 'src', 'app', 'housing', 'create.tsx'))
@@ -229,7 +238,8 @@ describe('the housing create payload', () => {
    */
   it('restores a draft saved before the location fields changed', () => {
     expect(SOURCE).toContain('draftVersion: 2');
-    expect(SOURCE).toContain("setCityName(d.draftVersion >= 2 ? (d.cityName ?? '') : '')");
+    // A draft from before 14 Oct 2026 has no version at all, and restores no town.
+    expect(SOURCE).toContain("setCityName((d.draftVersion ?? 0) >= 2 ? (d.cityName ?? '') : '')");
     expect(SOURCE).toContain("setLandmark((d.landmark ?? '').trim() || (d.areaName ?? ''))");
   });
 
@@ -306,8 +316,10 @@ describe('the contact details step 5 collects', () => {
 
     // On the listing it would bind to nothing and be discarded in silence,
     // which is a quieter version of the defect this replaced.
-    expect(SOURCE).not.toMatch(/\n\s+contactPhone:/);
-    expect(SOURCE).not.toMatch(/\n\s+contactEmail:/);
+    const sent = withoutInterfaces(SOURCE);
+    expect(sent).toContain('contact: contactChanges');
+    expect(sent).not.toMatch(/\n\s+contactPhone:/);
+    expect(sent).not.toMatch(/\n\s+contactEmail:/);
   });
 
   /**

@@ -71,8 +71,20 @@ import { useAlertCapabilities, usePostCategories } from '@/hooks/community-socia
 import type { CommunityPostCategory, CommunityPostUrgency } from '@/types/community-social';
 import { useThemeTokens } from '@/design-system';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { useDeviceDraft } from '@/lib/platform/device-drafts';
+import { DraftBanner } from '@/components/forms/DraftBanner';
 
-let globalUpdateDraft: any = null;
+/**
+ * An alert draft as this wizard writes it. It is held for the session only, so
+ * it is always this shape: no draft from an older version can be waiting.
+ */
+interface UpdateDraftData {
+  selectedCategory: CommunityPostCategory | '';
+  location: string;
+  message: string;
+  urgency: CommunityPostUrgency;
+  expiresHours: number;
+}
 
 /**
  * An icon per server category. The categories themselves come from
@@ -173,7 +185,9 @@ export default function CreateUpdateScreen() {
   const bottomInset = useBottomInset();
 
   const tokens = useThemeTokens();
-  const [draftBannerVisible, setDraftBannerVisible] = useState(false);
+  // Held for this session only, as it always was: see `device-drafts`.
+  const { bannerVisible: draftBannerVisible, save, restore, discard: discardDraft, clear: clearDraft } =
+    useDeviceDraft<UpdateDraftData>('update');
 
   const { showAlert } = useNotification();
 
@@ -215,27 +229,20 @@ export default function CreateUpdateScreen() {
   const [expiresHours, setExpiresHours] = useState(6);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check draft on mount
-  useEffect(() => {
-    if (globalUpdateDraft) {
-      setDraftBannerVisible(true);
-    }
-  }, []);
-
   // Auto-save draft
   // Memoised so the effect below can name it. Its identity changes exactly when
   // one of the values the draft is built from changes, so the autosave still
   // fires on the same edits it always did — and the dependency list now lives
   // beside the object it describes rather than beside the effect.
   const saveDraft = useCallback(() => {
-    globalUpdateDraft = {
+    save({
       selectedCategory,
       location,
       message,
       urgency,
       expiresHours,
-    };
-  }, [selectedCategory, location, message, urgency, expiresHours]);
+    });
+  }, [save, selectedCategory, location, message, urgency, expiresHours]);
 
   useEffect(() => {
     if (message || selectedCategory) {
@@ -244,20 +251,14 @@ export default function CreateUpdateScreen() {
   }, [saveDraft, message, selectedCategory]);
 
   const restoreDraft = () => {
-    if (globalUpdateDraft) {
-      const d = globalUpdateDraft;
+    const d = restore();
+    if (d) {
       setSelectedCategory(d.selectedCategory);
       setLocation(d.location);
       setMessage(d.message);
       setUrgency(d.urgency);
       setExpiresHours(d.expiresHours);
-      setDraftBannerVisible(false);
     }
-  };
-
-  const discardDraft = () => {
-    globalUpdateDraft = null;
-    setDraftBannerVisible(false);
   };
 
   const applyTemplate = (tpl: typeof TEMPLATES[0]) => {
@@ -320,7 +321,7 @@ export default function CreateUpdateScreen() {
       });
 
       // Only now is the draft safe to discard.
-      globalUpdateDraft = null;
+      clearDraft();
       setIsSubmitting(false);
       router.replace('/(tabs)/knowledge/updates');
     } catch {
@@ -350,22 +351,11 @@ export default function CreateUpdateScreen() {
       >
       {/* Draft Recovery banner warning */}
       {draftBannerVisible && (
-        <View className="bg-surface-muted border-b border-subtle px-6 py-4 flex-row items-center justify-between">
-          <View className="flex-1 mr-4">
-            <Text className="text-sm font-bold text-content-strong">✏️ Alert Draft Detected</Text>
-            <Text className="text-xs text-content-tertiary mt-0.5">
-              Restore your draft checkpoint message?
-            </Text>
-          </View>
-          <View className="flex-row">
-            <TouchableOpacity onPress={restoreDraft} className="bg-primary-500 px-3 py-2 rounded-xl mr-2">
-              <Text className="text-xs font-bold text-white">Restore</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={discardDraft} className="bg-surface-muted border border-subtle px-3 py-2 rounded-xl">
-              <Text className="text-xs font-bold text-content-tertiary">Discard</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <DraftBanner
+          message="Restore your draft checkpoint message?"
+          onRestore={restoreDraft}
+          onDiscard={discardDraft}
+        />
       )}
 
       <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled"

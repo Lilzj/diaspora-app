@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet, Platform, Modal, FlatList, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { DatePickerInput } from '@/components/DatePickerInput';
@@ -17,6 +16,8 @@ import { allCountries } from '@/lib/reference/countries';
 import { formatDocumentType } from '@/utils/format';
 import { useThemeTokens } from '@/design-system';
 import { backOr } from '@/lib/platform/navigation';
+import { useDeviceDraft } from '@/lib/platform/device-drafts';
+import { DraftBanner } from '@/components/forms/DraftBanner';
 
 // ── Where this wizard's data goes, after Wave D-4 ────────────────────────────
 //
@@ -69,6 +70,26 @@ function countryName(code: string): string {
   return allCountries.find((item) => item.code === code)?.name ?? code;
 }
 
+/**
+ * A verification draft as this wizard writes it. Every field is read back with
+ * a fallback: the draft a member already had was written by the code this
+ * replaced, which kept it in storage by hand under a key of its own, and
+ * `device-drafts` moves it across the first time it is read.
+ */
+interface VerificationDraftData {
+  nationality?: string;
+  residenceCountry?: string;
+  docType?: WireVerificationDocumentType;
+  issueCountry?: string;
+  documentNumber?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  supportingNotes?: string;
+  uploadedDocUri?: string | null;
+  selfieUri?: string | null;
+  step?: number;
+}
+
 export default function DiasporaVerificationWizard() {
   const tokens = useThemeTokens();
   const insets = useSafeAreaInsets();
@@ -99,8 +120,10 @@ export default function DiasporaVerificationWizard() {
   const [uploadedDocUri, setUploadedDocUri] = useState<string | null>(null);
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
 
-  // Loading/Draft recovery states
-  const [draftBannerVisible, setDraftBannerVisible] = useState(false);
+  // Kept on the phone by the hook the other wizards use, since 27 Nov 2026
+  // (FARCH-007). Before, this wizard wrote its draft to storage by hand.
+  const { bannerVisible: draftBannerVisible, save, restore, discard: handleDiscardDraft, clear: clearDraft } =
+    useDeviceDraft<VerificationDraftData>('verification');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Country picker selector modal state
@@ -124,81 +147,41 @@ export default function DiasporaVerificationWizard() {
     }
   }, []);
 
-  // Initialize draft check
-  useEffect(() => {
-    const checkDraft = async () => {
-      try {
-        const savedDraft = await AsyncStorage.getItem('diaspora_verification_draft');
-        if (savedDraft) {
-          setDraftBannerVisible(true);
-        }
-      } catch (err) {
-        console.error('Failed to read draft', err);
-      }
-    };
-    void checkDraft();
-  }, []);
-
   // Auto-save draft when changes happen
   useEffect(() => {
-    const saveDraft = async () => {
-      if (nationality || residenceCountry || issueCountry || documentNumber) {
-        const draft = {
-          nationality,
-          residenceCountry,
-          docType,
-          issueCountry,
-          documentNumber,
-          issueDate,
-          expiryDate,
-          supportingNotes,
-          uploadedDocUri,
-          selfieUri,
-          step,
-        };
-        try {
-          await AsyncStorage.setItem('diaspora_verification_draft', JSON.stringify(draft));
-        } catch (e) {
-          console.warn('Failed to save draft', e);
-        }
-      }
-    };
-    void saveDraft();
-  }, [nationality, residenceCountry, docType, issueCountry, documentNumber, issueDate, expiryDate, supportingNotes, uploadedDocUri, selfieUri, step]);
-
-  const handleRestoreDraft = async () => {
-    try {
-      const savedDraft = await AsyncStorage.getItem('diaspora_verification_draft');
-      if (savedDraft) {
-        const d = JSON.parse(savedDraft);
-        setNationality(d.nationality || '');
-        setResidenceCountry(d.residenceCountry || '');
-        setDocType(d.docType || 'Passport');
-        setIssueCountry(d.issueCountry || '');
-        setDocumentNumber(d.documentNumber || '');
-        setIssueDate(d.issueDate || '');
-        setExpiryDate(d.expiryDate || '');
-        setSupportingNotes(d.supportingNotes || '');
-        setUploadedDocUri(d.uploadedDocUri || null);
-        setSelfieUri(d.selfieUri || null);
-        setStep(d.step || 0);
-      }
-      setDraftBannerVisible(false);
-    } catch (err) {
-      showToast({
-        type: 'error',
-        title: 'Draft Restore Error',
-        message: 'Failed to restore draft.',
+    if (nationality || residenceCountry || issueCountry || documentNumber) {
+      save({
+        nationality,
+        residenceCountry,
+        docType,
+        issueCountry,
+        documentNumber,
+        issueDate,
+        expiryDate,
+        supportingNotes,
+        uploadedDocUri,
+        selfieUri,
+        step,
       });
     }
-  };
+  }, [save, nationality, residenceCountry, docType, issueCountry, documentNumber, issueDate, expiryDate, supportingNotes, uploadedDocUri, selfieUri, step]);
 
-  const handleDiscardDraft = async () => {
-    try {
-      await AsyncStorage.removeItem('diaspora_verification_draft');
-      setDraftBannerVisible(false);
-    } catch (err) {
-      console.warn(err);
+  // The draft was read and parsed when the wizard opened, so restoring it cannot
+  // fail; a draft that would not parse was never offered.
+  const handleRestoreDraft = () => {
+    const d = restore();
+    if (d) {
+      setNationality(d.nationality || '');
+      setResidenceCountry(d.residenceCountry || '');
+      setDocType(d.docType || 'Passport');
+      setIssueCountry(d.issueCountry || '');
+      setDocumentNumber(d.documentNumber || '');
+      setIssueDate(d.issueDate || '');
+      setExpiryDate(d.expiryDate || '');
+      setSupportingNotes(d.supportingNotes || '');
+      setUploadedDocUri(d.uploadedDocUri || null);
+      setSelfieUri(d.selfieUri || null);
+      setStep(d.step || 0);
     }
   };
 
@@ -258,7 +241,7 @@ export default function DiasporaVerificationWizard() {
         authStore.setAccountState('DiasporaVerificationPending');
       }
 
-      await AsyncStorage.removeItem('diaspora_verification_draft');
+      clearDraft();
       setIsSubmitting(false);
 
       if (submitted.status === 'Rejected') {
@@ -416,32 +399,20 @@ export default function DiasporaVerificationWizard() {
         className="flex-1"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
+        {/* Draft Recovery Alert */}
+        {draftBannerVisible && step === 0 && (
+          <DraftBanner
+            message="We found an incomplete Diaspora Verification form draft."
+            onRestore={handleRestoreDraft}
+            onDiscard={handleDiscardDraft}
+          />
+        )}
         <ScrollView 
           className="flex-1 px-6 pt-4" 
           showsVerticalScrollIndicator={false} 
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
         >
-        {/* Draft Recovery Alert */}
-        {draftBannerVisible && step === 0 && (
-          <View className="bg-surface-muted border border-subtle rounded-2xl p-4 mb-6 flex-row items-center justify-between">
-            <View className="flex-1 mr-3">
-              <Text className="text-xs font-bold text-content-strong">✏️ Recover Draft Progress</Text>
-              <Text className="text-[10px] text-content-muted mt-0.5">
-                We found an incomplete Diaspora Verification form draft.
-              </Text>
-            </View>
-            <View className="flex-row gap-1">
-              <TouchableOpacity onPress={handleRestoreDraft} className="bg-primary-500 px-3 py-1.5 rounded-xl">
-                <Text className="text-[10px] font-black text-white uppercase">Restore</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleDiscardDraft} className="bg-surface-muted px-3 py-1.5 rounded-xl border border-subtle">
-                <Text className="text-[10px] font-black text-content-tertiary uppercase">Discard</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
         {/* STEP 0: DOCUMENT TYPE SELECTOR */}
         {step === 0 && (
           <View className="pb-8">

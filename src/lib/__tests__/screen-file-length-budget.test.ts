@@ -30,17 +30,17 @@ const BUDGET = 600;
  * composed instead, the way the three were.
  */
 const OVER_BUDGET: Record<string, number> = {
-  'marketplace/create.tsx': 1466,
+  'marketplace/create.tsx': 1464,
   'community-life/org/[id].tsx': 1402,
   'community-life/event/[id].tsx': 1276,
-  '(tabs)/post.tsx': 1252,
+  '(tabs)/post.tsx': 1241,
   'community-life/event/create.tsx': 1216,
   'housing/[id].tsx': 1204,
   'guide/[id].tsx': 1046,
   'marketplace/[id].tsx': 1005,
-  'guide/create.tsx': 913,
+  'guide/create.tsx': 905,
   'automation/create.tsx': 911,
-  'verification/diaspora.tsx': 911,
+  'verification/diaspora.tsx': 882,
   'job/[id].tsx': 854,
   'creator/index.tsx': 843,
   'community/[slug]/index.tsx': 828,

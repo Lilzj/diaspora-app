@@ -755,10 +755,11 @@ describe('posting a local alert', () => {
 
     expect(screen).toContain('createPost');
     // The draft is cleared only after the await, never before it. That is the
-    // property which stopped a failed post from also destroying the text.
+    // property which stopped a failed post from also destroying the text. The
+    // clear is the draft hook's `clearDraft` since 27 Nov 2026 (FARCH-007).
     const publishBody = screen.slice(screen.indexOf('const handlePublish'));
     const awaitIndex = publishBody.indexOf('await createPost');
-    const clearIndex = publishBody.indexOf('globalUpdateDraft = null');
+    const clearIndex = publishBody.indexOf('clearDraft()');
     expect(awaitIndex).toBeGreaterThan(-1);
     expect(clearIndex).toBeGreaterThan(awaitIndex);
   });
