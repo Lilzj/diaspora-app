@@ -59,6 +59,8 @@
 // nothing and looks like a pass.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 // `require`d locally with the narrowest signature that works, rather than
 // `import { readFileSync } from 'fs'`. Adding "node" to tsconfig's `types`
 // shadows the ambient React Native `__DEV__` declaration and breaks twenty
@@ -281,7 +283,7 @@ describe('what production code may reach inside src/mocks', () => {
       if (file.startsWith(join(SRC, 'mocks'))) continue;
       const source = readFileSync(file, 'utf8');
       // Drop comments, so a header that quotes an old import is not a reach.
-      const code = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+      const code = withoutComments(source);
       let match: RegExpExecArray | null;
       pattern.lastIndex = 0;
       while ((match = pattern.exec(code)) !== null) {
@@ -319,12 +321,12 @@ describe('what production code may reach inside src/mocks', () => {
   });
 
   it('has not left an entry on the list that nothing reaches any more', () => {
-    const code = productionSources()
-      .filter((file) => !file.startsWith(join(SRC, 'mocks')))
-      .map((file) => readFileSync(file, 'utf8'))
-      .join('\n')
-      .replace(/\/\*[\s\S]*?\*\//g, ' ')
-      .replace(/^\s*\/\/.*$/gm, ' ');
+    const code = withoutComments(
+      productionSources()
+        .filter((file) => !file.startsWith(join(SRC, 'mocks')))
+        .map((file) => readFileSync(file, 'utf8'))
+        .join('\n')
+    );
 
     for (const name of Object.keys(ALLOWED)) {
       const needle = name === '' ? "'@/mocks'" : `'@/mocks/${name}'`;

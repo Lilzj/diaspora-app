@@ -28,15 +28,13 @@
 // test happens to drive.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
 function read(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '')
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8'));
 }
 
 describe('the community role directory', () => {

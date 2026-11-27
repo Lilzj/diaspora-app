@@ -30,6 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { SCREEN_PARTS_ROOT, filesUnder } from './support/screen-files';
+import { blankComments } from './support/source-text';
 
 const fs = require('fs') as {
   readFileSync(path: string, encoding: string): string;
@@ -76,17 +77,14 @@ function violations(file: string, source: string): Violation[] {
   let guardDepth: number | null = null;
   let earlyReturn: number | null = null;
 
-  const lines = source.split(String.fromCharCode(10));
+  // Comments blanked, not skipped: a brace in prose is not structure, and the
+  // line numbers still point at code.
+  const lines = blankComments(source).split(String.fromCharCode(10));
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
     const trimmed = line.trim();
     const delta = (line.split('{').length - 1) - (line.split('}').length - 1);
-
-    if (trimmed.startsWith('//') || trimmed.startsWith('*')) {
-      depth += delta;
-      continue;
-    }
 
     // A hook assigned at the top level of a body that has already bailed out.
     if (

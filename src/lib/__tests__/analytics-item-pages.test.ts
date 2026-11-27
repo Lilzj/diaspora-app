@@ -10,6 +10,7 @@
 
 import { isCertifiedContentSubject } from '@/lib/api/analytics-api';
 import { ITEM_PAGE_SEGMENT_VALUES, itemAnalyticsRoute } from '@/lib/analytics/item-pages';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
@@ -50,10 +51,7 @@ describe('itemAnalyticsRoute', () => {
 });
 
 describe('every route it can produce is a page that answers', () => {
-  const page = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'app', 'analytics', 'content', '[type]', '[id].tsx'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '');
+  const page = withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'analytics', 'content', '[type]', '[id].tsx'), 'utf8'));
 
   const served = /const CONTENT_TYPES: AnalyticsSubjectType\[\] = \[([\s\S]*?)\];/.exec(page)?.[1] ?? '';
 
@@ -71,10 +69,7 @@ describe('every route it can produce is a page that answers', () => {
 });
 
 describe('the creator dashboard uses it', () => {
-  const screen = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'app', 'creator', 'analytics.tsx'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '');
+  const screen = withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'creator', 'analytics.tsx'), 'utf8'));
 
   it('builds each row’s route with itemAnalyticsRoute', () => {
     expect(screen).toMatch(/route=\{itemAnalyticsRoute\(/);

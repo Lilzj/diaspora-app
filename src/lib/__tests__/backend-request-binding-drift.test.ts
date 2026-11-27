@@ -85,6 +85,14 @@
 // provides it, and shadowing it breaks every other `require` in the file.
 import { screenSource } from './support/screen-files';
 
+/**
+ * Comments are read out before any key scan: these screens carry long
+ * explanatory comments, several of which name payload fields in prose
+ * (*"`status: 'Active'` was removed"*), and a scanner that read those would
+ * report fields the screen does not send.
+ */
+import { withoutComments } from './support/source-text';
+
 declare const __dirname: string;
 
 import MockAdapter from 'axios-mock-adapter';
@@ -1699,56 +1707,6 @@ function repoFile(relativePath: string): string {
   return join(__dirname, '..', '..', '..', relativePath);
 }
 
-/**
- * Comments out, strings preserved.
- *
- * Necessary before any key scan: these screens carry long explanatory comments,
- * several of which name payload fields in prose (*"`status: 'Active'` was
- * removed"*), and a scanner that read those would report fields the screen does
- * not send. String literals are stepped over rather than stripped so that a
- * `'//'` inside one — a URL, a date format — cannot start a comment.
- */
-function stripCommentsPreservingStrings(source: string): string {
-  let out = '';
-  let index = 0;
-
-  while (index < source.length) {
-    const character = source[index];
-
-    if (character === '/' && source[index + 1] === '/') {
-      while (index < source.length && source[index] !== '\n') index += 1;
-      continue;
-    }
-    if (character === '/' && source[index + 1] === '*') {
-      index += 2;
-      while (index < source.length && !(source[index] === '*' && source[index + 1] === '/')) index += 1;
-      index += 2;
-      continue;
-    }
-    if (character === '"' || character === "'" || character === '`') {
-      out += character;
-      index += 1;
-      while (index < source.length) {
-        if (source[index] === '\\') {
-          out += source[index] + (source[index + 1] ?? '');
-          index += 2;
-          continue;
-        }
-        out += source[index];
-        const closed = source[index] === character;
-        index += 1;
-        if (closed) break;
-      }
-      continue;
-    }
-
-    out += character;
-    index += 1;
-  }
-
-  return out;
-}
-
 interface ObjectLiteralKeys {
   keys: string[];
   /** True when a `...spread` was seen, which makes the key list incomplete. */
@@ -1928,7 +1886,7 @@ const SCREEN_PAYLOADS: ScreenPayload[] = [
  * is read whole: its route and every part it composes from (FSOLID-001).
  */
 function readScreenPayloadKeys(entry: ScreenPayload): ObjectLiteralKeys {
-  const source = stripCommentsPreservingStrings(screenSource(repoFile(entry.file)));
+  const source = withoutComments(screenSource(repoFile(entry.file)));
   const assignment = new RegExp(`const ${entry.variable}\\s*=\\s*\\{`).exec(source);
   if (assignment === null) return { keys: [], spread: true };
 

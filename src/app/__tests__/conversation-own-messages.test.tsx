@@ -14,6 +14,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { ThemeProvider } from '@/design-system';
 import { useConversationStore } from '@/store/conversation';
 import type { Conversation, Message } from '@/types/conversation';
+import { withoutComments } from '@/lib/__tests__/support/source-text';
 
 jest.mock('@/lib/transport/conversation-hub', () => ({
   ConversationHub: {
@@ -223,10 +224,7 @@ describe('no screen or store decides identity by the fixtures’ id', () => {
   it('finds no `user-current` literal outside the development fixtures', () => {
     const root = path.join(process.cwd(), 'src');
     const offenders = sources(root).filter((file) =>
-      fs
-        .readFileSync(file, 'utf8')
-        .replace(/\/\*[\s\S]*?\*\//g, '')
-        .replace(/\/\/.*$/gm, '')
+      withoutComments(fs.readFileSync(file, 'utf8'))
         .includes("'user-current'")
     );
 

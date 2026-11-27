@@ -19,18 +19,14 @@ import {
   POINTS_CAN_CONVERT,
   XP_IS_NOT_MONEY,
 } from '../platform/reward-copy';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
 /** A file's code with its comments removed, so a comment quoting old copy does not count. */
 function code(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split(String.fromCharCode(10))
-    .filter((line: string) => !/^\s*(\/\/|\*|\{\/\*)/.test(line))
-    .join(String.fromCharCode(10));
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8'));
 }
 
 const SURFACES = {

@@ -58,6 +58,18 @@ import { DEVELOPMENT_ACCESS, accessFor, resetAutomationState } from '@/mocks/aut
 import { simulate } from '@/lib/automation/simulation';
 import type { AutomationDraft, AutomationScope } from '@/types/automation';
 
+/**
+ * Comments are read out of the source before any assertion.
+ *
+ * Several assertions are about what the code *does*, and the files being
+ * inspected explain in prose why they do not do the forbidden thing —
+ * `automation-gap-api.ts` names every absent capability in its header precisely
+ * so nobody reintroduces one. A naive `toContain` would fail on the
+ * explanation, which would mean deleting the most useful comment in the file to
+ * satisfy a test about the code beneath it.
+ */
+import { withoutComments } from './support/source-text';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Reading source files, without pulling Node's types into the project
 //
@@ -74,24 +86,6 @@ import type { AutomationDraft, AutomationScope } from '@/types/automation';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
-
-/**
- * Source with its comments removed.
- *
- * Several assertions are about what the code *does*, and the files being
- * inspected explain in prose why they do not do the forbidden thing —
- * `automation-gap-api.ts` names every absent capability in its header precisely
- * so nobody reintroduces one. A naive `toContain` would fail on the
- * explanation, which would mean deleting the most useful comment in the file to
- * satisfy a test about the code beneath it.
- */
-function withoutComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
-}
 
 function readSource(...segments: string[]): string {
   return withoutComments(fs.readFileSync(path.join(process.cwd(), ...segments), 'utf8'));

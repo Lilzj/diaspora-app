@@ -14,17 +14,13 @@ import MockAdapter from 'axios-mock-adapter';
 import { apiClient } from '../transport/apiClient';
 import { createEventSeries } from '../api/community-programme-api';
 import { coordinatesOf, ownPinOrTown } from '../platform/place-coordinates';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
 function source(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8'));
 }
 
 describe('coordinatesOf', () => {

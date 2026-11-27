@@ -28,18 +28,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { screenSource } from './support/screen-files';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
 /** A file's code with its comments removed. See `password-auth.test.ts`. */
 function read(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), ...segments), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split(String.fromCharCode(10))
-    .filter((line: string) => !/^\s*(\/\/|\*|\{\/\*)/.test(line))
-    .join(String.fromCharCode(10));
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), ...segments), 'utf8'));
 }
 
 const WALLET = read('src', 'app', 'wallet', 'index.tsx');
@@ -135,7 +131,9 @@ describe('every screen gates on the refusal, not on its existence', () => {
   function screens(directory: string): string[] {
     return readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
       entry.isDirectory()
-        ? screens(joinPath(directory, entry.name))
+        ? entry.name === '__tests__'
+          ? []
+          : screens(joinPath(directory, entry.name))
         : entry.name.endsWith('.tsx')
           ? [joinPath(directory, entry.name)]
           : []
@@ -153,9 +151,7 @@ describe('every screen gates on the refusal, not on its existence', () => {
 
     const offenders = screens(appRoot).flatMap((path) => {
       // A screen is read whole: its route and every part it composes from (FSOLID-001).
-      const source = screenSource(path)
-        .replace(/\/\*[\s\S]*?\*\//g, ' ')
-        .replace(/^\s*\/\/.*$/gm, ' ');
+      const source = withoutComments(screenSource(path));
 
       // The name each file gives its refusal, taken from the JSX, so a screen
       // using two is checked on both.

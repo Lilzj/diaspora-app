@@ -36,6 +36,7 @@
 
 import { coverImageUri, housingMediaIds, type HousingMediaRef } from '@/types/housing';
 import { toHousingListingDetail } from '@/lib/api/housing-listings-api';
+import { withoutComments } from './support/source-text';
 
 /** Exactly what `GET /housing/listings/{id}` returned for a seeded listing. */
 const WIRE = {
@@ -110,13 +111,10 @@ describe('the screen no longer reads fields the wire does not send', () => {
   const fs = require('fs') as { readFileSync(p: string, e: string): string };
   const path = require('path') as { join(...p: string[]): string };
 
-  const SOURCE = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'app', 'housing', '[id].tsx'), 'utf8')
-    // Comments document the removed lie; they must not read as committing it.
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
+  // Comments document the removed lie; they must not read as committing it.
+  const SOURCE = withoutComments(
+    fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'housing', '[id].tsx'), 'utf8')
+  );
 
   it('does not spread listing.gallery into the carousel', () => {
     expect(SOURCE).not.toContain('listing.gallery');
@@ -240,12 +238,9 @@ describe('the housing detail screen renders an undisclosed price honestly', () =
   const fs = require('fs') as { readFileSync(p: string, e: string): string };
   const path = require('path') as { join(...p: string[]): string };
 
-  const SOURCE = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'app', 'housing', '[id].tsx'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
+  const SOURCE = withoutComments(
+    fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'housing', '[id].tsx'), 'utf8')
+  );
 
   it('says "On application" rather than printing undefined next to a currency symbol', () => {
     expect(SOURCE).toContain('On application');

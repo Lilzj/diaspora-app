@@ -45,17 +45,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { screenSource } from './support/screen-files';
+import { withoutComments } from './support/source-text';
 
 const path = require('path') as { join(...segments: string[]): string };
 
 /** A file's code with its comments removed. See `password-auth.test.ts`. */
 function read(...segments: string[]): string {
   // A screen is read whole: its route and every part it composes from (FSOLID-001).
-  return screenSource(path.join(process.cwd(), ...segments))
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split(String.fromCharCode(10))
-    .filter((line: string) => !/^\s*(\/\/|\*|\{\/\*)/.test(line))
-    .join(String.fromCharCode(10));
+  return withoutComments(screenSource(path.join(process.cwd(), ...segments)));
 }
 
 const EVENTS = read('src', 'app', 'community-life', 'events.tsx');

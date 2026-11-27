@@ -36,6 +36,8 @@
 // the property that has to survive the next person who adds a step.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 // `require` rather than an import, and typed by hand: this project's tsconfig
 // does not include Node's type definitions, so `node:fs` does not resolve. The
 // same shape `mocks/__tests__/production-mock-gate.test.ts` uses for the same
@@ -57,12 +59,7 @@ const AUTH_DIR = path.join(process.cwd(), 'src', 'app', '(auth)');
  * committing it.
  */
 function source(screen: string): string {
-  return fs
-    .readFileSync(path.join(AUTH_DIR, `${screen}.tsx`), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split(String.fromCharCode(10))
-    .filter((line: string) => !/^\s*(\/\/|\*)/.test(line))
-    .join(String.fromCharCode(10));
+  return withoutComments(fs.readFileSync(path.join(AUTH_DIR, `${screen}.tsx`), 'utf8'));
 }
 
 /**

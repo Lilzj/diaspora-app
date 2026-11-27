@@ -10,6 +10,7 @@ import {
   watchesArrivals,
 } from '@/lib/automation/arrival-presence';
 import { triggerDefinition } from '@/lib/automation/triggers';
+import { withoutComments } from '@/lib/__tests__/support/source-text';
 
 declare const process: { cwd(): string };
 const fs: {
@@ -22,12 +23,7 @@ const path: { join(...parts: string[]): string; relative(from: string, to: strin
 const root = path.join(process.cwd(), 'src');
 
 function code(file: string): string {
-  return fs
-    .readFileSync(file, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !line.trimStart().startsWith('//'))
-    .join('\n');
+  return withoutComments(fs.readFileSync(file, 'utf8'));
 }
 
 function sources(dir: string): string[] {

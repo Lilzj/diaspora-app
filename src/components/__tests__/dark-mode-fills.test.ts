@@ -20,6 +20,8 @@
  * mode. This test lists anything that cannot follow the scheme.
  */
 
+import { withoutComments } from '@/lib/__tests__/support/source-text';
+
 // `@types/node` is not a dependency of this app, so these come through
 // `require`, as in the other source-reading tests.
 /* eslint-disable @typescript-eslint/no-var-requires */
@@ -70,10 +72,7 @@ function sourceFiles(dir: string): string[] {
 
 /** Comments are prose about colours, not colours. */
 function code(file: string): string {
-  return fs
-    .readFileSync(file, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  return withoutComments(fs.readFileSync(file, 'utf8'));
 }
 
 describe('dark mode', () => {

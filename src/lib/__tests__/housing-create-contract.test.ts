@@ -20,16 +20,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { screenSource } from './support/screen-files';
+import { withoutComments } from './support/source-text';
 
 const path = require('path') as { join(...segments: string[]): string };
-
-function withoutComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
-}
 
 /**
  * Type declarations name a field without sending it. The housing draft is typed

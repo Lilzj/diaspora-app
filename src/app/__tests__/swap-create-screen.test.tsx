@@ -13,6 +13,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ThemeProvider } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
+import { withoutComments } from '@/lib/__tests__/support/source-text';
 
 const mockCreateAndPublish = jest.fn();
 const mockShowAlert = jest.fn();
@@ -227,11 +228,9 @@ describe('listing a swap', () => {
 describe('the screen source', () => {
   it('carries no invented seller and no unconditional success', () => {
     // Comments stripped: the header records the removed fabrication by name.
-    const source = fs
-      .readFileSync(path.join(process.cwd(), 'src', 'app', 'marketplace', 'swap-create.tsx'), 'utf8')
-      .split('\n')
-      .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-      .join('\n');
+    const source = withoutComments(
+      fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'marketplace', 'swap-create.tsx'), 'utf8')
+    );
 
     expect(source).not.toMatch(/Amara Kone|user-123|rating: 4\.8|Swap Listed!/);
     expect(source).not.toContain("apiClient.post('/marketplace/listings'");

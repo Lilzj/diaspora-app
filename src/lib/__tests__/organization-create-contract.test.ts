@@ -27,23 +27,17 @@
 // **shape of the body**, and that is legible in the source.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
-const path = require('path') as { join(...segments: string[]): string };
-
 /**
- * The screen's source with its comments removed.
+ * Comments are read out of the screen's source before any assertion.
  *
  * Same reason as the event equivalent: documenting a removed lie must not be
  * indistinguishable from committing it. This file's own header names every
  * wrong field, and a check that read prose would fail on the explanation.
  */
-function withoutComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
-}
+import { withoutComments } from './support/source-text';
+
+const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
+const path = require('path') as { join(...segments: string[]): string };
 
 const SOURCE = withoutComments(
   fs.readFileSync(

@@ -29,6 +29,7 @@ import {
 import { reportContent } from '../api/community-social-api';
 import { useAuthStore, __setSessionForTests } from '@/store/auth';
 import { buildAuthenticationResult } from '@/mocks/auth-session';
+import { withoutComments } from './support/source-text';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -83,14 +84,7 @@ function source(...segments: string[]): string {
   // A screen is read whole: its route and every part it composes from (FSOLID-001).
   const text = screenSource(join(__dirname, '..', '..', ...segments));
 
-  return (
-    text
-      // Block comments, including JSDoc and the `{/* … */}` form JSX uses.
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      // Line comments. The negative lookbehind spares `https://…` inside string
-      // literals, which would otherwise take the rest of the line with them.
-      .replace(/(?<!:)\/\/.*$/gm, '')
-  );
+  return withoutComments(text);
 }
 
 // ── Session revocation ───────────────────────────────────────────────────────

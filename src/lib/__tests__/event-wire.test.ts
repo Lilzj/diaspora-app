@@ -13,6 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { describeEventPrice, toEvent, type EventWire } from '../api/event-wire';
+import { withoutComments } from './support/source-text';
 
 /** `EventResponse`, as the detail route answers it. */
 function detailWire(overrides: Partial<EventWire> = {}): EventWire {
@@ -500,10 +501,7 @@ describe('the events api reads the wire shape, not the client shape', () => {
   const fs = require('fs') as { readFileSync(p: string, e: string): string };
   const path = require('path') as { join(...s: string[]): string };
 
-  const API = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'lib', 'api', 'community-life-api.ts'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '');
+  const API = withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'lib', 'api', 'community-life-api.ts'), 'utf8'));
 
   it('never asserts a wire response is already a client Event', () => {
     expect(API).not.toMatch(/read<Event>/);

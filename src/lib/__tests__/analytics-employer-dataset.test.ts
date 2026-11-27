@@ -24,6 +24,7 @@ import { apiClient } from '@/lib/transport/apiClient';
 import { fetchOwnerAnalytics, isCertifiedContentSubject } from '@/lib/api/analytics-api';
 import { formatMetricValue } from '@/lib/analytics/format';
 import type { AnalyticsTimeRange } from '@/types/analytics';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as {
   readFileSync(p: string, e: string): string;
@@ -119,11 +120,7 @@ function employerBody() {
 
 /** A source file with comments stripped, so a guard reads code rather than prose. */
 function code(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), ...segments), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '')
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), ...segments), 'utf8'));
 }
 
 let mock: MockAdapter;

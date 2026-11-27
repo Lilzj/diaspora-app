@@ -34,6 +34,8 @@
 // shape the route settles on.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { blankComments } from './support/source-text';
+
 // `require` rather than an import, matching `palette-classes.test.ts` — the test
 // runs under Jest, where these exist, while `tsc --noEmit` stays clean without
 // adding `"node"` to the tsconfig `types` field, which breaks `__DEV__` in other
@@ -78,14 +80,13 @@ function findOffences(): Offence[] {
   const offences: Offence[] = [];
 
   for (const file of sourceFiles(SRC)) {
-    const lines = fs.readFileSync(file, 'utf8').split('\n');
+    // The prose in this repo quotes the pattern constantly; comments are not code.
+    const lines = blankComments(fs.readFileSync(file, 'utf8')).split('\n');
 
     lines.forEach((line: string, i: number) => {
       if (!line.includes('.data.data')) return;
 
       const trimmed = line.trim();
-      // The prose in this repo quotes the pattern constantly; comments are not code.
-      if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
 
       const after = line.split('.data.data')[1] ?? '';
       const chained = new RegExp(`\\.${ARRAY_CALL}\\b`).test(after);

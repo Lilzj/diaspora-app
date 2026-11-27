@@ -26,16 +26,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { communityLifeKeys } from '../api/community-life-api';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...parts: string[]): string };
 
 /** A file's code with its comments removed, so prose cannot satisfy a check. */
 function code(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
-    .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
-    .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8'));
 }
 
 const API = code('lib', 'api', 'community-life-api.ts');

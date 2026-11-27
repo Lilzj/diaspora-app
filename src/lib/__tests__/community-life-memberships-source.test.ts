@@ -27,6 +27,9 @@
 // used.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Comments are read out: a rule must not be satisfied by prose about it.
+import { withoutComments } from './support/source-text';
+
 // `require` rather than `import`, and typed by hand: this project has no
 // @types/node, so an `import from 'fs'` typechecks red while passing under Jest.
 // The same shape every other source-reading suite here uses.
@@ -38,13 +41,8 @@ const ROOT = path.join(process.cwd(), 'src', 'app', 'community-life');
 const hub = fs.readFileSync(path.join(ROOT, 'index.tsx'), 'utf8');
 const discovery = fs.readFileSync(path.join(ROOT, 'membership', 'index.tsx'), 'utf8');
 
-/** Source with comments stripped — a rule must not be satisfied by prose about it. */
-function code(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-}
-
 describe('the hub’s memberships section', () => {
-  const source = code(hub);
+  const source = withoutComments(hub);
 
   it('reads the real route, not the unserved summary', () => {
     expect(source).toContain('useMyMemberships');
@@ -71,7 +69,7 @@ describe('the hub’s memberships section', () => {
 });
 
 describe('the membership discovery screen', () => {
-  const source = code(discovery);
+  const source = withoutComments(discovery);
 
   it('does not describe an empty programme table as an empty platform', () => {
     expect(source).not.toContain('No community near you is taking members through Diaspora yet');

@@ -39,6 +39,8 @@
 // a fix for it.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { commentRanges } from '@/lib/__tests__/support/source-text';
+
 declare const __dirname: string;
 
 interface DirectoryEntry {
@@ -78,9 +80,6 @@ const REPO_ROOT = join(SOURCE_ROOT, '..');
  * that sentence is only worth anything because a test asserts it.
  */
 const ALSO_SCANNED = ['app.config.js'];
-
-/** A comment line, which is the only place this rule looks. */
-const COMMENT = /^\s*(?:\/\/|\*|\/\*)/;
 
 /**
  * `lib/__tests__/gap-preview.test.ts` and the like, written inside a comment.
@@ -147,7 +146,8 @@ function claimants(): Claimant[] {
 
   for (const path of scannedFiles()) {
     const source = readFileSync(path, 'utf8');
-    const commented = source.split('\n').filter((line) => COMMENT.test(line));
+    // Only the comments: they are the only place this rule looks.
+    const commented = commentRanges(source).flatMap(([start, end]) => source.slice(start, end).split('\n'));
     const mentions = commented.filter((line) => line.includes('eas.json'));
 
     if (mentions.length === 0) continue;

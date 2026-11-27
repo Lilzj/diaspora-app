@@ -33,6 +33,7 @@ import { fetchWorkspaceArchive, fetchWorkspaceContent, workspaceCoverageNote } f
 import { canPerform, performWorkspaceAction } from '../creator/workspace-actions';
 import { fetchCertifiedAutomationSupport } from '../api/automation-api';
 import type { UnifiedContentItem } from '@/types/creator';
+import { withoutComments } from './support/source-text';
 
 const IDENTITY: UnifiedContentItem['publishingIdentity'] = {
   id: 'a3d0c2f4-1111-4a2b-9c3d-4e5f60718293',
@@ -59,34 +60,12 @@ const join: (...parts: string[]) => string = require('path').join;
 const source = (...parts: string[]) => readFileSync(join(__dirname, '..', '..', ...parts), 'utf8');
 
 /**
- * A screen's source with its comments blanked, line numbering preserved.
- *
- * This repository documents every removal by quoting the sentence it removed, so
- * an assertion that a phrase is *gone* will keep finding it in the paragraph
- * explaining why it went. That is not hypothetical: the creator banner assertion
- * below failed on the comment describing its own fix.
- */
-const rendered = (...parts: string[]) => {
-  const NEWLINE = String.fromCharCode(10);
-  const block = new RegExp('/\\*[\\s\\S]*?\\*/', 'g');
-  const line = new RegExp('//[^\\n]*', 'g');
-
-  return source(...parts)
-    .replace(block, (match) =>
-      match
-        .split(NEWLINE)
-        .map((row) => ' '.repeat(row.length))
-        .join(NEWLINE)
-    )
-    .replace(line, (match) => ' '.repeat(match.length));
-};
-
-/**
- * Every `.tsx` under `src/app`, concatenated.
+ * Every screen `.tsx` under `src/app`, concatenated, comments removed.
  *
  * Used to ask what the *screens* offer, as distinct from what a component says
  * is possible. The gap between those two is where two reportable subjects were
- * hiding, and neither side alone could have shown it.
+ * hiding, and neither side alone could have shown it. A screen's tests and its
+ * comments are not what it offers: either could name a subject no screen passes.
  */
 function appSource(): string {
   const root = join(__dirname, '..', '..', 'app');
@@ -95,32 +74,35 @@ function appSource(): string {
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith('.tsx')) out.push(readFileSync(full, 'utf8'));
+      if (entry.isDirectory()) {
+        if (entry.name !== '__tests__') walk(full);
+      } else if (entry.name.endsWith('.tsx')) {
+        out.push(withoutComments(readFileSync(full, 'utf8')));
+      }
     }
   };
 
   walk(root);
   // The sections composed screens render, which are app as much as their routes (FSOLID-001).
   for (const file of filesUnder(SCREEN_PARTS_ROOT)) {
-    if (file.endsWith('.tsx')) out.push(readFileSync(file, 'utf8'));
+    if (file.endsWith('.tsx')) out.push(withoutComments(readFileSync(file, 'utf8')));
   }
   return out.join(String.fromCharCode(10));
 }
 
 /**
- * The same file with its comments removed.
+ * A file with its comments removed.
  *
  * Necessary rather than fussy. Every one of these files **quotes the sentence it
  * replaced**, deliberately: a register entry is a claim with a date on it, and
  * the value of keeping the old wording is that a reader can see what was wrong
  * and when. A plain `not.toContain` would therefore fail on the record of the
  * fix rather than on the fix, so the assertions run against what is rendered.
+ * That is not hypothetical: the creator banner assertion below failed on the
+ * comment describing its own fix.
  */
 function visible(...parts: string[]): string {
-  return source(...parts)
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/(^|[^:])\/\/[^\n]*/g, '$1 ');
+  return withoutComments(source(...parts));
 }
 
 let api: MockAdapter;
@@ -551,7 +533,7 @@ describe('the disclosures on screen match the platform', () => {
 
     // Read past the prose: the sentence survives in the comment that explains
     // its removal, which is documentation rather than something a member sees.
-    const shown = rendered('app', 'creator', 'index.tsx');
+    const shown = visible('app', 'creator', 'index.tsx');
     expect(shown).not.toContain('Suggestions and your last 30 days are not measured yet');
     expect(shown).not.toContain('Headline figures are not available yet');
   });

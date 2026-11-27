@@ -15,6 +15,7 @@
 
 import { toAttendee, type AttendeeWire } from '../api/event-attendees';
 import { hookModuleSource } from './support/hook-modules';
+import { withoutComments } from './support/source-text';
 
 function wire(overrides: Partial<AttendeeWire> = {}): AttendeeWire {
   return {
@@ -115,10 +116,7 @@ describe('whether the door is open', () => {
   const path = require('path') as { join(...s: string[]): string };
 
   const source = (...segments: string[]) =>
-    fs
-      .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
-      .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
-      .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+    withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8'));
 
   it('takes the answer off the page rather than computing one', () => {
     const adapter = source('lib', 'api', 'event-attendees.ts');
@@ -145,13 +143,9 @@ describe('an occurrence is an event', () => {
   const fs = require('fs') as { readFileSync(p: string, e: string): string };
   const path = require('path') as { join(...s: string[]): string };
 
-  const screen = fs
-    .readFileSync(
-      path.join(process.cwd(), 'src', 'app', 'community-life', 'attendees.tsx'),
-      'utf8'
-    )
-    .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
-    .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+  const screen = withoutComments(
+    fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'community-life', 'attendees.tsx'), 'utf8')
+  );
 
   it('reads both through the same route', () => {
     // A series occurrence *is* a `CommunityEvent` carrying a `SeriesId`, so its

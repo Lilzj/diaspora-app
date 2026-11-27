@@ -36,6 +36,8 @@
 // different feature, and the author of either would have had no way to notice.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { blankComments } from './support/source-text';
+
 // Required locally with narrow signatures, as the sibling suites do: adding
 // `"node"` to `types` in `tsconfig.json` makes `@types/node` shadow the ambient
 // React Native `globalThis` and breaks twenty boundary assertions.
@@ -63,19 +65,17 @@ const NOT_HAPPENED =
   /coming soon|full release|not yet|in a future release|available soon|is ?n[o']t available|is not available/i;
 
 /**
- * The file with its comments removed, whitespace collapsed.
+ * The file with its comments blanked, whitespace collapsed.
  *
  * The same helper, and the same reason, as `security-claims.test.ts`: the first
  * version of that suite failed on the comment explaining the defect it was
  * written for. A rule that forbids *describing* a defect makes every file that
  * documents one unfixable, and this file quotes the offending call verbatim at
- * the top. Block comments first — that also removes any `//` inside them — then
- * line comments, which run to a newline, so both must precede the collapse.
+ * the top. The comments go before the collapse: a line comment ends at its
+ * newline, and the collapse removes the newlines.
  */
 function visibleCopy(file: string): string {
-  return readFileSync(file, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/\/\/[^\n]*/g, ' ')
+  return blankComments(readFileSync(file, 'utf8'))
     .replace(/\s+/g, ' ');
 }
 

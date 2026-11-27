@@ -9,6 +9,7 @@
 
 import { currencyForResidence, FALLBACK_CURRENCY } from '@/lib/domain/member-currency';
 import { SCREEN_PARTS_ROOT, filesUnder } from './support/screen-files';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as {
   readFileSync(p: string, e: string): string;
@@ -72,10 +73,7 @@ describe('the app', () => {
   it('hard-codes no pounds into what a member is asked', () => {
     // Comments are stripped: several describe the defect this guards against.
     const code = (file: string) =>
-      fs
-        .readFileSync(file, 'utf8')
-        .replace(/\/\*[\s\S]*?\*\//g, ' ')
-        .replace(/\/\/[^\n]*/g, ' ');
+      withoutComments(fs.readFileSync(file, 'utf8'));
     const offenders = all.filter((file) => /in pounds|priceCurrency: [^\n]*'GBP'/.test(code(file)));
     expect(offenders).toEqual([]);
   });
