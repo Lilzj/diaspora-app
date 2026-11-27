@@ -23,7 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
+import { usePhotoUpload } from '@/hooks/photo-upload';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -32,7 +32,6 @@ import { CategoryChip } from '@/components/CategoryChip';
 import { Input } from '@/components/Input';
 import { DatePickerInput } from '@/components/DatePickerInput';
 import { useNotification } from '@/providers/notification-provider';
-import { useMediaUpload, toLocalFile } from '@/hooks/media';
 import { photoUriOf } from '@/lib/platform/media-url';
 import { backOr } from '@/lib/platform/navigation';
 import { useAuthStore } from '@/store/auth';
@@ -111,7 +110,6 @@ export default function EditHousingListingScreen() {
   const queryClient = useQueryClient();
   const { showAlert, showToast } = useNotification();
   // Camera or gallery, asked (Android UAT, 3 Nov 2026).
-  const photoSource = usePhotoSource();
   const userId = useAuthStore((state) => state.user?.userId ?? null);
 
   const listingQuery = useQuery({
@@ -152,27 +150,15 @@ export default function EditHousingListingScreen() {
     wire?.isOwner === true ||
     isHostedBy(hostFromLandlord(wire?.landlord as LandlordSummaryWire | undefined), userId);
 
-  const upload = useMediaUpload({ kind: 'image' });
+  const photoUpload = usePhotoUpload('Add a photo');
 
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((current) => (current ? { ...current, [key]: value } : current));
   }, []);
 
-  const addPhotoFrom = useCallback(async (source: PhotoSource) => {
-    const picked = (await photoSource.launch(source, { allowsEditing: true, quality: 0.8 }))?.[0];
-    if (!picked) return;
-
-    // Uploaded now, attached on save. A photo the platform never received must
-    // not sit in the grid looking like one it did, so a failed upload adds nothing.
-    const asset = await upload.upload(toLocalFile(picked));
-    if (!asset) return;
-    setAdded((current) => [...current, { mediaId: asset.mediaId, previewUri: asset.thumbnailUrl ?? picked.uri }]);
-  }, [photoSource, upload]);
-
-  const addPhoto = useCallback(
-    () => photoSource.ask('Add a photo', (source) => void addPhotoFrom(source)),
-    [addPhotoFrom, photoSource]
-  );
+  // Uploaded now, attached on save. A photo the platform never received must
+  // not sit in the grid looking like one it did, so a failed upload adds nothing.
+  const addPhoto = () => photoUpload.choose((photo) => setAdded((current) => [...current, photo]));
 
   const keptExisting = existingPhotos.filter((photo) => !removed.includes(photo.mediaId));
   const photoCount = keptExisting.length + added.length;
@@ -227,7 +213,7 @@ export default function EditHousingListingScreen() {
   const dateChanged = !!form && !!original && !!form.availableFrom && form.availableFrom !== original.availableFrom;
   const photosChanged = removed.length > 0 || added.length > 0 || effectiveCover !== originalCover;
   const hasChanges = Object.keys(patch).length > 0 || dateChanged || photosChanged;
-  const canSave = hasChanges && !parsed?.missing && !isSaving && !upload.isUploading;
+  const canSave = hasChanges && !parsed?.missing && !isSaving && !photoUpload.upload.isUploading;
 
   const save = async () => {
     if (!canSave || !wire) return;
@@ -452,17 +438,17 @@ export default function EditHousingListingScreen() {
             );
           })}
           <TouchableOpacity
-            onPress={() => void addPhoto()}
-            disabled={upload.isUploading}
+            onPress={addPhoto}
+            disabled={photoUpload.upload.isUploading}
             accessibilityRole="button"
             accessibilityLabel="Add a photo"
             className="w-28 h-28 rounded-xl border border-dashed border-line items-center justify-center"
           >
-            {upload.isUploading ? <ActivityIndicator /> : <Ionicons name="add" size={28} color="#9CA3AF" />}
+            {photoUpload.upload.isUploading ? <ActivityIndicator /> : <Ionicons name="add" size={28} color="#9CA3AF" />}
           </TouchableOpacity>
         </View>
-        {upload.phase === 'failed' && upload.error ? (
-          <Text className="text-xs text-error-default mt-2">{upload.error}</Text>
+        {photoUpload.dropZone.error ? (
+          <Text className="text-xs text-error-default mt-2">{photoUpload.dropZone.error}</Text>
         ) : null}
 
         <View className="mt-8">

@@ -13,14 +13,12 @@ import { ContactChoice } from '@/components/forms/ContactChoice';
 import { coordinatesOf, ownPinOrTown } from '@/lib/platform/place-coordinates';
 import { Input } from '@/components/Input';
 import { useTrustStore } from '@/store/trust';
-import * as ImagePicker from 'expo-image-picker';
 import { PhotoDropZone } from '@/components/PhotoDropZone';
+import { usePhotoUpload } from '@/hooks/photo-upload';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotification } from '@/providers/notification-provider';
-import type { AlertOptions } from '@/providers/notification-provider';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { useMediaUpload, toLocalFile } from '@/hooks/media';
 import type { ChosenPhoto } from '@/types/media';
 import { useAuthStore } from '@/store/auth';
 import {
@@ -40,59 +38,6 @@ import { useDonationCauses } from '@/hooks/financial';
 import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/domain/marketplace-categories';
 import { useDeviceDraft } from '@/lib/platform/device-drafts';
 import { currencySymbol as symbolFor } from '@/lib/domain/money';
-
-/** The designed alert modal, passed to helpers that sit outside a component. */
-type ShowAlert = (options: AlertOptions) => void;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Remediation Wave E — these two helpers used to end `return result.assets[0].uri`.
-//
-// That is a `file:///…` path into this app's own cache directory. It means
-// something on exactly one device, for as long as that device keeps its cache,
-// and nothing at all to the server. This screen stored it and posted it as
-// `coverImage`, so every marketplace photograph in this application was a path
-// only the phone that took it could resolve.
-//
-// They now return the **picked asset**, and the upload happens in the component
-// through the one media pipeline (`hooks/media` → `lib/media-api`). It has to be
-// in the component: `useMediaUpload` is a hook, and progress and failure are
-// things a member has to be able to see. What these helpers still own is the
-// permission dance — which is why they stay at module scope, taking the alert
-// function from their caller so a refusal lands in the designed modal rather
-// than the operating system's dialog.
-// ─────────────────────────────────────────────────────────────────────────────
-const pickFromGallery = async (showAlert: ShowAlert): Promise<ImagePicker.ImagePickerAsset | null> => {
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
-    showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your photos to upload images.' });
-    return null;
-  }
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['images'],
-    allowsEditing: true,
-    quality: 0.8,
-  });
-  if (!result.canceled && result.assets && result.assets.length > 0) {
-    return result.assets[0];
-  }
-  return null;
-};
-
-const pickFromCamera = async (showAlert: ShowAlert): Promise<ImagePicker.ImagePickerAsset | null> => {
-  const { status } = await ImagePicker.requestCameraPermissionsAsync();
-  if (status !== 'granted') {
-    showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your camera to take photos.' });
-    return null;
-  }
-  const result = await ImagePicker.launchCameraAsync({
-    allowsEditing: true,
-    quality: 0.8,
-  });
-  if (!result.canceled && result.assets && result.assets.length > 0) {
-    return result.assets[0];
-  }
-  return null;
-};
 
 const steps = [
   'What are you listing?',
@@ -318,17 +263,9 @@ export default function CreateListingScreen() {
   const [coverPhoto, setCoverPhoto] = useState<ChosenPhoto | null>(null);
   const [galleryPhotos, setGalleryPhotos] = useState<ChosenPhoto[]>([]);
 
-  // Two upload slots rather than one, because `useMediaUpload` aborts whatever
-  // it was doing when a new upload starts — sharing a single instance would mean
-  // adding a gallery photo silently cancelled the cover that was still going up.
-  const coverUpload = useMediaUpload({ kind: 'image' });
-  const galleryUpload = useMediaUpload({ kind: 'image' });
-
-  // The hook's own definition of busy: `uploading` *or* `processing`. The
-  // member's waiting is not over when the bytes land — variants are derived
-  // afterwards — and a picker reopened in between would abort the slot.
-  const coverBusy = coverUpload.isUploading;
-  const galleryBusy = galleryUpload.isUploading;
+  // An upload each: one shared would let a gallery photo cancel a cover still going up.
+  const cover = usePhotoUpload('Select Cover Image');
+  const gallery = usePhotoUpload('Select Gallery Image');
 
   // STEP 6: Contact Channels
   const [contactPhone, setContactPhone] = useState('');
@@ -491,94 +428,10 @@ export default function CreateListingScreen() {
     }
   };
 
-  /**
-   * A picked file, uploaded, as something this screen can hold.
-   *
-   * The single point where a device path becomes a platform identifier — there
-   * is one upload implementation in this application and this calls it.
-   */
-  const uploadPicked = useCallback(
-    async (
-      picked: ImagePicker.ImagePickerAsset,
-      slot: ReturnType<typeof useMediaUpload>
-    ): Promise<ChosenPhoto | null> => {
-      const asset = await slot.upload(toLocalFile(picked));
+  const handleCoverPhotoSelect = () => cover.choose(setCoverPhoto);
 
-      // Null is a failed or cancelled upload. The slot holds the server's own
-      // sentence and step 5 renders it; nothing enters state. That is the point
-      // of returning early rather than storing the local URI as a consolation:
-      // a photograph the platform never received must not sit in the grid
-      // looking exactly like one it did.
-      if (!asset) return null;
-
-      // The device's copy is the preview until the platform has a rendition of
-      // its own. A direct upload answers at `pending` or `processing` — variants
-      // are derived afterwards — so `thumbnailUrl` is usually still null here,
-      // and `asset.url` is a route into Media rather than an image that is ready
-      // to paint. The identifier below is the part that gets posted, and it is
-      // stable from this moment whatever the preview is showing.
-      return {
-        mediaId: asset.mediaId,
-        previewUri: asset.thumbnailUrl ?? picked.uri,
-      };
-    },
-    []
-  );
-
-  const chooseCoverPhoto = useCallback(
-    async (from: 'camera' | 'gallery') => {
-      const picked = from === 'camera' ? await pickFromCamera(showAlert) : await pickFromGallery(showAlert);
-      if (!picked) return;
-
-      const photo = await uploadPicked(picked, coverUpload);
-      if (photo) setCoverPhoto(photo);
-    },
-    [coverUpload, showAlert, uploadPicked]
-  );
-
-  const addGalleryPhoto = useCallback(
-    async (from: 'camera' | 'gallery') => {
-      const picked = from === 'camera' ? await pickFromCamera(showAlert) : await pickFromGallery(showAlert);
-      if (!picked) return;
-
-      const photo = await uploadPicked(picked, galleryUpload);
-      // Appended, because order is the contract here — see `handlePublish`.
-      if (photo) setGalleryPhotos(prev => [...prev, photo]);
-    },
-    [galleryUpload, showAlert, uploadPicked]
-  );
-
-  const handleCoverPhotoSelect = async () => {
-    const title = 'Select Cover Image';
-    const message = 'Add a photo of your item';
-    const options = [
-      { text: '📷 Take Photo (Camera)', onPress: () => { void chooseCoverPhoto('camera'); } },
-      { text: '🖼️ Choose from Gallery', onPress: () => { void chooseCoverPhoto('gallery'); } },
-      { text: 'Cancel', style: 'cancel' as const }
-    ];
-
-    if (Platform.OS === 'web') {
-      await chooseCoverPhoto('gallery');
-    } else {
-      showAlert({ type: 'info', title: title, message: message, buttons: options });
-    }
-  };
-
-  const handleAddGalleryPhoto = async () => {
-    const title = 'Select Gallery Image';
-    const message = 'Choose an action to add a property gallery photo';
-    const options = [
-      { text: '📷 Take Photo (Camera)', onPress: () => { void addGalleryPhoto('camera'); } },
-      { text: '🖼️ Choose from Gallery', onPress: () => { void addGalleryPhoto('gallery'); } },
-      { text: 'Cancel', style: 'cancel' as const }
-    ];
-
-    if (Platform.OS === 'web') {
-      await addGalleryPhoto('gallery');
-    } else {
-      showAlert({ type: 'info', title: title, message: message, buttons: options });
-    }
-  };
+  // Appended, because order is the contract here — see `handlePublish`.
+  const handleAddGalleryPhoto = () => gallery.choose((photo) => setGalleryPhotos((prev) => [...prev, photo]));
 
   const reorderGallery = (idx: number) => {
     if (idx === 0) return;
@@ -1289,30 +1142,17 @@ export default function CreateListingScreen() {
                 prompt="Tap to upload cover image"
                 previewUri={coverPhoto?.previewUri ?? null}
                 changeLabel="📷 Change Cover Photo"
-                busy={coverBusy}
-                busyLabel={
-                  coverUpload.phase === 'processing'
-                    ? 'Processing…'
-                    : `Uploading ${Math.round(coverUpload.progress * 100)}%`
-                }
-                // The server's own sentence where it gave one — it knows whether
-                // the file was too large, the wrong type or refused by a scanner,
-                // and each needs a different next step from the member. Nothing
-                // was added to the listing, and this is how they find that out.
-                error={coverUpload.phase === 'failed' ? coverUpload.error : null}
+                // Busy, what the wait is, and the server's own sentence if it
+                // refused: nothing was added to the listing, and this is how the
+                // member finds out.
+                {...cover.dropZone}
                 onPress={handleCoverPhotoSelect}
               />
 
               <PhotoDropZone
                 label="Gallery Photos"
                 prompt="Tap to add a gallery photo"
-                busy={galleryBusy}
-                busyLabel={
-                  galleryUpload.phase === 'processing'
-                    ? 'Processing…'
-                    : `Uploading ${Math.round(galleryUpload.progress * 100)}%`
-                }
-                error={galleryUpload.phase === 'failed' ? galleryUpload.error : null}
+                {...gallery.dropZone}
                 onPress={handleAddGalleryPhoto}
               >
                 {/* Above the panel rather than inside it: these are an ordered

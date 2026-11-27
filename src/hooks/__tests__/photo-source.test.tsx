@@ -122,14 +122,15 @@ describe('no screen opens the gallery on its own', () => {
     });
   }
 
-  // These ask camera or gallery themselves (three create/edit wizards that
-  // pick several photos at once, and the chat attachment sheet).
+  // These open the gallery themselves: the chooser, and the chat attachment
+  // sheet, which picks several at once.
+  //
+  // The home and marketplace wizards and the marketplace edit screen were here
+  // too, said to pick several photos at once; each picked one at a time, with
+  // its own sheet and its own refusal wording. They choose through
+  // `usePhotoUpload` since 27 Nov 2026 (FARCH-007).
   const ASKS_ITSELF = [
     path.join('hooks', 'photo-source.ts'),
-    path.join('app', 'marketplace', 'create.tsx'),
-    // The housing wizard's own picking, in its photos hook since the screen was composed (FSOLID-001).
-    path.join('components', 'screens', 'housing-create', 'useHousingPhotos.ts'),
-    path.join('app', 'marketplace', 'edit', '[id].tsx'),
     path.join('components', 'conversation', 'AttachmentPicker.tsx'),
   ];
 

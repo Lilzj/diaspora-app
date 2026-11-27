@@ -30,7 +30,7 @@ const BUDGET = 600;
  * composed instead, the way the three were.
  */
 const OVER_BUDGET: Record<string, number> = {
-  'marketplace/create.tsx': 1464,
+  'marketplace/create.tsx': 1304,
   'community-life/org/[id].tsx': 1402,
   'community-life/event/[id].tsx': 1276,
   '(tabs)/post.tsx': 1241,
@@ -56,7 +56,6 @@ const OVER_BUDGET: Record<string, number> = {
   'monetization/campaigns/create.tsx': 672,
   'monetization/promotions/[id].tsx': 634,
   'community/onboarding.tsx': 633,
-  'marketplace/edit/[id].tsx': 628,
 };
 
 /** The routes that compose their screen from `src/components/screens`. */
