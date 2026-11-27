@@ -22,10 +22,10 @@ import { render, screen, fireEvent } from '@testing-library/react-native';
 
 import { ThemeProvider } from '@/design-system';
 import { PhotoDropZone } from '../PhotoDropZone';
+import { screenSource } from '@/lib/__tests__/support/screen-files';
 
 // `require`, not `import`: this project's tsconfig carries no node types, and
 // the other source-reading tests here do the same.
-const fs = require('fs');
 const path = require('path');
 
 function renderZone(props: Partial<React.ComponentProps<typeof PhotoDropZone>> = {}) {
@@ -147,7 +147,8 @@ const WIZARDS: { name: string; file: string[]; zones: number; handlers: string }
 ];
 
 describe.each(WIZARDS)('the $name wizard photo step', ({ file, zones, handlers }) => {
-  const source: string = fs.readFileSync(path.join(process.cwd(), ...file), 'utf8');
+  // A screen is read whole: its route and every part it composes from (FSOLID-001).
+  const source: string = screenSource(path.join(process.cwd(), ...file));
 
   it('asks for every photograph through the one control', () => {
     expect(source.match(/<PhotoDropZone/g)?.length ?? 0).toBe(zones);

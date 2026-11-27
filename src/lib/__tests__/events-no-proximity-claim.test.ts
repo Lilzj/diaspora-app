@@ -44,13 +44,14 @@
 // rule against the new contract.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
+import { screenSource } from './support/screen-files';
+
 const path = require('path') as { join(...segments: string[]): string };
 
 /** A file's code with its comments removed. See `password-auth.test.ts`. */
 function read(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), ...segments), 'utf8')
+  // A screen is read whole: its route and every part it composes from (FSOLID-001).
+  return screenSource(path.join(process.cwd(), ...segments))
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split(String.fromCharCode(10))
     .filter((line: string) => !/^\s*(\/\/|\*|\{\/\*)/.test(line))
@@ -102,6 +103,22 @@ describe('a distance is put on screen only when the server measured one', () => 
   });
 });
 
+/**
+ * `describeEmptyEventSearch`, from its signature to its own closing brace.
+ *
+ * It used to run to `const EVENT_CATEGORIES`, the declaration that followed it
+ * in the screen. The screen is composed now (FSOLID-001) and the two live in
+ * different files, so the helper is cut by its own extent instead.
+ */
+function emptySearchHelper(): string {
+  const start = EVENTS.indexOf('function describeEmptyEventSearch');
+  expect(start).toBeGreaterThanOrEqual(0);
+  // A line holding only the closing brace; `}: {` closes the parameters, not the function.
+  const end = EVENTS.slice(start).search(/\n\}\r?\n/);
+  expect(end).toBeGreaterThan(0);
+  return EVENTS.slice(start, start + end + 2);
+}
+
 describe('the empty state describes the search that was actually run', () => {
   it('is built from the filters that were applied', () => {
     expect(EVENTS).toMatch(/function describeEmptyEventSearch/);
@@ -132,10 +149,7 @@ describe('the empty state describes the search that was actually run', () => {
   });
 
   it('suggests only controls that exist on this screen', () => {
-    const helper = EVENTS.slice(
-      EVENTS.indexOf('function describeEmptyEventSearch'),
-      EVENTS.indexOf('const EVENT_CATEGORIES')
-    );
+    const helper = emptySearchHelper();
 
     expect(helper).toMatch(/change the city from the picker at the top/);
     expect(helper).toMatch(/another category or a wider date range/);
@@ -143,7 +157,12 @@ describe('the empty state describes the search that was actually run', () => {
     // A wider radius only where the search was around the member; never a
     // "filter range", which is no control on this screen.
     expect(helper).not.toMatch(/filter range/i);
-    const town = helper.slice(helper.indexOf("// Nothing but the city."));
+    // From the city-only branch on. Marked by code, not by the comment above it:
+    // `read` strips comments, so a comment marker is never found and `slice(-1)`
+    // left one newline for the assertion below to pass on (until 27 Nov 2026).
+    const cityOnly = helper.indexOf('if (narrowedBy.length === 0) {');
+    expect(cityOnly).toBeGreaterThan(0);
+    const town = helper.slice(cityOnly);
     expect(town).not.toMatch(/radius|distance|nearby/i);
     expect(helper).toMatch(/if \(scope === 'nearby'\)[\s\S]*?a wider radius/);
   });
@@ -151,10 +170,7 @@ describe('the empty state describes the search that was actually run', () => {
   it('does not imply a filter to relax when only the city is applied', () => {
     // "Try another category" is useless advice to somebody who has not chosen
     // one. The no-filters branch says the city is empty and stops there.
-    const helper = EVENTS.slice(
-      EVENTS.indexOf('function describeEmptyEventSearch'),
-      EVENTS.indexOf('const EVENT_CATEGORIES')
-    );
+    const helper = emptySearchHelper();
 
     expect(helper).toMatch(/if \(narrowedBy\.length === 0\)/);
     expect(helper).toMatch(/Nothing is listed in \$\{city\} yet/);

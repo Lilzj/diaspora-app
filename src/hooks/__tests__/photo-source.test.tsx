@@ -127,7 +127,8 @@ describe('no screen opens the gallery on its own', () => {
   const ASKS_ITSELF = [
     path.join('hooks', 'photo-source.ts'),
     path.join('app', 'marketplace', 'create.tsx'),
-    path.join('app', 'housing', 'create.tsx'),
+    // The housing wizard's own picking, in its photos hook since the screen was composed (FSOLID-001).
+    path.join('components', 'screens', 'housing-create', 'useHousingPhotos.ts'),
     path.join('app', 'marketplace', 'edit', '[id].tsx'),
     path.join('components', 'conversation', 'AttachmentPicker.tsx'),
   ];

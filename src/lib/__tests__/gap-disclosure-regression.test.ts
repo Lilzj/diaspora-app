@@ -25,6 +25,7 @@
 // A unit test that pinned them would pin the client's *opinion* of them.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { SCREEN_PARTS_ROOT, filesUnder } from './support/screen-files';
 import MockAdapter from 'axios-mock-adapter';
 
 import { apiClient } from '../transport/apiClient';
@@ -100,6 +101,10 @@ function appSource(): string {
   };
 
   walk(root);
+  // The sections composed screens render, which are app as much as their routes (FSOLID-001).
+  for (const file of filesUnder(SCREEN_PARTS_ROOT)) {
+    if (file.endsWith('.tsx')) out.push(readFileSync(file, 'utf8'));
+  }
   return out.join(String.fromCharCode(10));
 }
 

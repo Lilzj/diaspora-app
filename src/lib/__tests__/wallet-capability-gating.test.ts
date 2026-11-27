@@ -27,6 +27,8 @@
 // the deployment was already running.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { screenSource } from './support/screen-files';
+
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
@@ -150,8 +152,8 @@ describe('every screen gates on the refusal, not on its existence', () => {
     const appRoot = joinPath(__dirname, '..', '..', 'app');
 
     const offenders = screens(appRoot).flatMap((path) => {
-      const source = fs
-        .readFileSync(path, 'utf8')
+      // A screen is read whole: its route and every part it composes from (FSOLID-001).
+      const source = screenSource(path)
         .replace(/\/\*[\s\S]*?\*\//g, ' ')
         .replace(/^\s*\/\/.*$/gm, ' ');
 

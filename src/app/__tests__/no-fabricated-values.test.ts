@@ -34,6 +34,8 @@
 
 // Node's globals declared locally; adding `"node"` to the tsconfig `types` field
 // breaks `__DEV__` in other suites.
+import { SCREEN_PARTS_ROOT, filesUnder } from '@/lib/__tests__/support/screen-files';
+
 declare const __dirname: string;
 declare const require: (id: string) => unknown;
 
@@ -145,9 +147,12 @@ describe('no screen invents a rating, a score, a coordinate or a trust label', (
   it('finds no fallback literal that reads as a measurement', () => {
     const offences: Offence[] = [];
 
-    for (const file of screens(APP_ROOT)) {
+    // The routes, and the parts composed screens are made of (FSOLID-001).
+    for (const file of [...screens(APP_ROOT), ...filesUnder(SCREEN_PARTS_ROOT)]) {
       const source = fs.readFileSync(file, 'utf8');
-      const relative = file.slice(APP_ROOT.length + 1).replace(/\\/g, '/');
+      const relative = file.startsWith(APP_ROOT)
+        ? file.slice(APP_ROOT.length + 1).replace(/\\/g, '/')
+        : '../components/screens/' + file.slice(SCREEN_PARTS_ROOT.length + 1).replace(/\\/g, '/');
       const lines = source.split('\n');
 
       for (const hit of fabrications(source)) {
@@ -158,7 +163,7 @@ describe('no screen invents a rating, a score, a coordinate or a trust label', (
         if (excused) continue;
 
         offences.push({
-          file: file.slice(APP_ROOT.length + 1).replace(/\\/g, '/'),
+          file: relative,
           line: hit.line,
           source: hit.text,
         });

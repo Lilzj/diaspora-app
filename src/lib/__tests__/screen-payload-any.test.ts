@@ -41,6 +41,8 @@
 // and may not grow.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { SCREEN_PARTS_ROOT, filesUnder } from './support/screen-files';
+
 const fs = require('fs') as {
   readFileSync(path: string, encoding: string): string;
   readdirSync(path: string, options: { withFileTypes: true }): Array<{
@@ -86,9 +88,15 @@ function screenFiles(dir: string, prefix = ''): string[] {
 }
 
 describe('screens do not hold payloads as any', () => {
-  const offenders = screenFiles(APP_ROOT).filter((file) =>
-    fs.readFileSync(path.join(APP_ROOT, ...file.split('/')), 'utf8').includes('useState<any>')
-  );
+  const offenders = [
+    ...screenFiles(APP_ROOT).filter((file) =>
+      fs.readFileSync(path.join(APP_ROOT, ...file.split('/')), 'utf8').includes('useState<any>')
+    ),
+    // The parts composed screens are made of hold the state their routes did (FSOLID-001).
+    ...filesUnder(SCREEN_PARTS_ROOT)
+      .filter((file) => fs.readFileSync(file, 'utf8').includes('useState<any>'))
+      .map((file) => 'components/screens/' + file.slice(SCREEN_PARTS_ROOT.length + 1).split(/[\\/]/).join('/')),
+  ];
 
   it('has no instance that is not already known about', () => {
     const fresh = offenders.filter((file) => !(file in KNOWN)).sort();

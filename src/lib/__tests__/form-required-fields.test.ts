@@ -24,6 +24,8 @@
 // sweep and fails until somebody decides which list it belongs on.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { screenSource } from './support/screen-files';
+
 interface DirEntry {
   name: string;
   isDirectory(): boolean;
@@ -36,7 +38,8 @@ const fs = require('fs') as {
 const path = require('path') as { join(...segments: string[]): string };
 
 function sourceOf(...segments: string[]): string {
-  return fs.readFileSync(path.join(process.cwd(), 'src', 'app', ...segments), 'utf8');
+  // A screen is read whole: its route and every part it composes from (FSOLID-001).
+  return screenSource(path.join(process.cwd(), 'src', 'app', ...segments));
 }
 
 /** A screen that walks a member through steps belongs to the other file. */
@@ -83,7 +86,7 @@ function formFiles(): string[] {
 
       if (!entry.name.endsWith('.tsx')) continue;
 
-      const source = fs.readFileSync(path.join(directory, entry.name), 'utf8');
+      const source = screenSource(path.join(directory, entry.name));
 
       if (STEPS_THROUGH.test(source)) continue;
       if (!COLLECTS.test(source) || !SENDS.test(source)) continue;

@@ -18,6 +18,7 @@ import {
 } from '../api/housing-listings-api';
 import { createPost } from '../api/community-social-api';
 import { wirePost } from './support/community-post-wire';
+import { screenSource } from './support/screen-files';
 import { fetchSessions, revokeOtherSessions, revokeSession } from '../api/auth-api';
 import {
   isViewingAlreadyOpenError,
@@ -61,7 +62,6 @@ function envelope<T>(data: T) {
 // `import … from 'fs'` does not typecheck.
 declare const __dirname: string;
 
-const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
 const join: (...parts: string[]) => string = require('path').join;
 
 /**
@@ -80,7 +80,8 @@ const join: (...parts: string[]) => string = require('path').join;
  * it no longer says.
  */
 function source(...segments: string[]): string {
-  const text = readFileSync(join(__dirname, '..', '..', ...segments), 'utf8');
+  // A screen is read whole: its route and every part it composes from (FSOLID-001).
+  const text = screenSource(join(__dirname, '..', '..', ...segments));
 
   return (
     text

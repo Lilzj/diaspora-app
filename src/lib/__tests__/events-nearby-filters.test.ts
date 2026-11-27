@@ -8,14 +8,14 @@
  */
 import { toEventBrowseQuery } from '@/lib/api/community-life-api';
 import { eventDistanceLabel, nearbyPointOf } from '@/lib/domain/events-nearby';
+import { screenSource } from './support/screen-files';
 
 declare const process: { cwd(): string };
-const fs: { readFileSync(path: string, encoding: string): string } = require('fs');
 const path: { join(...parts: string[]): string } = require('path');
 
 function code(relative: string): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), 'src', relative), 'utf8')
+  // A screen is read whole: its route and every part it composes from (FSOLID-001).
+  return screenSource(path.join(process.cwd(), 'src', relative))
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n')
     .filter((line) => !line.trimStart().startsWith('//'))

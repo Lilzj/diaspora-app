@@ -83,6 +83,8 @@
 // not alter the typecheck configuration for every other phase to compile its own
 // test. `require` is deliberately NOT re-declared — Jest's ambient typing already
 // provides it, and shadowing it breaks every other `require` in the file.
+import { screenSource } from './support/screen-files';
+
 declare const __dirname: string;
 
 import MockAdapter from 'axios-mock-adapter';
@@ -1921,9 +1923,12 @@ const SCREEN_PAYLOADS: ScreenPayload[] = [
   },
 ];
 
-/** The body of `const <variable> = { … }` in a file, comments removed. */
+/**
+ * The body of `const <variable> = { … }` in a screen, comments removed. The screen
+ * is read whole: its route and every part it composes from (FSOLID-001).
+ */
 function readScreenPayloadKeys(entry: ScreenPayload): ObjectLiteralKeys {
-  const source = stripCommentsPreservingStrings(readFileSync(repoFile(entry.file), 'utf8'));
+  const source = stripCommentsPreservingStrings(screenSource(repoFile(entry.file)));
   const assignment = new RegExp(`const ${entry.variable}\\s*=\\s*\\{`).exec(source);
   if (assignment === null) return { keys: [], spread: true };
 

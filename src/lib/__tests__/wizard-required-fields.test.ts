@@ -28,6 +28,8 @@
 // so the gap is a number that goes down rather than a thing nobody wrote down.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { screenSource } from './support/screen-files';
+
 interface DirEntry {
   name: string;
   isDirectory(): boolean;
@@ -40,7 +42,8 @@ const fs = require('fs') as {
 const path = require('path') as { join(...segments: string[]): string };
 
 function sourceOf(...segments: string[]): string {
-  return fs.readFileSync(path.join(process.cwd(), 'src', 'app', ...segments), 'utf8');
+  // A screen is read whole: its route and every part it composes from (FSOLID-001).
+  return screenSource(path.join(process.cwd(), 'src', 'app', ...segments));
 }
 
 /**
@@ -92,7 +95,7 @@ function wizardFiles(): string[] {
 
       if (!entry.name.endsWith('.tsx')) continue;
 
-      const source = fs.readFileSync(path.join(directory, entry.name), 'utf8');
+      const source = screenSource(path.join(directory, entry.name));
 
       if (/\bset(?:Current)?(?:Step|ActiveStep|StepIndex)\s*\(/.test(source)) {
         found.push([...prefix, entry.name].join('/'));
