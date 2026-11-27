@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
 import { WizardFooter } from '@/components/forms/WizardFooter';
+import { WizardHeader } from '@/components/forms/WizardHeader';
 import { DraftBanner } from '@/components/forms/DraftBanner';
 import { ContactChoice } from '@/components/forms/ContactChoice';
 import { coordinatesOf, ownPinOrTown } from '@/lib/platform/place-coordinates';
@@ -749,7 +750,6 @@ export default function CreateListingScreen() {
     }
   };
 
-  const progressPct = ((currentStep + 1) / steps.length) * 100;
   const selectedCategoryObj = categoryCatalogue.find(category);
   const subcategoryOptions = categoryCatalogue.childrenOf(category);
   const getCurrencySymbol = () => symbolFor(currency);
@@ -788,23 +788,10 @@ export default function CreateListingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-card">
-      {/* Stepper Progress Tracker */}
-      <View className="bg-surface-card border-b border-faint px-6 py-3">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
-            Post Marketplace Listing
-          </Text>
-          <Text className="text-xs font-extrabold text-primary-500">
-            Step {currentStep + 1} of {steps.length}
-          </Text>
-        </View>
-        <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
-          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
-        </View>
-      </View>
-
-      <ScreenHeader
-        title={steps[currentStep]}
+      <WizardHeader
+        name="Post Marketplace Listing"
+        steps={steps}
+        step={currentStep}
         showBack={currentStep > 0}
         rightAction={
           <TouchableOpacity onPress={() => {

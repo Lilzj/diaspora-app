@@ -18,6 +18,8 @@ import { useThemeTokens } from '@/design-system';
 import { backOr } from '@/lib/platform/navigation';
 import { useDeviceDraft } from '@/lib/platform/device-drafts';
 import { DraftBanner } from '@/components/forms/DraftBanner';
+import { WizardHeader } from '@/components/forms/WizardHeader';
+import { WizardFooter } from '@/components/forms/WizardFooter';
 
 // ── Where this wizard's data goes, after Wave D-4 ────────────────────────────
 //
@@ -343,7 +345,6 @@ export default function DiasporaVerificationWizard() {
     }
   };
 
-  const progressPct = ((step + 1) / STEPS.length) * 100;
 
   if (isLoadingExisting) {
     return (
@@ -368,24 +369,10 @@ export default function DiasporaVerificationWizard() {
         </View>
       )}
 
-      {/* Stepper Progress bar */}
-      <View className="bg-surface-card border-b border-faint px-6 py-3">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-black text-content-muted uppercase tracking-widest">
-            Diaspora Verification
-          </Text>
-          <Text className="text-xs font-extrabold text-primary-500">
-            {STEPS[step]} ({step + 1} of {STEPS.length})
-          </Text>
-        </View>
-        <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
-          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
-        </View>
-      </View>
-
-      <ScreenHeader 
-        title={STEPS[step]} 
-        showBack 
+      <WizardHeader
+        name="Diaspora Verification"
+        steps={STEPS}
+        step={step}
         onBack={prevStep}
         rightAction={
           <TouchableOpacity onPress={() => backOr()} className="p-2">
@@ -768,36 +755,15 @@ export default function DiasporaVerificationWizard() {
       </TouchableOpacity>
     </Modal>
 
-      {/* Wizard actions footer buttons */}
-      <View 
-        className="px-6 pt-4 pb-6 border-t border-faint bg-surface-card"
-      >
-        {/* The step named, rather than a disabled button and a toast that says
-            "Missing Details" on a step with four of them. */}
-        {stillNeeded.length > 0 ? (
-          <Text className="text-xs font-semibold text-content-muted mb-3">
-            Still needed: {stillNeeded.join(', ')}
-          </Text>
-        ) : null}
-
-        <View className="flex-row gap-2">
-          {step > 0 && (
-            <Button
-              label="Back"
-              variant="outline"
-              className="flex-1"
-              onPress={prevStep}
-            />
-          )}
-          <Button
-            label={step === STEPS.length - 1 ? (isSubmitting ? "Submitting..." : "Submit") : "Continue"}
-            className="flex-1"
-            isLoading={isSubmitting}
-            disabled={isSubmitting || stillNeeded.length > 0}
-            onPress={nextStep}
-          />
-        </View>
-      </View>
+      <WizardFooter
+        onBack={step > 0 ? prevStep : undefined}
+        onNext={nextStep}
+        nextLabel={step === STEPS.length - 1 ? 'Submit' : 'Continue'}
+        stillNeeded={stillNeeded}
+        isLoading={isSubmitting}
+        loadingLabel="Submitting..."
+        disabled={isSubmitting}
+      />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

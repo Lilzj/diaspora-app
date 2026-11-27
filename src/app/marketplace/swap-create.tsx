@@ -18,6 +18,7 @@ import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { WizardFooter } from '@/components/forms/WizardFooter';
+import { WizardHeader } from '@/components/forms/WizardHeader';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
@@ -54,6 +55,8 @@ const STEPS: { key: SwapStep | 'preview'; title: string }[] = [
   { key: 'place', title: 'Where it is' },
   { key: 'preview', title: 'Check and publish' },
 ];
+
+const STEP_TITLES = STEPS.map((entry) => entry.title);
 
 const TOP_UPS: { value: SwapTopUp; label: string }[] = [
   { value: 'None', label: 'No money' },
@@ -217,21 +220,7 @@ export default function SwapCreateScreen() {
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
-      <ScreenHeader title="Offer a swap" showBack />
-
-      <View className="px-6 pt-3 pb-1">
-        <View className="flex-row gap-1.5 mb-2">
-          {STEPS.map((item, index) => (
-            <View
-              key={item.key}
-              className={`flex-1 h-1.5 rounded-full ${index <= step ? 'bg-primary-500' : 'bg-subtle'}`}
-            />
-          ))}
-        </View>
-        <Text className="text-[10px] font-bold text-content-faint uppercase tracking-widest">
-          Step {step + 1} of {STEPS.length} · {current.title}
-        </Text>
-      </View>
+      <WizardHeader name="Offer a swap" steps={STEP_TITLES} step={step} />
 
       <KeyboardAvoidingView behavior="padding" className="flex-1">
         <ScrollView

@@ -3,10 +3,10 @@ import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platfor
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
-import { ScreenHeader } from '@/components/ScreenHeader';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { WizardFooter } from '@/components/forms/WizardFooter';
+import { WizardHeader } from '@/components/forms/WizardHeader';
 import { DraftBanner } from '@/components/forms/DraftBanner';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
@@ -622,27 +622,12 @@ export default function PostScreen() {
    *  wherever a member sets one. Unknown codes print the code itself. */
   const currencySymbol = symbolFor(currency);
 
-  const progressPct = ((currentStep + 1) / steps.length) * 100;
-
   return (
     <SafeAreaView className="flex-1 bg-surface-card">
-      {/* Explicit Stepper & Progress Bar */}
-      <View className="bg-surface-card border-b border-faint px-6 py-3">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
-            Create Provider Listing
-          </Text>
-          <Text className="text-xs font-extrabold text-primary-500">
-            Step {currentStep + 1} of {steps.length}
-          </Text>
-        </View>
-        <View className="h-2 bg-surface-muted rounded-full w-full overflow-hidden">
-          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
-        </View>
-      </View>
-
-      <ScreenHeader
-        title={steps[currentStep]}
+      <WizardHeader
+        name="Create Provider Listing"
+        steps={steps}
+        step={currentStep}
         showBack={currentStep > 0}
         rightAction={
           <TouchableOpacity onPress={() => {

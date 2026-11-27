@@ -1,12 +1,13 @@
 // This route composes the screen. Each concern is a hook and each part of the page a section,
 // in `src/components/screens/housing-create`; the hooks run in the order below and the
 // sections read them as props (FSOLID-001).
-import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
+import { Text, ScrollView, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { WizardFooter } from '@/components/forms/WizardFooter';
+import { WizardHeader } from '@/components/forms/WizardHeader';
 import { DraftBanner } from '@/components/forms/DraftBanner';
 import { useNotification } from '@/providers/notification-provider';
 import { backOr } from '@/lib/platform/navigation';
@@ -68,7 +69,7 @@ export default function CreateHousingScreen() {
   const { mayList } = account;
   const { currentStep, setCurrentStep, isSubmitting } = wizard;
   const { draftBannerVisible, restoreDraft, discardDraft } = draft;
-  const { stillNeeded, progressPct } = progress;
+  const { stillNeeded } = progress;
   const { handlePublish } = publish;
 
   if (mayList === false) {
@@ -89,23 +90,10 @@ export default function CreateHousingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-card">
-      {/* Stepper tracker */}
-      <View className="bg-surface-card border-b border-faint px-6 py-3">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
-            Post Housing Accommodation
-          </Text>
-          <Text className="text-xs font-extrabold text-primary-500">
-            Step {currentStep + 1} of {steps.length}
-          </Text>
-        </View>
-        <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
-          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
-        </View>
-      </View>
-
-      <ScreenHeader
-        title={steps[currentStep]}
+      <WizardHeader
+        name="Post Housing Accommodation"
+        steps={steps}
+        step={currentStep}
         showBack={currentStep > 0}
         rightAction={
           <TouchableOpacity onPress={() => {

@@ -29,6 +29,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/components/Button';
 import { WizardFooter } from '@/components/forms/WizardFooter';
+import { WizardHeader } from '@/components/forms/WizardHeader';
 import { Chips, SectionLabel } from '@/components/jobs/JobFormParts';
 import { EmptyState } from '@/components/EmptyState';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
@@ -468,21 +469,7 @@ export default function CreateJobScreen() {
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
-      <View className="px-5 pt-3 pb-2 border-b border-faint bg-surface-card">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
-            Post a job · {employerName}
-          </Text>
-          <Text className="text-xs font-extrabold text-primary-500">
-            Step {step + 1} of {STEPS.length}
-          </Text>
-        </View>
-        <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
-          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
-        </View>
-      </View>
-
-      <ScreenHeader title={STEPS[step]} />
+      <WizardHeader name={`Post a job · ${employerName}`} steps={STEPS} step={step} />
       {step === 0 ? (
         <TouchableOpacity
           accessibilityRole="button"

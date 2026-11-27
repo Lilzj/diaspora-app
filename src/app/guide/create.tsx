@@ -63,6 +63,7 @@ import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { WizardFooter } from '@/components/forms/WizardFooter';
+import { WizardHeader } from '@/components/forms/WizardHeader';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { Input } from '@/components/Input';
 import { useTrustStore } from '@/store/trust';
@@ -433,8 +434,6 @@ export default function CreateGuideScreen() {
   // `GuideLimits.WordsPerMinute`, so this estimate and the server's agree.
   const readTimeMin = Math.max(Math.ceil(wordCount / GUIDE_WORDS_PER_MINUTE), 1);
 
-  const progressPct = ((currentStep + 1) / steps.length) * 100;
-
   const selectedCountryOption = countryOptions.find(
     (option) => option.countryCode === selectedCountry
   );
@@ -636,23 +635,10 @@ export default function CreateGuideScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-card">
-      {/* Explicit Stepper progress bar */}
-      <View className="bg-surface-card border-b border-faint px-6 py-3">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
-            Create Community Guide
-          </Text>
-          <Text className="text-xs font-extrabold text-primary-500">
-            Step {currentStep + 1} of {steps.length}
-          </Text>
-        </View>
-        <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
-          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
-        </View>
-      </View>
-
-      <ScreenHeader
-        title={steps[currentStep]}
+      <WizardHeader
+        name="Create Community Guide"
+        steps={steps}
+        step={currentStep}
         showBack={currentStep > 0}
         rightAction={
           <TouchableOpacity onPress={() => router.replace('/(tabs)/knowledge/guides')} className="p-2">

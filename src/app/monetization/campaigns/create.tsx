@@ -22,11 +22,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { WizardHeader } from '@/components/forms/WizardHeader';
+import { WizardFooter } from '@/components/forms/WizardFooter';
 import { useTheme } from '@/design-system';
 import { isGapServedByBackend } from '@/config/monetization-gaps';
 import {
@@ -93,6 +95,8 @@ const STEPS: { key: Step; title: string; subtitle: string }[] = [
   { key: 'budget', title: 'How much, how long?', subtitle: 'You are never charged more than this.' },
   { key: 'review', title: 'Check it over', subtitle: 'Nothing is charged until you confirm.' },
 ];
+
+const STEP_TITLES = STEPS.map((entry) => entry.title);
 
 const EMPTY_AUDIENCE: CampaignAudience = {
   countries: [],
@@ -237,9 +241,6 @@ export default function CreateCampaignScreen() {
     .filter((field) => !field.ok)
     .map((field) => field.label);
 
-  /** Kept for the button's colours, derived from the declaration rather than beside it. */
-  const canAdvance = stillNeeded.length === 0;
-
   /**
    * Creates the campaign, then submits it and returns the payment.
    *
@@ -314,7 +315,7 @@ export default function CreateCampaignScreen() {
 
   if (!gapsEnabled) {
     return (
-      <Shell step={0} total={STEPS.length}>
+      <Shell step={null}>
         <ScrollView contentContainerStyle={{ padding: 20 }}>
           <MonetizationGapNotice gapKey="campaigns" />
         </ScrollView>
@@ -324,14 +325,14 @@ export default function CreateCampaignScreen() {
 
   if (!createRefusal.allowed) {
     return (
-      <Shell step={0} total={STEPS.length}>
+      <Shell step={null}>
         <AccessGate refusal={createRefusal} />
       </Shell>
     );
   }
 
   return (
-    <Shell step={index + 1} total={STEPS.length}>
+    <Shell step={index}>
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
@@ -452,71 +453,14 @@ export default function CreateCampaignScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Navigation. Back is always available; forward is gated by the step. */}
-      <View
-        style={{
-          paddingBottom: insets.bottom + 12,
-          borderTopColor: tokens.color.border.default,
-          backgroundColor: tokens.color.surface.card,
-        }}
-        className="px-5 pt-4 border-t"
-      >
-        {/* Named, not merely refused. */}
-        {stillNeeded.length > 0 ? (
-          <Text
-            style={{ color: tokens.color.text.secondary }}
-            className="text-xs font-semibold mb-3"
-          >
-            Still needed: {stillNeeded.join(', ')}
-          </Text>
-        ) : null}
-
-        {/* 12 points between the two buttons. */}
-        <View className="flex-row">
-          {index > 0 ? (
-            <TouchableOpacity
-              onPress={() => setStep(STEPS[index - 1].key)}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Go back a step"
-              style={{ borderColor: tokens.color.border.default }}
-              className="h-14 rounded-full border items-center justify-center px-6 mr-3"
-            >
-              <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
-                Back
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-
-          <TouchableOpacity
-            onPress={() => (step === 'review' ? setSheetOpen(true) : setStep(STEPS[index + 1].key))}
-            disabled={stillNeeded.length > 0 || (step === 'review' && !canTransact)}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={step === 'review' ? 'Review and pay for this campaign' : 'Continue'}
-            accessibilityState={{ disabled: !canAdvance }}
-            style={{
-              backgroundColor:
-                canAdvance && (step !== 'review' || canTransact)
-                  ? tokens.color.primary[500]
-                  : tokens.color.neutral[200],
-            }}
-            className="flex-1 h-14 rounded-full items-center justify-center"
-          >
-            <Text
-              style={{
-                color:
-                  canAdvance && (step !== 'review' || canTransact)
-                    ? '#FFFFFF'
-                    : tokens.color.text.disabled,
-              }}
-              className="text-sm font-black tracking-tight"
-            >
-              {step === 'review' ? 'Pay and submit' : 'Continue'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <WizardFooter
+        onBack={index > 0 ? () => setStep(STEPS[index - 1].key) : undefined}
+        onNext={() => (step === 'review' ? setSheetOpen(true) : setStep(STEPS[index + 1].key))}
+        nextLabel={step === 'review' ? 'Pay and submit' : 'Continue'}
+        stillNeeded={stillNeeded}
+        disabled={step === 'review' && !canTransact}
+        bottomInset={insets.bottom + 12}
+      />
 
       {blockedBy && step === 'review' ? (
         <Text
@@ -558,15 +502,12 @@ export default function CreateCampaignScreen() {
   );
 }
 
-function Shell({
-  step,
-  total,
-  children,
-}: {
-  step: number;
-  total: number;
-  children: React.ReactNode;
-}) {
+/**
+ * The screen around every state of the wizard: the shared wizard header on a
+ * step, the plain one where there is no step to be on (the gap notice, a
+ * refusal). `step` counts from 0.
+ */
+function Shell({ step, children }: { step: number | null; children: React.ReactNode }) {
   const { tokens } = useTheme();
 
   return (
@@ -574,23 +515,11 @@ function Shell({
       style={{ flex: 1, backgroundColor: tokens.color.surface.background }}
       edges={['top', 'left', 'right']}
     >
-      <ScreenHeader title="New campaign" showBack />
-
-      {step > 0 ? (
-        <View
-          accessible
-          accessibilityRole="progressbar"
-          accessibilityLabel={`Step ${step} of ${total}`}
-          accessibilityValue={{ min: 0, max: total, now: step }}
-          style={{ backgroundColor: tokens.color.neutral[200] }}
-          className="h-1"
-        >
-          <View
-            style={{ backgroundColor: tokens.color.primary[500], width: `${(step / total) * 100}%` }}
-            className="h-full"
-          />
-        </View>
-      ) : null}
+      {step === null ? (
+        <ScreenHeader title="New campaign" showBack />
+      ) : (
+        <WizardHeader name="New campaign" steps={STEP_TITLES} step={step} />
+      )}
 
       {children}
     </SafeAreaView>
