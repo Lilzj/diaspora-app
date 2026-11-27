@@ -17,6 +17,8 @@
 // separate way of lying to a member about their own money.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { hookModuleFiles } from './support/hook-modules';
+
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
@@ -32,7 +34,11 @@ function read(...segments: string[]): string {
 
 const SCREEN = read('src', 'app', 'wallet', 'add-money.tsx');
 const API = read('src', 'lib', 'api', 'financial-api.ts');
-const HOOKS = read('src', 'hooks', 'financial.ts');
+// Every file of the financial hooks, a directory since FSOLID-003. The two hooks each slice below
+// spans share a file, so a slice stays inside it.
+const HOOKS = hookModuleFiles('financial')
+  .map((file) => read(file.slice(process.cwd().length + 1)))
+  .join(String.fromCharCode(10));
 
 describe('the deposit flow calls the real platform', () => {
   it('the client hits the served routes', () => {

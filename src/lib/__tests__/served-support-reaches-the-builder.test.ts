@@ -141,7 +141,7 @@ describe('the builder is wired to it', () => {
   });
 
   it('puts the lookup on the dependency context', () => {
-    const hook = read('hooks', 'automation.ts');
+    const hook = read('hooks', 'automation', 'automations.ts');
 
     // The context object literal carries it, and the memo depends on it —
     // without the dependency the builder keeps the first lookup it ever saw,

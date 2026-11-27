@@ -5,7 +5,7 @@
 //
 // The hub reads four B18 lists — a country's campaigns, a city's volunteer
 // opportunities, the open polls, the latest announcements. All four were array
-// literals in `hooks/community-life.ts`, written under
+// literals in `hooks/community-life`, written under
 // `['community-programme', 'hub', …]`, a namespace `communityProgrammeKeys` did
 // not own.
 //

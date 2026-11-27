@@ -52,7 +52,7 @@
 // group carries `RequireRateLimiting("diaspora-signin")` — a sliding window of
 // 10 over 60 seconds, partitioned by remote address, not by member. Opening the
 // Trust Centre spends three. This is the single most important operational fact
-// about this module and it is why `hooks/trust.ts` uses minute-scale
+// about this module and it is why `hooks/trust` uses minute-scale
 // `staleTime`s and polls nothing.
 //
 // **4. Paged routes are offset pages; two "list" routes are bare arrays.**

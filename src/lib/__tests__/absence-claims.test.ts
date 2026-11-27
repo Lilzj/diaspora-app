@@ -45,11 +45,11 @@ describe('the community role directory', () => {
   // Since 20 Oct 2026 `GET /communities/{idOrSlug}/roles` is served, and the
   // hook reads it in every build. It replaced a member-list filter that showed
   // nothing to anybody who could not see members.
-  const hooks = read('hooks', 'communities.ts');
-  const holdersHook = hooks.slice(
-    hooks.indexOf('export function useCommunityRoleHolders'),
-    hooks.indexOf('export function useCommunityInitiatives')
-  );
+  // The hook's own subject file since FSOLID-003; it runs to the next export there, or to the end.
+  const hooks = read('hooks', 'communities', 'governance.ts');
+  const holdersStart = hooks.indexOf('export function useCommunityRoleHolders');
+  const holdersEnd = hooks.indexOf('\nexport ', holdersStart + 1);
+  const holdersHook = hooks.slice(holdersStart, holdersEnd < 0 ? hooks.length : holdersEnd);
 
   it('reads the real role-holders route, ungated by the simulation switch', () => {
     expect(source).toContain('useCommunityRoleHolders');

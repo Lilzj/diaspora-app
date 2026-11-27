@@ -19,7 +19,7 @@
 //                 primary community. The community records themselves.
 //
 // Every one of those is server state and lives in TanStack Query, read through
-// `hooks/communities.ts`. The reason is not tidiness: a membership mirrored into
+// `hooks/communities`. The reason is not tidiness: a membership mirrored into
 // Zustand is a membership that can be stale in a place nothing invalidates, and
 // the first bug it produces is a moderation button that stays visible after the
 // role was revoked. §62 says the backend is authoritative; keeping authority out

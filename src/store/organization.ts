@@ -9,7 +9,7 @@
 //
 // Diaspora already has an organisation system. `types/community-advanced.ts`
 // declares `OrganizationCapabilities`, which the server answers and the client
-// never computes; `hooks/community-life.ts` exposes it as
+// never computes; `hooks/community-life` exposes it as
 // `useOrganizationCapabilities` alongside a paged member roster, a role
 // assignment mutation, a dashboard and analytics; and three screens under
 // `/community-life/dashboard` already use all of it.

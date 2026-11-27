@@ -7,7 +7,7 @@
 // impact and federated search under `/api/v1/communities`. This file answers
 // those routes in development, and **every shape here was read from
 // `CommunityProgrammeResponses.cs`, `CommunityProgrammeRequests.cs` and the six
-// endpoint files** — not from what `hooks/community-life.ts` expects.
+// endpoint files** — not from what `hooks/community-life` expects.
 //
 // That distinction is the whole point. The remediation's recurring finding:
 //

@@ -6,7 +6,7 @@
 //    FRONTEND-PHASE13-GAP-001 through -006.
 //
 // This is the certified arm of the split `community-gap-directory-api.ts` has
-// held alone since Phase 13 began. `hooks/communities.ts` imports one or the
+// held alone since Phase 13 began. `hooks/communities` imports one or the
 // other and no screen can tell which answered, which is what makes the
 // migration an import swap — the thing the register said it would be.
 //

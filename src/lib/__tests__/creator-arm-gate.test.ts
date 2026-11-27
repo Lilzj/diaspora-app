@@ -38,17 +38,21 @@
 // cries wolf on prose gets muted, so this parses code only.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { hookModuleFiles } from './support/hook-modules';
+
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
-const HOOKS = path.join(process.cwd(), 'src', 'hooks', 'creator-economy.ts');
+// A directory since FSOLID-003: `index.ts` and a file per subject. Each hook is read inside its
+// own file, so a slice never runs on into the next file.
+const HOOK_FILES = hookModuleFiles('creator-economy');
 
 const GAP_FLAG = 'areCreatorGapsEnabled()';
 
-/** The file with block and line comments removed, so prose cannot be read as code. */
-function code(): string {
+/** A file with block and line comments removed, so prose cannot be read as code. */
+function code(file: string): string {
   return fs
-    .readFileSync(HOOKS, 'utf8')
+    .readFileSync(file, 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^[ \t]*\/\/.*$/gm, '');
 }
@@ -58,20 +62,22 @@ interface Hook {
   body: string;
 }
 
-/** Every exported hook, sliced from its own declaration to the next one. */
+/** Every exported hook, sliced from its own declaration to the next one in its file. */
 function hooks(): Hook[] {
-  const lines = code().split('\n');
-  const found: { name: string; at: number }[] = [];
+  return HOOK_FILES.flatMap((file) => {
+    const lines = code(file).split('\n');
+    const found: { name: string; at: number }[] = [];
 
-  lines.forEach((line: string, index: number) => {
-    const match = /^export (?:async )?function (use[A-Za-z0-9_]*)\s*\(/.exec(line);
-    if (match) found.push({ name: match[1], at: index });
+    lines.forEach((line: string, index: number) => {
+      const match = /^export (?:async )?function (use[A-Za-z0-9_]*)\s*\(/.exec(line);
+      if (match) found.push({ name: match[1], at: index });
+    });
+
+    return found.map((entry, index) => ({
+      name: entry.name,
+      body: lines.slice(entry.at, found[index + 1]?.at ?? lines.length).join('\n'),
+    }));
   });
-
-  return found.map((entry, index) => ({
-    name: entry.name,
-    body: lines.slice(entry.at, found[index + 1]?.at ?? lines.length).join('\n'),
-  }));
 }
 
 /** Reads the certified client and nothing else. */

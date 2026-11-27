@@ -326,7 +326,7 @@ export const communityProgrammeKeys = {
   //
   // The hub reads four B18 lists no other screen reads: a country's campaigns,
   // a city's volunteer opportunities, the open polls, and the latest
-  // announcements. They were written as array literals in `hooks/community-life.ts`
+  // announcements. They were written as array literals in `hooks/community-life`
   // and so sat under `['community-programme', 'hub', …]` — a namespace this
   // factory did not own and therefore could not invalidate.
   //

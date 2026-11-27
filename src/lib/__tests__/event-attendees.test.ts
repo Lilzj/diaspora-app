@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { toAttendee, type AttendeeWire } from '../api/event-attendees';
+import { hookModuleSource } from './support/hook-modules';
 
 function wire(overrides: Partial<AttendeeWire> = {}): AttendeeWire {
   return {
@@ -169,10 +170,8 @@ describe('an occurrence is an event', () => {
     // file waiting for the next screen to find it. `useAttendees` called
     // `/community-life/registrations/attendees` — a route the platform does not
     // serve — and nothing had ever called it. Deleted 12 Sep 2026.
-    const hooks = fs.readFileSync(
-      path.join(process.cwd(), 'src', 'hooks', 'community-life.ts'),
-      'utf8'
-    );
+    // Every file of the module: the claim is about all of it (FSOLID-003 made it a directory).
+    const hooks = hookModuleSource('community-life');
 
     expect(hooks).not.toMatch(/export function useAttendees\b/);
   });

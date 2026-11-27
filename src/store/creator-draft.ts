@@ -24,7 +24,7 @@
 // serves a cross-domain draft list.
 //
 // One *domain* does have real drafts: `GET /guides/mine/drafts`, already wrapped
-// by **`useMyGuideDrafts()` in `hooks/guides.ts`**. That is the route to reach
+// by **`useMyGuideDrafts()` in `hooks/guides`**. That is the route to reach
 // for when the Draft Center is rebuilt. It is deliberately not called from here,
 // for two reasons. It returns guide drafts and this store's `CreatorDraft` is a
 // seven-domain shape with `progressPercent`, `estimatedCompletion` and

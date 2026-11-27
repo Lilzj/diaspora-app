@@ -29,6 +29,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import * as certifiedApi from '@/lib/api/analytics-api';
+import { hookModuleSource } from './support/hook-modules';
 import { ANALYTICS_GAPS, ANALYTICS_GAP_PREFIX } from '@/config/analytics-gaps';
 import { sanitise, drainCreatorEvents, resetCreatorEvents } from '@/lib/platform/creator-analytics';
 import { trackAnalyticsEvent, trackDashboardViewed } from '@/lib/analytics/events';
@@ -53,7 +54,8 @@ describe('§64 · no build reaches simulated analytics', () => {
     require('fs').readFileSync(require('path').join(process.cwd(), relative), 'utf8');
 
   it('the dataset hook reads no simulated client', () => {
-    const hooks = readSource('src/hooks/analytics.ts');
+    // Every file of the module: a check about the whole of it, not one file (FSOLID-003).
+    const hooks = hookModuleSource('analytics');
     expect(hooks).not.toMatch(/analytics-gap-api/);
     expect(hooks).not.toMatch(/areAnalyticsGapsEnabled\(\)\s*&&/);
   });

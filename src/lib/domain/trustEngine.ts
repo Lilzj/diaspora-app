@@ -476,7 +476,7 @@ export const TrustEngine = {
   // declining to answer.** `ProfileQueries.cs:73` omits `riskScore` and
   // `riskLevel` from the trust profile unless the caller holds
   // `trust:verification:review`, on the stated grounds that a number the client
-  // receives is a number the member can read. `hooks/trust.ts` surfaces both as
+  // receives is a number the member can read. `hooks/trust` surfaces both as
   // nullable and `trust-center.tsx` renders the risk panel only when they are
   // present — so a member now sees nothing where they used to see a fabricated
   // 12/100, and staff see the figure the platform actually holds.
@@ -487,5 +487,5 @@ export const TrustEngine = {
   // one thing worse than a made-up score is two of them.
   //
   // `RiskLevel` and `RiskFactors` stay in `types/trust.ts`: they are the shape
-  // the *server's* figures arrive in, and `hooks/trust.ts` reads them.
+  // the *server's* figures arrive in, and `hooks/trust` reads them.
 };

@@ -114,7 +114,7 @@ export default function KnowledgeGuidesScreen() {
         refreshControl={
           <RefreshControl refreshing={results.isRefreshing} onRefresh={results.refresh} />
         }
-        // `hasMore`, never an empty page — see `hooks/guides.ts`.
+        // `hasMore`, never an empty page — see `hooks/guides`.
         onEndReachedThreshold={0.4}
         onEndReached={results.loadMore}
         renderItem={({ item }) => (

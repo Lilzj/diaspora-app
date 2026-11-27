@@ -407,7 +407,7 @@ export interface TrustNotification {
 // (`RateLimitingOptions.cs:20`, `RateLimitingRegistration.cs:118`). Not per
 // member — per address, so everyone behind one NAT shares it. Opening the
 // Trust Centre costs three of the ten. This is why the hooks in
-// `hooks/trust.ts` carry long `staleTime`s and why nothing polls.
+// `hooks/trust` carry long `staleTime`s and why nothing polls.
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**

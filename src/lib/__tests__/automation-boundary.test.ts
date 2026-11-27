@@ -40,6 +40,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import * as gapApi from '@/lib/api/automation-gap-api';
+import { hookModuleSource } from './support/hook-modules';
 import * as certifiedApi from '@/lib/api/automation-api';
 import * as access from '@/lib/automation/access';
 import { AUTOMATION_GAPS, AUTOMATION_GAP_PREFIX } from '@/config/automation-gaps';
@@ -780,7 +781,8 @@ describe('§32 · templates derive their support rather than declaring it', () =
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Wave C-02 · the hooks are on the certified arm', () => {
-  const hooks = readSource('src', 'hooks', 'automation.ts');
+  // Every file of the module, comments removed as `readSource` removes them (FSOLID-003).
+  const hooks = withoutComments(hookModuleSource('automation'));
 
   it('imports the certified client', () => {
     expect(hooks).toContain("from '@/lib/automation/certified-client'");

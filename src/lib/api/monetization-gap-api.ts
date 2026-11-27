@@ -21,7 +21,7 @@
 // disabled, so the guarantee does not depend on a screen remembering to check.
 //
 // This is the `MockMonetizationRepository` arm of §26's split. The `Backend`
-// arm is `financial-api.ts`, which is real. Hooks in `hooks/monetization.ts`
+// arm is `financial-api.ts`, which is real. Hooks in `hooks/monetization`
 // and `hooks/monetization-gaps.ts` are the stable domain interface the UI
 // depends on; the UI does not know which arm answered.
 // ─────────────────────────────────────────────────────────────────────────────

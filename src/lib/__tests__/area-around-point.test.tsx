@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
+import { hookModuleFiles } from './support/hook-modules';
 import { render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MockAdapter from 'axios-mock-adapter';
@@ -360,7 +361,10 @@ describe('nothing asks the retired catalogue routes, or for outlines', () => {
     ['app', 'community-life', 'neighborhood.tsx'],
     ['app', 'community-life', 'index.tsx'],
     ['hooks', 'maps.ts'],
-    ['hooks', 'community-life.ts'],
+    // A directory since FSOLID-003, so every file of it.
+    ...hookModuleFiles('community-life').map((file) =>
+      file.slice(path.join(process.cwd(), 'src').length + 1).split(/[\\/]/)
+    ),
     ['lib', 'api', 'maps-api.ts'],
     ['lib', 'maps', 'geo-client.ts'],
     ['lib', 'maps', 'server-clusters.ts'],

@@ -18,7 +18,7 @@
 // ── The bug this closes, which was real and silent ───────────────────────────
 //
 // `canViewMetric` in `lib/analytics/access.ts` and `applyAccessRestrictions` in
-// `hooks/analytics.ts` both test `access.restrictedMetrics.includes(metric.key)`
+// `hooks/analytics` both test `access.restrictedMetrics.includes(metric.key)`
 // where `metric.key` is a dotted `AnalyticsMetricKey`. The server's list is
 // snake. `['content_views'].includes('content.views')` is `false`, for every
 // metric, for ever — so metric restriction was **non-functional** rather than

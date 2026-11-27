@@ -39,7 +39,7 @@ function code(...segments: string[]): string {
 }
 
 const API = code('lib', 'api', 'community-life-api.ts');
-const HOOKS = code('hooks', 'community-life.ts');
+const HOOKS = code('hooks', 'community-life', 'events.ts');
 const SCREEN = code('app', 'community-life', 'event', '[id].tsx');
 const CREATE = code('app', 'community-life', 'event', 'create.tsx');
 

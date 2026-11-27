@@ -113,7 +113,7 @@ describe('the screen is gone', () => {
 
   it('switches presence from the builder and the delete', () => {
     expect(code(path.join(root, 'app/automation/create.tsx'))).toContain('ARRIVAL_PRIVACY_NOTE');
-    expect(code(path.join(root, 'hooks/automation.ts'))).toContain('releasePresenceIfUnused');
+    expect(code(path.join(root, 'hooks/automation/automations.ts'))).toContain('releasePresenceIfUnused');
   });
 
   // Seen on the emulator, 4 Nov 2026: the arrival trigger still told members to

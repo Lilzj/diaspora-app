@@ -5,7 +5,7 @@
 // `Diaspora.Modules.Automation` serves 24 routes under `/api/v1/automations`.
 // This file answers those routes in development, and **every shape here was
 // read from `AutomationEndpointContributor.cs`, `AutomationRequests.cs` and
-// `AutomationResponses.cs`** — not from what `hooks/automation.ts` expects.
+// `AutomationResponses.cs`** — not from what `hooks/automation` expects.
 //
 // That distinction is the whole point of the file. The remediation's recurring
 // finding, now hit in seven handlers, is:
