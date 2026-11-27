@@ -10,6 +10,7 @@
  * fails when an entry stops needing to be there.
  */
 import { filesUnder } from './support/screen-files';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as {
@@ -17,15 +18,6 @@ const path = require('path') as {
   relative(from: string, to: string): string;
   sep: string;
 };
-
-/** Comments name components without rendering them, and their apostrophes would read as quotes. */
-function withoutComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*\/\//.test(line))
-    .join('\n');
-}
 
 const SRC = path.join(process.cwd(), 'src');
 const FILES = filesUnder(SRC)
@@ -36,7 +28,8 @@ const FILES = filesUnder(SRC)
   }));
 const named = (names: readonly string[]) => FILES.filter((file) => names.includes(file.name));
 
-const VIRTUALISED = /<(?:FlatList|FlashList|SectionList|ScrollEndFlatList)\b/;
+/** A virtualised list, or a shell told to draw one (FARCH-004). */
+const VIRTUALISED = /<(?:FlatList|FlashList|SectionList|ScrollEndFlatList|ScrollEndFlashList)\b|\blist=\{\{/;
 const USES_PRIMITIVE = /\b(?:ListState|ListEmpty)\b/;
 const SHELL = /<(?:CommunityScreen|CreatorScreen|AnalyticsScreen)\b/;
 
@@ -95,7 +88,8 @@ describe('virtualised lists', () => {
 
   /** A list other files render: they decide its states. */
   const DEFINES_A_LIST: Record<string, string> = {
-    'components/ScrollEndNavigationMenu.tsx': 'defines ScrollEndFlatList',
+    'components/ScrollEndNavigationMenu.tsx': 'defines ScrollEndFlatList and ScrollEndFlashList',
+    'components/layout/screen-list.tsx': 'the shells’ list: a screen passing `list` gives it the empty state, and the shell draws loading and the error',
     'components/maps/MapResultList.tsx': 'the map screens that render it pass its empty state and draw loading and the error',
   };
 
@@ -104,7 +98,12 @@ describe('virtualised lists', () => {
     'app/community/index.tsx': 'loading, offline, an error, empty and switched off, drawn by CommunityUnavailablePanel',
   };
 
-  const EXEMPT = { ...NOTHING_TO_READ, ...DEFINES_A_LIST, ...ORDERED_BY_ITS_AREA };
+  /** A composed screen whose list's states are drawn by its parts, each through ListState. */
+  const DRAWN_BY_ITS_PARTS: Record<string, string> = {
+    'app/(tabs)/discover.tsx': 'DiscoverResultsEmpty draws the locked card, the first read, and each tab’s own ListState',
+  };
+
+  const EXEMPT = { ...NOTHING_TO_READ, ...DEFINES_A_LIST, ...ORDERED_BY_ITS_AREA, ...DRAWN_BY_ITS_PARTS };
 
   it('say loading, could-not-load and empty through ListState', () => {
     const own = FILES.filter(
@@ -118,6 +117,17 @@ describe('virtualised lists', () => {
     for (const file of named(Object.keys(EXEMPT))) {
       expect(VIRTUALISED.test(file.text)).toBe(true);
       expect(USES_PRIMITIVE.test(file.text)).toBe(false);
+    }
+    for (const file of named(Object.keys(DRAWN_BY_ITS_PARTS))) {
+      // The parts draw the empty slot, and each tab's part says its states through the primitive.
+      expect(file.text).toMatch(/ListEmptyComponent=\{<DiscoverResultsEmpty\b/);
+      const parts = FILES.filter((part) => part.name.startsWith('components/screens/discover/') && /Results\.tsx$/.test(part.name));
+      expect(parts.map((part) => part.name)).toEqual(
+        expect.arrayContaining(['components/screens/discover/DiscoverResults.tsx', 'components/screens/discover/HousingResults.tsx'])
+      );
+      for (const part of parts.filter((p) => !/(DiscoverResults|UpdatesResults)\.tsx$/.test(p.name))) {
+        expect([part.name, /<ListState\b/.test(part.text)]).toEqual([part.name, true]);
+      }
     }
     for (const file of named(Object.keys(ORDERED_BY_ITS_AREA))) {
       // The panel draws the list's empty slot, whatever reason it is given.
