@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, Share, Alert, Platform, type GestureResponderEvent } from 'react-native';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
@@ -17,7 +17,9 @@ interface HousingCardProps {
   variant?: 'list' | 'featured';
 }
 
-export function HousingCard({ listing: given, variant = 'list' }: HousingCardProps) {
+// Memoised (FARCH-004, 27 Nov 2026): a card is drawn once per row of a long list,
+// and a parent re-render that hands it the same props should not draw it again.
+export const HousingCard = memo(function HousingCard({ listing: given, variant = 'list' }: HousingCardProps) {
   const listing = asHousingCardListing(given);
   const { id, title, listingType, propertyType, bedrooms, bathrooms, furnished, host, availabilityDate, coverImage, lifestyleMatches } = listing;
   const { save, unsave, isSaved } = useSavedStore();
@@ -234,4 +236,4 @@ export function HousingCard({ listing: given, variant = 'list' }: HousingCardPro
       </View>
     </TouchableOpacity>
   );
-}
+});

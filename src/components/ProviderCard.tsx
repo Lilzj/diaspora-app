@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -18,7 +18,9 @@ interface ProviderCardProps {
   variant?: 'list' | 'featured';
 }
 
-export function ProviderCard({
+// Memoised (FARCH-004, 27 Nov 2026): a card is drawn once per row of a long list,
+// and a parent re-render that hands it the same props should not draw it again.
+export const ProviderCard = memo(function ProviderCard({
   listingId,
   title,
   category,
@@ -143,4 +145,4 @@ export function ProviderCard({
       </View>
     </TouchableOpacity>
   );
-}
+});

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, Share, type GestureResponderEvent } from 'react-native';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
@@ -13,7 +13,9 @@ interface JobCardProps {
   variant?: 'list' | 'featured';
 }
 
-export function JobCard({ job, variant = 'list' }: JobCardProps) {
+// Memoised (FARCH-004, 27 Nov 2026): a card is drawn once per row of a long list,
+// and a parent re-render that hands it the same props should not draw it again.
+export const JobCard = memo(function JobCard({ job, variant = 'list' }: JobCardProps) {
   // ── This component crashed the Jobs tab (Android UAT, 31 Aug 2026) ────────
   //
   // It destructured `location`, `employer`, `salary` and `benefitsFlags` and
@@ -328,4 +330,4 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       </View>
     </TouchableOpacity>
   );
-}
+});
