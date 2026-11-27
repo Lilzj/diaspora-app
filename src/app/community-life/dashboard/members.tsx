@@ -7,12 +7,17 @@
 // Every decision is refused server-side when the caller's capability set does
 // not permit it — §19, and the adapter answers 403 regardless of which buttons
 // this screen chose to draw.
+//
+// The list pages, so the screen is one FlashList (FARCH-004, 27 Nov 2026): the
+// filter is drawn above the rows, and the rows are recycled as they scroll
+// rather than every page staying mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { ActivityIndicator, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import {
@@ -20,13 +25,13 @@ import {
   ChipRow,
   CommunityScreen,
   CommunityStatusBadge,
-  EmptyState,
   InlineRefusal,
   PrimaryButton,
   SecondaryButton,
   readableDate,
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import {
   useDecideMembership,
   useOrganizationCapabilities,
@@ -34,7 +39,7 @@ import {
 } from '@/hooks/community-life';
 import { describeMembership } from '@/lib/domain/community-state';
 import type { FinancialError } from '@/lib/transport/financial-errors';
-import type { MembershipStatus } from '@/types/community-advanced';
+import type { MembershipStatus, OrganizationMember } from '@/types/community-advanced';
 
 type Filter = '' | 'Pending' | 'Active' | 'Suspended' | 'Expired';
 
@@ -65,6 +70,149 @@ export default function OrganizationMembersScreen() {
   } = useOrganizationMembers(organizationId, params);
 
   const decide = useDecideMembership(organizationId);
+  const { mutate: decideMembership, isPending: isDeciding } = decide;
+  const { canApproveMembers } = capabilities;
+
+  // One member. Stable, so the list redraws a row only when its member, or what
+  // the row offers (the decisions, a decision in flight), changes.
+  const renderMember = useCallback(
+    ({ item: member }: ListRenderItemInfo<OrganizationMember>) => {
+      const state = describeMembership(member.status);
+
+      return (
+        <View className="px-5 mb-3">
+          <Card
+            accessibilityLabel={`${member.displayName}, ${member.tierName}, ${state.label}. Role: ${member.role}.`}
+          >
+            <View className="flex-row items-start">
+              <View
+                style={{ backgroundColor: tokens.color.surface.elevated }}
+                className="w-10 h-10 rounded-full items-center justify-center"
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={17}
+                  color={tokens.color.text.placeholder}
+                />
+              </View>
+
+              <View className="flex-1 ml-3">
+                <View className="flex-row items-center">
+                  <Text
+                    style={{ color: tokens.color.text.primary }}
+                    className="text-sm font-black tracking-tight flex-1"
+                    numberOfLines={1}
+                  >
+                    {member.displayName}
+                  </Text>
+                  {member.isVerified ? (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={14}
+                      color={tokens.color.info.default}
+                      accessibilityLabel="Verified member"
+                    />
+                  ) : null}
+                </View>
+
+                <Text
+                  style={{ color: tokens.color.text.placeholder }}
+                  className="text-[11px] font-bold mt-0.5"
+                >
+                  {member.tierName} · {member.role}
+                  {member.joinedAt ? ` · joined ${readableDate(member.joinedAt)}` : ''}
+                </Text>
+
+                <View className="mt-2">
+                  <CommunityStatusBadge state={state} size="small" />
+                </View>
+              </View>
+            </View>
+
+            {/* Decisions, gated by the fetched capability set */}
+            {member.status === 'Pending' && canApproveMembers ? (
+              <View className="flex-row mt-3" style={{ gap: 8 }}>
+                <View className="flex-1">
+                  <PrimaryButton
+                    label="Approve"
+                    icon="checkmark"
+                    busy={isDeciding}
+                    onPress={() =>
+                      decideMembership({
+                        membershipId: member.membershipId,
+                        decision: 'approve',
+                      })
+                    }
+                  />
+                </View>
+                <View className="flex-1">
+                  <SecondaryButton
+                    label="Decline"
+                    disabled={isDeciding}
+                    onPress={() =>
+                      showAlert({ type: 'success', title: `Decline ${member.displayName}?`, message: 'They will be told the application was not successful.', buttons: [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Decline',
+                            style: 'destructive',
+                            onPress: () =>
+                              decideMembership({
+                                membershipId: member.membershipId,
+                                decision: 'reject',
+                              }),
+                          },
+                        ] })
+                    }
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {member.status === 'Active' && canApproveMembers ? (
+              <View className="mt-3">
+                <SecondaryButton
+                  label="Suspend"
+                  icon="pause-circle-outline"
+                  disabled={isDeciding}
+                  onPress={() =>
+                    showAlert({ type: 'warning', title: `Suspend ${member.displayName}?`, message: 'They keep their place but lose access to member benefits until you reinstate them.', buttons: [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Suspend',
+                          style: 'destructive',
+                          onPress: () =>
+                            decideMembership({
+                              membershipId: member.membershipId,
+                              decision: 'suspend',
+                            }),
+                        },
+                      ] })
+                  }
+                />
+              </View>
+            ) : null}
+
+            {member.status === 'Suspended' && canApproveMembers ? (
+              <View className="mt-3">
+                <PrimaryButton
+                  label="Reinstate"
+                  icon="refresh-outline"
+                  busy={isDeciding}
+                  onPress={() =>
+                    decideMembership({
+                      membershipId: member.membershipId,
+                      decision: 'reinstate',
+                    })
+                  }
+                />
+              </View>
+            ) : null}
+          </Card>
+        </View>
+      );
+    },
+    [tokens, canApproveMembers, isDeciding, decideMembership, showAlert]
+  );
 
   return (
     <CommunityScreen
@@ -102,6 +250,46 @@ export default function OrganizationMembersScreen() {
           </View>
         ) : undefined
       }
+      list={
+        capabilities.canManageMembers
+          ? {
+              data: members,
+              keyExtractor: (member) => member.membershipId,
+              renderItem: renderMember,
+              // The shell draws the list's loading and error; the list says when it is empty.
+              ListEmptyComponent: (
+                <View className="px-5">
+                  <ListState
+                    isEmpty
+                    empty={{
+                      icon: 'people-outline',
+                      title: filter === 'Pending' ? 'Nothing to review' : 'Nobody here',
+                      message:
+                        filter === 'Pending'
+                          ? 'Every application has been decided.'
+                          : 'No member is in this state.',
+                    }}
+                  />
+                </View>
+              ),
+              ListFooterComponent: (
+                <View className="px-5">
+                  {hasNextPage ? (
+                    <View className="mb-4">
+                      {isFetchingNextPage ? (
+                        <View className="py-4 items-center" accessibilityLabel="Loading more">
+                          <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                        </View>
+                      ) : (
+                        <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+                      )}
+                    </View>
+                  ) : null}
+                </View>
+              ),
+            }
+          : undefined
+      }
     >
       {!capabilities.canManageMembers ? (
         <View className="px-5 pt-5">
@@ -112,7 +300,7 @@ export default function OrganizationMembersScreen() {
         </View>
       ) : (
         <>
-          <View className="px-5 pt-4">
+          <View className="px-5 pt-4 pb-3">
             <ChipRow
               accessibilityLabel="Filter members"
               options={[
@@ -127,173 +315,11 @@ export default function OrganizationMembersScreen() {
             />
           </View>
 
-          <View className="px-5 mt-3">
-            {decide.isError ? (
-              <View className="mb-3">
-                <FinancialErrorInline error={decide.error as FinancialError} />
-              </View>
-            ) : null}
-
-            {members.length === 0 && !isLoading ? (
-              <EmptyState
-                icon="people-outline"
-                title={filter === 'Pending' ? 'Nothing to review' : 'Nobody here'}
-                body={
-                  filter === 'Pending'
-                    ? 'Every application has been decided.'
-                    : 'No member is in this state.'
-                }
-              />
-            ) : (
-              members.map((member) => {
-                const state = describeMembership(member.status);
-
-                return (
-                  <View key={member.membershipId} className="mb-3">
-                    <Card
-                      accessibilityLabel={`${member.displayName}, ${member.tierName}, ${state.label}. Role: ${member.role}.`}
-                    >
-                      <View className="flex-row items-start">
-                        <View
-                          style={{ backgroundColor: tokens.color.surface.elevated }}
-                          className="w-10 h-10 rounded-full items-center justify-center"
-                        >
-                          <Ionicons
-                            name="person-outline"
-                            size={17}
-                            color={tokens.color.text.placeholder}
-                          />
-                        </View>
-
-                        <View className="flex-1 ml-3">
-                          <View className="flex-row items-center">
-                            <Text
-                              style={{ color: tokens.color.text.primary }}
-                              className="text-sm font-black tracking-tight flex-1"
-                              numberOfLines={1}
-                            >
-                              {member.displayName}
-                            </Text>
-                            {member.isVerified ? (
-                              <Ionicons
-                                name="checkmark-circle"
-                                size={14}
-                                color={tokens.color.info.default}
-                                accessibilityLabel="Verified member"
-                              />
-                            ) : null}
-                          </View>
-
-                          <Text
-                            style={{ color: tokens.color.text.placeholder }}
-                            className="text-[11px] font-bold mt-0.5"
-                          >
-                            {member.tierName} · {member.role}
-                            {member.joinedAt ? ` · joined ${readableDate(member.joinedAt)}` : ''}
-                          </Text>
-
-                          <View className="mt-2">
-                            <CommunityStatusBadge state={state} size="small" />
-                          </View>
-                        </View>
-                      </View>
-
-                      {/* Decisions, gated by the fetched capability set */}
-                      {member.status === 'Pending' && capabilities.canApproveMembers ? (
-                        <View className="flex-row mt-3" style={{ gap: 8 }}>
-                          <View className="flex-1">
-                            <PrimaryButton
-                              label="Approve"
-                              icon="checkmark"
-                              busy={decide.isPending}
-                              onPress={() =>
-                                decide.mutate({
-                                  membershipId: member.membershipId,
-                                  decision: 'approve',
-                                })
-                              }
-                            />
-                          </View>
-                          <View className="flex-1">
-                            <SecondaryButton
-                              label="Decline"
-                              disabled={decide.isPending}
-                              onPress={() =>
-                                showAlert({ type: 'success', title: `Decline ${member.displayName}?`, message: 'They will be told the application was not successful.', buttons: [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    {
-                                      text: 'Decline',
-                                      style: 'destructive',
-                                      onPress: () =>
-                                        decide.mutate({
-                                          membershipId: member.membershipId,
-                                          decision: 'reject',
-                                        }),
-                                    },
-                                  ] })
-                              }
-                            />
-                          </View>
-                        </View>
-                      ) : null}
-
-                      {member.status === 'Active' && capabilities.canApproveMembers ? (
-                        <View className="mt-3">
-                          <SecondaryButton
-                            label="Suspend"
-                            icon="pause-circle-outline"
-                            disabled={decide.isPending}
-                            onPress={() =>
-                              showAlert({ type: 'warning', title: `Suspend ${member.displayName}?`, message: 'They keep their place but lose access to member benefits until you reinstate them.', buttons: [
-                                  { text: 'Cancel', style: 'cancel' },
-                                  {
-                                    text: 'Suspend',
-                                    style: 'destructive',
-                                    onPress: () =>
-                                      decide.mutate({
-                                        membershipId: member.membershipId,
-                                        decision: 'suspend',
-                                      }),
-                                  },
-                                ] })
-                            }
-                          />
-                        </View>
-                      ) : null}
-
-                      {member.status === 'Suspended' && capabilities.canApproveMembers ? (
-                        <View className="mt-3">
-                          <PrimaryButton
-                            label="Reinstate"
-                            icon="refresh-outline"
-                            busy={decide.isPending}
-                            onPress={() =>
-                              decide.mutate({
-                                membershipId: member.membershipId,
-                                decision: 'reinstate',
-                              })
-                            }
-                          />
-                        </View>
-                      ) : null}
-                    </Card>
-                  </View>
-                );
-              })
-            )}
-
-            {hasNextPage ? (
-              <View className="mb-4">
-                {isFetchingNextPage ? (
-                  <View className="py-4 items-center" accessibilityLabel="Loading more">
-                    <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                  </View>
-                ) : (
-                  <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-                )}
-              </View>
-            ) : null}
-          </View>
+          {decide.isError ? (
+            <View className="px-5 mb-3">
+              <FinancialErrorInline error={decide.error as FinancialError} />
+            </View>
+          ) : null}
         </>
       )}
     </CommunityScreen>

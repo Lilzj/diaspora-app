@@ -1,10 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Poll discovery (§22)
+//
+// The list pages, so the screen is one FlashList (FARCH-004, 27 Nov 2026): the
+// filter is drawn above the rows, and the rows are recycled as they scroll
+// rather than every page staying mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { router } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import {
@@ -17,6 +22,19 @@ import {
 import { ListState } from '@/components/ListState';
 import { useMyOrganizations, usePolls } from '@/hooks/community-life';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
+import type { CommunityPoll } from '@/types/community-advanced';
+
+/** One poll. Module-level, so the list keeps a row until its poll changes. */
+function renderPoll({ item }: ListRenderItemInfo<CommunityPoll>) {
+  return (
+    <View className="px-5 mb-3">
+      <PollCard
+        poll={item}
+        onPress={() => router.push(`/community-life/poll/${item.pollId}` as never)}
+      />
+    </View>
+  );
+}
 
 export default function PollListScreen() {
   const { tokens } = useTheme();
@@ -62,8 +80,57 @@ export default function PollListScreen() {
           />
         ) : undefined
       }
+      list={{
+        data: polls,
+        keyExtractor: (poll) => poll.pollId,
+        renderItem: renderPoll,
+        // The shell draws the list's loading and error; the list says when it is empty.
+        ListEmptyComponent: (
+          <View className="px-5">
+            <ListState
+              isEmpty
+              empty={{
+                icon: 'bar-chart-outline',
+                title: state === 'Open' ? 'No polls open' : 'No polls',
+                message:
+                  state === 'Open'
+                    ? 'When a community you belong to asks a question, it will be here.'
+                    : 'Nothing has been asked yet.',
+                action: canCreate
+                  ? { label: 'Ask a question', onPress: () => router.push('/community-life/poll/create') }
+                  : undefined,
+              }}
+            />
+          </View>
+        ),
+        ListFooterComponent: (
+          <View className="px-5">
+            {hasNextPage && polls.length > 0 ? (
+              <View className="mb-4">
+                {isFetchingNextPage ? (
+                  <View className="py-4 items-center" accessibilityLabel="Loading more">
+                    <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                  </View>
+                ) : (
+                  <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+                )}
+              </View>
+            ) : null}
+
+            {canCreate && polls.length > 0 ? (
+              <View className="mt-2">
+                <PrimaryButton
+                  label="Ask your community something"
+                  icon="add"
+                  onPress={() => router.push('/community-life/poll/create')}
+                />
+              </View>
+            ) : null}
+          </View>
+        ),
+      }}
     >
-      <View className="px-5 pt-4">
+      <View className="px-5 pt-4 pb-4">
         <ChipRow
           accessibilityLabel="Filter polls"
           options={[
@@ -74,55 +141,6 @@ export default function PollListScreen() {
           value={state}
           onChange={setState}
         />
-      </View>
-
-      <View className="px-5 mt-4">
-        {/* The shell draws the list's loading and error; the list says when it is empty. */}
-        <ListState
-          isEmpty={polls.length === 0}
-          empty={{
-            icon: 'bar-chart-outline',
-            title: state === 'Open' ? 'No polls open' : 'No polls',
-            message:
-              state === 'Open'
-                ? 'When a community you belong to asks a question, it will be here.'
-                : 'Nothing has been asked yet.',
-            action: canCreate
-              ? { label: 'Ask a question', onPress: () => router.push('/community-life/poll/create') }
-              : undefined,
-          }}
-        >
-          {polls.map((poll) => (
-            <View key={poll.pollId} className="mb-3">
-              <PollCard
-                poll={poll}
-                onPress={() => router.push(`/community-life/poll/${poll.pollId}` as never)}
-              />
-            </View>
-          ))}
-
-          {hasNextPage ? (
-            <View className="mb-4">
-              {isFetchingNextPage ? (
-                <View className="py-4 items-center" accessibilityLabel="Loading more">
-                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                </View>
-              ) : (
-                <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-              )}
-            </View>
-          ) : null}
-        </ListState>
-
-        {canCreate && polls.length > 0 ? (
-          <View className="mt-2">
-            <PrimaryButton
-              label="Ask your community something"
-              icon="add"
-              onPress={() => router.push('/community-life/poll/create')}
-            />
-          </View>
-        ) : null}
       </View>
     </CommunityScreen>
   );

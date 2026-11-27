@@ -21,6 +21,11 @@
 // deliberately simple — one polyline per series, no interaction — because a
 // chart nobody can read with a screen reader is decoration, and the numbers
 // above it are the actual content.
+//
+// "Your content" pages, so the screen is one FlashList (FARCH-004, 27 Nov 2026):
+// everything above that list is the list's header, everything below it is the
+// list's footer, and its rows are recycled as they scroll rather than every
+// page staying mounted. The row itself is `ContentPerformanceCard`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -28,6 +33,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Polyline } from 'react-native-svg';
 import { router } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
 import {
@@ -44,8 +50,9 @@ import {
 } from '@/hooks/creator-economy';
 import { FinancialErrorInline } from '@/components/financial';
 import { ListState } from '@/components/ListState';
+import { ContentPerformanceCard } from '@/components/creator/ContentPerformanceCard';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
-import { PERIOD_LABELS, formatCount } from '@/lib/domain/creator-economy';
+import { PERIOD_LABELS } from '@/lib/domain/creator-economy';
 import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
 import { formatRelativeTime } from '@/utils/format';
@@ -74,6 +81,9 @@ const CONTENT_FILTERS = [
   { value: 'Housing', label: 'Homes' },
   { value: 'Job', label: 'Jobs' },
 ] as const;
+
+/** Stable, so an empty list is the same empty list on every render. */
+const NO_CONTENT: CreatorContentPerformance[] = [];
 
 export default function CreatorAnalyticsScreen() {
   const { tokens } = useTheme();
@@ -125,6 +135,20 @@ export default function CreatorAnalyticsScreen() {
     router.push(route as never);
   }, []);
 
+  // One item's row. Stable, so the list redraws a row only when its item changes.
+  const renderContent = useCallback(
+    ({ item }: ListRenderItemInfo<CreatorContentPerformance>) => (
+      <View className="px-5">
+        <ContentPerformanceCard
+          item={item}
+          route={itemAnalyticsRoute(String(item.contentType), item.contentId)}
+          onOpen={openContent}
+        />
+      </View>
+    ),
+    [openContent]
+  );
+
   const summary = analytics.summary;
 
   // ── Figures this deployment does not measure ────────────────────────────────
@@ -169,8 +193,101 @@ export default function CreatorAnalyticsScreen() {
           <PeriodSelector range={range} onChange={changePeriod} />
         </View>
       }
+      list={{
+        data: content.isLoading ? NO_CONTENT : content.items,
+        keyExtractor: (item) => item.contentId,
+        renderItem: renderContent,
+        ListEmptyComponent: (
+          <View className="px-5">
+            <ListState
+              loading={content.isLoading}
+              loadingLabel="Loading your content"
+              error={content.error && content.items.length === 0 ? (
+                <FinancialErrorInline error={content.error} onRetry={() => void content.refetch()} />
+              ) : null}
+              isEmpty
+              empty={{
+                icon: 'bar-chart-outline',
+                title: 'Nothing to report',
+                message: 'Publish something and its performance will show up here.',
+                action: { label: 'Write a guide', onPress: () => router.push('/guide/create') },
+              }}
+            />
+          </View>
+        ),
+        ListFooterComponent: (
+          <View className="px-5">
+            {/* "Your content" closes here: its next page, then the section's own margin. */}
+            <View className="mb-6">
+              {content.hasNextPage && content.items.length > 0 && !content.isLoading ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Load more content"
+                  accessibilityState={{ busy: content.isFetchingNextPage }}
+                  disabled={content.isFetchingNextPage}
+                  onPress={() => content.fetchNextPage()}
+                  className="py-3 items-center"
+                >
+                  <Text
+                    style={{ color: tokens.color.primary[500] }}
+                    className="text-[11px] font-black uppercase tracking-wider"
+                  >
+                    {content.isFetchingNextPage ? 'Loading…' : 'Load more'}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            {/* ── Where else to look ───────────────────────────────────────── */}
+            <CreatorSection title="Related">
+              <CreatorCard padded={false}>
+                {/* Frontend Phase 15. The same figures, from the platform's creator
+                    dataset, with comparison against the previous period and a
+                    top-content board. It was labelled "Reach and audience", and
+                    neither is measured on this deployment. */}
+                <RelatedRow
+                  icon="analytics-outline"
+                  label="Your content, compared"
+                  hint="Against the previous period, with your top content"
+                  onPress={() => router.push('/analytics/creator')}
+                />
+                <RelatedRow
+                  icon="megaphone-outline"
+                  label="Sponsored content"
+                  hint="How your paid placements performed"
+                  onPress={() => router.push('/creator/sponsored')}
+                />
+                <RelatedRow
+                  icon="cash-outline"
+                  label="Revenue"
+                  hint="What your work earned"
+                  onPress={() => router.push('/creator/revenue')}
+                />
+                <RelatedRow
+                  icon="analytics-outline"
+                  label="Business analytics"
+                  hint="Promotions, campaigns and premium data"
+                  onPress={() => router.push('/monetization/analytics')}
+                  isLast
+                />
+              </CreatorCard>
+            </CreatorSection>
+
+            {summary?.freshnessNote ? (
+              <Text
+                style={{ color: tokens.color.text.disabled }}
+                className="text-[10px] font-semibold text-center mb-4 leading-relaxed"
+              >
+                {summary.freshnessNote} Last recalculated {formatRelativeTime(summary.generatedAt)}.
+              </Text>
+            ) : null}
+          </View>
+        ),
+      }}
     >
-      <View className="px-5 pt-5">
+      {/* Above the rows. "Your content" closes below its rows, so the section's
+          own bottom margin is taken back here and the footer draws it. */}
+      <View className="px-5 pt-5 -mb-6">
         {analytics.isFetching && !analytics.isLoading ? (
           <View className="flex-row items-center justify-center pb-3">
             <ActivityIndicator size="small" color={tokens.color.primary[500]} />
@@ -332,93 +449,7 @@ export default function CreatorAnalyticsScreen() {
               );
             })}
           </ScrollView>
-
-          <ListState
-            loading={content.isLoading}
-            loadingLabel="Loading your content"
-            error={content.error && content.items.length === 0 ? (
-              <FinancialErrorInline error={content.error} onRetry={() => void content.refetch()} />
-            ) : null}
-            isEmpty={content.items.length === 0}
-            empty={{
-              icon: 'bar-chart-outline',
-              title: 'Nothing to report',
-              message: 'Publish something and its performance will show up here.',
-              action: { label: 'Write a guide', onPress: () => router.push('/guide/create') },
-            }}
-          >
-            {content.items.map((item) => (
-              <ContentPerformanceCard
-                key={item.contentId}
-                item={item}
-                route={itemAnalyticsRoute(String(item.contentType), item.contentId)}
-                onOpen={openContent}
-              />
-            ))}
-
-            {content.hasNextPage ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Load more content"
-                accessibilityState={{ busy: content.isFetchingNextPage }}
-                disabled={content.isFetchingNextPage}
-                onPress={() => content.fetchNextPage()}
-                className="py-3 items-center"
-              >
-                <Text
-                  style={{ color: tokens.color.primary[500] }}
-                  className="text-[11px] font-black uppercase tracking-wider"
-                >
-                  {content.isFetchingNextPage ? 'Loading…' : 'Load more'}
-                </Text>
-              </Pressable>
-            ) : null}
-          </ListState>
         </CreatorSection>
-
-        {/* ── Where else to look ───────────────────────────────────────── */}
-        <CreatorSection title="Related">
-          <CreatorCard padded={false}>
-            {/* Frontend Phase 15. The same figures, from the platform's creator
-                dataset, with comparison against the previous period and a
-                top-content board. It was labelled "Reach and audience", and
-                neither is measured on this deployment. */}
-            <RelatedRow
-              icon="analytics-outline"
-              label="Your content, compared"
-              hint="Against the previous period, with your top content"
-              onPress={() => router.push('/analytics/creator')}
-            />
-            <RelatedRow
-              icon="megaphone-outline"
-              label="Sponsored content"
-              hint="How your paid placements performed"
-              onPress={() => router.push('/creator/sponsored')}
-            />
-            <RelatedRow
-              icon="cash-outline"
-              label="Revenue"
-              hint="What your work earned"
-              onPress={() => router.push('/creator/revenue')}
-            />
-            <RelatedRow
-              icon="analytics-outline"
-              label="Business analytics"
-              hint="Promotions, campaigns and premium data"
-              onPress={() => router.push('/monetization/analytics')}
-              isLast
-            />
-          </CreatorCard>
-        </CreatorSection>
-
-        {summary?.freshnessNote ? (
-          <Text
-            style={{ color: tokens.color.text.disabled }}
-            className="text-[10px] font-semibold text-center mb-4 leading-relaxed"
-          >
-            {summary.freshnessNote} Last recalculated {formatRelativeTime(summary.generatedAt)}.
-          </Text>
-        ) : null}
       </View>
     </CreatorScreen>
   );
@@ -484,150 +515,6 @@ function TrendChart({ series }: { series: CreatorMetricSeries[] }) {
         ))}
       </Svg>
     </View>
-  );
-}
-
-/**
- * One of the member's items, with its figures.
- *
- * A button only when the item has an analytics page to open — a guide, an
- * update, an event, a job, a listing or a home. A provider profile or an
- * organisation has a row but no page, so its card is not pressable and carries
- * no chevron: a button that goes nowhere is what every row used to be.
- */
-function ContentPerformanceCard({
-  item,
-  route,
-  onOpen,
-}: {
-  item: CreatorContentPerformance;
-  route: string | null;
-  onOpen: (item: CreatorContentPerformance, route: string) => void;
-}) {
-  const { tokens } = useTheme();
-
-  const label = [
-    item.title,
-    `${item.contentType}, ${item.status}.`,
-    ...item.metrics.map((metric) => `${metric.label}: ${formatCount(metric.value)}.`),
-    item.isSponsored ? 'Currently sponsored.' : null,
-    item.revenue ? `Earned ${item.revenue.currency} ${item.revenue.amount.toFixed(2)}.` : null,
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const cardStyle = {
-    backgroundColor: tokens.color.surface.card,
-    borderColor: tokens.color.border.default,
-  };
-
-  const body = (
-    <>
-      <View className="flex-row items-start justify-between mb-2.5">
-        <View className="flex-1 mr-2">
-          <Text
-            style={{ color: tokens.color.text.primary }}
-            className="text-[13px] font-bold leading-snug"
-            numberOfLines={2}
-          >
-            {item.title}
-          </Text>
-          <View className="flex-row items-center mt-1">
-            <Text
-              style={{ color: tokens.color.text.placeholder }}
-              className="text-[10px] font-bold"
-            >
-              {String(item.contentType)} · {item.status}
-              {item.publishedAt ? ` · ${formatRelativeTime(item.publishedAt)}` : ''}
-            </Text>
-          </View>
-        </View>
-
-        {item.isSponsored ? (
-          <View
-            style={{ backgroundColor: tokens.color.neutral[100] }}
-            className="flex-row items-center rounded-full px-2 py-0.5"
-          >
-            <Ionicons name="megaphone" size={9} color={tokens.color.primary[600]} />
-            <Text
-              style={{ color: tokens.color.primary[600] }}
-              className="text-[9px] font-black uppercase tracking-widest ml-1"
-            >
-              Sponsored
-            </Text>
-          </View>
-        ) : null}
-
-        {route ? (
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={tokens.color.text.placeholder}
-            style={{ marginLeft: 6, marginTop: 1 }}
-          />
-        ) : null}
-      </View>
-
-      <View className="flex-row flex-wrap">
-        {item.metrics.map((metric) => (
-          <View key={metric.key} className="mr-5 mb-1">
-            <Text
-              style={{ color: tokens.color.text.placeholder }}
-              className="text-[9px] font-black uppercase tracking-widest"
-            >
-              {metric.label}
-            </Text>
-            <Text
-              style={{ color: tokens.color.text.primary, fontVariant: ['tabular-nums'] }}
-              className="text-[15px] font-black"
-            >
-              {metric.format === 'percentage'
-                ? `${metric.value.toFixed(1)}%`
-                : formatCount(metric.value)}
-            </Text>
-          </View>
-        ))}
-
-        {item.revenue ? (
-          <View className="mb-1">
-            <Text
-              style={{ color: tokens.color.text.placeholder }}
-              className="text-[9px] font-black uppercase tracking-widest"
-            >
-              Earned
-            </Text>
-            <Text
-              style={{ color: tokens.color.success.default, fontVariant: ['tabular-nums'] }}
-              className="text-[15px] font-black"
-            >
-              {item.revenue.symbol ?? ''}
-              {item.revenue.amount.toFixed(2)}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-    </>
-  );
-
-  if (!route) {
-    return (
-      <View accessible accessibilityLabel={label} style={cardStyle} className="rounded-2xl border p-4 mb-2.5">
-        {body}
-      </View>
-    );
-  }
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityHint="Opens how this item is doing"
-      onPress={() => onOpen(item, route)}
-      style={cardStyle}
-      className="rounded-2xl border p-4 mb-2.5"
-    >
-      {body}
-    </Pressable>
   );
 }
 

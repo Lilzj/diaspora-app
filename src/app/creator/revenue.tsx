@@ -21,12 +21,16 @@
 // enforced three times over: separate fields on the DTO, separate cells with
 // separate tones in `<RevenueHeadline>`, and no addition anywhere in this file.
 // The screen never computes a total; the only totals shown are the server's.
+//
+// Every earning pages, so the screen is one FlashList (FARCH-004, 27 Nov 2026):
+// the earnings are its rows, recycled rather than every page staying mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
 import {
@@ -38,6 +42,7 @@ import {
   RevenueBreakdown,
   RevenueHeadline,
 } from '@/components/creator-economy';
+import { CreatorCardSlice } from '@/components/creator-economy/CreatorCardSlice';
 import { AmountDisplay, FinancialErrorInline, LabelledAmount } from '@/components/financial';
 import { ListState } from '@/components/ListState';
 import { useCreatorAccess, useCreatorEarnings, useCreatorRevenue } from '@/hooks/creator-economy';
@@ -48,6 +53,9 @@ import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import { CREATOR_EARNING_FILTER_STATES } from '@/types/creator-economy';
 import type { CreatorEarning } from '@/types/creator-economy';
 import type { FinancialError } from '@/lib/transport/financial-errors';
+
+/** Stable, so an empty list is the same empty list on every render. */
+const NO_EARNINGS: CreatorEarning[] = [];
 
 export default function CreatorRevenueScreen() {
   const { tokens } = useTheme();
@@ -111,6 +119,26 @@ export default function CreatorRevenueScreen() {
   const summary = revenue.summary;
   const wallet = revenue.wallet;
 
+  // The earnings, once the first page is in: until then the list's loading and
+  // its error stand in for them, as they did.
+  const earningRows = earnings.isLoading ? NO_EARNINGS : earnings.earnings;
+  const moreEarnings = earningRows.length > 0 && earnings.hasNextPage;
+
+  // One earning, in its slice of the card the rows share. The last row closes the
+  // card unless "Load more" follows, so the rows redraw when either changes.
+  const renderEarning = useCallback(
+    ({ item, index }: ListRenderItemInfo<CreatorEarning>) => (
+      <View className="px-5">
+        <CreatorCardSlice first={index === 0} last={index === earningRows.length - 1 && !moreEarnings}>
+          <View className="px-4">
+            <EarningRow earning={item} onPress={earningDestination(item) ? openEarning : undefined} />
+          </View>
+        </CreatorCardSlice>
+      </View>
+    ),
+    [earningRows, moreEarnings, openEarning]
+  );
+
   return (
     <CreatorScreen
       title="Revenue"
@@ -123,8 +151,165 @@ export default function CreatorRevenueScreen() {
         onRefresh: handleRefresh,
         isRefreshing,
       }}
+      list={{
+        data: earningRows,
+        keyExtractor: (earning) => earning.earningId,
+        renderItem: renderEarning,
+        ListEmptyComponent: (
+          <View className="px-5">
+            <ListState
+              loading={earnings.isLoading}
+              loadingLabel="Loading your earnings"
+              error={
+                /*
+                  **A failure is not an empty list, and this rendered it as one.**
+
+                  The branch below keys on `earnings.length === 0`, which is equally
+                  true when the request never succeeded. `GET /creators/me/earnings`
+                  answered 500 for every call — an untranslatable LINQ expression —
+                  and this screen told the member "Nothing here. Donations and shares
+                  of what people buy against your work will appear here as you earn
+                  them", beside a summary that said they had earned a thousand
+                  pounds.
+
+                  Two reads of the same data disagreeing on one screen, with the
+                  wrong one presented as calm and the right one as an error nobody
+                  saw. The retry matters too: without it a member's only recovery
+                  from a transient failure was to guess that pulling to refresh
+                  might help.
+                */
+                earnings.error && earnings.earnings.length === 0 ? (
+                  <View className="py-6">
+                    <FinancialErrorInline error={earnings.error} onRetry={() => earnings.refetch()} />
+                  </View>
+                ) : null
+              }
+              isEmpty
+              empty={{
+                icon: 'cash-outline',
+                title: 'Nothing here',
+                message:
+                  stateFilter || sourceFilter
+                    ? 'No earnings match that filter.'
+                    : 'Donations and shares of what people buy against your work will appear here as you earn them.',
+                action:
+                  stateFilter || sourceFilter
+                    ? {
+                        label: 'Clear filters',
+                        onPress: () => {
+                          setStateFilter(undefined);
+                          setSourceFilter(undefined);
+                        },
+                      }
+                    : undefined,
+              }}
+            />
+          </View>
+        ),
+        ListFooterComponent: (
+          <View className="px-5">
+            {/* The card closes with its next page, then the section's own margin. */}
+            <View className="mb-6">
+              {moreEarnings ? (
+                <CreatorCardSlice last>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Load more earnings"
+                    accessibilityState={{ busy: earnings.isFetchingNextPage }}
+                    disabled={earnings.isFetchingNextPage}
+                    onPress={() => earnings.fetchNextPage()}
+                    className="py-4 items-center"
+                  >
+                    <Text
+                      style={{ color: tokens.color.primary[500] }}
+                      className="text-[11px] font-black uppercase tracking-wider"
+                    >
+                      {earnings.isFetchingNextPage ? 'Loading…' : 'Load more'}
+                    </Text>
+                  </Pressable>
+                </CreatorCardSlice>
+              ) : null}
+            </View>
+
+            {/* ── Money lives in the wallet ────────────────────────────────── */}
+            <CreatorSection
+              title="Payouts"
+              subtitle="Money you have moved out of Diaspora"
+            >
+              <ListState
+                loading={payouts.isLoading}
+                loadingLabel="Loading your payouts"
+                error={
+                  payouts.error && (payouts.data?.length ?? 0) === 0 ? (
+                    <View className="py-6">
+                      <FinancialErrorInline error={payouts.error as FinancialError} onRetry={() => void payouts.refetch()} />
+                    </View>
+                  ) : null
+                }
+                isEmpty={(payouts.data?.length ?? 0) === 0}
+                empty={{
+                  icon: 'arrow-up-circle-outline',
+                  title: 'You have not withdrawn anything yet',
+                  message:
+                    'When you move money out of your Diaspora wallet, each payout appears here with what arrived and where it went.',
+                  action: { label: 'Withdraw', onPress: () => router.push('/wallet/withdraw') },
+                }}
+              >
+                <CreatorCard padded={false}>
+                  <View className="px-4">
+                    {payouts.data?.map((payout) => (
+                      <PayoutRow key={payout.withdrawalId} payout={payout} />
+                    ))}
+                  </View>
+                </CreatorCard>
+              </ListState>
+            </CreatorSection>
+
+            <CreatorSection title="Your money">
+              <CreatorCard padded={false}>
+                <WalletLink
+                  icon="wallet-outline"
+                  label="Wallet"
+                  hint="Balance, statement and receipts"
+                  onPress={() => router.push('/wallet')}
+                />
+                <WalletLink
+                  icon="swap-horizontal-outline"
+                  label="Transactions"
+                  hint="Every movement, from Diaspora"
+                  onPress={() => router.push('/wallet/transactions')}
+                />
+                <WalletLink
+                  icon="arrow-up-circle-outline"
+                  label="Withdraw"
+                  hint="Move money out of your wallet"
+                  onPress={() => router.push('/wallet/withdraw')}
+                />
+                <WalletLink
+                  icon="receipt-outline"
+                  label="Billing"
+                  hint="What you have paid Diaspora"
+                  onPress={() => router.push('/monetization/billing')}
+                  isLast
+                />
+              </CreatorCard>
+            </CreatorSection>
+
+            {summary ? (
+              <Text
+                style={{ color: tokens.color.text.disabled }}
+                className="text-[10px] font-semibold text-center mb-4 leading-relaxed"
+              >
+                Totalled {new Date(summary.generatedAt).toLocaleTimeString()}. Your wallet balance is
+                live.
+              </Text>
+            ) : null}
+          </View>
+        ),
+      }}
     >
-      <View className="px-5 pt-5">
+      {/* Above the rows. "Every earning" closes in the footer, which draws its margin. */}
+      <View className="px-5 pt-5 -mb-6">
         {/* ── Headline ─────────────────────────────────────────────────── */}
         <View>
           {wallet ? (
@@ -331,159 +516,7 @@ export default function CreatorRevenueScreen() {
               />
             ))}
           </ScrollView>
-
-          <ListState
-            loading={earnings.isLoading}
-            loadingLabel="Loading your earnings"
-            error={
-              /*
-                **A failure is not an empty list, and this rendered it as one.**
-
-                The branch below keys on `earnings.length === 0`, which is equally
-                true when the request never succeeded. `GET /creators/me/earnings`
-                answered 500 for every call — an untranslatable LINQ expression —
-                and this screen told the member "Nothing here. Donations and shares
-                of what people buy against your work will appear here as you earn
-                them", beside a summary that said they had earned a thousand
-                pounds.
-
-                Two reads of the same data disagreeing on one screen, with the
-                wrong one presented as calm and the right one as an error nobody
-                saw. The retry matters too: without it a member's only recovery
-                from a transient failure was to guess that pulling to refresh
-                might help.
-              */
-              earnings.error && earnings.earnings.length === 0 ? (
-                <View className="py-6">
-                  <FinancialErrorInline error={earnings.error} onRetry={() => earnings.refetch()} />
-                </View>
-              ) : null
-            }
-            isEmpty={earnings.earnings.length === 0}
-            empty={{
-              icon: 'cash-outline',
-              title: 'Nothing here',
-              message:
-                stateFilter || sourceFilter
-                  ? 'No earnings match that filter.'
-                  : 'Donations and shares of what people buy against your work will appear here as you earn them.',
-              action:
-                stateFilter || sourceFilter
-                  ? {
-                      label: 'Clear filters',
-                      onPress: () => {
-                        setStateFilter(undefined);
-                        setSourceFilter(undefined);
-                      },
-                    }
-                  : undefined,
-            }}
-          >
-            <CreatorCard padded={false}>
-              <View className="px-4">
-                {earnings.earnings.map((earning) => (
-                  <EarningRow
-                    key={earning.earningId}
-                    earning={earning}
-                    onPress={earningDestination(earning) ? openEarning : undefined}
-                  />
-                ))}
-              </View>
-
-              {earnings.hasNextPage ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Load more earnings"
-                  accessibilityState={{ busy: earnings.isFetchingNextPage }}
-                  disabled={earnings.isFetchingNextPage}
-                  onPress={() => earnings.fetchNextPage()}
-                  className="py-4 items-center"
-                >
-                  <Text
-                    style={{ color: tokens.color.primary[500] }}
-                    className="text-[11px] font-black uppercase tracking-wider"
-                  >
-                    {earnings.isFetchingNextPage ? 'Loading…' : 'Load more'}
-                  </Text>
-                </Pressable>
-              ) : null}
-            </CreatorCard>
-          </ListState>
         </CreatorSection>
-
-        {/* ── Money lives in the wallet ────────────────────────────────── */}
-        <CreatorSection
-          title="Payouts"
-          subtitle="Money you have moved out of Diaspora"
-        >
-          <ListState
-            loading={payouts.isLoading}
-            loadingLabel="Loading your payouts"
-            error={
-              payouts.error && (payouts.data?.length ?? 0) === 0 ? (
-                <View className="py-6">
-                  <FinancialErrorInline error={payouts.error as FinancialError} onRetry={() => void payouts.refetch()} />
-                </View>
-              ) : null
-            }
-            isEmpty={(payouts.data?.length ?? 0) === 0}
-            empty={{
-              icon: 'arrow-up-circle-outline',
-              title: 'You have not withdrawn anything yet',
-              message:
-                'When you move money out of your Diaspora wallet, each payout appears here with what arrived and where it went.',
-              action: { label: 'Withdraw', onPress: () => router.push('/wallet/withdraw') },
-            }}
-          >
-            <CreatorCard padded={false}>
-              <View className="px-4">
-                {payouts.data?.map((payout) => (
-                  <PayoutRow key={payout.withdrawalId} payout={payout} />
-                ))}
-              </View>
-            </CreatorCard>
-          </ListState>
-        </CreatorSection>
-
-        <CreatorSection title="Your money">
-          <CreatorCard padded={false}>
-            <WalletLink
-              icon="wallet-outline"
-              label="Wallet"
-              hint="Balance, statement and receipts"
-              onPress={() => router.push('/wallet')}
-            />
-            <WalletLink
-              icon="swap-horizontal-outline"
-              label="Transactions"
-              hint="Every movement, from Diaspora"
-              onPress={() => router.push('/wallet/transactions')}
-            />
-            <WalletLink
-              icon="arrow-up-circle-outline"
-              label="Withdraw"
-              hint="Move money out of your wallet"
-              onPress={() => router.push('/wallet/withdraw')}
-            />
-            <WalletLink
-              icon="receipt-outline"
-              label="Billing"
-              hint="What you have paid Diaspora"
-              onPress={() => router.push('/monetization/billing')}
-              isLast
-            />
-          </CreatorCard>
-        </CreatorSection>
-
-        {summary ? (
-          <Text
-            style={{ color: tokens.color.text.disabled }}
-            className="text-[10px] font-semibold text-center mb-4 leading-relaxed"
-          >
-            Totalled {new Date(summary.generatedAt).toLocaleTimeString()}. Your wallet balance is
-            live.
-          </Text>
-        ) : null}
       </View>
     </CreatorScreen>
   );

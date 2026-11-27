@@ -22,7 +22,7 @@
 // It has the shell. `CreatorScreen` handles the gap notice, the access refusal,
 // the error, the retry and the pull-to-refresh; Studio had none of them and
 // keeping its route would have meant rebuilding all five. It is also the parent
-// of fourteen `/creator/*` routes, where the Studio route was an orphan under
+// of the fourteen routes under `/creator/`, where the Studio route was an orphan under
 // `/profile`, and it is the one registered in the creator gap register.
 //
 // ── The sections ─────────────────────────────────────────────────────────────
@@ -83,11 +83,12 @@ import {
   StatTile,
 } from '@/components/creator-economy';
 import { FinancialErrorView } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import { BadgeShelf, BadgeSheet } from '@/components/creator/BadgeShelf';
 import { ContentHealthBadge } from '@/components/creator/ContentHealthBadge';
 import { ContentHealthCenterModal } from '@/components/creator/ContentHealthCenterModal';
 import { OrganisationsSection } from '@/components/creator/sections/OrganisationsSection';
-import { WorkspaceSection } from '@/components/creator/sections/WorkspaceSection';
+import { useWorkspaceSection } from '@/components/creator/sections/WorkspaceSection';
 import { useContentManagementStore } from '@/store/content-management';
 import { useCreatorWorkspaceStore, type CreatorSection as SectionKey } from '@/store/creator-workspace';
 import {
@@ -243,6 +244,7 @@ export default function CreatorStudioScreen() {
       .slice(0, 4);
   }, [creatorAnalytics.summary, creatorAnalytics.unavailableMetrics]);
   const section = workspaceStore.activeSection;
+  const workspace = useWorkspaceSection(section === 'workspace');
   const healthStats = contentStore.getHealthStats();
 
   return (
@@ -272,6 +274,8 @@ export default function CreatorStudioScreen() {
         refusal,
       }}
       load={{ onRefresh: handleRefresh, isRefreshing }}
+      // The Workspace timeline pages, so the screen is one FlashList (FARCH-004).
+      list={{ ...workspace.list }}
       showBack
       // ── The health badge only appears when something was assessed ──────
       //
@@ -373,16 +377,12 @@ export default function CreatorStudioScreen() {
             made sense while the card was hidden.
 
             Each section now gates on its own source. */}
-        {section === 'overview' && profile.isLoading ? (
-          <CreatorCardSkeleton rows={2} />
-        ) : null}
-
-        {section === 'overview' && !profile.isLoading && profile.isError ? (
-          <FinancialErrorView error={profile.error} onRetry={profile.refetch} />
-        ) : null}
-
-        {section === 'overview' && !profile.isLoading && !profile.isError ? (
-          <>
+        {section === 'overview' ? (
+          <ListState
+            loading={profile.isLoading}
+            skeleton={<CreatorCardSkeleton rows={2} />}
+            error={profile.isError ? <FinancialErrorView error={profile.error} onRetry={profile.refetch} /> : null}
+          >
             {/* ── Standing ─────────────────────────────────────────────────
                 Read from `GET /creators/me`, not from the dashboard.
                 CREATOR-GAP-001 was closed by Remediation Wave C-03 and this
@@ -675,11 +675,11 @@ export default function CreatorStudioScreen() {
               </TourSpotlight>
             ) : null}
 
-          </>
+          </ListState>
         ) : null}
 
         {/* ═══ WORKSPACE ════════════════════════════════════════════════════ */}
-        {section === 'workspace' ? <WorkspaceSection /> : null}
+        {workspace.header}
 
         {/* ═══ ORGANISATIONS ════════════════════════════════════════════════ */}
         {section === 'organizations' ? <OrganisationsSection /> : null}

@@ -20,7 +20,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -32,6 +33,11 @@ import { useThemeTokens } from '@/design-system';
 import type { EmbassyResponse } from '@/types/country-intelligence';
 
 type Lens = 'serving' | 'locatedIn';
+
+/** One mission. Module-level, so the list keeps a row until its mission changes (FARCH-004). */
+function renderEmbassy({ item }: ListRenderItemInfo<EmbassyResponse>) {
+  return <EmbassyRow embassy={item} />;
+}
 
 export default function EmbassyDirectoryScreen() {
   const tokens = useThemeTokens();
@@ -103,13 +109,15 @@ export default function EmbassyDirectoryScreen() {
         }
         onRetry={results.refresh}
       >
-        <FlatList
+        {/* A FlashList since 27 Nov 2026 (FARCH-004): the directory pages as the member
+            scrolls, and its rows are recycled rather than every page staying mounted. */}
+        <FlashList
           data={results.embassies}
           keyExtractor={(item) => item.embassyId}
           contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
           onEndReachedThreshold={0.4}
           onEndReached={results.loadMore}
-          renderItem={({ item }) => <EmbassyRow embassy={item} />}
+          renderItem={renderEmbassy}
           ListFooterComponent={
             results.isFetchingMore ? (
               <View className="py-4 items-center">

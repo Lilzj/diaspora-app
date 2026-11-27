@@ -5,7 +5,7 @@
 // is a second API layer: D-2 built the client and D-2b adopts it.
 
 export { CommunityPostCard } from './CommunityPostCard';
-export { CommentThread } from './CommentThread';
+export { CommentThreadComposer, useCommentThreadList, type CommentListRef } from './CommentThread';
 export { PollBlock } from './PollBlock';
 export { ReactionBar } from './ReactionBar';
 export { ReportContentSheet } from './ReportContentSheet';

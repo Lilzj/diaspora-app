@@ -77,7 +77,7 @@ export function CommunityPostCard({
   viewerId = null,
 }: CommunityPostCardProps) {
   const reactions = useReact({ contentType: 'post', contentId: post.postId });
-  const bookmarks = useBookmark();
+  const bookmarks = useBookmark({ contentType: 'post', contentId: post.postId });
 
   const urgency = urgencyStyle(post.urgency);
 

@@ -14,12 +14,17 @@
 // dependency in this app and adding one for a simulated feature would be a
 // dependency added for a gap. The code is `selectable`, so a long press copies
 // it, and the share sheet — which is the thing people actually use — is real.
+//
+// Everyone you invited pages, so the screen is one FlashList (FARCH-004, 27 Nov
+// 2026): the programme above the list is its header, and the referral rows are
+// recycled as they scroll rather than every page staying mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, Share, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
 import {
@@ -29,6 +34,7 @@ import {
   ReferralRow,
   ReferralStats,
 } from '@/components/creator-economy';
+import { CreatorCardSlice } from '@/components/creator-economy/CreatorCardSlice';
 import { FinancialErrorInline } from '@/components/financial';
 import { ListState } from '@/components/ListState';
 import {
@@ -39,6 +45,10 @@ import {
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
 import { formatPoints } from '@/lib/domain/creator-economy';
 import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
+import type { CreatorReferral } from '@/types/creator-economy';
+
+/** Stable, so an empty list is the same empty list on every render. */
+const NO_REFERRALS: CreatorReferral[] = [];
 
 export default function CreatorReferralsScreen() {
   const { tokens } = useTheme();
@@ -92,6 +102,27 @@ export default function CreatorReferralsScreen() {
 
   const data = programme.programme;
 
+  // The rows, once the programme and the first page are in: until then the
+  // list's loading and its error stand in for them, as they did.
+  const referrals = data && !history.isLoading ? history.referrals : NO_REFERRALS;
+  const moreReferrals = referrals.length > 0 && history.hasNextPage;
+
+  // One person, in their slice of the card the rows share. The first row opens
+  // the card and the last closes it unless "Load more" follows, so the rows are
+  // redrawn when the list or its next page changes.
+  const renderReferral = useCallback(
+    ({ item, index }: ListRenderItemInfo<CreatorReferral>) => (
+      <View className="px-5">
+        <CreatorCardSlice first={index === 0} last={index === referrals.length - 1 && !moreReferrals}>
+          <View className="px-4">
+            <ReferralRow referral={item} />
+          </View>
+        </CreatorCardSlice>
+      </View>
+    ),
+    [referrals, moreReferrals]
+  );
+
   return (
     <CreatorScreen
       title="Invite people"
@@ -125,9 +156,84 @@ export default function CreatorReferralsScreen() {
           </Pressable>
         ) : undefined
       }
+      list={{
+        data: referrals,
+        keyExtractor: (referral) => referral.referralId,
+        renderItem: renderReferral,
+        // The shell watches the programme, so a failed read of this list is said here.
+        ListEmptyComponent: data ? (
+          <View className="px-5">
+            <ListState
+              loading={history.isLoading}
+              loadingLabel="Loading everyone you invited"
+              error={
+                history.error && history.referrals.length === 0 ? (
+                  <FinancialErrorInline error={history.error} onRetry={() => void history.refetch()} />
+                ) : null
+              }
+              isEmpty
+              empty={{
+                icon: 'person-add-outline',
+                title: 'Nobody yet',
+                message:
+                  'Share your link and the people who join will appear here, with where each one has got to.',
+              }}
+            />
+          </View>
+        ) : null,
+        ListFooterComponent: data ? (
+          <View className="px-5">
+            {/* The card closes with its next page, then the section's own margin. */}
+            <View className="mb-6">
+              {moreReferrals ? (
+                <CreatorCardSlice last>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Load more referrals"
+                    accessibilityState={{ busy: history.isFetchingNextPage }}
+                    disabled={history.isFetchingNextPage}
+                    onPress={() => history.fetchNextPage()}
+                    className="py-4 items-center"
+                  >
+                    <Text
+                      style={{ color: tokens.color.primary[500] }}
+                      className="text-[11px] font-black uppercase tracking-wider"
+                    >
+                      {history.isFetchingNextPage ? 'Loading…' : 'Load more'}
+                    </Text>
+                  </Pressable>
+                </CreatorCardSlice>
+              ) : null}
+            </View>
+
+            {/* ── Where the points land ────────────────────────────────────── */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open your rewards to see your points balance"
+              onPress={() => router.push('/creator/rewards')}
+              style={{
+                backgroundColor: tokens.color.surface.card,
+                borderColor: tokens.color.border.default,
+              }}
+              className="flex-row items-center rounded-2xl border p-4 mb-6"
+            >
+              <Ionicons name="sparkles-outline" size={17} color={tokens.color.text.secondary} />
+              <Text
+                style={{ color: tokens.color.text.primary }}
+                className="text-[13px] font-bold ml-3 flex-1"
+              >
+                Referral points land in your rewards balance
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={tokens.color.text.placeholder} />
+            </Pressable>
+          </View>
+        ) : null,
+      }}
     >
       {data ? (
-        <View className="px-5 pt-5">
+        // Above the rows. "Everyone you invited" closes below its rows, so the
+        // section's own bottom margin is taken back here and the footer draws it.
+        <View className="px-5 pt-5 -mb-6">
           {/* ── The code ─────────────────────────────────────────────────── */}
           <View
             style={{ backgroundColor: tokens.color.secondary[500] }}
@@ -253,72 +359,7 @@ export default function CreatorReferralsScreen() {
           </CreatorSection>
 
           {/* ── History ──────────────────────────────────────────────────── */}
-          <CreatorSection title="Everyone you invited" count={history.referrals.length}>
-            {/* The shell watches the programme, so a failed read of this list is said here. */}
-            <ListState
-              loading={history.isLoading}
-              loadingLabel="Loading everyone you invited"
-              error={
-                history.error && history.referrals.length === 0 ? (
-                  <FinancialErrorInline error={history.error} onRetry={() => void history.refetch()} />
-                ) : null
-              }
-              isEmpty={history.referrals.length === 0}
-              empty={{
-                icon: 'person-add-outline',
-                title: 'Nobody yet',
-                message:
-                  'Share your link and the people who join will appear here, with where each one has got to.',
-              }}
-            >
-              <CreatorCard padded={false}>
-                <View className="px-4">
-                  {history.referrals.map((referral) => (
-                    <ReferralRow key={referral.referralId} referral={referral} />
-                  ))}
-                </View>
-
-                {history.hasNextPage ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Load more referrals"
-                    accessibilityState={{ busy: history.isFetchingNextPage }}
-                    disabled={history.isFetchingNextPage}
-                    onPress={() => history.fetchNextPage()}
-                    className="py-4 items-center"
-                  >
-                    <Text
-                      style={{ color: tokens.color.primary[500] }}
-                      className="text-[11px] font-black uppercase tracking-wider"
-                    >
-                      {history.isFetchingNextPage ? 'Loading…' : 'Load more'}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </CreatorCard>
-            </ListState>
-          </CreatorSection>
-
-          {/* ── Where the points land ────────────────────────────────────── */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open your rewards to see your points balance"
-            onPress={() => router.push('/creator/rewards')}
-            style={{
-              backgroundColor: tokens.color.surface.card,
-              borderColor: tokens.color.border.default,
-            }}
-            className="flex-row items-center rounded-2xl border p-4 mb-6"
-          >
-            <Ionicons name="sparkles-outline" size={17} color={tokens.color.text.secondary} />
-            <Text
-              style={{ color: tokens.color.text.primary }}
-              className="text-[13px] font-bold ml-3 flex-1"
-            >
-              Referral points land in your rewards balance
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={tokens.color.text.placeholder} />
-          </Pressable>
+          <CreatorSection title="Everyone you invited" count={history.referrals.length} />
         </View>
       ) : null}
     </CreatorScreen>

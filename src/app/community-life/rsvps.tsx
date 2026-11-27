@@ -21,12 +21,19 @@
 // are the server's words about somebody's place at an event, and a client that
 // second-guessed them would tell a member they were going to something they
 // had been dropped from.
+//
+// ── A FlashList since 27 Nov 2026 (FARCH-004) ───────────────────────────────
+//
+// The diary pages, and a member who has said yes to a great deal kept every
+// page mounted. Its rows are recycled as they scroll now; see `rsvpKind` for the
+// one thing a recycled row has to be kept from.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 import { ListState } from '@/components/ListState';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
@@ -34,6 +41,23 @@ import { useMyRsvps } from '@/hooks/community-life';
 import { describeRsvp, isLiveRsvp } from '@/lib/domain/my-rsvps';
 import { formatRelativeTime } from '@/utils/format';
 import type { MyRsvp } from '@/types/community-life';
+
+/** One commitment. Module-level, so the list keeps a row until its RSVP changes. */
+function renderRsvp({ item }: ListRenderItemInfo<MyRsvp>) {
+  return <RsvpRow entry={item} />;
+}
+
+/**
+ * Live and past commitments are kept to rows of their own kind. A row's opacity
+ * says which it is, and a recycled TouchableOpacity handed the other kind fades
+ * to the new opacity over 250 ms instead of taking it.
+ */
+const rsvpKind = (entry: MyRsvp) => (isLiveRsvp(entry.rsvp) ? 'live' : 'past');
+
+/** The space the rows had between them. */
+function RsvpGap() {
+  return <View className="h-3" />;
+}
 
 export default function MyRsvpsScreen() {
   const { tokens } = useTheme();
@@ -47,34 +71,36 @@ export default function MyRsvpsScreen() {
     >
       <ScreenHeader title="Going to" showBack />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
-        {/* The error said "Pull down to try again" over a list nothing could pull; it offers
-            Try again instead (FARCH-007). RSVPs already shown stay when a later page fails. */}
-        <ListState
-          loading={isLoading}
-          loadingLabel="Loading your RSVPs"
-          error={
-            isError && rsvps.length === 0
-              ? { title: 'We could not load what you are going to', message: 'Your RSVPs are safe.' }
-              : null
-          }
-          onRetry={() => void refetch()}
-          isEmpty={rsvps.length === 0}
-          empty={{
-            icon: 'calendar-outline',
-            title: 'Nothing in the diary',
-            message:
-              'Events you say you are going to will appear here, along with your place on any waitlist.',
-            action: { label: 'Find something', onPress: () => router.push('/community-life') },
-          }}
-        >
-          <View className="gap-3">
-            {rsvps.map((entry) => (
-              <RsvpRow key={entry.rsvp.rsvpId} entry={entry} />
-            ))}
-          </View>
-
-          {hasNextPage ? (
+      {/* The error said "Pull down to try again" over a list nothing could pull; it offers
+          Try again instead (FARCH-007). RSVPs already shown stay when a later page fails. */}
+      <FlashList
+        data={rsvps}
+        keyExtractor={(entry) => entry.rsvp.rsvpId}
+        renderItem={renderRsvp}
+        getItemType={rsvpKind}
+        ItemSeparatorComponent={RsvpGap}
+        ListEmptyComponent={
+          <ListState
+            loading={isLoading}
+            loadingLabel="Loading your RSVPs"
+            error={
+              isError && rsvps.length === 0
+                ? { title: 'We could not load what you are going to', message: 'Your RSVPs are safe.' }
+                : null
+            }
+            onRetry={() => void refetch()}
+            isEmpty
+            empty={{
+              icon: 'calendar-outline',
+              title: 'Nothing in the diary',
+              message:
+                'Events you say you are going to will appear here, along with your place on any waitlist.',
+              action: { label: 'Find something', onPress: () => router.push('/community-life') },
+            }}
+          />
+        }
+        ListFooterComponent={
+          hasNextPage && rsvps.length > 0 ? (
             <TouchableOpacity
               accessibilityRole="button"
               accessibilityLabel="Load more"
@@ -95,9 +121,10 @@ export default function MyRsvpsScreen() {
                 </Text>
               )}
             </TouchableOpacity>
-          ) : null}
-        </ListState>
-      </ScrollView>
+          ) : null
+        }
+        contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+      />
     </SafeAreaView>
   );
 }

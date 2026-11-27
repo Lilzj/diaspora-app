@@ -31,10 +31,11 @@
 // decision returned is shown inline for exactly that reason.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
@@ -65,6 +66,9 @@ const DECISION_LABELS: Record<EmployerDecisionStatus, string> = {
   Rejected: 'Reject',
 };
 
+/** Stable, so a list with no rows to draw is the same empty list on every render. */
+const NO_APPLICANTS: ApplicationCardResponse[] = [];
+
 export default function HiringWorkspaceScreen() {
   const bottomInset = useBottomInset();
   const { showAlert } = useNotification();
@@ -88,11 +92,17 @@ export default function HiringWorkspaceScreen() {
   });
 
   const { decide, isDeciding, allowedFrom } = useDecideApplication();
+  // `decide` is a new function on every render, and the row renderer below must
+  // keep its identity, so the handler reads the latest one when it runs (FARCH-004).
+  const decideRef = useRef(decide);
+  useLayoutEffect(() => {
+    decideRef.current = decide;
+  });
 
   const onDecide = useCallback(
     async (application: ApplicationCardResponse, status: EmployerDecisionStatus) => {
       try {
-        await decide(application.applicationId, {
+        await decideRef.current(application.applicationId, {
           status,
           // Stated explicitly on every request. The server's default is `true`,
           // so leaving it unset publishes a reason to the candidate — which is
@@ -113,8 +123,30 @@ export default function HiringWorkspaceScreen() {
         });
       }
     },
-    [decide, showAlert]
+    [showAlert]
   );
+
+  // Stable, so the list redraws an applicant's row only when the application, or
+  // whether a decision is in flight, changes (FARCH-004).
+  const renderApplicant = useCallback(
+    ({ item: application }: ListRenderItemInfo<ApplicationCardResponse>) => (
+      <View className="px-4">
+        <ApplicantRow
+          application={application}
+          decisions={allowedFrom(application.status)}
+          isDeciding={isDeciding}
+          onDecide={(status) => onDecide(application, status)}
+        />
+      </View>
+    ),
+    [allowedFrom, isDeciding, onDecide]
+  );
+
+  // The rows, unless the list is saying it is loading, could not be read, or is empty.
+  const listed =
+    !applicants.isLoading &&
+    !(applicants.error && applicants.applications.length === 0) &&
+    !applicants.isEmpty;
 
   if (dashboard.isLoading) {
     return (
@@ -163,8 +195,13 @@ export default function HiringWorkspaceScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title={summary.employerName} />
 
-      <ScrollView
-        className="flex-1"
+      <FlashList
+        // The applicants page, so the list recycles its rows rather than keeping
+        // every page mounted (FARCH-004, 27 Nov 2026). The workspace above them is
+        // its header.
+        data={listed ? applicants.applications : NO_APPLICANTS}
+        keyExtractor={(application) => application.applicationId}
+        renderItem={renderApplicant}
         contentContainerStyle={{ paddingBottom: bottomInset }}
         refreshControl={
           <RefreshControl
@@ -176,145 +213,138 @@ export default function HiringWorkspaceScreen() {
           />
         }
         showsVerticalScrollIndicator={false}
-      >
-        {/* People waiting on you. First, deliberately. */}
-        <View className="mx-4 mt-4 p-4 rounded-2xl bg-surface-card border border-subtle">
-          <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
-            Waiting on you
-          </Text>
-          <View className="flex-row mt-3 gap-6">
-            <Stat label="Not opened" value={summary.unviewedApplicationCount} emphasise />
-            <Stat label="Unanswered" value={summary.staleApplicationCount} emphasise />
-            <Stat label="Active" value={summary.activeApplicationCount} />
-          </View>
-          <Text className="text-[11px] text-content-faint mt-3 leading-relaxed">
-            Applications left unanswered past the platform threshold count towards the response
-            record candidates can see on your profile.
-          </Text>
-        </View>
+        ListHeaderComponent={
+          <>
+            {/* People waiting on you. First, deliberately. */}
+            <View className="mx-4 mt-4 p-4 rounded-2xl bg-surface-card border border-subtle">
+              <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
+                Waiting on you
+              </Text>
+              <View className="flex-row mt-3 gap-6">
+                <Stat label="Not opened" value={summary.unviewedApplicationCount} emphasise />
+                <Stat label="Unanswered" value={summary.staleApplicationCount} emphasise />
+                <Stat label="Active" value={summary.activeApplicationCount} />
+              </View>
+              <Text className="text-[11px] text-content-faint mt-3 leading-relaxed">
+                Applications left unanswered past the platform threshold count towards the response
+                record candidates can see on your profile.
+              </Text>
+            </View>
 
-        <Responsiveness responsiveness={summary.responsiveness} />
+            <Responsiveness responsiveness={summary.responsiveness} />
 
-        <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
-          <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
-            Coming up
-          </Text>
-          <View className="flex-row mt-3 gap-6">
-            <Stat label="Interviews" value={summary.upcomingInterviewCount} />
-            <Stat label="Offers out" value={summary.outstandingOfferCount} />
-            <Stat label="Open roles" value={summary.openCount} />
-          </View>
-          {/* Counts, not lists, because no route lists either. Saying so is
-              better than a chevron that opens an empty screen. */}
-          <Text className="text-[11px] text-content-faint mt-3 leading-relaxed">
-            Interviews and offers are shown as totals — the platform has no route that lists them
-            for an employer yet.
-          </Text>
-        </View>
+            <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
+              <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
+                Coming up
+              </Text>
+              <View className="flex-row mt-3 gap-6">
+                <Stat label="Interviews" value={summary.upcomingInterviewCount} />
+                <Stat label="Offers out" value={summary.outstandingOfferCount} />
+                <Stat label="Open roles" value={summary.openCount} />
+              </View>
+              {/* Counts, not lists, because no route lists either. Saying so is
+                  better than a chevron that opens an empty screen. */}
+              <Text className="text-[11px] text-content-faint mt-3 leading-relaxed">
+                Interviews and offers are shown as totals — the platform has no route that lists them
+                for an employer yet.
+              </Text>
+            </View>
 
-        {/* The analytics half of hiring — `GET /analytics/employers/me`. Until
-            13 Sep 2026 nothing in the app led to the employer dashboard at all;
-            this workspace is where an employer would look for it. */}
-        <TouchableOpacity
-          onPress={() => router.push('/analytics/employer')}
-          accessibilityRole="button"
-          accessibilityLabel="How your jobs are doing. Views, applications and your top jobs."
-          className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle flex-row items-center"
-        >
-          <View className="flex-1">
-            <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
-              How your jobs are doing
-            </Text>
-            <Text className="text-[13px] text-content-secondary mt-1">
-              Views, applications and your top jobs
-            </Text>
-          </View>
-          <Text className="text-xl font-bold text-content-tertiary">›</Text>
-        </TouchableOpacity>
-
-        {/* The response record above is published on this profile. Until 15 Sep
-            2026 the profile page called a route that did not exist, so an
-            employer had no way to see what candidates see. */}
-        <TouchableOpacity
-          onPress={() => router.push(`/employer/${summary.employerId}`)}
-          accessibilityRole="button"
-          accessibilityLabel="Your public profile. What candidates see about your employer."
-          className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle flex-row items-center"
-        >
-          <View className="flex-1">
-            <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
-              Your public profile
-            </Text>
-            <Text className="text-[13px] text-content-secondary mt-1">
-              What candidates see about {summary.employerName}
-            </Text>
-          </View>
-          <Text className="text-xl font-bold text-content-tertiary">›</Text>
-        </TouchableOpacity>
-
-        <View className="flex-row items-center justify-between px-4 pt-6 pb-2">
-          <Text className="text-sm font-black uppercase tracking-widest text-content-strong">
-            Applicants
-          </Text>
-          <TouchableOpacity
-            onPress={() => setUnviewedOnly((value) => !value)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: unviewedOnly }}
-            className={`px-3 py-1.5 rounded-full border ${
-              unviewedOnly ? 'bg-primary-500 border-primary-500' : 'border-line'
-            }`}
-          >
-            <Text
-              className={`text-[11px] font-bold ${
-                unviewedOnly ? 'text-white' : 'text-content-tertiary'
-              }`}
+            {/* The analytics half of hiring — `GET /analytics/employers/me`. Until
+                13 Sep 2026 nothing in the app led to the employer dashboard at all;
+                this workspace is where an employer would look for it. */}
+            <TouchableOpacity
+              onPress={() => router.push('/analytics/employer')}
+              accessibilityRole="button"
+              accessibilityLabel="How your jobs are doing. Views, applications and your top jobs."
+              className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle flex-row items-center"
             >
-              Not opened
-            </Text>
-          </TouchableOpacity>
-        </View>
+              <View className="flex-1">
+                <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
+                  How your jobs are doing
+                </Text>
+                <Text className="text-[13px] text-content-secondary mt-1">
+                  Views, applications and your top jobs
+                </Text>
+              </View>
+              <Text className="text-xl font-bold text-content-tertiary">›</Text>
+            </TouchableOpacity>
 
-        {/* A failed refresh keeps the rows on screen, with the reason beside them. */}
-        {applicants.error && applicants.applications.length > 0 ? (
-          <View className="mx-4 p-4 rounded-xl bg-surface-muted border border-error-default">
-            <Text className="text-sm font-bold text-error-default">{applicants.error}</Text>
-          </View>
-        ) : null}
+            {/* The response record above is published on this profile. Until 15 Sep
+                2026 the profile page called a route that did not exist, so an
+                employer had no way to see what candidates see. */}
+            <TouchableOpacity
+              onPress={() => router.push(`/employer/${summary.employerId}`)}
+              accessibilityRole="button"
+              accessibilityLabel="Your public profile. What candidates see about your employer."
+              className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle flex-row items-center"
+            >
+              <View className="flex-1">
+                <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
+                  Your public profile
+                </Text>
+                <Text className="text-[13px] text-content-secondary mt-1">
+                  What candidates see about {summary.employerName}
+                </Text>
+              </View>
+              <Text className="text-xl font-bold text-content-tertiary">›</Text>
+            </TouchableOpacity>
 
-        {/* Loading, unread and empty through the shared list state (FARCH-007,
-            27 Nov 2026). They were three separate blocks, each free to draw beside
-            the others; with nothing to show, a failed read is now said, with a retry. */}
-        <ListState
-          loading={applicants.isLoading}
-          loadingLabel="Loading applicants"
-          error={
-            applicants.error && applicants.applications.length === 0
-              ? { title: 'Applicants could not be loaded', message: applicants.error }
-              : null
-          }
-          onRetry={applicants.refresh}
-          isEmpty={applicants.isEmpty}
-          empty={{
-            icon: 'folder-open-outline',
-            title: unviewedOnly ? 'Everything has been opened' : 'No active applicants',
-            message: unviewedOnly
-              ? 'Every application still under consideration has been opened by someone on your team.'
-              : 'Applications to your open roles appear here.',
-          }}
-        >
-          <View className="px-4">
-            {applicants.applications.map((application) => (
-              <ApplicantRow
-                key={application.applicationId}
-                application={application}
-                decisions={allowedFrom(application.status)}
-                isDeciding={isDeciding}
-                onDecide={(status) => onDecide(application, status)}
-              />
-            ))}
-          </View>
+            <View className="flex-row items-center justify-between px-4 pt-6 pb-2">
+              <Text className="text-sm font-black uppercase tracking-widest text-content-strong">
+                Applicants
+              </Text>
+              <TouchableOpacity
+                onPress={() => setUnviewedOnly((value) => !value)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: unviewedOnly }}
+                className={`px-3 py-1.5 rounded-full border ${
+                  unviewedOnly ? 'bg-primary-500 border-primary-500' : 'border-line'
+                }`}
+              >
+                <Text
+                  className={`text-[11px] font-bold ${
+                    unviewedOnly ? 'text-white' : 'text-content-tertiary'
+                  }`}
+                >
+                  Not opened
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-          {applicants.hasMore ? (
+            {/* A failed refresh keeps the rows on screen, with the reason beside them. */}
+            {applicants.error && applicants.applications.length > 0 ? (
+              <View className="mx-4 p-4 rounded-xl bg-surface-muted border border-error-default">
+                <Text className="text-sm font-bold text-error-default">{applicants.error}</Text>
+              </View>
+            ) : null}
+          </>
+        }
+        ListEmptyComponent={
+          // Loading, unread and empty through the shared list state (FARCH-007,
+          // 27 Nov 2026). They were three separate blocks, each free to draw beside
+          // the others; with nothing to show, a failed read is now said, with a retry.
+          <ListState
+            loading={applicants.isLoading}
+            loadingLabel="Loading applicants"
+            error={
+              applicants.error && applicants.applications.length === 0
+                ? { title: 'Applicants could not be loaded', message: applicants.error }
+                : null
+            }
+            onRetry={applicants.refresh}
+            isEmpty={applicants.isEmpty}
+            empty={{
+              icon: 'folder-open-outline',
+              title: unviewedOnly ? 'Everything has been opened' : 'No active applicants',
+              message: unviewedOnly
+                ? 'Every application still under consideration has been opened by someone on your team.'
+                : 'Applications to your open roles appear here.',
+            }}
+          />
+        }
+        ListFooterComponent={
+          listed && applicants.hasMore ? (
             <View className="px-4 py-4">
               <Button
                 label={applicants.isFetchingMore ? 'Loading…' : 'Show more'}
@@ -323,9 +353,9 @@ export default function HiringWorkspaceScreen() {
                 onPress={applicants.loadMore}
               />
             </View>
-          ) : null}
-        </ListState>
-      </ScrollView>
+          ) : null
+        }
+      />
     </SafeAreaView>
   );
 }

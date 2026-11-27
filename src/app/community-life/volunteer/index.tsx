@@ -1,10 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Volunteer discovery (§18)
+//
+// The list pages, so the screen is one FlashList (FARCH-004, 27 Nov 2026): the
+// filters are drawn above the rows, and the rows are recycled as they scroll
+// rather than every page staying mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import {
@@ -18,6 +23,7 @@ import { ListState } from '@/components/ListState';
 import { useOpportunities } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
+import type { VolunteerOpportunity } from '@/types/community-advanced';
 
 const CAUSES = [
   { value: '', label: 'All causes' },
@@ -28,6 +34,18 @@ const CAUSES = [
   { value: 'Food', label: 'Food' },
   { value: 'Health', label: 'Health' },
 ];
+
+/** One opportunity. Module-level, so the list keeps a row until its opportunity changes. */
+function renderOpportunity({ item }: ListRenderItemInfo<VolunteerOpportunity>) {
+  return (
+    <View className="px-5 mb-3">
+      <OpportunityCard
+        opportunity={item}
+        onPress={() => router.push(`/community-life/volunteer/${item.opportunityId}` as never)}
+      />
+    </View>
+  );
+}
 
 export default function VolunteerListScreen() {
   const { tokens } = useTheme();
@@ -108,8 +126,62 @@ export default function VolunteerListScreen() {
           </View>
         </View>
       }
+      list={{
+        data: opportunities,
+        keyExtractor: (opportunity) => opportunity.opportunityId,
+        renderItem: renderOpportunity,
+        // The shell draws the list's loading and error; the list says when it is empty.
+        ListEmptyComponent: (
+          <View className="px-5">
+            <ListState
+              isEmpty
+              empty={{
+                icon: 'hand-left-outline',
+                title: 'Nothing to volunteer for right now',
+                message:
+                  query || cause
+                    ? 'Try widening your filters.'
+                    : 'When a community near you needs help, it will show up here.',
+                action:
+                  query || cause
+                    ? {
+                        label: 'Clear filters',
+                        onPress: () => {
+                          setQuery('');
+                          setCause('');
+                        },
+                      }
+                    : undefined,
+              }}
+            />
+          </View>
+        ),
+        ListFooterComponent: (
+          <View className="px-5">
+            {hasNextPage && opportunities.length > 0 ? (
+              <View className="mb-4">
+                {isFetchingNextPage ? (
+                  <View className="py-4 items-center" accessibilityLabel="Loading more">
+                    <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                  </View>
+                ) : (
+                  <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+                )}
+              </View>
+            ) : null}
+
+            <View className="mt-2">
+              <PrimaryButton
+                label="My volunteering"
+                icon="person-circle-outline"
+                onPress={() => router.push('/community-life/volunteer/dashboard')}
+              />
+            </View>
+          </View>
+        ),
+      }}
     >
-      <View className="px-5 pt-4">
+      <View className="px-5 pt-4 pb-4">
         <ChipRow accessibilityLabel="Filter by cause" options={CAUSES} value={cause} onChange={setCause} />
         <View className="flex-row mt-1">
           <ChipRow
@@ -135,62 +207,6 @@ export default function VolunteerListScreen() {
             />
           </View>
         ) : null}
-      </View>
-
-      <View className="px-5 mt-4">
-        {/* The shell draws the list's loading and error; the list says when it is empty. */}
-        <ListState
-          isEmpty={opportunities.length === 0}
-          empty={{
-            icon: 'hand-left-outline',
-            title: 'Nothing to volunteer for right now',
-            message:
-              query || cause
-                ? 'Try widening your filters.'
-                : 'When a community near you needs help, it will show up here.',
-            action:
-              query || cause
-                ? {
-                    label: 'Clear filters',
-                    onPress: () => {
-                      setQuery('');
-                      setCause('');
-                    },
-                  }
-                : undefined,
-          }}
-        >
-          {opportunities.map((opportunity) => (
-            <View key={opportunity.opportunityId} className="mb-3">
-              <OpportunityCard
-                opportunity={opportunity}
-                onPress={() =>
-                  router.push(`/community-life/volunteer/${opportunity.opportunityId}` as never)
-                }
-              />
-            </View>
-          ))}
-
-          {hasNextPage ? (
-            <View className="mb-4">
-              {isFetchingNextPage ? (
-                <View className="py-4 items-center" accessibilityLabel="Loading more">
-                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                </View>
-              ) : (
-                <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-              )}
-            </View>
-          ) : null}
-        </ListState>
-
-        <View className="mt-2">
-          <PrimaryButton
-            label="My volunteering"
-            icon="person-circle-outline"
-            onPress={() => router.push('/community-life/volunteer/dashboard')}
-          />
-        </View>
       </View>
     </CommunityScreen>
   );

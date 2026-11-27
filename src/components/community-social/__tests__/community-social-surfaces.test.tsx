@@ -18,7 +18,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/design-system';
 import { apiClient } from '@/lib/transport/apiClient';
 import { toCommunityPost } from '@/lib/api/community-social-api';
-import { CommentThread } from '../CommentThread';
+import { FlashList } from '@shopify/flash-list';
+import { ListState } from '@/components/ListState';
+import { CommentThreadComposer, useCommentThreadList } from '../CommentThread';
 import { CommunityPostCard } from '../CommunityPostCard';
 import { PollBlock } from '../PollBlock';
 import { FollowButton } from '@/components/FollowButton';
@@ -79,7 +81,11 @@ afterAll(() => {
 });
 
 function renderSurface(node: React.ReactElement) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  // Mutations too: a settled one is otherwise kept, and its collector's
+  // five-minute timer held Jest open for five minutes after this file ran alone.
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { gcTime: 0 } },
+  });
   return render(
     <QueryClientProvider client={client}>
       <ThemeProvider>{node}</ThemeProvider>
@@ -368,6 +374,24 @@ describe("a poll's state, as the server sends it", () => {
 
 // ── Comment threads ──────────────────────────────────────────────────────────
 
+/**
+ * The thread as a screen draws it since FARCH-004: one FlashList, the compose
+ * box at the foot of its header, the comments as its rows, and the thread's
+ * loading, error and empty in its empty slot through `ListState`.
+ */
+function CommentThread(props: Parameters<typeof useCommentThreadList>[0]) {
+  const comments = useCommentThreadList(props);
+
+  return (
+    <FlashList
+      {...comments.list}
+      ListHeaderComponent={<CommentThreadComposer {...comments.composer} />}
+      ListEmptyComponent={<ListState {...comments.states} />}
+      ListFooterComponent={comments.footer}
+    />
+  );
+}
+
 describe('a comment thread', () => {
   /**
    * A deleted comment arrives with `isTombstoned: true` and an **empty body**,
@@ -455,6 +479,49 @@ describe('a comment thread', () => {
     // difference between the two rendered depths — which the cap makes zero.
     const reply = screen.getByTestId('comment-nine');
     expect(reply.props.style.marginLeft).toBe(0);
+  });
+
+  /**
+   * The thread is a list that recycles its rows (FARCH-004), so a reply draft
+   * cannot live on the row: a row handed the next comment would carry it. Each
+   * draft is the comment's own, and waits for it while another box is open.
+   */
+  it('keeps each reply draft under the comment it was typed under', () => {
+    renderSurface(
+      <CommentThread
+        target={{ contentType: 'post', contentId: 'post-1' }}
+        thread={buildThread([
+          buildComment({ commentId: 'c1', body: 'First.' }),
+          buildComment({ commentId: 'c2', body: 'Second.' }),
+        ])}
+      />
+    );
+
+    fireEvent.press(screen.getAllByLabelText('Reply to this comment')[0]);
+    fireEvent.changeText(screen.getByLabelText('Write a reply'), 'For the first.');
+
+    fireEvent.press(screen.getAllByLabelText('Reply to this comment')[1]);
+    expect(screen.getByLabelText('Write a reply').props.value).toBe('');
+
+    fireEvent.press(screen.getAllByLabelText('Reply to this comment')[0]);
+    expect(screen.getByLabelText('Write a reply').props.value).toBe('For the first.');
+  });
+
+  it('gives a refused reply back to its box', async () => {
+    renderSurface(
+      <CommentThread
+        target={{ contentType: 'post', contentId: 'post-1' }}
+        thread={buildThread([buildComment({ commentId: 'c1', body: 'First.' })])}
+      />
+    );
+
+    fireEvent.press(screen.getByLabelText('Reply to this comment'));
+    fireEvent.changeText(screen.getByLabelText('Write a reply'), 'Will be refused.');
+    fireEvent.press(screen.getByLabelText('Post reply'));
+
+    // Cleared while it is sent, and back once the server says no.
+    expect(screen.getByLabelText('Write a reply').props.value).toBe('');
+    await waitFor(() => expect(screen.getByLabelText('Write a reply').props.value).toBe('Will be refused.'));
   });
 
   it('renders an empty thread as empty', () => {

@@ -17,6 +17,11 @@
 //
 // GAP-020: there is no realtime channel for campaign progress, so the figure is
 // re-read on a timer and the screen says so rather than implying a live feed.
+//
+// The supporter list pages, so the screen is one FlashList (FARCH-004, 27 Nov
+// 2026): the campaign is drawn above the supporters as the list's header, and
+// the supporters are recycled as they scroll rather than every page staying
+// mounted.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
@@ -57,9 +62,14 @@ import {
 import { presentGivingStatus } from '@/lib/domain/financial-status';
 import { describeCampaign , isOrganiserOnlyCampaignState} from '@/lib/domain/community-state';
 import { CommunityCover } from '@/components/community';
+import { campaignSupporterKey, renderCampaignSupporter } from '@/components/community/CampaignSupporterRow';
 import { bucketProgress, moneyProps, trackCommunityEvent } from '@/lib/platform/community-analytics';
+import type { CampaignSupporter } from '@/types/community-advanced';
 
 type Tab = 'story' | 'updates' | 'supporters' | 'transparency';
+
+/** The list's rows on every tab but Supporters. */
+const NO_SUPPORTERS: CampaignSupporter[] = [];
 
 export default function CampaignScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -147,6 +157,134 @@ export default function CampaignScreen() {
           )
         ) : null
       }
+      list={{
+        data: campaign && tab === 'supporters' ? supportersRead.supporters : NO_SUPPORTERS,
+        keyExtractor: campaignSupporterKey,
+        renderItem: renderCampaignSupporter,
+        ListEmptyComponent:
+          campaign && tab === 'supporters' ? (
+            <View className="px-5">
+              <ListState
+                loading={supportersRead.isLoading} loadingLabel="Loading supporters"
+                error={supportersRead.isError && supportersRead.supporters.length === 0 && { title: 'Supporters could not be loaded', message: supportersRead.error?.message }}
+                onRetry={() => void supportersRead.refetch()}
+                isEmpty
+                empty={{ icon: 'people-outline', title: 'No supporters listed', message: 'Be the first, or they may all have given anonymously.' }}
+              />
+            </View>
+          ) : null,
+        ListFooterComponent: campaign ? (
+          <>
+            {tab === 'supporters' && supportersRead.hasNextPage && supportersRead.supporters.length > 0 ? (
+              <View className="px-5 mt-3">
+                <SecondaryButton label="Show more supporters" onPress={() => void supportersRead.fetchNextPage()} />
+              </View>
+            ) : null}
+
+            {/* Organizer controls */}
+            {campaign.canManage ? (
+              <View className="px-5 mt-8">
+                <Text
+                  accessibilityRole="header"
+                  style={{ color: tokens.color.text.primary }}
+                  className="text-sm font-black tracking-tight mb-3"
+                >
+                  Manage
+                </Text>
+
+                {/* The campaign's giving over a period — raised, gifts,
+                    supporters, refunds — from `GET /analytics/campaigns/{id}`,
+                    for whoever may run it. */}
+                <View className="mb-3">
+                  <SecondaryButton
+                    label="Giving figures"
+                    icon="stats-chart-outline"
+                    onPress={() =>
+                      router.push(`/analytics/campaign/${encodeURIComponent(campaign.campaignId)}` as never)
+                    }
+                  />
+                </View>
+
+                {campaign.status === 'Draft' || campaign.status === 'Rejected' ? (
+                  <PrimaryButton
+                    label="Submit for review"
+                    icon="paper-plane-outline"
+                    busy={action.isPending}
+                    onPress={() => {
+                      trackCommunityEvent('community.campaign.submitted', {
+                        campaignId: campaign.campaignId,
+                        campaignCategory: campaign.category,
+                        ...moneyProps(campaign.progress.target.value),
+                      });
+                      action.mutate({ campaignId: campaign.campaignId, action: 'submit' });
+                    }}
+                  />
+                ) : null}
+
+                {/* **Read from the server, not decided here.** `availableTransitions` is
+                    the platform's list of moves this caller may make, and this screen
+                    used to ignore it and hardcode one button per status — so an
+                    organiser on a deployment that does not review campaigns was told
+                    Diaspora was reviewing theirs, with no way to publish it and
+                    nobody coming. The server now excludes `Published` from the list
+                    where the review policy reserves it for staff, so offering the
+                    button when it is named is safe in both configurations. */}
+                {campaign.status === 'PendingReview' ? (
+                  campaign.availableTransitions?.includes('Published') ? (
+                    <PrimaryButton
+                      label="Publish this campaign"
+                      icon="rocket-outline"
+                      busy={action.isPending}
+                      onPress={() => {
+                        trackCommunityEvent('community.campaign.published', {
+                          campaignId: campaign.campaignId,
+                          campaignCategory: campaign.category,
+                          ...moneyProps(campaign.progress.target.value),
+                        });
+                        action.mutate({ campaignId: campaign.campaignId, action: 'publish' });
+                      }}
+                    />
+                  ) : (
+                    <InlineRefusal
+                      icon="hourglass-outline"
+                      reason="Diaspora is reviewing this campaign. You will be told as soon as it is decided."
+                    />
+                  )
+                ) : null}
+
+                {campaign.status === 'Active' ? (
+                  <SecondaryButton
+                    label="Pause donations"
+                    icon="pause-outline"
+                    disabled={action.isPending}
+                    onPress={() => action.mutate({ campaignId: campaign.campaignId, action: 'pause' })}
+                  />
+                ) : null}
+
+                {campaign.status === 'Paused' ? (
+                  <PrimaryButton
+                    label="Resume donations"
+                    icon="play-outline"
+                    busy={action.isPending}
+                    onPress={() => action.mutate({ campaignId: campaign.campaignId, action: 'resume' })}
+                  />
+                ) : null}
+
+                {['Active', 'Paused', 'GoalReached', 'DeadlineReached'].includes(campaign.status) ? (
+                  <View className="mt-3">
+                    <SecondaryButton
+                      label="Close this campaign"
+                      icon="lock-closed-outline"
+                      disabled={action.isPending}
+                      onPress={() => action.mutate({ campaignId: campaign.campaignId, action: 'close' })}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+          </>
+        ) : null,
+      }}
     >
       {!campaign ? (
         <EmptyState
@@ -476,77 +614,13 @@ export default function CampaignScreen() {
           ) : null}
 
           {/* ── Supporters ────────────────────────────────────────────────── */}
+          {/* The supporters themselves are the screen's list, drawn below this. */}
           {tab === 'supporters' ? (
-            <View className="px-5 mt-4">
+            <View className="px-5 mt-4 pb-3">
               <InlineRefusal
                 icon="eye-off-outline"
                 reason="Anonymous supporters are shown without a name because Diaspora does not record who they are. There is nothing to reveal."
               />
-
-              <View className="mt-3">
-                <ListState
-                  loading={supportersRead.isLoading} loadingLabel="Loading supporters"
-                  error={supportersRead.isError && supportersRead.supporters.length === 0 && { title: 'Supporters could not be loaded', message: supportersRead.error?.message }}
-                  onRetry={() => void supportersRead.refetch()}
-                  isEmpty={supportersRead.supporters.length === 0}
-                  empty={{ icon: 'people-outline', title: 'No supporters listed', message: 'Be the first, or they may all have given anonymously.' }}
-                >
-                  {supportersRead.supporters.map((supporter, index) => (
-                    <View
-                      key={`${supporter.userId ?? 'anon'}-${index}`}
-                      className="flex-row items-center py-3"
-                      style={{ borderBottomWidth: 1, borderBottomColor: tokens.color.border.default }}
-                      accessible
-                      accessibilityRole="text"
-                      accessibilityLabel={`${supporter.displayName}${
-                        supporter.amount
-                          ? `, ${supporter.amount.symbol ?? ''}${supporter.amount.amount}`
-                          : ''
-                      }${supporter.message ? `. ${supporter.message}` : ''}`}
-                    >
-                      <View
-                        style={{ backgroundColor: tokens.color.surface.elevated }}
-                        className="w-9 h-9 rounded-full items-center justify-center"
-                      >
-                        <Ionicons
-                          name={supporter.isAnonymous ? 'eye-off-outline' : 'person-outline'}
-                          size={15}
-                          color={tokens.color.text.placeholder}
-                        />
-                      </View>
-                      <View className="flex-1 ml-3">
-                        <Text
-                          style={{ color: tokens.color.text.primary }}
-                          className="text-xs font-bold"
-                        >
-                          {supporter.displayName}
-                        </Text>
-                        {supporter.message ? (
-                          <Text
-                            style={{ color: tokens.color.text.secondary }}
-                            className="text-[11px] font-semibold mt-0.5 leading-relaxed"
-                          >
-                            {supporter.message}
-                          </Text>
-                        ) : null}
-                      </View>
-                      {supporter.amount ? (
-                        <AmountDisplay
-                          value={supporter.amount}
-                          size="small"
-                          accessibilityPrefix="Gave"
-                        />
-                      ) : null}
-                    </View>
-                  ))}
-
-                  {supportersRead.hasNextPage ? (
-                    <View className="mt-3">
-                      <SecondaryButton label="Show more supporters" onPress={() => void supportersRead.fetchNextPage()} />
-                    </View>
-                  ) : null}
-                </ListState>
-              </View>
             </View>
           ) : null}
 
@@ -701,108 +775,6 @@ export default function CampaignScreen() {
                 whether a settled payout backs it — see the badge on each row,
                 which is a stronger and truer statement than a blanket label.
               */}
-            </View>
-          ) : null}
-
-          {/* Organizer controls */}
-          {campaign.canManage ? (
-            <View className="px-5 mt-8">
-              <Text
-                accessibilityRole="header"
-                style={{ color: tokens.color.text.primary }}
-                className="text-sm font-black tracking-tight mb-3"
-              >
-                Manage
-              </Text>
-
-              {/* The campaign's giving over a period — raised, gifts,
-                  supporters, refunds — from `GET /analytics/campaigns/{id}`,
-                  for whoever may run it. */}
-              <View className="mb-3">
-                <SecondaryButton
-                  label="Giving figures"
-                  icon="stats-chart-outline"
-                  onPress={() =>
-                    router.push(`/analytics/campaign/${encodeURIComponent(campaign.campaignId)}` as never)
-                  }
-                />
-              </View>
-
-              {campaign.status === 'Draft' || campaign.status === 'Rejected' ? (
-                <PrimaryButton
-                  label="Submit for review"
-                  icon="paper-plane-outline"
-                  busy={action.isPending}
-                  onPress={() => {
-                    trackCommunityEvent('community.campaign.submitted', {
-                      campaignId: campaign.campaignId,
-                      campaignCategory: campaign.category,
-                      ...moneyProps(campaign.progress.target.value),
-                    });
-                    action.mutate({ campaignId: campaign.campaignId, action: 'submit' });
-                  }}
-                />
-              ) : null}
-
-              {/* **Read from the server, not decided here.** `availableTransitions` is
-                  the platform's list of moves this caller may make, and this screen
-                  used to ignore it and hardcode one button per status — so an
-                  organiser on a deployment that does not review campaigns was told
-                  Diaspora was reviewing theirs, with no way to publish it and
-                  nobody coming. The server now excludes `Published` from the list
-                  where the review policy reserves it for staff, so offering the
-                  button when it is named is safe in both configurations. */}
-              {campaign.status === 'PendingReview' ? (
-                campaign.availableTransitions?.includes('Published') ? (
-                  <PrimaryButton
-                    label="Publish this campaign"
-                    icon="rocket-outline"
-                    busy={action.isPending}
-                    onPress={() => {
-                      trackCommunityEvent('community.campaign.published', {
-                        campaignId: campaign.campaignId,
-                        campaignCategory: campaign.category,
-                        ...moneyProps(campaign.progress.target.value),
-                      });
-                      action.mutate({ campaignId: campaign.campaignId, action: 'publish' });
-                    }}
-                  />
-                ) : (
-                  <InlineRefusal
-                    icon="hourglass-outline"
-                    reason="Diaspora is reviewing this campaign. You will be told as soon as it is decided."
-                  />
-                )
-              ) : null}
-
-              {campaign.status === 'Active' ? (
-                <SecondaryButton
-                  label="Pause donations"
-                  icon="pause-outline"
-                  disabled={action.isPending}
-                  onPress={() => action.mutate({ campaignId: campaign.campaignId, action: 'pause' })}
-                />
-              ) : null}
-
-              {campaign.status === 'Paused' ? (
-                <PrimaryButton
-                  label="Resume donations"
-                  icon="play-outline"
-                  busy={action.isPending}
-                  onPress={() => action.mutate({ campaignId: campaign.campaignId, action: 'resume' })}
-                />
-              ) : null}
-
-              {['Active', 'Paused', 'GoalReached', 'DeadlineReached'].includes(campaign.status) ? (
-                <View className="mt-3">
-                  <SecondaryButton
-                    label="Close this campaign"
-                    icon="lock-closed-outline"
-                    disabled={action.isPending}
-                    onPress={() => action.mutate({ campaignId: campaign.campaignId, action: 'close' })}
-                  />
-                </View>
-              ) : null}
             </View>
           ) : null}
         </View>

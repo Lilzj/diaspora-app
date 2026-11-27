@@ -9,11 +9,16 @@
 //
 // Publishing is role-gated and refused server-side when the caller's
 // organization capabilities do not include `canPublishAnnouncements`.
+//
+// The feed pages, so it is the screen's list (FARCH-004, 27 Nov 2026): the
+// filter is drawn above the rows, and the rows are recycled as they scroll
+// rather than every page staying mounted. The compose form is not a list.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';
 import { ActivityIndicator, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import {
@@ -33,8 +38,26 @@ import {
   usePublishAnnouncement,
 } from '@/hooks/community-life';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
-import type { AnnouncementScope } from '@/types/community-advanced';
+import type { AnnouncementScope, CommunityAnnouncement } from '@/types/community-advanced';
 import type { FinancialError } from '@/lib/transport/financial-errors';
+
+/** One announcement. Module-level, so the list keeps a row until its announcement changes. */
+function renderAnnouncement({ item }: ListRenderItemInfo<CommunityAnnouncement>) {
+  return (
+    <View className="px-5 mb-2.5">
+      <AnnouncementCard
+        announcement={item}
+        onPress={() => {
+          trackCommunityEvent('community.announcement.viewed', {
+            announcementId: item.announcementId,
+            scope: item.scope,
+          });
+          if (item.actionRoute) router.push(item.actionRoute as never);
+        }}
+      />
+    </View>
+  );
+}
 
 export default function AnnouncementsScreen() {
   const { scope, scopeId } = useLocalSearchParams<{ scope?: AnnouncementScope; scopeId?: string }>();
@@ -115,6 +138,48 @@ export default function AnnouncementsScreen() {
             </View>
           </View>
         ) : null
+      }
+      list={
+        isComposing
+          ? undefined
+          : {
+              data: announcements,
+              keyExtractor: (announcement) => announcement.announcementId,
+              renderItem: renderAnnouncement,
+              // The shell draws the feed's loading and error; the list says when it is empty.
+              ListEmptyComponent: (
+                <View className="px-5">
+                  <ListState
+                    isEmpty
+                    empty={{
+                      icon: 'megaphone-outline',
+                      title: 'Nothing announced',
+                      message: 'When a community you belong to has something to say, it will be here and in your notifications.',
+                    }}
+                  />
+                </View>
+              ),
+              ListFooterComponent: (
+                <View className="px-5">
+                  {hasNextPage && announcements.length > 0 ? (
+                    <View className="mb-4">
+                      {isFetchingNextPage ? (
+                        <View className="py-4 items-center" accessibilityLabel="Loading more">
+                          <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                        </View>
+                      ) : (
+                        <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+                      )}
+                    </View>
+                  ) : null}
+
+                  <InlineRefusal
+                    icon="notifications-outline"
+                    reason="Announcements also arrive in your Diaspora notifications. You choose which ones reach you in Settings."
+                  />
+                </View>
+              ),
+            }
       }
     >
       {isComposing ? (
@@ -201,66 +266,20 @@ export default function AnnouncementsScreen() {
           </View>
         </View>
       ) : (
-        <>
-          <View className="px-5 pt-4">
-            <ChipRow
-              accessibilityLabel="Filter announcements"
-              options={[
-                { value: '' as const, label: 'Everything' },
-                { value: 'Organization' as const, label: 'Organisations' },
-                { value: 'Neighborhood' as const, label: 'Neighbourhood' },
-                { value: 'Campaign' as const, label: 'Fundraising' },
-                { value: 'Event' as const, label: 'Events' },
-              ]}
-              value={filter}
-              onChange={setFilter}
-            />
-          </View>
-
-          <View className="px-5 mt-4">
-            {/* The shell draws the feed's loading and error; the list says when it is empty. */}
-            <ListState
-              isEmpty={announcements.length === 0}
-              empty={{
-                icon: 'megaphone-outline',
-                title: 'Nothing announced',
-                message: 'When a community you belong to has something to say, it will be here and in your notifications.',
-              }}
-            >
-              {announcements.map((announcement) => (
-                <View key={announcement.announcementId} className="mb-2.5">
-                  <AnnouncementCard
-                    announcement={announcement}
-                    onPress={() => {
-                      trackCommunityEvent('community.announcement.viewed', {
-                        announcementId: announcement.announcementId,
-                        scope: announcement.scope,
-                      });
-                      if (announcement.actionRoute) router.push(announcement.actionRoute as never);
-                    }}
-                  />
-                </View>
-              ))}
-
-              {hasNextPage ? (
-                <View className="mb-4">
-                  {isFetchingNextPage ? (
-                    <View className="py-4 items-center" accessibilityLabel="Loading more">
-                      <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                    </View>
-                  ) : (
-                    <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-                  )}
-                </View>
-              ) : null}
-            </ListState>
-
-            <InlineRefusal
-              icon="notifications-outline"
-              reason="Announcements also arrive in your Diaspora notifications. You choose which ones reach you in Settings."
-            />
-          </View>
-        </>
+        <View className="px-5 pt-4 pb-4">
+          <ChipRow
+            accessibilityLabel="Filter announcements"
+            options={[
+              { value: '' as const, label: 'Everything' },
+              { value: 'Organization' as const, label: 'Organisations' },
+              { value: 'Neighborhood' as const, label: 'Neighbourhood' },
+              { value: 'Campaign' as const, label: 'Fundraising' },
+              { value: 'Event' as const, label: 'Events' },
+            ]}
+            value={filter}
+            onChange={setFilter}
+          />
+        </View>
       )}
     </CommunityScreen>
   );

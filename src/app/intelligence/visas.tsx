@@ -24,7 +24,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { View, Text, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -34,6 +35,39 @@ import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useVisaAdvisories } from '@/hooks/country-intelligence';
 import { PostedBy } from '@/components/intelligence/PostedBy';
 import type { VisaAdvisoryResponse } from '@/types/country-intelligence';
+
+// ── One row per rule (FARCH-004, 27 Nov 2026) ────────────────────────────────
+//
+// The list's items were the two groups, each drawing every one of its rules
+// with `.map()`, so nothing inside a group was virtualised: every page the
+// member scrolled into stayed mounted. A group's title and each of its rules
+// are rows of their own now, and the space a group kept below itself is drawn
+// before the next group's title and after the last rule. A title is its own
+// words and a rule is the hook's own object, so a row is redrawn only when
+// what it shows changes.
+
+/** A group's title, or one rule. */
+type VisaListRow = string | VisaAdvisoryResponse;
+
+function renderVisaRow({ item }: ListRenderItemInfo<VisaListRow>) {
+  return typeof item === 'string' ? (
+    <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-2">
+      {item}
+    </Text>
+  ) : (
+    <VisaRow advisory={item} />
+  );
+}
+
+const visaRowKey = (row: VisaListRow) => (typeof row === 'string' ? `title:${row}` : row.visaAdvisoryId);
+
+/** A title is recycled into a title, and a rule into a rule. */
+const visaRowType = (row: VisaListRow) => (typeof row === 'string' ? 'title' : 'rule');
+
+/** The space a group kept below itself, drawn where the next group's title follows. */
+function GroupGap({ trailingItem }: { trailingItem?: VisaListRow }) {
+  return typeof trailingItem === 'string' ? <View className="h-5" /> : null;
+}
 
 export default function VisaAdvisoriesScreen() {
   const bottomInset = useBottomInset();
@@ -74,6 +108,7 @@ export default function VisaAdvisoriesScreen() {
       : { title: 'Rules for a stated nationality', rows: results.targeted },
     { title: 'Rules that apply to everybody', rows: results.universal },
   ].filter((section) => section.rows.length > 0);
+  const rows = sections.flatMap((section): VisaListRow[] => [section.title, ...section.rows]);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -90,9 +125,11 @@ export default function VisaAdvisoriesScreen() {
         }
         onRetry={results.refresh}
       >
-        <FlatList
-          data={sections}
-          keyExtractor={(item) => item.title}
+        <FlashList
+          data={rows}
+          keyExtractor={visaRowKey}
+          getItemType={visaRowType}
+          ItemSeparatorComponent={GroupGap}
           contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
           onEndReachedThreshold={0.4}
           onEndReached={results.loadMore}
@@ -105,16 +142,9 @@ export default function VisaAdvisoriesScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <View className="mb-5">
-              <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-2">
-                {item.title}
-              </Text>
-              {item.rows.map((advisory) => (
-                <VisaRow key={advisory.visaAdvisoryId} advisory={advisory} />
-              ))}
-            </View>
-          )}
+          renderItem={renderVisaRow}
+          // The space the last group kept below itself.
+          ListFooterComponent={rows.length > 0 ? <View className="h-5" /> : null}
           ListEmptyComponent={
             <ListEmpty
               icon="airplane-outline"

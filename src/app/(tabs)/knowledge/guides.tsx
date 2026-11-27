@@ -33,15 +33,16 @@
 // device makes rows jump as you scroll.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useMemo } from 'react';
-import { FlatList, View, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { View, ActivityIndicator, RefreshControl } from 'react-native';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 
 import { GuideResultCard } from '@/components/guides/GuideResultCard';
 import { ListEmpty, ListState } from '@/components/ListState';
 import { useKnowledgeSearchStore } from '@/store/knowledge-search';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useGuideCategories, useGuideSearch } from '@/hooks/guides';
-import type { GuideSortKey } from '@/types/guides';
+import type { GuideCardResponse, GuideSortKey } from '@/types/guides';
 
 /**
  * The Hub's four chips, in the contract's spelling.
@@ -79,6 +80,15 @@ export default function KnowledgeGuidesScreen() {
     sort: SORT_KEYS[sortBy],
   });
 
+  // Stable until the catalogue changes: the list redraws a row only when its
+  // guide or this renderer changes (FARCH-004).
+  const renderGuide = useCallback(
+    ({ item }: ListRenderItemInfo<GuideCardResponse>) => (
+      <GuideResultCard guide={item} categoryName={categoryNames.get(item.categoryKey)} />
+    ),
+    [categoryNames]
+  );
+
   return (
     <View className="flex-1 bg-surface-background">
       {/* A failed request and an empty knowledge base need different words. The
@@ -95,7 +105,9 @@ export default function KnowledgeGuidesScreen() {
         }
         onRetry={results.refresh}
       >
-        <FlatList
+        {/* A FlashList since 27 Nov 2026 (FARCH-004): the list pages as the member
+            scrolls, and its rows are recycled rather than every page staying mounted. */}
+        <FlashList
           data={results.guides}
           keyExtractor={(item) => item.guideId}
           contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
@@ -105,9 +117,7 @@ export default function KnowledgeGuidesScreen() {
           // `hasMore`, never an empty page — see `hooks/guides`.
           onEndReachedThreshold={0.4}
           onEndReached={results.loadMore}
-          renderItem={({ item }) => (
-            <GuideResultCard guide={item} categoryName={categoryNames.get(item.categoryKey)} />
-          )}
+          renderItem={renderGuide}
           ListFooterComponent={
             results.isFetchingMore ? (
               <View className="py-4 items-center">

@@ -1,5 +1,6 @@
 // Communities hooks: moderation. ./index.ts is the overview of the whole module.
 
+import { useMemo } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   CommunityId,
@@ -66,8 +67,12 @@ export function useCommunityReports(
     retry: 1,
   });
 
+  // The same array until a page arrives: the moderation queue is a FlashList
+  // (FARCH-004), which checks its rows again whenever it is handed a new one.
+  const data = useMemo(() => query.data?.pages.flatMap((page) => page.items), [query.data]);
+
   return {
-    data: query.data ? query.data.pages.flatMap((page) => page.items) : undefined,
+    data,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,

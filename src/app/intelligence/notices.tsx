@@ -5,7 +5,8 @@
 // Diaspora platform admins and each says so ("Posted by Diaspora platform admin").
 
 import React from 'react';
-import { View, Text, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -20,6 +21,11 @@ const SEVERITY_TONE: Record<string, string> = {
   Critical: 'bg-surface-muted text-error-default',
   High: 'bg-surface-muted text-warning-default',
 };
+
+/** One notice. Module-level, so the list keeps a row until its notice changes (FARCH-004). */
+function renderNotice({ item }: ListRenderItemInfo<OfficialNoticeCardResponse>) {
+  return <NoticeCard notice={item} />;
+}
 
 export default function NoticesScreen() {
   const bottomInset = useBottomInset();
@@ -38,7 +44,9 @@ export default function NoticesScreen() {
         error={results.error && results.notices.length === 0 ? { title: 'Notices are unavailable', message: results.error } : null}
         onRetry={results.refresh}
       >
-        <FlatList
+        {/* A FlashList since 27 Nov 2026 (FARCH-004): the notices page as the member
+            scrolls, and their rows are recycled rather than every page staying mounted. */}
+        <FlashList
           data={results.notices}
           keyExtractor={(notice) => notice.officialNoticeId}
           contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
@@ -52,7 +60,7 @@ export default function NoticesScreen() {
               message="When Diaspora posts something members here should know, it appears here."
             />
           }
-          renderItem={({ item }) => <NoticeCard notice={item} />}
+          renderItem={renderNotice}
         />
       </ListState>
     </SafeAreaView>

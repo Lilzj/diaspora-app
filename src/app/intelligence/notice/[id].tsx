@@ -10,12 +10,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { ListState } from '@/components/ListState';
 import { PostedBy } from '@/components/intelligence/PostedBy';
 import { useOfficialNotice } from '@/hooks/country-intelligence';
 import { backOr } from '@/lib/platform/navigation';
-import { ReactionBar, CommentThread, ReportContentSheet } from '@/components/community-social';
+import {
+  CommentThreadComposer,
+  ReactionBar,
+  ReportContentSheet,
+  useCommentThreadList,
+} from '@/components/community-social';
 import { useContentComments, useContentEngagement, useReact } from '@/hooks/community-social';
 import { useNotification } from '@/providers/notification-provider';
 
@@ -41,6 +47,15 @@ export default function NoticeScreen() {
   const thread = useContentComments('notice', noticeId);
   const [reportedCommentId, setReportedCommentId] = useState<string | null>(null);
   const { showAlert } = useNotification();
+
+  // The discussion's comments are the rows of the screen's one list
+  // (FARCH-004), so only those near the screen are drawn.
+  const comments = useCommentThreadList({
+    target: { contentType: 'notice', contentId: notice?.card.officialNoticeId ?? '' },
+    thread,
+    onReport: setReportedCommentId,
+    inset: 24,
+  });
 
   if (isLoading) {
     return (
@@ -80,77 +95,83 @@ export default function NoticeScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title={`Notice · ${card.countryCode}`} showBack />
 
-      <ScrollEndScrollView className="flex-1" contentContainerStyle={{ paddingBottom: bottomInset }}>
-        <View className="p-6">
-          <View className="flex-row items-center flex-wrap mb-3">
-            <Text className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md mr-2 bg-surface-muted text-content-secondary">
-              {card.severity}
-            </Text>
-            <Text className="text-[11px] font-bold text-content-faint">{card.categoryName}</Text>
-          </View>
-
-          <Text className="text-2xl font-black text-content-primary leading-snug mb-2">
-            {card.title}
-          </Text>
-
-          <View className="mb-1">
-            <PostedBy
-              postedByPlatform={card.postedByPlatform}
-              authorityName={card.authorityName}
-              isOfficial={card.isOfficial}
-            />
-          </View>
-          <Text className="text-[11px] font-bold text-content-faint mb-5">
-            {posted ? `Posted ${posted}` : ''}
-            {posted && expires ? ' · ' : ''}
-            {expires ? `${card.isExpired ? 'Expired' : 'Until'} ${expires}` : ''}
-          </Text>
-
-          <Text className="text-sm font-semibold text-content-muted leading-relaxed mb-4">
-            {card.summary}
-          </Text>
-          <Text className="text-sm text-content-primary leading-relaxed mb-6">{notice.content}</Text>
-
-          {notice.referenceNumber ? (
-            <Text className="text-[11px] font-bold text-content-faint mb-3">
-              Reference: {notice.referenceNumber}
-            </Text>
-          ) : null}
-
-          {notice.sourceUrl ? (
-            <TouchableOpacity
-              onPress={() => void Linking.openURL(notice.sourceUrl as string)}
-              accessibilityRole="link"
-              className="bg-surface-card border border-subtle rounded-2xl p-4 items-center"
-            >
-              <Text className="text-xs font-black text-content-secondary uppercase tracking-widest">
-                Read the source
+      <ScrollEndFlashList
+        {...comments.list}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
+        ListHeaderComponent={
+          <View className="px-6 pt-6">
+            <View className="flex-row items-center flex-wrap mb-3">
+              <Text className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md mr-2 bg-surface-muted text-content-secondary">
+                {card.severity}
               </Text>
-            </TouchableOpacity>
-          ) : null}
+              <Text className="text-[11px] font-bold text-content-faint">{card.categoryName}</Text>
+            </View>
 
-          {engagement.data ? (
-            <View className="mt-6 pt-4 border-t border-faint">
-              <ReactionBar
-                content={engagement.data}
-                contentType="notice"
-                onReact={(key) => void reactions.react(key)}
-                onUnreact={(key) => void reactions.unreact(key)}
-                isPending={reactions.isPending}
+            <Text className="text-2xl font-black text-content-primary leading-snug mb-2">
+              {card.title}
+            </Text>
+
+            <View className="mb-1">
+              <PostedBy
+                postedByPlatform={card.postedByPlatform}
+                authorityName={card.authorityName}
+                isOfficial={card.isOfficial}
               />
             </View>
-          ) : null}
+            <Text className="text-[11px] font-bold text-content-faint mb-5">
+              {posted ? `Posted ${posted}` : ''}
+              {posted && expires ? ' · ' : ''}
+              {expires ? `${card.isExpired ? 'Expired' : 'Until'} ${expires}` : ''}
+            </Text>
 
-          <View className="mt-8">
-            <Text className="text-lg font-black text-content-primary mb-4">💬 Discussion</Text>
-            <CommentThread
-              target={{ contentType: 'notice', contentId: card.officialNoticeId }}
-              thread={thread}
-              onReport={(commentId) => setReportedCommentId(commentId)}
-            />
+            <Text className="text-sm font-semibold text-content-muted leading-relaxed mb-4">
+              {card.summary}
+            </Text>
+            <Text className="text-sm text-content-primary leading-relaxed mb-6">{notice.content}</Text>
+
+            {notice.referenceNumber ? (
+              <Text className="text-[11px] font-bold text-content-faint mb-3">
+                Reference: {notice.referenceNumber}
+              </Text>
+            ) : null}
+
+            {notice.sourceUrl ? (
+              <TouchableOpacity
+                onPress={() => void Linking.openURL(notice.sourceUrl as string)}
+                accessibilityRole="link"
+                className="bg-surface-card border border-subtle rounded-2xl p-4 items-center"
+              >
+                <Text className="text-xs font-black text-content-secondary uppercase tracking-widest">
+                  Read the source
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {engagement.data ? (
+              <View className="mt-6 pt-4 border-t border-faint">
+                <ReactionBar
+                  content={engagement.data}
+                  contentType="notice"
+                  onReact={(key) => void reactions.react(key)}
+                  onUnreact={(key) => void reactions.unreact(key)}
+                  isPending={reactions.isPending}
+                />
+              </View>
+            ) : null}
+
+            <View className="mt-8">
+              <Text className="text-lg font-black text-content-primary mb-4">💬 Discussion</Text>
+              <CommentThreadComposer {...comments.composer} />
+            </View>
           </View>
-        </View>
-      </ScrollEndScrollView>
+        }
+        ListEmptyComponent={
+          <View className="px-6">
+            <ListState {...comments.states} />
+          </View>
+        }
+        ListFooterComponent={<View className="px-6 pb-6">{comments.footer}</View>}
+      />
 
       <ReportContentSheet
         visible={reportedCommentId !== null}

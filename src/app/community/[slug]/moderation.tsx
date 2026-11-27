@@ -40,15 +40,18 @@
 // change to this screen can reveal one.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
+import { ListState } from '@/components/ListState';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import type {
   CommunityModerationDecision,
+  CommunityReport,
   CommunityReportStatus,
 } from '@/types/community-directory';
 import type { FinancialError } from '@/lib/transport/financial-errors';
@@ -83,6 +86,9 @@ const DECISIONS: { value: CommunityModerationDecision; label: string; icon: keyo
     { value: 'escalate', label: 'Escalate', icon: 'arrow-up-outline' },
   ];
 
+/** Stable, so a queue with no rows to draw is the same empty list on every render. */
+const NO_REPORTS: CommunityReport[] = [];
+
 export default function CommunityModerationScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
@@ -99,10 +105,16 @@ export default function CommunityModerationScreen() {
     community.data?.id,
     status === 'All' ? undefined : status
   );
-  const decide = useModerationDecision(community.data?.id);
+  // `mutate` keeps its identity where the mutation's result object does not, and
+  // the row renderer below depends on what it calls (FARCH-004).
+  const {
+    mutate: decide,
+    isPending: isDeciding,
+    error: decideFailure,
+  } = useModerationDecision(community.data?.id);
 
   const canDecide = canPerform('review-reports', capabilities.data);
-  const decideError = (decide.error as FinancialError | null) ?? null;
+  const decideError = (decideFailure as FinancialError | null) ?? null;
 
   React.useEffect(() => {
     if (community.data && reports.unavailable === null) {
@@ -111,6 +123,76 @@ export default function CommunityModerationScreen() {
       });
     }
   }, [community.data, reports.unavailable]);
+
+  // Stable, so the list redraws a report's row only when the report, or what may
+  // be decided on it, changes (FARCH-004). The decision in flight is held by
+  // report, so a recycled row never shows another report's as busy.
+  const renderReport = useCallback(
+    ({ item: report }: ListRenderItemInfo<CommunityReport>) => (
+      <CommunityReportCard
+        report={report}
+        actions={
+          // A second, separate capability. Viewing a queue and deciding on
+          // it are different permissions, and a deployment will grant one
+          // without the other.
+          // Open only: an escalated report is the platform's to decide now.
+          canDecide && report.status === 'Open' ? (
+            <View className="flex-row flex-wrap -mx-0.5">
+              {DECISIONS.map((decision) => {
+                const busy = deciding === `${report.id}:${decision.value}`;
+
+                return (
+                  <View key={decision.value} className="px-0.5 mb-1">
+                    <TouchableOpacity
+                      accessible
+                      accessibilityRole="button"
+                      accessibilityLabel={`${decision.label} this report`}
+                      accessibilityState={{ busy, disabled: busy }}
+                      disabled={busy || isDeciding}
+                      onPress={() => {
+                        setDeciding(`${report.id}:${decision.value}`);
+                        decide(
+                          { reportId: report.id, decision: decision.value },
+                          { onSettled: () => setDeciding(null) }
+                        );
+                      }}
+                      activeOpacity={0.8}
+                      style={{
+                        backgroundColor: tokens.color.surface.card,
+                        borderColor: tokens.color.border.default,
+                        opacity: busy ? 0.6 : 1,
+                      }}
+                      className="flex-row items-center rounded-full border px-2.5 py-1.5"
+                    >
+                      {busy ? (
+                        <ActivityIndicator size="small" color={tokens.color.text.secondary} />
+                      ) : (
+                        <Ionicons
+                          name={decision.icon}
+                          size={12}
+                          color={tokens.color.text.secondary}
+                        />
+                      )}
+                      <Text
+                        style={{ color: tokens.color.text.primary }}
+                        className="text-[10px] font-bold ml-1"
+                      >
+                        {decision.label}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null
+        }
+      />
+    ),
+    [canDecide, decide, deciding, isDeciding, tokens]
+  );
+
+  // The rows, once the queue has been read and holds some.
+  const reportRows = reports.isLoading || reports.isError ? NO_REPORTS : (reports.data ?? NO_REPORTS);
 
   return (
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
@@ -158,161 +240,116 @@ export default function CommunityModerationScreen() {
         // would tell a moderator their queue was clear when it was never read.
         <CommunityUnavailablePanel reason="feature-disabled" subject="the moderation queue" />
       ) : (
-        <ScrollEndScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
-
-          {/* Status tabs */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mb-4"
-            accessibilityRole="tablist"
-          >
-            {STATUS_TABS.map((tab) => {
-              const isActive = status === tab;
-              return (
-                <TouchableOpacity
-                  key={tab}
-                  accessible
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: isActive }}
-                  accessibilityLabel={`Show ${tab === 'All' ? 'all reports' : `${tab} reports`}`}
-                  onPress={() => setStatus(tab)}
-                  activeOpacity={0.7}
-                  style={{
-                    backgroundColor: isActive
-                      ? tokens.color.primary[500]
-                      : tokens.color.neutral[100],
-                  }}
-                  className="rounded-full px-3 py-1.5 mr-2"
-                >
-                  <Text
+        <ScrollEndFlashList
+          // The queue pages, so it recycles its rows rather than keeping every page
+          // mounted (FARCH-004, 27 Nov 2026). The status tabs are its header.
+          data={reportRows}
+          keyExtractor={(report) => report.id}
+          renderItem={renderReport}
+          contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}
+          ListHeaderComponent={
+            // Status tabs
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="mb-4"
+              accessibilityRole="tablist"
+            >
+              {STATUS_TABS.map((tab) => {
+                const isActive = status === tab;
+                return (
+                  <TouchableOpacity
+                    key={tab}
+                    accessible
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`Show ${tab === 'All' ? 'all reports' : `${tab} reports`}`}
+                    onPress={() => setStatus(tab)}
+                    activeOpacity={0.7}
                     style={{
-                      color: isActive ? tokens.color.text.inverse : tokens.color.text.secondary,
+                      backgroundColor: isActive
+                        ? tokens.color.primary[500]
+                        : tokens.color.neutral[100],
                     }}
-                    className="text-[11px] font-bold"
+                    className="rounded-full px-3 py-1.5 mr-2"
                   >
-                    {tab}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {reports.isLoading ? (
-            <CommunityUnavailablePanel reason="loading" subject="reports" />
-          ) : reports.isError ? (
-            <CommunityUnavailablePanel
-              reason="error"
-              subject="reports"
-              onAction={() => void reports.refetch()}
-            />
-          ) : (reports.data?.length ?? 0) === 0 ? (
-            <CommunityUnavailablePanel
-              reason="empty"
-              subject={status === 'All' ? 'reports' : `${status} reports`}
-            />
-          ) : (
-            (reports.data ?? []).map((report) => (
-              <CommunityReportCard
-                key={report.id}
-                report={report}
-                actions={
-                  // A second, separate capability. Viewing a queue and deciding on
-                  // it are different permissions, and a deployment will grant one
-                  // without the other.
-                  // Open only: an escalated report is the platform's to decide now.
-                  canDecide && report.status === 'Open' ? (
-                    <View className="flex-row flex-wrap -mx-0.5">
-                      {DECISIONS.map((decision) => {
-                        const busy = deciding === `${report.id}:${decision.value}`;
-
-                        return (
-                          <View key={decision.value} className="px-0.5 mb-1">
-                            <TouchableOpacity
-                              accessible
-                              accessibilityRole="button"
-                              accessibilityLabel={`${decision.label} this report`}
-                              accessibilityState={{ busy, disabled: busy }}
-                              disabled={busy || decide.isPending}
-                              onPress={() => {
-                                setDeciding(`${report.id}:${decision.value}`);
-                                decide.mutate(
-                                  { reportId: report.id, decision: decision.value },
-                                  { onSettled: () => setDeciding(null) }
-                                );
-                              }}
-                              activeOpacity={0.8}
-                              style={{
-                                backgroundColor: tokens.color.surface.card,
-                                borderColor: tokens.color.border.default,
-                                opacity: busy ? 0.6 : 1,
-                              }}
-                              className="flex-row items-center rounded-full border px-2.5 py-1.5"
-                            >
-                              {busy ? (
-                                <ActivityIndicator size="small" color={tokens.color.text.secondary} />
-                              ) : (
-                                <Ionicons
-                                  name={decision.icon}
-                                  size={12}
-                                  color={tokens.color.text.secondary}
-                                />
-                              )}
-                              <Text
-                                style={{ color: tokens.color.text.primary }}
-                                className="text-[10px] font-bold ml-1"
-                              >
-                                {decision.label}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  ) : null
-                }
+                    <Text
+                      style={{
+                        color: isActive ? tokens.color.text.inverse : tokens.color.text.secondary,
+                      }}
+                      className="text-[11px] font-bold"
+                    >
+                      {tab}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          }
+          ListEmptyComponent={
+            // In place of the rows, as they were: the community's own panels, in
+            // the shared order of loading, then a failed read, then empty.
+            <ListState
+              loading={reports.isLoading}
+              skeleton={<CommunityUnavailablePanel reason="loading" subject="reports" />}
+              error={
+                reports.isError ? (
+                  <CommunityUnavailablePanel
+                    reason="error"
+                    subject="reports"
+                    onAction={() => void reports.refetch()}
+                  />
+                ) : null
+              }
+            >
+              <CommunityUnavailablePanel
+                reason="empty"
+                subject={status === 'All' ? 'reports' : `${status} reports`}
               />
-            ))
-          )}
+            </ListState>
+          }
+          ListFooterComponent={
+            <>
+              {reports.hasMore ? (
+                <TouchableOpacity
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel="Show more reports"
+                  accessibilityState={{ busy: reports.isLoadingMore, disabled: reports.isLoadingMore }}
+                  disabled={reports.isLoadingMore}
+                  onPress={reports.loadMore}
+                  activeOpacity={0.8}
+                  style={{ borderColor: tokens.color.border.default }}
+                  className="items-center rounded-2xl border py-2.5 mt-1"
+                >
+                  {reports.isLoadingMore ? (
+                    <ActivityIndicator size="small" color={tokens.color.text.secondary} />
+                  ) : (
+                    <Text style={{ color: tokens.color.primary[600] }} className="text-[11px] font-bold">
+                      Show more reports
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              ) : null}
 
-          {reports.hasMore ? (
-            <TouchableOpacity
-              accessible
-              accessibilityRole="button"
-              accessibilityLabel="Show more reports"
-              accessibilityState={{ busy: reports.isLoadingMore, disabled: reports.isLoadingMore }}
-              disabled={reports.isLoadingMore}
-              onPress={reports.loadMore}
-              activeOpacity={0.8}
-              style={{ borderColor: tokens.color.border.default }}
-              className="items-center rounded-2xl border py-2.5 mt-1"
-            >
-              {reports.isLoadingMore ? (
-                <ActivityIndicator size="small" color={tokens.color.text.secondary} />
-              ) : (
-                <Text style={{ color: tokens.color.primary[600] }} className="text-[11px] font-bold">
-                  Show more reports
+              {decideError ? (
+                <Text
+                  accessibilityRole="alert"
+                  style={{ color: tokens.color.error.default }}
+                  className="text-[11px] font-bold mt-2"
+                >
+                  {decideError.isIndeterminate
+                    ? // Unanswered is not no: the decision may have been applied. The
+                      // queue is refetched either way, so what it shows is the truth.
+                      'We could not confirm that decision. It may have been applied — the queue has been refreshed to show where each report stands.'
+                    : decideError.code?.startsWith('community.')
+                      ? decideError.message
+                      : 'That decision was not applied. The report is unchanged.'}
                 </Text>
-              )}
-            </TouchableOpacity>
-          ) : null}
-
-          {decideError ? (
-            <Text
-              accessibilityRole="alert"
-              style={{ color: tokens.color.error.default }}
-              className="text-[11px] font-bold mt-2"
-            >
-              {decideError.isIndeterminate
-                ? // Unanswered is not no: the decision may have been applied. The
-                  // queue is refetched either way, so what it shows is the truth.
-                  'We could not confirm that decision. It may have been applied — the queue has been refreshed to show where each report stands.'
-                : decideError.code?.startsWith('community.')
-                  ? decideError.message
-                  : 'That decision was not applied. The report is unchanged.'}
-            </Text>
-          ) : null}
-        </ScrollEndScrollView>
+              ) : null}
+            </>
+          }
+        />
       )}
     </SafeAreaView>
   );

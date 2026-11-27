@@ -1,16 +1,22 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
+import { ScrollEndFlashList } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { countryByCode } from '@/lib/platform/calling-code';
 import { countryFlagEmoji } from '@/lib/api/knowledge-countries-api';
 import { useGuideCategories } from '@/hooks/guides';
-import { ContributorDirectory } from '@/components/knowledge/ContributorDirectory';
-import { useBottomInset } from '@/components/layout/bottom-inset';
+import {
+  ContributorRow,
+  contributorKey,
+  useContributorDirectory,
+} from '@/components/knowledge/ContributorDirectory';
+import { ListState } from '@/components/ListState';
 import { GuideResultCard } from '@/components/guides/GuideResultCard';
 import { useTrendingGuides } from '@/hooks/guides';
 import { useCountryIntelligence } from '@/hooks/country-intelligence';
+import type { PublicCreator } from '@/types/creator-economy';
 
 // Remediation Wave D-2b.
 //
@@ -41,9 +47,6 @@ import { useCommunityFeed } from '@/hooks/community-social';
 import { backOr } from '@/lib/platform/navigation';
 
 export default function CountryPageScreen() {
-  // The guard rail: the phone's gesture area plus breathing room.
-  const bottomInset = useBottomInset();
-
   const { code } = useLocalSearchParams<{ code: string }>();
   // Any country, from the ISO list (21 Oct 2026). The page read a fixture of
   // three countries (GB, MU, NG) and said "Country not found" for the rest,
@@ -91,8 +94,7 @@ export default function CountryPageScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollEndScrollView className="flex-1" bounces={false} showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <CountryPageList countryCode={country.code}>
         {/* The country itself; its real figures are in Official Information below. */}
         <View className="bg-surface-card px-6 pt-16 pb-6 border-b border-faint">
           <Text className="text-4xl">{countryFlagEmoji(country.code)}</Text>
@@ -102,7 +104,7 @@ export default function CountryPageScreen() {
           </Text>
         </View>
 
-        <View className="p-6">
+        <View className="px-6 pt-6">
           
           {/* Quick Categories Navigation shortcuts */}
           {guideCategories.length > 0 ? (
@@ -280,16 +282,64 @@ export default function CountryPageScreen() {
               <Text className="text-xs text-content-faint text-center font-bold">No active local updates reported today.</Text>
             </View>
           )}
-
-          {/* The contributors in this country, from the real directory. */}
-          <View className="mt-4">
-            <ContributorDirectory query="" countryCode={country.code} />
-          </View>
-          
         </View>
-        <View className="h-8" />
-      </ScrollEndScrollView>
+      </CountryPageList>
     </SafeAreaView>
+  );
+}
+
+/** A contributor to this country, in the page's margin. Module-level, so the list keeps a row until its contributor changes. */
+function renderContributor({ item }: ListRenderItemInfo<PublicCreator>) {
+  return (
+    <View className="px-6">
+      <ContributorRow creator={item} />
+    </View>
+  );
+}
+
+/**
+ * The page, as one list (FARCH-004, 27 Nov 2026).
+ *
+ * The country's contributors page ("Show more contributors"), and they were
+ * drawn with `.map()` at the foot of this page's scroll view, so every page a
+ * member asked for stayed mounted. They are the list's rows now, and
+ * everything the page says about the country above them is its header.
+ *
+ * Its own component because the directory is read only for a country the page
+ * knows: the screen returns "Country not found" before this is drawn, and a
+ * hook cannot follow an early return. `ScrollEndFlashList` reserves the bottom
+ * inset itself, as `ScrollEndScrollView` did over the padding this page used
+ * to pass it.
+ */
+function CountryPageList({ countryCode, children }: { countryCode: string; children: React.ReactNode }) {
+  const directory = useContributorDirectory({ query: '', countryCode });
+
+  return (
+    <ScrollEndFlashList
+      data={directory.rows}
+      keyExtractor={contributorKey}
+      renderItem={renderContributor}
+      bounces={false}
+      showsVerticalScrollIndicator={false}
+      ListHeaderComponent={
+        <>
+          {children}
+          {/* The contributors in this country, from the real directory. */}
+          <View className="px-6 mt-4">{directory.heading}</View>
+        </>
+      }
+      ListEmptyComponent={
+        <View className="px-6">
+          <ListState {...directory.state} />
+        </View>
+      }
+      ListFooterComponent={
+        <>
+          <View className="px-6 pb-6">{directory.footer}</View>
+          <View className="h-8" />
+        </>
+      }
+    />
   );
 }
 
