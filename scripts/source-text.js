@@ -14,8 +14,8 @@
 // blind spot: a `/*` inside a line comment ("routes under /creator/*") or a
 // string ('/marketplace/*') opens a block that runs to the next real `*/`, and
 // everything between disappears. Measured against the TypeScript parser, that
-// hid code in 32 application files, four gap registers among them, and 28
-// guards read at least one of those files.
+// hid code in 29 application files, four gap registers among them, and 23
+// guards hid code from themselves that way.
 //
 // Reversing the order does not fix it; it moves the blind spot. Line comments
 // first lets a `//` inside a block ("see https://…") take the block's own `*/`

@@ -6,8 +6,9 @@
 // calls the guards forbid. Until 27 Nov 2026 each did so with its own `.replace`
 // chain, and almost all removed block comments before line comments. A `/*`
 // inside a line comment or a string then opened a block that ran to the next
-// real `*/`: against the TypeScript parser, that hid code in 32 application
-// files, most of four gap registers among them, from 28 of those guards.
+// real `*/`: against the TypeScript parser, that hid code in 29 application
+// files, most of four gap registers among them, and 23 of the guards hid code
+// from themselves that way.
 //
 // They all read through `support/source-text` now, and this file holds three
 // things about it:
