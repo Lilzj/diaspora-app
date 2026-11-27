@@ -25,7 +25,14 @@ export function Avatar({ uri, name, size = 48 }: AvatarProps) {
       className="bg-surface-muted items-center justify-center overflow-hidden"
     >
       {uri ? (
-        <Image source={{ uri }} style={{ width: size, height: size }} contentFit="cover" />
+        <Image
+          source={{ uri }}
+          // Blank, rather than the last person's face, while a row a list recycles
+          // (FlashList, FARCH-004) loads this one.
+          recyclingKey={uri}
+          style={{ width: size, height: size }}
+          contentFit="cover"
+        />
       ) : (
         <Text
           style={{ fontSize: size * 0.36 }}

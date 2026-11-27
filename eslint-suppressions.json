@@ -319,11 +319,6 @@
       "count": 12
     }
   },
-  "src/components/ListingPhoto.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "src/components/NotificationItem.tsx": {
     "react-hooks/refs": {
       "count": 4

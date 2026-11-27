@@ -6,10 +6,11 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import {
-  View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl,
+  View, Text, TouchableOpacity, TextInput, RefreshControl,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import {
@@ -157,6 +158,14 @@ export default function MessagesScreen() {
     // this callback's identity, which nothing here depends on.
   }, [showAlert]);
 
+  // Stable, so the list redraws a row only when its conversation changes (FARCH-004).
+  const renderConversation = useCallback(
+    ({ item }: ListRenderItemInfo<Conversation>) => (
+      <ConversationCard conversation={item} onLongPress={handleLongPress} />
+    ),
+    [handleLongPress]
+  );
+
   // Not authenticated
   if (!isAuthenticated) {
     return (
@@ -275,15 +284,12 @@ export default function MessagesScreen() {
         }
         onRetry={() => void loadConversations()}
       >
-        <FlatList
+        {/* A FlashList since 27 Nov 2026 (FARCH-004): a member's inbox only grows,
+            and its rows are recycled rather than mounted one by one. */}
+        <FlashList
           data={filtered}
           keyExtractor={(item) => item.conversationId}
-          renderItem={({ item }) => (
-            <ConversationCard
-              conversation={item}
-              onLongPress={handleLongPress}
-            />
-          )}
+          renderItem={renderConversation}
           ListEmptyComponent={
             <ConversationEmptyState
               filter={searchQuery ? 'All' : activeFilter}
