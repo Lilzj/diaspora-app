@@ -23,11 +23,8 @@
 // ledger.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
-const path = require('path') as { join(...segments: string[]): string };
-
 /**
- * The screen's source with its comments removed.
+ * Comments are read out of the screen's source before any assertion.
  *
  * Necessary, and the reason is a finding in its own right: the first version of
  * this file asserted `not.toContain('Failed to publish event')` and **failed on
@@ -39,13 +36,10 @@ const path = require('path') as { join(...segments: string[]): string };
  * thing and prose explaining that it no longer does, so the honest record of a
  * defect would have to be deleted to satisfy a test about the code beneath it.
  */
-function withoutComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
-}
+import { withoutComments } from './support/source-text';
+
+const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
+const path = require('path') as { join(...segments: string[]): string };
 
 const SOURCE = withoutComments(
   fs.readFileSync(

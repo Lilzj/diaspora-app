@@ -30,6 +30,7 @@ import { localTestMayStandIn } from '../automation/simulation';
 import { conditionDefinition } from '../automation/conditions';
 import { presentServerOutcomes } from '../automation/dependencies';
 import { checkLabel } from '@/components/automation/TestSubjectPicker';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
@@ -37,11 +38,7 @@ const path = require('path') as { join(...s: string[]): string };
 const source = (...segments: string[]) =>
   fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8');
 
-const BLOCK_COMMENT = new RegExp('/\\*[\\s\\S]*?\\*/', 'g');
-const LINE_COMMENT = new RegExp('//[^\\n]*', 'g');
-
-const stripped = (...segments: string[]) =>
-  source(...segments).replace(BLOCK_COMMENT, ' ').replace(LINE_COMMENT, ' ');
+const stripped = (...segments: string[]) => withoutComments(source(...segments));
 
 describe('the subject reaches the platform', () => {
   const client = stripped('lib', 'automation', 'certified-client.ts');

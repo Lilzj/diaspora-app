@@ -12,6 +12,10 @@
  * without needing to drive every screen that can raise an alert.
  */
 
+
+// Comments are read out, so a mention of the old API in prose is not a violation.
+import { withoutComments } from '@/lib/__tests__/support/source-text';
+
 // `@types/node` is not a dependency of this app, so these are pulled in through
 // `require` rather than an import — the test runs under Jest, where they exist,
 // while `tsc --noEmit` stays clean without adding a type package for one file.
@@ -55,11 +59,6 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** Strips comments so a mention of the old API in prose is not a violation. */
-function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-}
-
 describe('alert consistency', () => {
   const offenders: string[] = [];
 
@@ -72,7 +71,7 @@ describe('alert consistency', () => {
       // the conversation screen — which was worse than an inconsistent dialog,
       // because `prompt` is iOS-only and did nothing whatsoever on Android.
       // "Edit message" was a menu item that opened no dialog at all.
-      const match = stripComments(fs.readFileSync(file, 'utf8')).match(/\bAlert\.(\w+)\s*\(/);
+      const match = withoutComments(fs.readFileSync(file, 'utf8')).match(/\bAlert\.(\w+)\s*\(/);
       if (match) offenders.push(`${rel} — Alert.${match[1]}`);
     }
   });

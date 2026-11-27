@@ -32,18 +32,16 @@
 // be checked. A test of the mapper would have passed throughout.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
 /** The screen with comments stripped, so prose cannot stand in for code. */
 function screen(): string {
-  return fs
-    .readFileSync(
-      path.join(process.cwd(), 'src', 'app', 'community-life', 'campaign', 'create.tsx'),
-      'utf8'
-    )
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^[ \t]*\/\/.*$/gm, '');
+  return withoutComments(
+    fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'community-life', 'campaign', 'create.tsx'), 'utf8')
+  );
 }
 
 describe('the fundraising campaign form', () => {

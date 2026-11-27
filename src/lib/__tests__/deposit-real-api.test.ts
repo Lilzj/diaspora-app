@@ -18,18 +18,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { hookModuleFiles } from './support/hook-modules';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
 /** A file's code with its comments removed. See `password-auth.test.ts`. */
 function read(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), ...segments), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split(String.fromCharCode(10))
-    .filter((line: string) => !/^\s*(\/\/|\*|\{\/\*)/.test(line))
-    .join(String.fromCharCode(10));
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), ...segments), 'utf8'));
 }
 
 const SCREEN = read('src', 'app', 'wallet', 'add-money.tsx');

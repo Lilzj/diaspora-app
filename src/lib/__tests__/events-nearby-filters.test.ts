@@ -9,17 +9,14 @@
 import { toEventBrowseQuery } from '@/lib/api/community-life-api';
 import { eventDistanceLabel, nearbyPointOf } from '@/lib/domain/events-nearby';
 import { screenSource } from './support/screen-files';
+import { withoutComments } from './support/source-text';
 
 declare const process: { cwd(): string };
 const path: { join(...parts: string[]): string } = require('path');
 
 function code(relative: string): string {
   // A screen is read whole: its route and every part it composes from (FSOLID-001).
-  return screenSource(path.join(process.cwd(), 'src', relative))
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !line.trimStart().startsWith('//'))
-    .join('\n');
+  return withoutComments(screenSource(path.join(process.cwd(), 'src', relative)));
 }
 
 describe('the events query', () => {

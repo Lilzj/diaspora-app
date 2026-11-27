@@ -5,6 +5,8 @@
  * mapped from `avatarStorageKey` (a media id, not an address), every `<Avatar>`
  * was handed a name and no picture, and the bylines drew initials by hand.
  */
+
+import { withoutComments } from '@/lib/__tests__/support/source-text';
 declare const process: { cwd(): string };
 const fs: {
   readFileSync(path: string, encoding: string): string;
@@ -15,12 +17,7 @@ const path: { join(...parts: string[]): string; relative(from: string, to: strin
 const root = path.join(process.cwd(), 'src');
 
 function code(relative: string): string {
-  return fs
-    .readFileSync(path.join(root, relative), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !line.trimStart().startsWith('//'))
-    .join('\n');
+  return withoutComments(fs.readFileSync(path.join(root, relative), 'utf8'));
 }
 
 function sources(dir: string): string[] {

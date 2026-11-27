@@ -39,6 +39,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { hookModuleFiles } from './support/hook-modules';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
@@ -51,10 +52,7 @@ const GAP_FLAG = 'areCreatorGapsEnabled()';
 
 /** A file with block and line comments removed, so prose cannot be read as code. */
 function code(file: string): string {
-  return fs
-    .readFileSync(file, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^[ \t]*\/\/.*$/gm, '');
+  return withoutComments(fs.readFileSync(file, 'utf8'));
 }
 
 interface Hook {
@@ -136,10 +134,7 @@ describe('the creator hooks gate on the arm they actually read', () => {
     // run of this assertion failed on the screen's *own* explanation of why the
     // markers were removed. A guard that reads prose as code fails whether the
     // prose agrees with it or not.
-    const screen = fs
-      .readFileSync(path.join(process.cwd(), 'src', 'app', 'creator', 'revenue.tsx'), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/^[ 	]*\/\/.*$/gm, '');
+    const screen = withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'creator', 'revenue.tsx'), 'utf8'));
 
     expect(screen).toContain('RevenueBreakdown');
     expect(screen).not.toContain('<SimulatedFigure');

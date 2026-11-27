@@ -15,6 +15,8 @@
 // `lib/money.ts`.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 const fs = require('fs') as {
   readFileSync(path: string, encoding: string): string;
   readdirSync(path: string, options: { withFileTypes: true }): { name: string; isDirectory(): boolean }[];
@@ -47,12 +49,7 @@ function runtimeFiles(): string[] {
 
 /** A file's code with its comments removed, so a note about the old default is allowed. */
 function code(file: string): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), file), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split(/\r?\n/)
-    .filter((line: string) => !/^\s*(\/\/|\*|\{\/\*)/.test(line))
-    .join('\n');
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), file), 'utf8'));
 }
 
 const FORBIDDEN: { label: string; pattern: RegExp }[] = [

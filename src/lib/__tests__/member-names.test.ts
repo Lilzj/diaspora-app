@@ -15,6 +15,7 @@
  * id field.
  */
 import { UNNAMED_MEMBER, nameOrNeutral } from '../api/community-programme-api';
+import { blankComments } from './support/source-text';
 
 // `require`, as the other source-reading guards in this folder do: the tsconfig
 // declares only the jest types, so a node import does not typecheck here.
@@ -63,13 +64,12 @@ describe('the guard', () => {
    * agreeing with the comment agrees with the bug.
    */
   it('no display name is assigned from an id field', () => {
-    const source = fs.readFileSync(SOURCE, 'utf8');
+    // Prose may discuss the defect; only an assignment can be one.
+    const source = blankComments(fs.readFileSync(SOURCE, 'utf8'));
 
     const offenders = source
       .split('\n')
       .map((line: string, index: number) => ({ line: line.trim(), number: index + 1 }))
-      // Prose may discuss the defect; only an assignment can be one.
-      .filter(({ line }) => !line.startsWith('//') && !line.startsWith('*'))
       .filter(({ line }) => /displayName\s*:\s*[\w.]*\w*[Ii]d\b/.test(line));
 
     expect(offenders).toEqual([]);

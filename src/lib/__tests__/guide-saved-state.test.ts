@@ -8,6 +8,7 @@
  */
 import { saveControlFor, viewerStateOf } from '@/lib/domain/guide-viewer';
 import { savedContentTypeOf } from '@/lib/api/bookmarks-api';
+import { withoutComments } from './support/source-text';
 
 declare const process: { cwd(): string };
 const fs: { readFileSync(path: string, encoding: string): string; existsSync(path: string): boolean } =
@@ -17,12 +18,7 @@ const path: { join(...parts: string[]): string } = require('path');
 const root = path.join(process.cwd(), 'src');
 
 function code(relative: string): string {
-  return fs
-    .readFileSync(path.join(root, relative), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !line.trimStart().startsWith('//'))
-    .join('\n');
+  return withoutComments(fs.readFileSync(path.join(root, relative), 'utf8'));
 }
 
 describe('the guide’s save control', () => {

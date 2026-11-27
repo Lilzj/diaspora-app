@@ -46,6 +46,7 @@ import { MAX_SUMMARY, MIN_TITLE } from '../api/community-life-api';
 import { AREA_INSIGHT_MAX_LENGTH } from '../api/area-insights-api';
 import { MAX_PARAMETER_JSON } from '../automation/certified-client';
 import { backendSourceRoot } from './support/backend-checkout';
+import { commentRanges } from './support/source-text';
 
 // Required locally with narrow signatures, exactly as the sibling drift checks
 // do. Adding `"node"` to `types` in `tsconfig.json` would compile these imports
@@ -205,9 +206,6 @@ const NOT_OURS: Record<string, string> = {
 /** `CommunityLifeLimits.MinTitle` written inside a comment. */
 const LIMIT_REFERENCE = /\b([A-Z][A-Za-z]*(?:Limits|Options))\.([A-Z][A-Za-z]*)\b/g;
 
-/** A comment line, which is the only place this rule looks. */
-const COMMENT = /^\s*(?:\/\/|\*|\/\*)/;
-
 const LIB = join(__dirname, '..');
 
 interface Citation {
@@ -237,9 +235,9 @@ function citations(): Citation[] {
   const found: Citation[] = [];
 
   for (const path of libSources(LIB)) {
-    const commented = readFileSync(path, 'utf8')
-      .split('\n')
-      .filter((line) => COMMENT.test(line));
+    // Only the comments: they are the only place this rule looks.
+    const source = readFileSync(path, 'utf8');
+    const commented = commentRanges(source).flatMap(([start, end]) => source.slice(start, end).split('\n'));
 
     for (const line of commented) {
       for (const match of line.matchAll(LIMIT_REFERENCE)) {

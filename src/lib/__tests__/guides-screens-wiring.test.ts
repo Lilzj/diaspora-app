@@ -19,6 +19,8 @@
 // the discussion back to local state.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 // Node's globals are declared locally rather than by adding `"node"` to the
 // project's `types` — that change is global and would surface pre-existing
 // errors in other suites. `community-directory-boundary.test.ts` takes the same
@@ -44,11 +46,7 @@ function source(relative: string): string {
  * are about executable code only.
  */
 function code(relative: string): string {
-  return source(relative)
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !line.trimStart().startsWith('//'))
-    .join('\n');
+  return withoutComments(source(relative));
 }
 
 const CREATE = code('app/guide/create.tsx');

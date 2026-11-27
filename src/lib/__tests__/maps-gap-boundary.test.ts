@@ -19,6 +19,8 @@
 // an alert.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 // Node's globals are declared locally rather than by adding `"node"` to the
 // project's `types`. That change is global: it surfaced pre-existing errors in
 // the Phase 5, 7 and 12 test suites, and a phase must not alter the typecheck
@@ -242,9 +244,7 @@ describe('the URL space is separate from every certified route', () => {
  */
 function readSource(relativePath: string): string {
   const raw = readFileSync(join(__dirname, '..', '..', relativePath), 'utf8');
-  return raw
-    .replace(/\/\*[\s\S]*?\*\//g, '') // block and JSDoc comments
-    .replace(/^[ \t]*\/\/.*$/gm, ''); // whole-line comments
+  return withoutComments(raw);
 }
 
 describe('the development arm carries no discovery capability — §2, §31–§37', () => {

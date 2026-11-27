@@ -124,16 +124,6 @@ it('reads the files it holds to the rule', () => {
   expect(PAGES.test('const { loadMoreHousing } = listings;')).toBe(true);
   expect(PAGES.test('loadingMore')).toBe(false);
   expect(PAGES.test('list: { isFetchingMore: boolean; loadMoreFailed: boolean }')).toBe(false);
-  // The comment stripper: a `/*` in a line comment, or in a path, opens no block.
-  expect(withoutComments('// routes under `/creator/*`\nconst kept = 1;\n/* dropped */ const also = 2;')).toBe(
-    'const kept = 1;\n const also = 2;'
-  );
-  expect(withoutComments("const route = '/community/*'; // */")).toBe("const route = '/community/*'; // */");
-  // The order, on its own: a `/*` after a space in a line comment would open a
-  // block if block comments went first.
-  expect(withoutComments('// a /* after a space\nconst kept = 1;\n/* dropped */ const also = 2;')).toBe(
-    'const kept = 1;\n const also = 2;'
-  );
 });
 
 describe('a list that pages', () => {

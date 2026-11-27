@@ -45,6 +45,16 @@ import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'a
 import type MockAdapter from 'axios-mock-adapter';
 import { SERVED_ROUTES } from '../served-routes';
 
+/**
+ * Comments are read out of the source before any assertion.
+ *
+ * `mocks/index.ts` explains this defect at length in prose, naming
+ * `setupAuthMocks` and `new MockAdapter` in the course of explaining why they
+ * are gated. A naive `toContain` would match the explanation and the structural
+ * assertions below would pass — or fail — on the comment rather than the code.
+ */
+import { withoutComments } from '@/lib/__tests__/support/source-text';
+
 // `require`d locally with the narrowest possible signature rather than
 // `import fs from 'fs'`. Adding `"node"` to `tsconfig.json`'s `types` array
 // shadows the ambient React Native `__DEV__` declaration and breaks twenty
@@ -52,22 +62,6 @@ import { SERVED_ROUTES } from '../served-routes';
 // `lib/__tests__/automation-boundary.test.ts`.
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
-
-/**
- * Source with its comments removed.
- *
- * `mocks/index.ts` explains this defect at length in prose, naming
- * `setupAuthMocks` and `new MockAdapter` in the course of explaining why they
- * are gated. A naive `toContain` would match the explanation and the structural
- * assertions below would pass — or fail — on the comment rather than the code.
- */
-function withoutComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
-}
 
 function readSource(...segments: string[]): string {
   return withoutComments(fs.readFileSync(path.join(process.cwd(), ...segments), 'utf8'));

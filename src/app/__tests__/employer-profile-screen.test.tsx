@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ThemeProvider } from '@/design-system';
 import type { EmployerResponse, JobCardResponse } from '@/types/jobs-hiring';
+import { withoutComments } from '@/lib/__tests__/support/source-text';
 
 const mockProfile = jest.fn();
 const mockJobs = jest.fn();
@@ -217,11 +218,7 @@ describe('when the profile cannot be shown', () => {
 });
 
 describe('the page source', () => {
-  const source = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'app', 'employer', '[id].tsx'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '')
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  const source = withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'employer', '[id].tsx'), 'utf8'));
 
   it('reads through the adapter, not a route nobody wrote', () => {
     expect(source).toContain('useEmployerProfile');

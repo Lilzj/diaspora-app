@@ -14,15 +14,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { toDrafts, toRequest } from '../../components/community/OperatingHoursEditor';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
 
 const source = (...segments: string[]) =>
-  fs
-    .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
-    .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
-    .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+  withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8'));
 
 const api = source('lib', 'api', 'community-life-api.ts');
 

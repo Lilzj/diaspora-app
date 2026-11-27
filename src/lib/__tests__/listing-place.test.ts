@@ -27,6 +27,7 @@ import {
   providerPlaceLine,
   pinPlaceOf,
 } from '@/lib/platform/listing-place';
+import { withoutComments } from './support/source-text';
 
 /** `GET /jobs` — flat, no `location`, no distance. This is what crashed. */
 const JOB_ROW = {
@@ -204,12 +205,7 @@ describe('the cards no longer read through an assumed location object', () => {
   const path = require('path') as { join(...p: string[]): string };
 
   const read = (file: string) =>
-    fs
-      .readFileSync(path.join(process.cwd(), 'src', 'components', file), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .split('\n')
-      .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-      .join('\n');
+    withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'components', file), 'utf8'));
 
   it.each(['JobCard.tsx', 'HousingCard.tsx', 'MarketplaceCard.tsx'])(
     '%s does not dereference location.distanceKm',
@@ -250,12 +246,7 @@ describe('the marketplace detail screen reads the wire shape', () => {
 
   /** A file's code, with its prose removed so a comment cannot satisfy a check. */
   const code = (...segments: string[]) =>
-    fs
-      .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .split('\n')
-      .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-      .join('\n');
+    withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8'));
 
   // **The mapping moved.** It used to sit inside this screen's fetch effect,
   // where nothing could test it, no other screen could reuse it, and the

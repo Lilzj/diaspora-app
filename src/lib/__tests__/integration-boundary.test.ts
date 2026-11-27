@@ -46,6 +46,18 @@ import { trackIntegrationEvent, trackCalendarExport } from '@/lib/integrations/e
 import { upsertConnection, resetIntegrationGapData } from '@/mocks/integrations-gap-data';
 import { impliesProductionConnectivity, isSimulatedMode } from '@/types/integrations';
 
+/**
+ * Comments are read out of the source before any assertion.
+ *
+ * Several assertions below are about what the code *does*, and the files being
+ * inspected explain in prose why they no longer do it — `integrations-api.ts`
+ * names the removed `mock-jwt-token` fallback in its header precisely so nobody
+ * reintroduces it. A naive `toContain` would fail on the explanation, which
+ * would mean deleting the most useful comment in the file to satisfy a test
+ * about the code beneath it.
+ */
+import { withoutComments } from './support/source-text';
+
 // `areSimulatedFeaturesEnabled()` reads `__DEV__` first, so a release build is
 // simulated here by turning it off for the duration of the assertion.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -69,24 +81,6 @@ import { impliesProductionConnectivity, isSimulatedMode } from '@/types/integrat
 
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
-
-/**
- * Source with its comments removed.
- *
- * Several assertions below are about what the code *does*, and the files being
- * inspected explain in prose why they no longer do it — `integrations-api.ts`
- * names the removed `mock-jwt-token` fallback in its header precisely so nobody
- * reintroduces it. A naive `toContain` would fail on the explanation, which
- * would mean deleting the most useful comment in the file to satisfy a test
- * about the code beneath it.
- */
-function withoutComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
-}
 
 function readSource(...segments: string[]): string {
   return withoutComments(fs.readFileSync(path.join(process.cwd(), ...segments), 'utf8'));

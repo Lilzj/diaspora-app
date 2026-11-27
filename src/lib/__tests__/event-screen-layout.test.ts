@@ -24,15 +24,14 @@
 // which is the whole argument for looking at the thing on a device.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
 
 /** A file's code with its prose removed, so a comment cannot fail a check. */
 function code(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
-    .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
-    .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8'));
 }
 
 const SCREEN = code('app', 'community-life', 'event', '[id].tsx');

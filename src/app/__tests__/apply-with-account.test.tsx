@@ -24,6 +24,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
 import type { CandidateProfileResponse } from '@/types/jobs-hiring';
+import { withoutComments } from '@/lib/__tests__/support/source-text';
 
 const mockProfileHook = jest.fn();
 const mockShowAlert = jest.fn();
@@ -116,11 +117,7 @@ function renderWorkProfile() {
 
 /** A source file with comments stripped, so a guard reads code rather than prose. */
 function code(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), ...segments), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '')
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), ...segments), 'utf8'));
 }
 
 beforeEach(() => {

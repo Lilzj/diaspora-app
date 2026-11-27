@@ -53,6 +53,18 @@ import {
   type PublishedContract,
 } from './support/published-contract';
 
+/**
+ * Comments are read out before any field is collected.
+ *
+ * Necessary, not tidy: this repository writes long explanatory comments that
+ * quote the very field names being discussed, so a scan that reads prose finds
+ * `org.openingHours` inside the paragraph explaining why `org.openingHours` was
+ * removed — and reports the fix as the defect. The same omission in
+ * `backend-openapi-contract-drift.test.ts` let one apostrophe in a comment blame
+ * the client for a route it had never called.
+ */
+import { withoutComments } from './support/source-text';
+
 declare const __dirname: string;
 
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
@@ -144,22 +156,6 @@ const PAIRINGS: Pairing[] = [
 /** The property names a component declares, as the wire spells them. */
 function declaredBy(contract: PublishedContract, name: string): Set<string> {
   return new Set(Object.keys(schemaProperties(contract, schemaNamed(contract, name)) ?? {}));
-}
-
-/**
- * Source with comments removed.
- *
- * Necessary, not tidy: this repository writes long explanatory comments that
- * quote the very field names being discussed, so a scan that reads prose finds
- * `org.openingHours` inside the paragraph explaining why `org.openingHours` was
- * removed — and reports the fix as the defect. The same omission in
- * `backend-openapi-contract-drift.test.ts` let one apostrophe in a comment blame
- * the client for a route it had never called.
- */
-function withoutComments(source: string): string {
-  const block = new RegExp('/\\*[\\s\\S]*?\\*/', 'g');
-  const line = new RegExp('//[^\\n]*', 'g');
-  return source.replace(block, ' ').replace(line, ' ');
 }
 
 /** Every `<variable>.<name>` read in a screen, ignoring prose. */

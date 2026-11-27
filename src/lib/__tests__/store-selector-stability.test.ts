@@ -38,6 +38,16 @@
 // which is precisely how the original slipped through.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Comments are blanked rather than removed, so line numbers survive.
+ *
+ * Required, not tidiness: the fix for this very bug documents the forbidden
+ * call in prose, and a scanner that read comments would flag the explanation of
+ * why the code no longer does it. Replaced with spaces rather than removed so
+ * reported line numbers still point at real code.
+ */
+import { blankComments } from './support/source-text';
+
 const fs = require('fs') as {
   readFileSync(path: string, encoding: string): string;
   readdirSync(path: string, options: { withFileTypes: true }): {
@@ -64,23 +74,9 @@ function sourceFiles(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-/**
- * Source with comments blanked, preserving line numbers.
- *
- * Required, not tidiness: the fix for this very bug documents the forbidden
- * call in prose, and a scanner that read comments would flag the explanation of
- * why the code no longer does it. Replaced with spaces rather than removed so
- * reported line numbers still point at real code.
- */
-function stripComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '))
-    .replace(/\/\/[^\n]*/g, (line) => ' '.repeat(line.length));
-}
-
 /** The argument text of every `useSomethingStore(...)` call, with its location. */
 function storeSelectorCalls(rawSource: string, file: string) {
-  const source = stripComments(rawSource);
+  const source = blankComments(rawSource);
   const calls: { arg: string; line: number; file: string }[] = [];
   const re = /use[A-Za-z0-9_]*Store\s*\(/g;
   let match: RegExpExecArray | null;

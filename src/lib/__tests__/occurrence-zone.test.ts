@@ -16,6 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { partsInZone } from '../api/event-wire';
+import { withoutComments } from './support/source-text';
 
 describe('the parts of an instant in a named zone', () => {
   it('shows a Mauritius evening as an evening', () => {
@@ -85,10 +86,7 @@ describe('the mapper uses it', () => {
   const fs = require('fs') as { readFileSync(p: string, e: string): string };
   const path = require('path') as { join(...s: string[]): string };
 
-  const api = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'lib', 'api', 'community-programme-api.ts'), 'utf8')
-    .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
-    .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+  const api = withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'lib', 'api', 'community-programme-api.ts'), 'utf8'));
 
   it('formats an occurrence in the zone the wire named', () => {
     expect(api).toMatch(/const zone = wire\.timeZoneId \?\? 'UTC';/);

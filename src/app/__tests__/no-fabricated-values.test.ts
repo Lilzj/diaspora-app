@@ -36,6 +36,17 @@
 // breaks `__DEV__` in other suites.
 import { SCREEN_PARTS_ROOT, filesUnder } from '@/lib/__tests__/support/screen-files';
 
+/**
+ * Comments are blanked rather than removed, so line numbering is preserved.
+ *
+ * A block comment is replaced by its own newlines rather than by a space. The
+ * reported line has to index back into the original file — both to be a usable
+ * "file:line" and because the allow-list matches on the raw text of that line —
+ * and collapsing a twenty-line comment to one character silently shifts every
+ * line after it.
+ */
+import { blankComments } from '@/lib/__tests__/support/source-text';
+
 declare const __dirname: string;
 declare const require: (id: string) => unknown;
 
@@ -64,23 +75,6 @@ function screens(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-/**
- * Comments blanked, **line numbering preserved**.
- *
- * A block comment is replaced by its own newlines rather than by a space. The
- * reported line has to index back into the original file — both to be a usable
- * "file:line" and because the allow-list matches on the raw text of that line —
- * and collapsing a twenty-line comment to one character silently shifts every
- * line after it.
- */
-function withoutComments(source: string): string {
-  const block = new RegExp('/\\*[\\s\\S]*?\\*/', 'g');
-  const line = new RegExp('//[^\\n]*', 'g');
-  return source
-    .replace(block, (match) => match.replace(/[^\n]/g, ' '))
-    .replace(line, (match) => ' '.repeat(match.length));
-}
-
 interface Offence {
   file: string;
   line: number;
@@ -96,7 +90,7 @@ interface Offence {
  */
 function fabrications(source: string): { line: number; text: string }[] {
   const found: { line: number; text: string }[] = [];
-  const lines = withoutComments(source).split('\n');
+  const lines = blankComments(source).split('\n');
 
   // A decimal literal is the tell: whole numbers are overwhelmingly counts and
   // indexes, while a rating, a score or a coordinate carries a decimal point.

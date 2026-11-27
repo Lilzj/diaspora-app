@@ -21,6 +21,9 @@
  * with the scheme, so white is correct there under both.
  */
 
+// Comments are read out, so a colour named in prose is not a violation.
+import { withoutComments } from '@/lib/__tests__/support/source-text';
+
 // `@types/node` is not a dependency of this app, so these are pulled in through
 // `require` rather than an import — the test runs under Jest, where they exist,
 // while `tsc --noEmit` stays clean without adding a type package for one file.
@@ -83,11 +86,6 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** Strips comments so a colour named in prose is not a violation. */
-function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-}
-
 describe('theme consistency', () => {
   const pinnedTokens: string[] = [];
   const pinnedSurfaces: string[] = [];
@@ -99,7 +97,7 @@ describe('theme consistency', () => {
       if (TOKEN_HOME.test(rel)) continue;
       if (EXEMPT.has(rel)) continue;
 
-      const source = stripComments(fs.readFileSync(file, 'utf8'));
+      const source = withoutComments(fs.readFileSync(file, 'utf8'));
 
       if (/\b(light|dark)Tokens\s*\./.test(source)) pinnedTokens.push(rel);
 

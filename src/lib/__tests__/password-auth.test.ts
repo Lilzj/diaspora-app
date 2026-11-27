@@ -28,17 +28,14 @@
 // rather than the edge case, could not delete their own account (UAT-127).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
 /** A file's code with its comments removed. See `registration-flow.test.ts`. */
 function read(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), ...segments), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split(String.fromCharCode(10))
-    .filter((line: string) => !/^\s*(\/\/|\*)/.test(line))
-    .join(String.fromCharCode(10));
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), ...segments), 'utf8'));
 }
 
 const AUTH_API = read('src', 'lib', 'api', 'auth-api.ts');

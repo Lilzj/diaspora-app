@@ -10,13 +10,12 @@
 // is pinned by the analytics integration suite. This pins the chips.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
 
-const source = fs
-  .readFileSync(path.join(process.cwd(), 'src', 'app', 'creator', 'analytics.tsx'), 'utf8')
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/^\s*\/\/.*$/gm, '');
+const source = withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'creator', 'analytics.tsx'), 'utf8'));
 
 const filters = /const CONTENT_FILTERS = \[([\s\S]*?)\] as const;/.exec(source)?.[1] ?? '';
 

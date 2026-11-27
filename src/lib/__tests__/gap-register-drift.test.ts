@@ -18,15 +18,13 @@
 
 import { conversionReasonText } from '../platform/reward-conversion-text';
 import { hookModuleFiles } from './support/hook-modules';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
 
 const source = (...segments: string[]) =>
-  fs
-    .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
-    .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
-    .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+  withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8'));
 
 // The community-life hooks are a directory since FSOLID-003, one file per subject. Each file is
 // read on its own, so a hook's body ends at the next export in its own file, or at the file's end.

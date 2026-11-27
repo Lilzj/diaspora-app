@@ -42,6 +42,7 @@
 // `"node"` to `types` in `tsconfig.json` makes `@types/node` shadow the ambient
 // React Native `globalThis` and breaks twenty boundary assertions.
 import { SCREEN_PARTS_ROOT, filesUnder } from './support/screen-files';
+import { blankComments } from './support/source-text';
 declare const __dirname: string;
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
 const readdirSync: (path: string, options: object) => Array<{
@@ -73,22 +74,18 @@ const SIGNING_IN = /\blogin\b|\blog in\b|\bsign-?in\b|\bsign in\b|\bsigning in\b
 const WINDOW = 120;
 
 /**
- * The file with its comments removed, whitespace collapsed.
+ * The file with its comments blanked, whitespace collapsed.
  *
  * Comments are not shown to the member, and the first version of this suite
  * failed on the comment in `account-security.tsx` that quotes the removed copy
  * in order to explain it. A rule that forbids *describing* a defect would make
  * every file that documents one unfixable — so the scan reads what ships.
  *
- * Block comments go first, which also removes the `//` inside any of them.
- * A line comment then runs to the newline, so this must happen before the
- * whitespace collapse. Truncating a `https://…` inside a string literal is
- * acceptable here: no claim this rule looks for survives in a URL.
+ * The comments go before the whitespace collapse, because a line comment ends
+ * at its newline and the collapse removes the newlines.
  */
 function visibleCopy(file: string): string {
-  return readFileSync(file, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/\/\/[^\n]*/g, ' ')
+  return blankComments(readFileSync(file, 'utf8'))
     .replace(/\s+/g, ' ');
 }
 

@@ -11,16 +11,10 @@
 // *documenting a removed lie must not be indistinguishable from committing it.*
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
-
-function withoutComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
-}
 
 const SOURCE = withoutComments(
   fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'marketplace', 'create.tsx'), 'utf8')

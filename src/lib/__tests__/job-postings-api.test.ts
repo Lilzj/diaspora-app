@@ -25,6 +25,7 @@ import {
   type JobPostingForm,
   type PostJobInput,
 } from '@/lib/api/job-postings-api';
+import { withoutComments } from './support/source-text';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
@@ -317,10 +318,7 @@ describe('the form', () => {
 });
 
 describe('the Post a job screen', () => {
-  const source = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'app', 'job', 'create.tsx'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '');
+  const source = withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'job', 'create.tsx'), 'utf8'));
 
   it('posts through the real sequence, not the legacy payload', () => {
     expect(source).toContain('postJob(');

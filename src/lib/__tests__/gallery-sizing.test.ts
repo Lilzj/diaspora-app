@@ -19,6 +19,8 @@
 // a number, not by a viewport utility class.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
 const path = require('path') as { join(...segments: string[]): string };
 
@@ -30,12 +32,7 @@ const path = require('path') as { join(...segments: string[]): string };
  * assertion would match the explanation and fail on a file that is correct.
  */
 function read(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), ...segments), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split(String.fromCharCode(10))
-    .filter((line: string) => !/^\s*(\/\/|\*)/.test(line))
-    .join(String.fromCharCode(10));
+  return withoutComments(fs.readFileSync(path.join(process.cwd(), ...segments), 'utf8'));
 }
 
 const HOUSING = read('src', 'app', 'housing', '[id].tsx');

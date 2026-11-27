@@ -39,6 +39,7 @@ import {
 } from '@/lib/api/analytics-api';
 import { formatMetricValue } from '@/lib/analytics/format';
 import type { AnalyticsTimeRange } from '@/types/analytics';
+import { withoutComments } from './support/source-text';
 
 const RANGE: AnalyticsTimeRange = {
   preset: 'last30d',
@@ -378,9 +379,7 @@ describe('the dataset hook', () => {
 
   // The whole analytics hooks module, as before FSOLID-003 split it into a file per subject:
   // the dataset hook lives in `dataset.ts`, and the absences below are about all of them.
-  const hook = hookModuleSource('analytics')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '');
+  const hook = withoutComments(hookModuleSource('analytics'));
 
   it('gates the owner arm on what the member asked for, never on the gap switch', () => {
     // `enabled` folds in `areAnalyticsGapsEnabled()`, false in every release build.

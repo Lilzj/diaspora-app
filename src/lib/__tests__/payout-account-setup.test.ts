@@ -33,6 +33,8 @@
 //   way.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { withoutComments } from './support/source-text';
+
 declare const __dirname: string;
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
 const join: (...parts: string[]) => string = require('path').join;
@@ -45,9 +47,7 @@ function read(relative: string): string {
 
 /** Source with comments removed, so prose about a field is not read as one. */
 function code(relative: string): string {
-  return read(relative)
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/^\s*\/\/.*$/gm, ' ');
+  return withoutComments(read(relative));
 }
 
 describe('the payout account screen exists and is reachable', () => {

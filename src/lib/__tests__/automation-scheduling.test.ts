@@ -34,6 +34,7 @@ import {
 } from '@/lib/automation/schedule';
 import { checkDependencies } from '@/lib/automation/dependencies';
 import type { AutomationSchedule } from '@/types/automation';
+import { withoutComments } from './support/source-text';
 
 /** A fixed "now" every test reasons from. A Wednesday, in the northern summer. */
 const NOW = new Date('2026-08-05T10:00:00.000Z');
@@ -96,12 +97,7 @@ describe('§41 · the client is never the authoritative scheduler', () => {
     const fs = require('fs') as { readFileSync(p: string, e: string): string };
     const path = require('path') as { join(...s: string[]): string };
 
-    const source = fs
-      .readFileSync(path.join(process.cwd(), 'src', 'lib', 'automation', 'schedule.ts'), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .split('\n')
-      .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-      .join('\n');
+    const source = withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'lib', 'automation', 'schedule.ts'), 'utf8'));
 
     for (const forbidden of ['setTimeout', 'setInterval', 'requestAnimationFrame']) {
       expect(source).not.toContain(forbidden);

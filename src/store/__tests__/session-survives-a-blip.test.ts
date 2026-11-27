@@ -24,6 +24,7 @@
 
 import { isRefusal } from '../auth';
 import { integrationError } from '@/lib/integrations/errors';
+import { withoutComments } from '@/lib/__tests__/support/source-text';
 
 describe('what counts as the server refusing a refresh', () => {
   it.each([
@@ -62,10 +63,7 @@ describe('the refresh handler', () => {
   const fs = require('fs') as { readFileSync(p: string, e: string): string };
   const path = require('path') as { join(...s: string[]): string };
 
-  const SOURCE = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'store', 'auth.ts'), 'utf8')
-    .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
-    .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+  const SOURCE = withoutComments(fs.readFileSync(path.join(process.cwd(), 'src', 'store', 'auth.ts'), 'utf8'));
 
   it('does not catch everything and end the session', () => {
     // The literal shape of the defect. A `catch {` with no binding cannot tell
