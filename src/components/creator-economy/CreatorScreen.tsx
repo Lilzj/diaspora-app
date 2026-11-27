@@ -47,6 +47,7 @@ import { CreatorGapNotice, CreatorGapUnavailable } from './CreatorGapNotice';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import type { ScreenAvailability, ScreenLoad } from '@/components/layout/screen-groups';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { ScreenListBody, type ScreenList } from '@/components/layout/screen-list';
 import { backOr } from '@/lib/platform/navigation';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
@@ -118,7 +119,7 @@ export interface CreatorAvailability extends ScreenAvailability {
   refusal?: CreatorRefusal;
 }
 
-export interface CreatorScreenProps {
+export interface CreatorScreenProps<T = unknown> {
   title: string;
   subtitle?: string;
   /** Whether the feature is here at all: its gap, this build's reach, the access decision. */
@@ -133,6 +134,12 @@ export interface CreatorScreenProps {
   footer?: React.ReactNode;
   /** Set false where the screen supplies its own list. */
   scrollable?: boolean;
+  /**
+   * The screen's long list (FARCH-004, 27 Nov 2026). The shell draws the
+   * screen as one FlashList, with the children above the rows, so a list that
+   * pages recycles its rows instead of keeping every page mounted.
+   */
+  list?: ScreenList<T>;
   /** The body's scroll view, for screens that move the member to a field. */
   scrollRef?: React.Ref<React.ComponentRef<typeof ScrollView>>;
   /** Raise the shared navigation bar at the end of the content. */
@@ -140,7 +147,7 @@ export interface CreatorScreenProps {
   children: React.ReactNode;
 }
 
-export function CreatorScreen({
+export function CreatorScreen<T = unknown>({
   title,
   subtitle,
   availability = {},
@@ -152,8 +159,9 @@ export function CreatorScreen({
   scrollable = true,
   scrollRef,
   scrollEndNavigation,
+  list,
   children,
-}: CreatorScreenProps) {
+}: CreatorScreenProps<T>) {
   const { gapKey, gapDetail, isEnabled = true, refusal } = availability;
   const { isLoading = false, error = null, onRetry, onRefresh, isRefreshing = false } = load;
   const { tokens } = useTheme();
@@ -200,13 +208,19 @@ export function CreatorScreen({
     return frame(<FinancialErrorView error={error} onRetry={onRetry} />);
   }
 
+  const gapNotice = gapKey ? (
+    <View className="px-5 pt-4">
+      <CreatorGapNotice gapKey={gapKey} detail={gapDetail} />
+    </View>
+  ) : null;
+
+  const refreshControl = onRefresh ? (
+    <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={tokens.color.primary[500]} />
+  ) : undefined;
+
   const body = (
     <>
-      {gapKey ? (
-        <View className="px-5 pt-4">
-          <CreatorGapNotice gapKey={gapKey} detail={gapDetail} />
-        </View>
-      ) : null}
+      {gapNotice}
 
       {/* The list state every list draws, since 27 Nov 2026 (FARCH-007). */}
       <ListState loading={isLoading} loadingLabel="Loading">
@@ -224,7 +238,29 @@ export function CreatorScreen({
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       {sticky}
 
-      {scrollable ? (
+      {list ? (
+        // A long list: the same body, as one FlashList with the gap notice and
+        // the screen's children above the rows. As in the scroll view, the gap
+        // notice stays above the first read's spinner, and a pull works during
+        // it. The bar is turned off rather than the list swapped while a footer
+        // is pinned, for the reason above.
+        <ScreenListBody
+          list={list}
+          loading={isLoading}
+          header={
+            <>
+              {gapNotice}
+              <ListState loading={isLoading} loadingLabel="Loading">
+                {children}
+              </ListState>
+            </>
+          }
+          scrollEnd={useScrollEndNav}
+          endNavigation={!footer}
+          footerHeight={footer ? 72 : 0}
+          refreshControl={refreshControl}
+        />
+      ) : scrollable ? (
         <Body
           ref={scrollRef as never}
           {...(endNavigationProps as object)}
@@ -238,15 +274,7 @@ export function CreatorScreen({
             // app. `footerHeight` is the pinned footer this screen renders.
             paddingBottom: bottomInset,
           }}
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={onRefresh}
-                tintColor={tokens.color.primary[500]}
-              />
-            ) : undefined
-          }
+          refreshControl={refreshControl}
         >
           {body}
         </Body>

@@ -9,7 +9,8 @@ import {
   ScrollView,
   ScrollViewProps,
 } from 'react-native';
-import type { FlatListProps, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import type { FlatListProps, LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { FlashList, type FlashListProps, type FlashListRef } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -165,6 +166,124 @@ export const isCloseToBottom = (event: NativeSyntheticEvent<NativeScrollEvent>, 
   return layoutMeasurement.height + contentOffset.y >= contentSize.height - threshold;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// What every scroll-end container shares
+//
+// Three containers raise the bar: a ScrollView, a FlatList and a FlashList.
+// They differ only in what scrolls. The decision (has the member reached the
+// end, or does the content fit without scrolling?), the reserved inset and the
+// shield over the home-indicator strip are the same, so they are written once
+// here and each container wires them to its own scrolling component. They were
+// two copies until 27 Nov 2026 (FARCH-004); a third, for FlashList, would have
+// been the one that drifted.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ScrollEndOptions {
+  onScroll?: ((event: NativeSyntheticEvent<NativeScrollEvent>) => void) | null;
+  onBottomNavVisibilityChange?: (visible: boolean) => void;
+  onLayout?: ((event: LayoutChangeEvent) => void) | null;
+  onContentSizeChange?: ((width: number, height: number) => void) | null;
+  /** Height of a footer pinned over the content, if the screen has one. */
+  footerHeight?: number;
+}
+
+/**
+ * Whether the member is at the end of the content, and the props that tell.
+ * A container spreads `scrollProps` onto what scrolls and pads its content by
+ * `bottomInset`.
+ */
+function useScrollEnd({
+  onScroll,
+  onBottomNavVisibilityChange,
+  onLayout,
+  onContentSizeChange,
+  footerHeight = 0,
+}: ScrollEndOptions) {
+  const [showBottomNav, setShowBottomNav] = useState(false);
+  // One source of truth with every other scroll container in the app.
+  const bottomInset = useBottomInset({ chrome: 'scroll-end-nav', footerHeight });
+
+  // ── A screen shorter than the viewport is already at its end ────────────
+  //
+  // The bar was raised only by a scroll event, so a screen whose content does
+  // not overflow never raised it at all — no scroll, no event, no bar, and no
+  // navigation anywhere on the screen but the back arrow. `/settings/about`
+  // is four rows and a copyright line; it had nothing. A list with three rows
+  // never scrolls either, and an empty or nearly-empty list is exactly where a
+  // member most needs a way onwards.
+  //
+  // The reserved inset is subtracted before comparing, because it is padding
+  // the container itself adds: without that, every short screen is 60pt taller
+  // than its viewport and reads as scrollable when there is nothing to scroll.
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+  const fitsWithoutScrolling =
+    viewportHeight > 0 && contentHeight > 0 && contentHeight - bottomInset <= viewportHeight;
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const isClose = isCloseToBottom(event, 80);
+    if (isClose !== showBottomNav) {
+      setShowBottomNav(isClose);
+      onBottomNavVisibilityChange?.(isClose);
+    }
+    onScroll?.(event);
+  };
+
+  return {
+    atEnd: showBottomNav || fitsWithoutScrolling,
+    bottomInset,
+    scrollProps: {
+      onScroll: handleScroll,
+      onLayout: (event: LayoutChangeEvent) => {
+        setViewportHeight(event.nativeEvent.layout.height);
+        onLayout?.(event);
+      },
+      onContentSizeChange: (width: number, height: number) => {
+        setContentHeight(height);
+        onContentSizeChange?.(width, height);
+      },
+      scrollEventThrottle: 16,
+    },
+  };
+}
+
+/**
+ * The bar, and the shield that covers the bottom safe area while the bar is
+ * hidden, so scrolling content does not show through the home-indicator strip.
+ */
+function ScrollEndChrome({
+  atEnd,
+  activeTab,
+  bottomShieldColor,
+}: {
+  atEnd: boolean;
+  activeTab?: TabKey;
+  bottomShieldColor?: string;
+}) {
+  const insets = useSafeAreaInsets();
+  const { tokens } = useTheme();
+
+  return (
+    <>
+      <ScrollEndNavigationMenu visible={atEnd} activeTab={activeTab} />
+      {!atEnd && insets.bottom > 0 && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: insets.bottom,
+            backgroundColor: bottomShieldColor || tokens.color.navigation.background,
+            zIndex: tokens.zIndex.card,
+          }}
+        />
+      )}
+    </>
+  );
+}
+
 interface ScrollEndScrollViewProps extends ScrollViewProps {
   activeTab?: TabKey;
   onBottomNavVisibilityChange?: (visible: boolean) => void;
@@ -200,54 +319,20 @@ export const ScrollEndScrollView = React.forwardRef<React.ComponentRef<typeof Sc
     },
     ref
   ) => {
-    const [showBottomNav, setShowBottomNav] = useState(false);
-    const insets = useSafeAreaInsets();
-    const { tokens } = useTheme();
-    // One source of truth with every other scroll container in the app.
-    const bottomInset = useBottomInset({ chrome: 'scroll-end-nav', footerHeight });
-
-    // ── A screen shorter than the viewport is already at its end ────────────
-    //
-    // The bar was raised only by a scroll event, so a screen whose content does
-    // not overflow never raised it at all — no scroll, no event, no bar, and no
-    // navigation anywhere on the screen but the back arrow. `/settings/about`
-    // is four rows and a copyright line; it had nothing.
-    //
-    // The reserved inset is subtracted before comparing, because it is padding
-    // this component itself adds: without that, every short screen is 60pt
-    // taller than its viewport and reads as scrollable when there is nothing to
-    // scroll.
-    const [viewportHeight, setViewportHeight] = useState(0);
-    const [contentHeight, setContentHeight] = useState(0);
-    const fitsWithoutScrolling =
-      viewportHeight > 0 && contentHeight > 0 && contentHeight - bottomInset <= viewportHeight;
-
-    const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const isClose = isCloseToBottom(event, 80);
-      if (isClose !== showBottomNav) {
-        setShowBottomNav(isClose);
-        onBottomNavVisibilityChange?.(isClose);
-      }
-      onScroll?.(event);
-    };
-
-    const atEnd = showBottomNav || fitsWithoutScrolling;
+    const end = useScrollEnd({
+      onScroll,
+      onBottomNavVisibilityChange,
+      onLayout: props.onLayout,
+      onContentSizeChange: props.onContentSizeChange,
+      footerHeight,
+    });
 
     return (
       <View style={{ flex: 1, position: 'relative' }}>
         <ScrollView
           ref={ref}
           {...props}
-          onScroll={handleScroll}
-          onLayout={(event) => {
-            setViewportHeight(event.nativeEvent.layout.height);
-            props.onLayout?.(event);
-          }}
-          onContentSizeChange={(width, height) => {
-            setContentHeight(height);
-            props.onContentSizeChange?.(width, height);
-          }}
-          scrollEventThrottle={16}
+          {...end.scrollProps}
           // Without this the keyboard swallows the first tap on any control
           // inside a scrolling form.
           keyboardShouldPersistTaps={props.keyboardShouldPersistTaps ?? 'handled'}
@@ -257,31 +342,17 @@ export const ScrollEndScrollView = React.forwardRef<React.ComponentRef<typeof Sc
             // only while the bar was showing made the content grow by 60pt at
             // the exact moment the bar appeared, shifting the control the
             // member was reaching for out from under their finger.
-            { paddingBottom: bottomInset },
+            { paddingBottom: end.bottomInset },
           ]}
         >
           {children}
         </ScrollView>
-        {endNavigation ? <ScrollEndNavigationMenu visible={atEnd} activeTab={activeTab} /> : null}
-
-        {/* Covers the bottom safe area while the bar is hidden, so scrolling
-            content does not show through the home-indicator strip. Not with
-            end navigation off: a pinned footer covers that strip, and the
-            shield drew a band above it (Android UAT, 3 Nov 2026). */}
-        {endNavigation && !atEnd && insets.bottom > 0 && (
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: insets.bottom,
-              backgroundColor: bottomShieldColor || tokens.color.navigation.background,
-              zIndex: tokens.zIndex.card,
-            }}
-          />
-        )}
+        {/* Not with end navigation off: a pinned footer covers the
+            home-indicator strip, and the shield drew a band above it
+            (Android UAT, 3 Nov 2026). */}
+        {endNavigation ? (
+          <ScrollEndChrome atEnd={end.atEnd} activeTab={activeTab} bottomShieldColor={bottomShieldColor} />
+        ) : null}
       </View>
     );
   }
@@ -296,14 +367,10 @@ ScrollEndScrollView.displayName = 'ScrollEndScrollView';
 // own virtualised scrolling, and wrapping one in a ScrollView flattens it into
 // rendering every row at once, which is the whole thing a list exists to avoid.
 //
-// So this repeats the wrapper rather than the container: same threshold, same
-// reserved inset from the same hook, same shield over the home-indicator strip.
-// Thirteen screens use lists — a member's transactions, notifications, saved
-// items, listings, reviews — and they are exactly the screens somebody scrolls
-// to the end of.
-//
-// Kept beside `ScrollEndScrollView` on purpose. Two files would drift; one file
-// means a change to the threshold or the shield reaches both.
+// So the list containers wire the same hook to their own scrolling component:
+// same threshold, same reserved inset, same shield. Kept beside
+// `ScrollEndScrollView` on purpose. Two files would drift; one file means a
+// change to the threshold or the shield reaches all three.
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ScrollEndFlatListProps<T> extends FlatListProps<T> {
@@ -314,6 +381,7 @@ interface ScrollEndFlatListProps<T> extends FlatListProps<T> {
   footerHeight?: number;
 }
 
+/** For a list read in one go: a member's payments, reviews, listings. */
 export function ScrollEndFlatList<T>({
   activeTab,
   onScroll,
@@ -323,66 +391,80 @@ export function ScrollEndFlatList<T>({
   contentContainerStyle,
   ...props
 }: ScrollEndFlatListProps<T>) {
-  const [showBottomNav, setShowBottomNav] = useState(false);
-  const insets = useSafeAreaInsets();
-  const { tokens } = useTheme();
-  const bottomInset = useBottomInset({ chrome: 'scroll-end-nav', footerHeight });
-
-  // Same reasoning as `ScrollEndScrollView`: a list with three rows never
-  // scrolls, so it never raised the bar. An empty or nearly-empty list is
-  // exactly where a member most needs a way onwards.
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const [contentHeight, setContentHeight] = useState(0);
-  const fitsWithoutScrolling =
-    viewportHeight > 0 && contentHeight > 0 && contentHeight - bottomInset <= viewportHeight;
-
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const isClose = isCloseToBottom(event, 80);
-    if (isClose !== showBottomNav) {
-      setShowBottomNav(isClose);
-      onBottomNavVisibilityChange?.(isClose);
-    }
-    onScroll?.(event);
-  };
-
-  const atEnd = showBottomNav || fitsWithoutScrolling;
+  const end = useScrollEnd({
+    onScroll,
+    onBottomNavVisibilityChange,
+    onLayout: props.onLayout,
+    onContentSizeChange: props.onContentSizeChange,
+    footerHeight,
+  });
 
   return (
     <View style={{ flex: 1, position: 'relative' }}>
       <FlatList
         {...props}
-        onScroll={handleScroll}
-        onLayout={(event) => {
-          setViewportHeight(event.nativeEvent.layout.height);
-          props.onLayout?.(event);
-        }}
-        onContentSizeChange={(width, height) => {
-          setContentHeight(height);
-          props.onContentSizeChange?.(width, height);
-        }}
-        scrollEventThrottle={16}
+        {...end.scrollProps}
         keyboardShouldPersistTaps={props.keyboardShouldPersistTaps ?? 'handled'}
         // Reserved at all times, for the reason recorded on
         // `ScrollEndScrollView`: growing the content by 60pt at the moment the
         // bar appears moves the row under the member's finger.
-        contentContainerStyle={[contentContainerStyle, { paddingBottom: bottomInset }]}
+        contentContainerStyle={[contentContainerStyle, { paddingBottom: end.bottomInset }]}
       />
-      <ScrollEndNavigationMenu visible={atEnd} activeTab={activeTab} />
+      <ScrollEndChrome atEnd={end.atEnd} activeTab={activeTab} bottomShieldColor={bottomShieldColor} />
+    </View>
+  );
+}
 
-      {!atEnd && insets.bottom > 0 && (
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: insets.bottom,
-            backgroundColor: bottomShieldColor || tokens.color.navigation.background,
-            zIndex: tokens.zIndex.card,
-          }}
-        />
-      )}
+interface ScrollEndFlashListProps<T> extends FlashListProps<T> {
+  activeTab?: TabKey;
+  onBottomNavVisibilityChange?: (visible: boolean) => void;
+  bottomShieldColor?: string;
+  /** Height of a footer pinned over this screen's content, if it has one. */
+  footerHeight?: number;
+  /**
+   * False while a footer is pinned below the list. Turning the bar off this
+   * way keeps the same list, where swapping components would remount it
+   * and throw the member back to the top (see `CreatorScreen`).
+   */
+  endNavigation?: boolean;
+  /** The list, for a screen that scrolls it (React 19 hands `ref` over as a prop). */
+  ref?: React.Ref<FlashListRef<T>>;
+}
+
+/**
+ * For a list that pages: notifications, a statement, rewards. It grows as the
+ * member reads it, so it recycles the rows that leave the screen into the ones
+ * arriving rather than mounting each one (FARCH-004, 27 Nov 2026).
+ */
+export function ScrollEndFlashList<T>({
+  activeTab,
+  onScroll,
+  onBottomNavVisibilityChange,
+  bottomShieldColor,
+  footerHeight = 0,
+  endNavigation = true,
+  contentContainerStyle,
+  ...props
+}: ScrollEndFlashListProps<T>) {
+  const end = useScrollEnd({
+    onScroll,
+    onBottomNavVisibilityChange,
+    onLayout: props.onLayout,
+    onContentSizeChange: props.onContentSizeChange,
+    footerHeight,
+  });
+
+  return (
+    <View style={{ flex: 1, position: 'relative' }}>
+      <FlashList
+        {...props}
+        {...end.scrollProps}
+        keyboardShouldPersistTaps={props.keyboardShouldPersistTaps ?? 'handled'}
+        contentContainerStyle={[contentContainerStyle, { paddingBottom: end.bottomInset }]}
+      />
+      {endNavigation ? (
+        <ScrollEndChrome atEnd={end.atEnd} activeTab={activeTab} bottomShieldColor={bottomShieldColor} />
+      ) : null}
     </View>
   );
 }
