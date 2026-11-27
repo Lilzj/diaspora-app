@@ -9,7 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import type { OrgCategory } from '@/types/community-life';
 import { organizationKind, organizationLine } from '@/lib/domain/organization-summary';
-import { EmptyState } from '@/components/screens/community-life-events/EmptyState';
+import { ListState } from '@/components/ListState';
+import { ListSkeleton } from '@/components/screens/community-life-events/ListSkeleton';
 import type {
   DirectorySearch,
 } from '@/components/screens/community-life-events/useDirectorySearch';
@@ -36,7 +37,7 @@ interface DirectoryTabProps {
 export function DirectoryTab({ directorySearch, lists, place, saved }: DirectoryTabProps) {
   const tokens = useThemeTokens();
   const { dirQuery, setDirQuery, selectedDirCat, setSelectedDirCat } = directorySearch;
-  const { orgsList } = lists;
+  const { orgsList, orgsLoading, orgsError, refresh } = lists;
   const { placeName } = place;
   const { isSaved, handleSaveToggle } = saved;
 
@@ -87,8 +88,24 @@ export function DirectoryTab({ directorySearch, lists, place, saved }: Directory
       </ScrollView>
 
       {/* Directory Org Cards */}
-      {orgsList.length > 0 ? (
-        orgsList.map((org) => {
+      <ListState
+        loading={orgsLoading && orgsList.length === 0}
+        skeleton={<ListSkeleton label="Loading organizations" />}
+        error={
+          orgsError && orgsList.length === 0
+            ? { title: 'Organizations could not be loaded', message: orgsError.message }
+            : null
+        }
+        onRetry={refresh}
+        isEmpty={orgsList.length === 0}
+        empty={{
+          icon: 'calendar-outline',
+          title: 'No organizations found',
+          message: "We couldn't find any listings matching your search. Create one now!",
+          action: { label: 'Register Hub', onPress: () => router.push('/community-life/org/create') },
+        }}
+      >
+        {orgsList.map((org) => {
           const isFollowing = isSaved(org.organizationId);
           return (
             <TouchableOpacity
@@ -135,15 +152,8 @@ export function DirectoryTab({ directorySearch, lists, place, saved }: Directory
               </TouchableOpacity>
             </TouchableOpacity>
           );
-        })
-      ) : (
-        <EmptyState
-          title="No organizations found"
-          desc="We couldn't find any listings matching your search. Create one now!"
-          actionText="Register Hub"
-          onPressAction={() => router.push('/community-life/org/create')}
-        />
-      )}
+        })}
+      </ListState>
     </View>
     </TourSpotlight>
   );

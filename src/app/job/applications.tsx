@@ -18,12 +18,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
-import { EmptyState } from '@/components/EmptyState';
+import { ListState } from '@/components/ListState';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
@@ -112,20 +112,6 @@ export default function MyApplicationsScreen() {
     [showAlert, withdraw]
   );
 
-  if (isLoading) {
-    return (
-      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
-        <ScreenHeader title="My applications" />
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#F59300" />
-          <Text className="text-sm font-semibold text-content-muted mt-3">
-            Loading your applications…
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="My applications" />
@@ -137,8 +123,9 @@ export default function MyApplicationsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* The error state is its own block rather than a replacement for the
-            list: a failed refresh must not blank rows the member was reading. */}
-        {error ? (
+            list: a failed refresh must not blank rows the member was reading.
+            With no rows to keep, the list below says it could not be read. */}
+        {error && applications.length > 0 ? (
           <View className="mx-4 mt-4 p-4 rounded-xl bg-surface-muted border border-error-default">
             <Text className="text-sm font-bold text-error-default">{error}</Text>
             <Button label="Try again" variant="outline" size="sm" className="mt-3" onPress={refresh} />
@@ -177,40 +164,46 @@ export default function MyApplicationsScreen() {
           </Text>
         ) : null}
 
-        {isEmpty ? (
-          <EmptyState
-            icon="📄"
-            title={filter === 'active' ? 'Nothing open right now' : 'No applications yet'}
-            description={
+        {/* Loading, unread and empty through the shared list state (FARCH-007,
+            27 Nov 2026); the filter and the count above stay while it loads. */}
+        <ListState
+          loading={isLoading}
+          loadingLabel="Loading your applications…"
+          error={error && applications.length === 0 ? { title: 'Applications could not be loaded', message: error } : null}
+          onRetry={refresh}
+          isEmpty={isEmpty}
+          empty={{
+            icon: 'document-text-outline',
+            title: filter === 'active' ? 'Nothing open right now' : 'No applications yet',
+            message:
               filter === 'active'
                 ? 'Applications you have withdrawn or that were decided are still under "All".'
-                : 'When you apply to a role it appears here, along with whether the employer has opened it.'
-            }
-            action={<Button label="Browse jobs" onPress={() => router.push('/(tabs)/explore')} />}
-          />
-        ) : null}
-
-        <View className="px-4 pt-3">
-          {applications.map((application) => (
-            <ApplicationRow
-              key={application.applicationId}
-              application={application}
-              isWithdrawing={isWithdrawing}
-              onWithdraw={() => confirmWithdraw(application)}
-            />
-          ))}
-        </View>
-
-        {hasMore ? (
-          <View className="px-4 py-4">
-            <Button
-              label={isFetchingMore ? 'Loading…' : 'Show more'}
-              variant="outline"
-              isLoading={isFetchingMore}
-              onPress={loadMore}
-            />
+                : 'When you apply to a role it appears here, along with whether the employer has opened it.',
+            action: { label: 'Browse jobs', onPress: () => router.push('/(tabs)/explore') },
+          }}
+        >
+          <View className="px-4 pt-3">
+            {applications.map((application) => (
+              <ApplicationRow
+                key={application.applicationId}
+                application={application}
+                isWithdrawing={isWithdrawing}
+                onWithdraw={() => confirmWithdraw(application)}
+              />
+            ))}
           </View>
-        ) : null}
+
+          {hasMore ? (
+            <View className="px-4 py-4">
+              <Button
+                label={isFetchingMore ? 'Loading…' : 'Show more'}
+                variant="outline"
+                isLoading={isFetchingMore}
+                onPress={loadMore}
+              />
+            </View>
+          ) : null}
+        </ListState>
       </ScrollView>
     </SafeAreaView>
   );

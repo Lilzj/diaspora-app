@@ -1,12 +1,14 @@
 // This route composes the screen. Each concern is a hook and each part of the page a section,
 // in `src/components/screens/housing-create`; the hooks run in the order below and the
 // sections read them as props (FSOLID-001).
-import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
+import { Text, ScrollView, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { WizardFooter } from '@/components/forms/WizardFooter';
+import { WizardHeader } from '@/components/forms/WizardHeader';
+import { DraftBanner } from '@/components/forms/DraftBanner';
 import { useNotification } from '@/providers/notification-provider';
 import { backOr } from '@/lib/platform/navigation';
 import { steps } from '@/components/screens/housing-create/form';
@@ -23,10 +25,8 @@ import { useHousingContact } from '@/components/screens/housing-create/useHousin
 import { useHousingAmenities } from '@/components/screens/housing-create/useHousingAmenities';
 import { useHousingCatalogue } from '@/components/screens/housing-create/useHousingCatalogue';
 import { useListingCheck } from '@/components/screens/housing-create/useListingCheck';
-import {
-  useHousingDraft,
-  useHousingPublish,
-} from '@/components/screens/housing-create/useHousingDraft';
+import { useHousingDraft } from '@/components/screens/housing-create/useHousingDraft';
+import { useHousingPublish } from '@/components/screens/housing-create/useHousingPublish';
 import { useListingProgress } from '@/components/screens/housing-create/useListingProgress';
 import { ListingTypeStep } from '@/components/screens/housing-create/ListingTypeStep';
 import { PropertyDetailsStep } from '@/components/screens/housing-create/PropertyDetailsStep';
@@ -69,7 +69,7 @@ export default function CreateHousingScreen() {
   const { mayList } = account;
   const { currentStep, setCurrentStep, isSubmitting } = wizard;
   const { draftBannerVisible, restoreDraft, discardDraft } = draft;
-  const { stillNeeded, progressPct } = progress;
+  const { stillNeeded } = progress;
   const { handlePublish } = publish;
 
   if (mayList === false) {
@@ -90,23 +90,10 @@ export default function CreateHousingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-card">
-      {/* Stepper tracker */}
-      <View className="bg-surface-card border-b border-faint px-6 py-3">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
-            Post Housing Accommodation
-          </Text>
-          <Text className="text-xs font-extrabold text-primary-500">
-            Step {currentStep + 1} of {steps.length}
-          </Text>
-        </View>
-        <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
-          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
-        </View>
-      </View>
-
-      <ScreenHeader
-        title={steps[currentStep]}
+      <WizardHeader
+        name="Post Housing Accommodation"
+        steps={steps}
+        step={currentStep}
         showBack={currentStep > 0}
         rightAction={
           <TouchableOpacity onPress={() => {
@@ -124,22 +111,11 @@ export default function CreateHousingScreen() {
       >
         {/* Draft recover alert banner */}
         {draftBannerVisible && currentStep === 0 && (
-          <View className="bg-surface-muted border-b border-subtle px-6 py-4 flex-row items-center justify-between">
-            <View className="flex-1 mr-4">
-              <Text className="text-sm font-bold text-content-strong">✏️ Unfinished Draft</Text>
-              <Text className="text-xs text-content-tertiary mt-0.5">
-                Would you like to restore your previously saved housing draft details?
-              </Text>
-            </View>
-            <View className="flex-row">
-              <TouchableOpacity onPress={restoreDraft} className="bg-primary-500 px-3.5 py-2 rounded-xl mr-2">
-                <Text className="text-xs font-bold text-white">Restore</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={discardDraft} className="bg-surface-muted border border-subtle px-3.5 py-2 rounded-xl">
-                <Text className="text-xs font-bold text-content-tertiary">Discard</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <DraftBanner
+            message="Would you like to restore your previously saved housing draft details?"
+            onRestore={restoreDraft}
+            onDiscard={discardDraft}
+          />
         )}
 
         <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>

@@ -20,12 +20,13 @@
 //   * One open appeal per target. A second is a 409.
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { ListState } from '@/components/ListState';
 import { useMyAppeals, useSubmitAppeal } from '@/hooks/trust';
 import { APPEAL_REASON_MIN_LENGTH, appealTrackerIndex } from '@/lib/api/trust-api';
 import { appealPrefill } from '@/lib/domain/reward-hold';
@@ -297,62 +298,51 @@ export default function AppealsScreen() {
 
         {/* Appeals List */}
         <View className="space-y-4">
-          {isListLoading && (
-            <View className="py-10 items-center" accessibilityLabel="Loading your appeals">
-              <ActivityIndicator />
-            </View>
-          )}
-
-          {listError !== null && (
-            <TouchableOpacity
-              onPress={refresh}
-              className="bg-surface-muted border border-error-default/20 rounded-3xl p-5"
-            >
-              <Text className="text-xs font-extrabold text-error-default mb-1">
-                We could not load your appeals
-              </Text>
-              <Text className="text-xs text-content-tertiary">{listError} Tap to try again.</Text>
-            </TouchableOpacity>
-          )}
-
-          {appeals.map((item) => (
-            <View key={item.appealId} className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4">
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-xs font-black text-primary-500 uppercase tracking-wider">{item.type} Appeal</Text>
-                <View className="bg-surface-muted border border-subtle px-2 py-0.5 rounded">
-                  <Text className="text-[9px] text-content-muted font-bold uppercase">{item.status}</Text>
+          <ListState
+            loading={isListLoading}
+            loadingLabel="Loading your appeals"
+            error={
+              listError !== null && appeals.length === 0
+                ? { title: 'We could not load your appeals', message: `${listError} Tap to try again.` }
+                : null
+            }
+            onRetry={refresh}
+            isEmpty={isEmpty}
+            empty={{
+              icon: 'folder-open-outline',
+              title: 'No active appeals',
+              message: 'You currently have no restriction appeals filed.',
+            }}
+          >
+            {appeals.map((item) => (
+              <View key={item.appealId} className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4">
+                <View className="flex-row justify-between items-center mb-2">
+                  <Text className="text-xs font-black text-primary-500 uppercase tracking-wider">{item.type} Appeal</Text>
+                  <View className="bg-surface-muted border border-subtle px-2 py-0.5 rounded">
+                    <Text className="text-[9px] text-content-muted font-bold uppercase">{item.status}</Text>
+                  </View>
                 </View>
+
+                <Text className="text-[10px] text-content-faint font-bold mb-3">
+                  Filed on {item.createdAt.slice(0, 10)}
+                  {item.isCorrectionRequest ? ' · Correction request' : ''}
+                  {item.evidenceCount > 0 ? ` · ${item.evidenceCount} evidence items` : ''}
+                </Text>
+                <Text className="text-xs font-extrabold text-content-strong mb-1">Your justification:</Text>
+                <Text className="text-xs text-content-muted leading-relaxed mb-3 bg-surface-background/50 p-2.5 rounded-lg border border-faint">{item.reason}</Text>
+
+                {item.explanation && (
+                  <>
+                    <Text className="text-xs font-extrabold text-content-strong mb-1">Moderator review comments:</Text>
+                    <Text className="text-xs text-content-muted leading-relaxed bg-surface-muted/30 border border-subtle/30 p-2.5 rounded-lg">{item.explanation}</Text>
+                  </>
+                )}
+
+                {/* Render visual timeline */}
+                {renderWorkflowTracker(item.status)}
               </View>
-
-              <Text className="text-[10px] text-content-faint font-bold mb-3">
-                Filed on {item.createdAt.slice(0, 10)}
-                {item.isCorrectionRequest ? ' · Correction request' : ''}
-                {item.evidenceCount > 0 ? ` · ${item.evidenceCount} evidence items` : ''}
-              </Text>
-              <Text className="text-xs font-extrabold text-content-strong mb-1">Your justification:</Text>
-              <Text className="text-xs text-content-muted leading-relaxed mb-3 bg-surface-background/50 p-2.5 rounded-lg border border-faint">{item.reason}</Text>
-
-              {item.explanation && (
-                <>
-                  <Text className="text-xs font-extrabold text-content-strong mb-1">Moderator review comments:</Text>
-                  <Text className="text-xs text-content-muted leading-relaxed bg-surface-muted/30 border border-subtle/30 p-2.5 rounded-lg">{item.explanation}</Text>
-                </>
-              )}
-
-              {/* Render visual timeline */}
-              {renderWorkflowTracker(item.status)}
-            </View>
-          ))}
-
-          {isEmpty && (
-            <View className="bg-surface-card border border-subtle rounded-3xl p-8 items-center justify-center">
-              <Text className="text-3xl mb-2">📂</Text>
-              <Text className="text-xs font-bold text-content-strong">No active appeals</Text>
-              <Text className="text-[10px] text-content-faint mt-1 leading-relaxed text-center">
-                You currently have no restriction appeals filed.
-              </Text>
-            </View>
-          )}
+            ))}
+          </ListState>
         </View>
 
         <View className="h-10" />

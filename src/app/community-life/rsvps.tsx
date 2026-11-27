@@ -25,9 +25,9 @@
 
 import React from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ListState } from '@/components/ListState';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { useMyRsvps } from '@/hooks/community-life';
@@ -37,7 +37,7 @@ import type { MyRsvp } from '@/types/community-life';
 
 export default function MyRsvpsScreen() {
   const { tokens } = useTheme();
-  const { rsvps, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { rsvps, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useMyRsvps();
 
   return (
@@ -48,96 +48,55 @@ export default function MyRsvpsScreen() {
       <ScreenHeader title="Going to" showBack />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
-        {isLoading ? (
-          <View className="py-10 items-center">
-            <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-          </View>
-        ) : isError ? (
-          <View
-            style={{
-              backgroundColor: tokens.color.surface.card,
-              borderColor: tokens.color.border.default,
-            }}
-            className="rounded-3xl border p-6 items-center"
-          >
-            <Text
-              style={{ color: tokens.color.text.primary }}
-              className="text-sm font-bold text-center"
-            >
-              We could not load what you are going to
-            </Text>
-            <Text
-              style={{ color: tokens.color.text.secondary }}
-              className="text-xs font-semibold mt-2 text-center leading-relaxed"
-            >
-              Your RSVPs are safe. Pull down to try again.
-            </Text>
-          </View>
-        ) : rsvps.length === 0 ? (
-          <View
-            style={{
-              backgroundColor: tokens.color.surface.card,
-              borderColor: tokens.color.border.default,
-            }}
-            className="rounded-3xl border p-6 items-center"
-          >
-            <Ionicons name="calendar-outline" size={28} color={tokens.color.text.placeholder} />
-            <Text
-              style={{ color: tokens.color.text.primary }}
-              className="text-base font-bold mt-3 text-center"
-            >
-              Nothing in the diary
-            </Text>
-            <Text
-              style={{ color: tokens.color.text.secondary }}
-              className="text-xs font-semibold mt-2 text-center leading-relaxed"
-            >
-              Events you say you are going to will appear here, along with your place on any
-              waitlist.
-            </Text>
-
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Browse events"
-              onPress={() => router.push('/community-life')}
-              style={{ backgroundColor: tokens.color.primary[500] }}
-              className="rounded-full px-6 py-3 mt-4"
-            >
-              <Text className="text-white text-[11px] font-black uppercase tracking-widest">
-                Find something
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
+        {/* The error said "Pull down to try again" over a list nothing could pull; it offers
+            Try again instead (FARCH-007). RSVPs already shown stay when a later page fails. */}
+        <ListState
+          loading={isLoading}
+          loadingLabel="Loading your RSVPs"
+          error={
+            isError && rsvps.length === 0
+              ? { title: 'We could not load what you are going to', message: 'Your RSVPs are safe.' }
+              : null
+          }
+          onRetry={() => void refetch()}
+          isEmpty={rsvps.length === 0}
+          empty={{
+            icon: 'calendar-outline',
+            title: 'Nothing in the diary',
+            message:
+              'Events you say you are going to will appear here, along with your place on any waitlist.',
+            action: { label: 'Find something', onPress: () => router.push('/community-life') },
+          }}
+        >
           <View className="gap-3">
             {rsvps.map((entry) => (
               <RsvpRow key={entry.rsvp.rsvpId} entry={entry} />
             ))}
           </View>
-        )}
 
-        {hasNextPage ? (
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Load more"
-            accessibilityState={{ busy: isFetchingNextPage }}
-            disabled={isFetchingNextPage}
-            onPress={() => fetchNextPage()}
-            style={{ borderColor: tokens.color.border.default }}
-            className="rounded-full border py-3 items-center mt-4"
-          >
-            {isFetchingNextPage ? (
-              <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-            ) : (
-              <Text
-                style={{ color: tokens.color.text.primary }}
-                className="text-[11px] font-black uppercase tracking-widest"
-              >
-                Load more
-              </Text>
-            )}
-          </TouchableOpacity>
-        ) : null}
+          {hasNextPage ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Load more"
+              accessibilityState={{ busy: isFetchingNextPage }}
+              disabled={isFetchingNextPage}
+              onPress={() => fetchNextPage()}
+              style={{ borderColor: tokens.color.border.default }}
+              className="rounded-full border py-3 items-center mt-4"
+            >
+              {isFetchingNextPage ? (
+                <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+              ) : (
+                <Text
+                  style={{ color: tokens.color.text.primary }}
+                  className="text-[11px] font-black uppercase tracking-widest"
+                >
+                  Load more
+                </Text>
+              )}
+            </TouchableOpacity>
+          ) : null}
+        </ListState>
       </ScrollView>
     </SafeAreaView>
   );

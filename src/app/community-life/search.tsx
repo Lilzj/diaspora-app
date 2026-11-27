@@ -47,11 +47,11 @@ import {
   Card,
   ChipRow,
   CommunityScreen,
-  EmptyState,
   InlineRefusal,
   SimulatedFigure,
   VerifiedFigure,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useCommunitySearch } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
@@ -232,40 +232,55 @@ export default function CommunitySearchScreen() {
         ) : null}
       </View>
 
-      {query.trim().length <= 1 ? (
-        <EmptyState
-          icon="search-outline"
-          title="What are you looking for?"
-          body="Search across events, recurring events, organisations, membership, fundraising, volunteering and polls at once."
-        />
-      ) : selectedTypeIsUnsearchable ? (
-        /* Not an empty result — an absent capability. "Nothing matched" would
-           tell the member there are no recurring events or no fundraisers, which
-           is a claim about the content that nothing checked. See the header. */
-        <EmptyState
-          icon="construct-outline"
-          title="This cannot be searched yet"
-          body={
-            type === 'campaign'
-              ? 'Diaspora has no way to search fundraising campaigns yet, so this is not saying that none matched — it is saying we did not look. Choose another filter, or browse fundraising from a community’s page.'
-              : 'Diaspora has no way to search recurring events yet, so this is not saying that none matched — it is saying we did not look. Choose another filter, or open a recurring event from its organiser’s page.'
-          }
-          action="Search everything instead"
-          onAction={() => setType('all')}
-        />
-      ) : results.length === 0 && !isLoading ? (
-        <EmptyState
-          icon="search-outline"
-          title="Nothing matched"
-          body={`Nothing in your community matched “${query.trim()}”. Try a shorter word, or widen the filters.`}
-          action="Clear filters"
-          onAction={() => {
-            setType('all');
-            setPriceBand('any');
-            setUseCity(false);
-          }}
-        />
-      ) : (
+      {/* The shell draws the first read, and the error when all three arms failed. One or two
+          can fail without it hearing: with nothing else to show, that is a failure, not "Nothing
+          matched". Under "Everything" every arm runs, so `refetch` re-runs just this search; under
+          one kind it would also start the arms that kind switched off, so there the words and
+          filters above are the way to try again. */}
+      <ListState
+        error={
+          query.trim().length > 1 && !selectedTypeIsUnsearchable && error && results.length === 0
+            ? { title: 'Search results could not be loaded', message: error.message }
+            : null
+        }
+        onRetry={type === 'all' ? refetch : undefined}
+        isEmpty={query.trim().length <= 1 || selectedTypeIsUnsearchable || results.length === 0}
+        empty={
+          query.trim().length <= 1
+            ? {
+                icon: 'search-outline',
+                title: 'What are you looking for?',
+                message:
+                  'Search across events, recurring events, organisations, membership, fundraising, volunteering and polls at once.',
+              }
+            : selectedTypeIsUnsearchable
+              ? /* Not an empty result — an absent capability. "Nothing matched" would
+                   tell the member there are no recurring events or no fundraisers, which
+                   is a claim about the content that nothing checked. See the header. */
+                {
+                  icon: 'construct-outline',
+                  title: 'This cannot be searched yet',
+                  message:
+                    type === 'campaign'
+                      ? 'Diaspora has no way to search fundraising campaigns yet, so this is not saying that none matched — it is saying we did not look. Choose another filter, or browse fundraising from a community’s page.'
+                      : 'Diaspora has no way to search recurring events yet, so this is not saying that none matched — it is saying we did not look. Choose another filter, or open a recurring event from its organiser’s page.',
+                  action: { label: 'Search everything instead', onPress: () => setType('all') },
+                }
+              : {
+                  icon: 'search-outline',
+                  title: 'Nothing matched',
+                  message: `Nothing in your community matched “${query.trim()}”. Try a shorter word, or widen the filters.`,
+                  action: {
+                    label: 'Clear filters',
+                    onPress: () => {
+                      setType('all');
+                      setPriceBand('any');
+                      setUseCity(false);
+                    },
+                  },
+                }
+        }
+      >
         <View className="px-5 mt-4">
           {/* Where the results came from — §40's labelled merge */}
           <View className="flex-row items-center flex-wrap mb-4">
@@ -375,7 +390,7 @@ export default function CommunitySearchScreen() {
             reason="Events and organisations come from Diaspora's live directory. The other kinds are simulated for now, and are grouped separately rather than mixed in — Diaspora does not yet have one search that ranks them all together."
           />
         </View>
-      )}
+      </ListState>
     </CommunityScreen>
   );
 }

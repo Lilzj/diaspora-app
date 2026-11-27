@@ -12,7 +12,8 @@ import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
-import { Card, CommunityScreen, EmptyState, PrimaryButton } from '@/components/community';
+import { Card, CommunityScreen, PrimaryButton } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useMyOrganizations } from '@/hooks/community-life';
 
 export default function OrganizationPickerScreen() {
@@ -31,16 +32,18 @@ export default function OrganizationPickerScreen() {
       load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
     >
       <View className="px-5 pt-4">
-        {organizations.length === 0 && !isLoading ? (
-          <EmptyState
-            icon="business-outline"
-            title="You do not run an organisation"
-            body="Organisation dashboards are for the people who run a community — its administrators, organisers and treasurers. If you help run one, ask an administrator to add you."
-            action="Register an organisation"
-            onAction={() => router.push('/community-life/org/create')}
-          />
-        ) : (
-          organizations.map((organization) => (
+        {/* The shell draws the list's loading and error; the list says when it is empty. */}
+        <ListState
+          isEmpty={organizations.length === 0}
+          empty={{
+            icon: 'business-outline',
+            title: 'You do not run an organisation',
+            message:
+              'Organisation dashboards are for the people who run a community — its administrators, organisers and treasurers. If you help run one, ask an administrator to add you.',
+            action: { label: 'Register an organisation', onPress: () => router.push('/community-life/org/create') },
+          }}
+        >
+          {organizations.map((organization) => (
             <View key={organization.organizationId} className="mb-2.5">
               <Card
                 onPress={() =>
@@ -75,8 +78,8 @@ export default function OrganizationPickerScreen() {
                 </View>
               </Card>
             </View>
-          ))
-        )}
+          ))}
+        </ListState>
 
         {organizations.length > 0 ? (
           <View className="mt-6">

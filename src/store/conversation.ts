@@ -56,10 +56,14 @@ interface ConversationState {
   // Messages (per conversation)
   messages: Record<string, ThreadMessage[]>;
   isLoadingMessages: Record<string, boolean>;
+  /** Why a thread could not be read, or null: an empty thread and a failed read differ. */
+  messagesError: Record<string, string | null>;
 
   // Requests
   requests: ConversationRequest[];
   isLoadingRequests: boolean;
+  /** Why the requests could not be read, or null: "none waiting" and "could not ask" differ. */
+  requestsError: string | null;
 
   // Blocked users
   blockedUserIds: string[];
@@ -213,8 +217,10 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   conversationsError: null,
   messages: {},
   isLoadingMessages: {},
+  messagesError: {},
   requests: [],
   isLoadingRequests: false,
+  requestsError: null,
   blockedUserIds: [],
   blockedUsers: [],
   activeFilter: 'All',
@@ -260,7 +266,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       const served = (err as { response?: { data?: { message?: string } } } | null)?.response
         ?.data?.message;
       set({
-        conversationsError: served || 'Failed to load conversations',
+        conversationsError: served || 'Check your connection and try again.',
         isLoadingConversations: false,
       });
     }
@@ -287,7 +293,10 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   // ---------------------------------------------------------------------------
 
   loadMessages: async (conversationId) => {
-    set((s) => ({ isLoadingMessages: { ...s.isLoadingMessages, [conversationId]: true } }));
+    set((s) => ({
+      isLoadingMessages: { ...s.isLoadingMessages, [conversationId]: true },
+      messagesError: { ...s.messagesError, [conversationId]: null },
+    }));
     try {
       const res = await apiClient.get(`/conversations/${conversationId}`);
       // ── The envelope, again ────────────────────────────────────────────────
@@ -330,9 +339,15 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
           : s.conversations,
         isLoadingMessages: { ...s.isLoadingMessages, [conversationId]: false },
       }));
-    } catch {
+    } catch (err: unknown) {
+      // Recorded rather than swallowed (FARCH-007, 27 Nov 2026). A failed read opened
+      // as an empty thread, or as "Conversation not found" when the inbox had not
+      // loaded it either. Narrowed as `loadConversations` does.
+      const served = (err as { response?: { data?: { message?: string } } } | null)?.response
+        ?.data?.message;
       set((s) => ({
         isLoadingMessages: { ...s.isLoadingMessages, [conversationId]: false },
+        messagesError: { ...s.messagesError, [conversationId]: served || 'Check your connection and try again.' },
       }));
     }
   },
@@ -626,15 +641,20 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   // ---------------------------------------------------------------------------
 
   loadRequests: async () => {
-    set({ isLoadingRequests: true });
+    set({ isLoadingRequests: true, requestsError: null });
     try {
       const res = await apiClient.get('/conversations/requests');
 
       // Same envelope, same reader. This one had the same bug and would have
       // crashed the requests screen the moment a member received a request.
       set({ requests: readPage<ConversationRequest>(res.data).items, isLoadingRequests: false });
-    } catch {
-      set({ isLoadingRequests: false });
+    } catch (err: unknown) {
+      // Recorded rather than swallowed (FARCH-007, 27 Nov 2026): the requests
+      // screen said "No pending requests" over a read that had failed. Narrowed
+      // as `loadConversations` does: the server's words where it sent some.
+      const served = (err as { response?: { data?: { message?: string } } } | null)?.response
+        ?.data?.message;
+      set({ isLoadingRequests: false, requestsError: served || 'Check your connection and try again.' });
     }
   },
 

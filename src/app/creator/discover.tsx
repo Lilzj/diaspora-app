@@ -21,12 +21,8 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
-import {
-  CreatorCardSkeleton,
-  CreatorDirectoryCard,
-  CreatorEmptyState,
-  CreatorScreen,
-} from '@/components/creator-economy';
+import { CreatorCardSkeleton, CreatorDirectoryCard, CreatorScreen } from '@/components/creator-economy';
+import { ListState } from '@/components/ListState';
 import { useCreatorDirectory } from '@/hooks/creator-economy';
 import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import type { PublicCreator } from '@/types/creator-economy';
@@ -187,58 +183,57 @@ export default function CreatorDiscoverScreen() {
       }
     >
       <View className="px-5 pt-5">
-        {directory.isLoading ? (
-          <CreatorCardSkeleton rows={4} />
-        ) : directory.creators.length === 0 ? (
-          <CreatorEmptyState
-            icon="people-outline"
-            title="Nobody matches"
-            body={
-              hasFilters
-                ? 'Try a different search, or clear the filters.'
-                : 'No creators are listed yet.'
-            }
-            actionLabel={hasFilters ? 'Clear filters' : undefined}
-            onAction={
-              hasFilters
-                ? () => {
+        {/* The error is the shell's (`load.error`); the list draws the rest. */}
+        <ListState
+          loading={directory.isLoading}
+          loadingLabel="Loading creators"
+          skeleton={<CreatorCardSkeleton rows={4} />}
+          isEmpty={directory.creators.length === 0}
+          empty={{
+            icon: 'people-outline',
+            title: 'Nobody matches',
+            message: hasFilters
+              ? 'Try a different search, or clear the filters.'
+              : 'No creators are listed yet.',
+            action: hasFilters
+              ? {
+                  label: 'Clear filters',
+                  onPress: () => {
                     setQuery('');
                     setSubmitted('');
                     setCategory('all');
                     setVerifiedOnly(false);
-                  }
-                : undefined
-            }
-          />
-        ) : (
-          <>
-            {directory.creators.map((creator) => (
-              <CreatorDirectoryCard key={creator.creatorId} creator={creator} onPress={open} />
-            ))}
+                  },
+                }
+              : undefined,
+          }}
+        >
+          {directory.creators.map((creator) => (
+            <CreatorDirectoryCard key={creator.creatorId} creator={creator} onPress={open} />
+          ))}
 
-            {directory.hasNextPage ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Load more creators"
-                accessibilityState={{ busy: directory.isFetchingNextPage }}
-                disabled={directory.isFetchingNextPage}
-                onPress={() => directory.fetchNextPage()}
-                className="py-4 items-center"
-              >
-                {directory.isFetchingNextPage ? (
-                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                ) : (
-                  <Text
-                    style={{ color: tokens.color.primary[500] }}
-                    className="text-[11px] font-black uppercase tracking-wider"
-                  >
-                    Load more
-                  </Text>
-                )}
-              </Pressable>
-            ) : null}
-          </>
-        )}
+          {directory.hasNextPage ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Load more creators"
+              accessibilityState={{ busy: directory.isFetchingNextPage }}
+              disabled={directory.isFetchingNextPage}
+              onPress={() => directory.fetchNextPage()}
+              className="py-4 items-center"
+            >
+              {directory.isFetchingNextPage ? (
+                <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+              ) : (
+                <Text
+                  style={{ color: tokens.color.primary[500] }}
+                  className="text-[11px] font-black uppercase tracking-wider"
+                >
+                  Load more
+                </Text>
+              )}
+            </Pressable>
+          ) : null}
+        </ListState>
 
         <Text
           style={{ color: tokens.color.text.disabled }}

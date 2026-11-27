@@ -1,7 +1,6 @@
-// List a home: what each step needs before it can be left, and how far through the member is.
+// List a home: what each step needs before it can be left.
 // Lifted out of `app/housing/create.tsx` (FSOLID-001), which composes it.
 
-import { steps } from '@/components/screens/housing-create/form';
 import type { ListingAccount } from '@/components/screens/housing-create/useListingAccount';
 import type { ListingWizard } from '@/components/screens/housing-create/useListingWizard';
 import type { HousingDetails } from '@/components/screens/housing-create/useHousingDetails';
@@ -75,9 +74,7 @@ export function useListingProgress(
     .filter((field) => !field.filled)
     .map((field) => field.label);
 
-  const progressPct = ((currentStep + 1) / steps.length) * 100;
-
-  return { stillNeeded, progressPct };
+  return { stillNeeded };
 }
 
 /** What `useListingProgress` holds, as the screen reads it. */

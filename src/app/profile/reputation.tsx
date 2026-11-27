@@ -28,6 +28,7 @@ import { XP_IS_NOT_MONEY } from '@/lib/platform/reward-copy';
 import { ReputationDimensionCard, type ReputationBreakdownRow } from '@/components/ReputationDimension';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { ListState } from '@/components/ListState';
 import { REPUTATION_LEVEL_LABELS, type ReputationLevel } from '@/types/reputation';
 import type { WireReputationDimension, WireReputationProfile } from '@/types/trust';
 import { backOr } from '@/lib/platform/navigation';
@@ -85,7 +86,7 @@ export default function ReputationDashboard() {
   // The hook owns the fetch now, so the screen cannot be reached without it.
   const { reputation, error } = useMyReputation();
   const ledger = useMyReputationEvents();
-  const { rules } = useReputationRules();
+  const { rules, isLoading: rulesLoading, error: rulesError } = useReputationRules();
   const earning = waysToEarn(rules);
   const losing = waysToLose(rules);
 
@@ -191,21 +192,33 @@ export default function ReputationDashboard() {
         {/* How to earn XP — from `GET /trust/reputation/rules`; see lib/reputation-rules.ts */}
         <View className="bg-surface-muted border border-subtle rounded-3xl p-4 mb-6">
           <Text className="text-xs font-black text-info-default mb-1">💡 How to earn XP & leveling up</Text>
-          {earning.length === 0 ? (
-            <Text className="text-[11px] text-info-default leading-relaxed font-semibold">
-              {HOW_TO_EARN_WITHOUT_RULES}
-            </Text>
-          ) : (
-            earning.map((row) => (
-              <View key={row.actionType} className="flex-row items-center justify-between py-0.5">
-                <Text className="text-[11px] text-info-default font-semibold flex-1 mr-3">
-                  {row.label}
-                  {row.limit ? ` (${row.limit})` : ''}
-                </Text>
-                <Text className="text-[11px] text-info-default font-black">{row.amount}</Text>
-              </View>
-            ))
-          )}
+          <ListState
+            loading={rulesLoading}
+            loadingLabel="Loading how XP is earned"
+            // The hook exposes no refetch, so this error offers no retry.
+            error={
+              rulesError !== null && rules.length === 0
+                ? { title: 'How XP is earned could not be loaded', message: rulesError }
+                : null
+            }
+          >
+            {/* Not an empty message: what earns XP is true without the figures, so it stays as written. */}
+            {earning.length === 0 ? (
+              <Text className="text-[11px] text-info-default leading-relaxed font-semibold">
+                {HOW_TO_EARN_WITHOUT_RULES}
+              </Text>
+            ) : (
+              earning.map((row) => (
+                <View key={row.actionType} className="flex-row items-center justify-between py-0.5">
+                  <Text className="text-[11px] text-info-default font-semibold flex-1 mr-3">
+                    {row.label}
+                    {row.limit ? ` (${row.limit})` : ''}
+                  </Text>
+                  <Text className="text-[11px] text-info-default font-black">{row.amount}</Text>
+                </View>
+              ))
+            )}
+          </ListState>
           {losing.length > 0 && (
             <>
               <Text className="text-xs font-black text-info-default mt-3 mb-1">What lowers it</Text>
@@ -247,49 +260,48 @@ export default function ReputationDashboard() {
           */}
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5">Latest XP activity</Text>
 
-          {ledger.isLoading && (
-            <View className="py-6 items-center" accessibilityLabel="Loading your XP activity">
-              <ActivityIndicator />
-            </View>
-          )}
-
-          {/*
-            It said confirming a neighbour's update starts this off. Confirming
-            pays the neighbour who wrote it, not the member who confirms.
-          */}
-          {ledger.isEmpty && (
-            <Text className="text-xs text-content-muted leading-relaxed">
-              Nothing scored yet. Publishing a guide or verifying where you live starts this off.
-            </Text>
-          )}
-
-          {ledger.error !== null && (
-            <Text className="text-xs text-error-default leading-relaxed">{ledger.error}</Text>
-          )}
-
-          {ledger.events.map((item) => (
-            <View key={item.eventId} className="flex-row items-center justify-between py-2.5 border-b border-faint last:border-b-0">
-              <View className="flex-1 mr-3">
-                <Text className="text-xs font-bold text-content-strong leading-snug">
-                  {item.description ?? item.eventType}
-                </Text>
-                <Text className="text-[9px] text-content-faint font-semibold mt-0.5">
-                  {relativeDay(item.createdAt)}
+          <ListState
+            loading={ledger.isLoading}
+            loadingLabel="Loading your XP activity"
+            // The hook exposes no refetch, so this error offers no retry.
+            error={
+              ledger.error !== null && ledger.events.length === 0
+                ? { title: 'Your XP activity could not be loaded', message: ledger.error }
+                : null
+            }
+            isEmpty={ledger.isEmpty}
+            // It said confirming a neighbour's update starts this off. Confirming
+            // pays the neighbour who wrote it, not the member who confirms.
+            empty={{
+              icon: 'sparkles-outline',
+              title: 'Nothing scored yet.',
+              message: 'Publishing a guide or verifying where you live starts this off.',
+            }}
+          >
+            {ledger.events.map((item) => (
+              <View key={item.eventId} className="flex-row items-center justify-between py-2.5 border-b border-faint last:border-b-0">
+                <View className="flex-1 mr-3">
+                  <Text className="text-xs font-bold text-content-strong leading-snug">
+                    {item.description ?? item.eventType}
+                  </Text>
+                  <Text className="text-[9px] text-content-faint font-semibold mt-0.5">
+                    {relativeDay(item.createdAt)}
+                  </Text>
+                </View>
+                {/*
+                  `points` is signed, and a violation is negative. The old ledger
+                  rendered `+{points}` unconditionally over a fixture that had no
+                  negative rows; against the real feed that prints "+-20".
+                */}
+                <Text
+                  className={`text-xs font-black ${item.points < 0 ? 'text-error-default' : 'text-success-default'}`}
+                >
+                  {item.points < 0 ? '' : '+'}
+                  {item.points} XP
                 </Text>
               </View>
-              {/*
-                `points` is signed, and a violation is negative. The old ledger
-                rendered `+{points}` unconditionally over a fixture that had no
-                negative rows; against the real feed that prints "+-20".
-              */}
-              <Text
-                className={`text-xs font-black ${item.points < 0 ? 'text-error-default' : 'text-success-default'}`}
-              >
-                {item.points < 0 ? '' : '+'}
-                {item.points} XP
-              </Text>
-            </View>
-          ))}
+            ))}
+          </ListState>
         </View>
 
         {/* Dimension breakdowns (Original 3D charts card preserved but styled cleanly) */}

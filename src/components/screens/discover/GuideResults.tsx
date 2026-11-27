@@ -4,9 +4,11 @@
 import React from 'react';
 import { View } from 'react-native';
 import { GuideResultCard } from '@/components/guides/GuideResultCard';
+import { ListState } from '@/components/ListState';
 import {
-  EmptyStateView,
   ShowMoreButton,
+  couldNotLoad,
+  noMatch,
   pagingState,
 } from '@/components/screens/discover/ResultStates';
 import type { DiscoverCategories } from '@/components/screens/discover/useDiscoverCategories';
@@ -29,14 +31,17 @@ export function GuideResults({ categories, guides, search }: GuideResultsProps) 
       {/* Only a failed first page is a failed list: a failed
           "Show more" keeps the guides shown and says so on the
           button. */}
-      {guideSearch.error && filteredGuides.length === 0 ? (
-        <EmptyStateView
-          label="guides"
-          place={emptyStatePlace}
-          error="We could not reach guides just now."
-        />
-      ) : filteredGuides.length > 0 ? (
-        filteredGuides.map((item) => (
+      <ListState
+        error={
+          guideSearch.error && filteredGuides.length === 0
+            ? couldNotLoad('guides', 'We could not reach guides just now.', false)
+            : null
+        }
+        onRetry={guideSearch.refresh}
+        isEmpty={filteredGuides.length === 0}
+        empty={noMatch('guides', emptyStatePlace)}
+      >
+        {filteredGuides.map((item) => (
           <GuideResultCard
             key={item.guideId}
             /* `GET /guides` answers `GuideCardResponse`. The old
@@ -46,10 +51,8 @@ export function GuideResults({ categories, guides, search }: GuideResultsProps) 
             guide={item}
             categoryName={guideCategories.find((c) => c.key === item.categoryKey)?.name}
           />
-        ))
-      ) : (
-        <EmptyStateView label="guides" place={emptyStatePlace} />
-      )}
+        ))}
+      </ListState>
       {guideSearch.hasMore ? (
         <ShowMoreButton
           label="Show more guides"

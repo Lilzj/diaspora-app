@@ -37,6 +37,7 @@ import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import { usePaymentMethods } from '@/hooks/integrations';
 import { canInitiatePayment } from '@/lib/api/integrations-api';
@@ -136,37 +137,30 @@ export default function PaymentIntegrationScreen() {
             empty list — and that list is a statement from the server, said
             plainly, not a gap and not "you have not added one yet": there is
             no way to add one. A failed read is a failure, never "none". */}
-        {methodsLoading ? (
-          <ActivityIndicator color={tokens.color.primary[500]} />
-        ) : methodsError ? (
-          <View className="mb-3">
-            <IntegrationErrorNotice
-              message="Diaspora could not check for saved payment methods."
-              hint="Check your connection and try again."
-            />
-            <Button label="Try again" variant="outline" onPress={() => void refetchMethods()} />
-          </View>
-        ) : !methodsAnswered ? null : methods.length === 0 ? (
-          <View
-            style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
-            className="rounded-2xl border p-4 mb-3"
-            accessible
-            accessibilityRole="text"
-          >
-            <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold leading-relaxed">
-              Diaspora does not keep saved cards or accounts.
-            </Text>
-            <Text
-              style={{ color: tokens.color.text.secondary }}
-              className="text-xs font-semibold leading-relaxed mt-1.5"
-            >
-              You enter your card details on the payment provider’s own page each time you pay, and
-              nothing reusable is stored — by Diaspora or on its behalf. So there is nothing to add,
-              choose or remove here.
-            </Text>
-          </View>
-        ) : (
-          methods.map((method) => (
+        <ListState
+          loading={methodsLoading}
+          loadingLabel="Loading saved payment methods"
+          error={
+            methodsError && methods.length === 0 ? (
+              <View className="mb-3">
+                <IntegrationErrorNotice
+                  message="Diaspora could not check for saved payment methods."
+                  hint="Check your connection and try again."
+                />
+                <Button label="Try again" variant="outline" onPress={() => void refetchMethods()} />
+              </View>
+            ) : null
+          }
+          // Only once the server has answered is an empty list its claim.
+          isEmpty={methodsAnswered && methods.length === 0}
+          empty={{
+            icon: 'card-outline',
+            title: 'Diaspora does not keep saved cards or accounts.',
+            message:
+              'You enter your card details on the payment provider’s own page each time you pay, and nothing reusable is stored — by Diaspora or on its behalf. So there is nothing to add, choose or remove here.',
+          }}
+        >
+          {methods.map((method) => (
             <View
               key={method.id}
               style={{ borderColor: tokens.color.border.default }}
@@ -233,8 +227,8 @@ export default function PaymentIntegrationScreen() {
                 }
               />
             </View>
-          ))
-        )}
+          ))}
+        </ListState>
 
         {/* ── Security — §26, §28, in plain language ─────────────────────── */}
         <Heading title="How payments work here" />

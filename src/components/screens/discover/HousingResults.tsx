@@ -4,7 +4,8 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { HousingCard } from '@/components/HousingCard';
-import { EmptyStateView, ShowMoreButton } from '@/components/screens/discover/ResultStates';
+import { ListState } from '@/components/ListState';
+import { ShowMoreButton, couldNotLoad, noMatch } from '@/components/screens/discover/ResultStates';
 import type { ListingSearches } from '@/components/screens/discover/useListingSearches';
 import type { OriginFilter } from '@/components/screens/discover/useOriginFilter';
 import type { DiscoverSearch } from '@/components/screens/discover/useDiscoverSearch';
@@ -17,7 +18,7 @@ interface HousingResultsProps {
 
 export function HousingResults({ listings, origin, search }: HousingResultsProps) {
   const {
-    housingError, housingCursor, housingMore, loadMoreHousing, housingDistanceNote,
+    housingError, housingCursor, housingMore, loadMoreHousing, housingDistanceNote, refresh,
   } = listings;
   const { displayedHousingListings, housingRatingNote } = origin;
   const { emptyStatePlace } = search;
@@ -30,13 +31,17 @@ export function HousingResults({ listings, origin, search }: HousingResultsProps
       {housingRatingNote ? (
         <Text className="text-xs text-content-secondary mb-3">{housingRatingNote}</Text>
       ) : null}
-      {displayedHousingListings.length > 0 ? (
-        displayedHousingListings.map((item) => (
+      {/* The screen's pull re-runs this read, so its error says so as well as offering the button. */}
+      <ListState
+        error={housingError ? couldNotLoad('homes & housing', housingError, true) : null}
+        onRetry={refresh}
+        isEmpty={displayedHousingListings.length === 0}
+        empty={noMatch('homes & housing', emptyStatePlace)}
+      >
+        {displayedHousingListings.map((item) => (
           <HousingCard key={item.id} listing={item} />
-        ))
-      ) : (
-        <EmptyStateView label="homes & housing" place={emptyStatePlace} error={housingError} />
-      )}
+        ))}
+      </ListState>
       {housingCursor ? (
         <ShowMoreButton label="Show more homes" state={housingMore} onPress={loadMoreHousing} />
       ) : null}

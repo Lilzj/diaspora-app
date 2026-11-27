@@ -21,6 +21,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import {
   AccessGate,
@@ -156,147 +157,140 @@ export default function DonateScreen() {
       {/* The donation amount field sits below the cause list; with a plain
           ScrollView the keyboard covered it and the confirm button. */}
       <KeyboardAwareScrollView contentContainerStyle={{ padding: 20 }}>
-        {causesQuery.isLoading ? (
-          <Text style={{ color: tokens.color.text.placeholder }} className="text-sm font-semibold text-center py-10">
-            Loading causes…
-          </Text>
-        ) : (
-          <>
-            <Text
-              style={{ color: tokens.color.text.secondary }}
-              className="text-[11px] font-black uppercase tracking-widest mb-3"
-            >
-              Choose a cause
-            </Text>
+        <Text
+          style={{ color: tokens.color.text.secondary }}
+          className="text-[11px] font-black uppercase tracking-widest mb-3"
+        >
+          Choose a cause
+        </Text>
 
-            <View style={{ gap: 10 }}>
-              {monetaryCauses.map((cause) => (
-                <CauseCard
-                  key={cause.code}
-                  cause={cause}
-                  isSelected={selectedCode === cause.code}
-                  onSelect={() => setSelectedCode(cause.code)}
-                />
-              ))}
+        {/* The read's failure stays the whole-screen return above: there is no
+            gift to make without a cause to give it to. */}
+        <ListState
+          loading={causesQuery.isLoading}
+          loadingLabel="Loading causes…"
+          isEmpty={monetaryCauses.length === 0}
+          empty={{
+            icon: 'heart-outline',
+            title: 'No cause near you is taking money at the moment.',
+            message: 'Several need goods, time or skills — those are just as valuable.',
+          }}
+        >
+          <View style={{ gap: 10 }}>
+            {monetaryCauses.map((cause) => (
+              <CauseCard
+                key={cause.code}
+                cause={cause}
+                isSelected={selectedCode === cause.code}
+                onSelect={() => setSelectedCode(cause.code)}
+              />
+            ))}
+          </View>
+        </ListState>
+
+        {/* Causes that need something other than money. Not hidden: on this
+            platform they are the majority, and a donate screen that pretended
+            otherwise would be misrepresenting the community. */}
+        {otherCauses.length > 0 ? (
+          <TouchableOpacity
+            onPress={() => router.push('/wallet/contribute')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${otherCauses.length} causes need goods, time or skills rather than money`}
+            style={{ backgroundColor: tokens.color.neutral[100], borderColor: `${tokens.color.secondary[500]}33` }}
+            className="flex-row items-center rounded-2xl border p-4 mt-4"
+          >
+            <Ionicons name="people-outline" size={20} color={tokens.color.secondary[600]} />
+            <Text
+              style={{ color: tokens.color.secondary[700] }}
+              className="flex-1 text-xs font-bold leading-relaxed ml-3"
+            >
+              {otherCauses.length} {otherCauses.length === 1 ? 'cause needs' : 'causes need'} goods, time
+              or skills rather than money.
+            </Text>
+            <Ionicons name="chevron-forward" size={17} color={tokens.color.secondary[600]} />
+          </TouchableOpacity>
+        ) : null}
+
+        {selected ? (
+          <>
+            <View className="mt-8">
+              <AmountInput
+                value={amountText}
+                onChangeText={setAmountText}
+                currency={currency}
+                currencies={currencies}
+                label="How much would you like to give?"
+                error={amountError}
+                suggestions={SUGGESTED}
+              />
             </View>
 
-            {monetaryCauses.length === 0 ? (
+            <View className="mt-6">
+              <Text
+                style={{ color: tokens.color.text.secondary }}
+                className="text-[11px] font-black uppercase tracking-widest mb-2"
+              >
+                Message (optional)
+              </Text>
               <View
                 style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
-                className="rounded-2xl border p-4"
+                className="rounded-2xl border px-4"
               >
-                <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-semibold leading-relaxed">
-                  No cause near you is taking money at the moment. Several need goods, time or skills —
-                  those are just as valuable.
+                <TextInput
+                  value={message}
+                  onChangeText={setMessage}
+                  placeholder="A word of encouragement…"
+                  placeholderTextColor={tokens.color.text.placeholder}
+                  multiline
+                  maxLength={280}
+                  accessibilityLabel="Message to the organiser, optional"
+                  style={{
+                    color: tokens.color.text.primary,
+                    fontSize: 14,
+                    paddingVertical: 14,
+                    minHeight: 80,
+                    textAlignVertical: 'top',
+                  }}
+                />
+              </View>
+            </View>
+
+            <View
+              style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
+              className="flex-row items-center rounded-2xl border p-4 mt-4"
+            >
+              <View className="flex-1 mr-3">
+                <Text style={{ color: tokens.color.text.primary }} className="text-sm font-bold tracking-tight">
+                  Give anonymously
+                </Text>
+                {/* The consequence, stated before the choice rather than
+                    discovered afterwards. */}
+                <Text
+                  style={{ color: tokens.color.text.placeholder }}
+                  className="text-[11px] font-medium mt-1 leading-relaxed"
+                >
+                  Diaspora will store no record of who gave. Your gift will not appear in your own
+                  history — your receipt reference will be the only way to identify it.
                 </Text>
               </View>
-            ) : null}
 
-            {/* Causes that need something other than money. Not hidden: on this
-                platform they are the majority, and a donate screen that pretended
-                otherwise would be misrepresenting the community. */}
-            {otherCauses.length > 0 ? (
-              <TouchableOpacity
-                onPress={() => router.push('/wallet/contribute')}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`${otherCauses.length} causes need goods, time or skills rather than money`}
-                style={{ backgroundColor: tokens.color.neutral[100], borderColor: `${tokens.color.secondary[500]}33` }}
-                className="flex-row items-center rounded-2xl border p-4 mt-4"
-              >
-                <Ionicons name="people-outline" size={20} color={tokens.color.secondary[600]} />
-                <Text
-                  style={{ color: tokens.color.secondary[700] }}
-                  className="flex-1 text-xs font-bold leading-relaxed ml-3"
-                >
-                  {otherCauses.length} {otherCauses.length === 1 ? 'cause needs' : 'causes need'} goods, time
-                  or skills rather than money.
-                </Text>
-                <Ionicons name="chevron-forward" size={17} color={tokens.color.secondary[600]} />
-              </TouchableOpacity>
-            ) : null}
+              <Switch
+                value={isAnonymous}
+                onValueChange={setAnonymous}
+                accessibilityLabel="Give anonymously"
+                accessibilityHint="Diaspora will store no record of who gave"
+                trackColor={{ false: tokens.color.neutral[300], true: tokens.color.primary[500] }}
+              />
+            </View>
 
-            {selected ? (
-              <>
-                <View className="mt-8">
-                  <AmountInput
-                    value={amountText}
-                    onChangeText={setAmountText}
-                    currency={currency}
-                    currencies={currencies}
-                    label="How much would you like to give?"
-                    error={amountError}
-                    suggestions={SUGGESTED}
-                  />
-                </View>
-
-                <View className="mt-6">
-                  <Text
-                    style={{ color: tokens.color.text.secondary }}
-                    className="text-[11px] font-black uppercase tracking-widest mb-2"
-                  >
-                    Message (optional)
-                  </Text>
-                  <View
-                    style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
-                    className="rounded-2xl border px-4"
-                  >
-                    <TextInput
-                      value={message}
-                      onChangeText={setMessage}
-                      placeholder="A word of encouragement…"
-                      placeholderTextColor={tokens.color.text.placeholder}
-                      multiline
-                      maxLength={280}
-                      accessibilityLabel="Message to the organiser, optional"
-                      style={{
-                        color: tokens.color.text.primary,
-                        fontSize: 14,
-                        paddingVertical: 14,
-                        minHeight: 80,
-                        textAlignVertical: 'top',
-                      }}
-                    />
-                  </View>
-                </View>
-
-                <View
-                  style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
-                  className="flex-row items-center rounded-2xl border p-4 mt-4"
-                >
-                  <View className="flex-1 mr-3">
-                    <Text style={{ color: tokens.color.text.primary }} className="text-sm font-bold tracking-tight">
-                      Give anonymously
-                    </Text>
-                    {/* The consequence, stated before the choice rather than
-                        discovered afterwards. */}
-                    <Text
-                      style={{ color: tokens.color.text.placeholder }}
-                      className="text-[11px] font-medium mt-1 leading-relaxed"
-                    >
-                      Diaspora will store no record of who gave. Your gift will not appear in your own
-                      history — your receipt reference will be the only way to identify it.
-                    </Text>
-                  </View>
-
-                  <Switch
-                    value={isAnonymous}
-                    onValueChange={setAnonymous}
-                    accessibilityLabel="Give anonymously"
-                    accessibilityHint="Diaspora will store no record of who gave"
-                    trackColor={{ false: tokens.color.neutral[300], true: tokens.color.primary[500] }}
-                  />
-                </View>
-
-                {error ? (
-                  <View className="mt-4">
-                    <FinancialErrorInline error={error} />
-                  </View>
-                ) : null}
-              </>
+            {error ? (
+              <View className="mt-4">
+                <FinancialErrorInline error={error} />
+              </View>
             ) : null}
           </>
-        )}
+        ) : null}
       </KeyboardAwareScrollView>
 
       {selected ? (

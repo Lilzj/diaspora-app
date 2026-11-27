@@ -39,8 +39,9 @@ import { usePricing } from '@/providers/pricing-provider';
 import { usePrimaryWallet } from '@/hooks/financial';
 import { useAnalyticsAccess, useAnalyticsControls, useWalletAnalytics } from '@/hooks/analytics';
 import { describeTimezone } from '@/lib/analytics/time-range';
+import { FinancialErrorView } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import {
-  AnalyticsEmptyState,
   AnalyticsScreen,
   AnalyticsSection,
   MetricGrid,
@@ -54,7 +55,7 @@ export default function WalletAnalyticsScreen() {
   const pricing = usePricing();
   const definitionSheet = useMetricDefinitionSheet();
 
-  const { wallet, isLoading: walletLoading } = usePrimaryWallet();
+  const { wallet, isLoading: walletLoading, error: walletError, refetch: refetchWallet } = usePrimaryWallet();
 
   const subject = useMemo<AnalyticsSubject>(() => ({ type: 'creator', id: null }), []);
   const access = useAnalyticsAccess(subject);
@@ -136,41 +137,47 @@ export default function WalletAnalyticsScreen() {
         />
       }
     >
-      {!wallet && !walletLoading ? (
-        <AnalyticsEmptyState
-          reason="no-data"
-          title="You do not have a wallet yet"
-          body="Once you have one, what comes in and goes out will be summarised here."
-          actionLabel="Open your wallet"
-          onAction={() => router.push('/wallet')}
-        />
-      ) : null}
-
-      {sections.length === 0 && wallet && !walletAnalytics.isLoading ? (
-        <AnalyticsEmptyState
-          reason="no-activity"
-          title="Nothing moved in this period"
-          body="Your wallet had no entries between these dates. Try a longer period."
-        />
-      ) : null}
-
-      {sections.map((section) => (
-        <AnalyticsSection
-          key={section.currency}
-          title={section.currency}
-          subtitle={
-            sections.length > 1
-              ? 'Diaspora does not convert between currencies, so each is shown on its own.'
-              : undefined
-          }
-        >
-          <MetricGrid
-            metrics={section.metrics}
-            locale={pricing.locale}
-            onPressMetric={definitionSheet.open}
-          />
-        </AnalyticsSection>
-      ))}
+      {/* The shell draws the loading and the statement read's failure. What it
+          does not watch is the wallets read: a failure there used to read as
+          "You do not have a wallet yet". */}
+      <ListState
+        error={walletError && !wallet ? <FinancialErrorView error={walletError} onRetry={refetchWallet} /> : null}
+        isEmpty={sections.length === 0}
+        empty={
+          wallet
+            ? {
+                icon: 'pulse-outline',
+                title: 'Nothing moved in this period',
+                message: 'Your wallet had no entries between these dates. Try a longer period.',
+                testID: 'analytics-empty-no-activity',
+              }
+            : {
+                icon: 'document-outline',
+                title: 'You do not have a wallet yet',
+                message: 'Once you have one, what comes in and goes out will be summarised here.',
+                action: { label: 'Open your wallet', onPress: () => router.push('/wallet') },
+                testID: 'analytics-empty-no-data',
+              }
+        }
+      >
+        {sections.map((section) => (
+          <AnalyticsSection
+            key={section.currency}
+            title={section.currency}
+            subtitle={
+              sections.length > 1
+                ? 'Diaspora does not convert between currencies, so each is shown on its own.'
+                : undefined
+            }
+          >
+            <MetricGrid
+              metrics={section.metrics}
+              locale={pricing.locale}
+              onPressMetric={definitionSheet.open}
+            />
+          </AnalyticsSection>
+        ))}
+      </ListState>
 
       {walletAnalytics.isTruncated ? (
         <View

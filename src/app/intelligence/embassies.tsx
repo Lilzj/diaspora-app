@@ -25,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useEmbassies } from '@/hooks/country-intelligence';
 import { useThemeTokens } from '@/design-system';
@@ -91,16 +92,17 @@ export default function EmbassyDirectoryScreen() {
         )}
       </View>
 
-      {results.isLoading ? (
-        <View
-          accessible
-          accessibilityRole="progressbar"
-          accessibilityLabel="Loading missions"
-          className="flex-1 items-center justify-center"
-        >
-          <ActivityIndicator color="#F59300" />
-        </View>
-      ) : (
+      {/* The error had the empty state's slot, and only showed when there were no rows. */}
+      <ListState
+        loading={results.isLoading}
+        loadingLabel="Loading missions"
+        error={
+          results.error && results.embassies.length === 0
+            ? { icon: 'business-outline', title: 'The directory is unavailable', message: results.error }
+            : null
+        }
+        onRetry={results.refresh}
+      >
         <FlatList
           data={results.embassies}
           keyExtractor={(item) => item.embassyId}
@@ -116,21 +118,18 @@ export default function EmbassyDirectoryScreen() {
             ) : undefined
           }
           ListEmptyComponent={
-            <View className="items-center justify-center py-16 px-6">
-              <Text className="text-4xl mb-2">🏛️</Text>
-              <Text className="text-sm font-bold text-content-strong text-center">
-                {results.error ? 'The directory is unavailable' : 'No missions listed'}
-              </Text>
-              <Text className="text-xs text-content-faint text-center mt-1 leading-relaxed max-w-[280px]">
-                {results.error ??
-                  (lens === 'serving'
-                    ? 'No mission in the directory serves that country’s nationals yet.'
-                    : 'No mission is listed in that country yet.')}
-              </Text>
-            </View>
+            <ListEmpty
+              icon="business-outline"
+              title="No missions listed"
+              message={
+                lens === 'serving'
+                  ? 'No mission in the directory serves that country’s nationals yet.'
+                  : 'No mission is listed in that country yet.'
+              }
+            />
           }
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

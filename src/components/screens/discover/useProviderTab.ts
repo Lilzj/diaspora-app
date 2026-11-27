@@ -1,8 +1,10 @@
 // Discover: the Providers tab, read from `GET /providers`.
 // Lifted out of `app/(tabs)/discover.tsx` (FSOLID-001), which composes it.
 
+import { useQueryClient } from '@tanstack/react-query';
 import { providerScopeParams } from '@/lib/domain/discover-scope';
 import { distanceSortNote } from '@/lib/platform/discover-filters';
+import { providerKeys } from '@/lib/api/providers-api';
 import { useProviderSearchPages } from '@/hooks/providers';
 import type { DiscoverSearch } from '@/components/screens/discover/useDiscoverSearch';
 import type { DiscoverFilters } from '@/components/screens/discover/useDiscoverFilters';
@@ -47,7 +49,14 @@ export function useProviderTab(search: DiscoverSearch, filters: DiscoverFilters)
   const baseListings = providerSearch.providers;
   const providerDistanceNote = distanceSortNote('Providers', providerSort, providerSearch.appliedSort, scope);
 
-  return { providerSearch, baseListings, providerDistanceNote };
+  // "Try again" for a first page that failed (FARCH-007). The paged hook has no
+  // refetch of its own and the screen's pull re-runs only Housing and
+  // Marketplace, so the provider reads on screen are asked again by their key.
+  const queryClient = useQueryClient();
+  const retryProviders = () =>
+    void queryClient.refetchQueries({ queryKey: providerKeys.all, type: 'active' });
+
+  return { providerSearch, baseListings, providerDistanceNote, retryProviders };
 }
 
 /** What `useProviderTab` holds, as the screen reads it. */

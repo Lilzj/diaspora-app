@@ -3,10 +3,11 @@ import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platfor
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
-import { ScreenHeader } from '@/components/ScreenHeader';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { WizardFooter } from '@/components/forms/WizardFooter';
+import { WizardHeader } from '@/components/forms/WizardHeader';
+import { DraftBanner } from '@/components/forms/DraftBanner';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
 import { coordinatesOf, ownPinOrTown } from '@/lib/platform/place-coordinates';
@@ -33,11 +34,8 @@ import {
   resolveDeviceLocationProvider,
   resolveLocationPermissionProvider,
 } from '@/lib/maps/providers/device-location';
-import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/platform/device-drafts';
+import { useDeviceDraft } from '@/lib/platform/device-drafts';
 import { currencySymbol as symbolFor } from '@/lib/domain/money';
-
-// Global variable for self-contained draft storage
-let globalDraftStorage: any = null;
 
 const steps = ['Basics', 'Contact Info', 'Services & Menu', 'Photos', 'Business Hours', 'Preview'];
 
@@ -74,6 +72,32 @@ const INITIAL_HOURS: HourItem[] = [
   { day: 'Saturday', open: '10:00', close: '16:00', closed: false },
   { day: 'Sunday', open: '10:00', close: '16:00', closed: true },
 ];
+
+/**
+ * A business draft as this wizard writes it. The fields read with a fallback
+ * when it is restored may be missing from drafts saved before they existed, and
+ * a draft saved before the photo list replaced the four slots holds nulls.
+ */
+interface ProviderDraftData {
+  businessName: string;
+  description: string;
+  selectedCategories: string[];
+  phone: string;
+  website: string;
+  email: string;
+  cityName?: string;
+  addressLine?: string;
+  pin?: { latitude: number; longitude: number } | null;
+  townPin?: { latitude: number | null; longitude: number | null };
+  instagram: string;
+  facebook: string;
+  tiktok: string;
+  services?: ServiceItem[];
+  uploadedPhotos?: (LocalFile | null)[];
+  businessHours: HourItem[];
+  is24Hours: boolean;
+  currentStep?: number;
+}
 
 /**
  * The wizard's services, as the platform's `ProviderServiceRequest`.
@@ -159,7 +183,9 @@ export default function PostScreen() {
   const user = useAuthStore((state) => state.user);
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [draftBannerVisible, setDraftBannerVisible] = useState(false);
+  // Kept on the phone since 14 Oct 2026, so a draft outlives the app being closed.
+  const { bannerVisible: draftBannerVisible, save, restore, discard: discardDraft, clear: clearDraft } =
+    useDeviceDraft<ProviderDraftData>('provider');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form States
@@ -229,21 +255,6 @@ export default function PostScreen() {
   const [is24Hours, setIs24Hours] = useState(false);
   const [holidayExpanded, setHolidayExpanded] = useState(false);
 
-  // Draft Recovery triggers on mount
-  useEffect(() => {
-    if (globalDraftStorage) {
-      setDraftBannerVisible(true);
-      return;
-    }
-    // Kept on the phone since 14 Oct 2026, so a draft outlives the app being closed.
-    void loadDeviceDraft('provider').then((saved) => {
-      if (saved && !globalDraftStorage) {
-        globalDraftStorage = saved;
-        setDraftBannerVisible(true);
-      }
-    });
-  }, []);
-
   // Save draft state periodically.
   //
   // Memoised so the effect below can name it. `currentStep` is in this list and
@@ -251,7 +262,7 @@ export default function PostScreen() {
   // member happened to be on when some *other* field last changed — moving
   // between steps without editing anything left the stored step behind.
   const saveDraft = useCallback(() => {
-    globalDraftStorage = {
+    save({
       businessName,
       description,
       selectedCategories,
@@ -270,9 +281,9 @@ export default function PostScreen() {
       businessHours,
       is24Hours,
       currentStep,
-    };
-    void saveDeviceDraft('provider', globalDraftStorage, businessName);
+    }, businessName);
   }, [
+    save,
     businessName,
     description,
     selectedCategories,
@@ -300,8 +311,8 @@ export default function PostScreen() {
   }, [saveDraft, businessName, phone, description]);
 
   const restoreDraft = () => {
-    if (globalDraftStorage) {
-      const d = globalDraftStorage;
+    const d = restore();
+    if (d) {
       setBusinessName(d.businessName);
       setDescription(d.description);
       setSelectedCategories(d.selectedCategories);
@@ -316,22 +327,12 @@ export default function PostScreen() {
       setFacebook(d.facebook);
       setTiktok(d.tiktok);
       if (d.services) setServices(d.services);
-      // A draft saved before the list replaced the four slots carries nulls, and
-      // `globalDraftStorage` is `any`, so the shape has to be named here or the
-      // holes come through untyped.
-      const restoredPhotos: (LocalFile | null)[] = d.uploadedPhotos ?? [];
-      setUploadedPhotos(restoredPhotos.filter((photo): photo is LocalFile => !!photo));
+      // A draft saved before the list replaced the four slots carries nulls.
+      setUploadedPhotos((d.uploadedPhotos ?? []).filter((photo): photo is LocalFile => !!photo));
       setBusinessHours(d.businessHours);
       setIs24Hours(d.is24Hours);
       setCurrentStep(d.currentStep || 0);
-      setDraftBannerVisible(false);
     }
-  };
-
-  const discardDraft = () => {
-    globalDraftStorage = null;
-    void clearDeviceDraft('provider');
-    setDraftBannerVisible(false);
   };
 
   /**
@@ -543,8 +544,7 @@ export default function PostScreen() {
       });
 
       // Only now. The server has a provider with an id.
-      globalDraftStorage = null;
-      void clearDeviceDraft('provider');
+      clearDraft();
 
       router.replace({
         pathname: '/listing-success',
@@ -622,27 +622,12 @@ export default function PostScreen() {
    *  wherever a member sets one. Unknown codes print the code itself. */
   const currencySymbol = symbolFor(currency);
 
-  const progressPct = ((currentStep + 1) / steps.length) * 100;
-
   return (
     <SafeAreaView className="flex-1 bg-surface-card">
-      {/* Explicit Stepper & Progress Bar */}
-      <View className="bg-surface-card border-b border-faint px-6 py-3">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
-            Create Provider Listing
-          </Text>
-          <Text className="text-xs font-extrabold text-primary-500">
-            Step {currentStep + 1} of {steps.length}
-          </Text>
-        </View>
-        <View className="h-2 bg-surface-muted rounded-full w-full overflow-hidden">
-          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
-        </View>
-      </View>
-
-      <ScreenHeader
-        title={steps[currentStep]}
+      <WizardHeader
+        name="Create Provider Listing"
+        steps={steps}
+        step={currentStep}
         showBack={currentStep > 0}
         rightAction={
           <TouchableOpacity onPress={() => {
@@ -660,22 +645,11 @@ export default function PostScreen() {
       >
         {/* Draft Recovery banner notification */}
         {draftBannerVisible && currentStep === 0 && (
-          <View className="bg-surface-muted border-b border-subtle px-6 py-4 flex-row items-center justify-between">
-            <View className="flex-1 mr-4">
-              <Text className="text-sm font-bold text-content-strong">✏️ Unfinished draft detected</Text>
-              <Text className="text-xs text-content-tertiary mt-0.5">
-                Would you like to restore your progress?
-              </Text>
-            </View>
-            <View className="flex-row">
-              <TouchableOpacity onPress={restoreDraft} className="bg-primary-500 px-3 py-2 rounded-xl mr-2">
-                <Text className="text-xs font-bold text-white">Restore</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={discardDraft} className="bg-surface-muted border border-subtle px-3 py-2 rounded-xl">
-                <Text className="text-xs font-bold text-content-tertiary">Discard</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <DraftBanner
+            message="Would you like to restore your progress?"
+            onRestore={restoreDraft}
+            onDiscard={discardDraft}
+          />
         )}
 
         <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled"

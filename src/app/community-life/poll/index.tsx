@@ -10,11 +10,11 @@ import { useTheme } from '@/design-system';
 import {
   ChipRow,
   CommunityScreen,
-  EmptyState,
   PollCard,
   PrimaryButton,
   SecondaryButton,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useMyOrganizations, usePolls } from '@/hooks/community-life';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 
@@ -77,40 +77,42 @@ export default function PollListScreen() {
       </View>
 
       <View className="px-5 mt-4">
-        {polls.length === 0 && !isLoading ? (
-          <EmptyState
-            icon="bar-chart-outline"
-            title={state === 'Open' ? 'No polls open' : 'No polls'}
-            body={
+        {/* The shell draws the list's loading and error; the list says when it is empty. */}
+        <ListState
+          isEmpty={polls.length === 0}
+          empty={{
+            icon: 'bar-chart-outline',
+            title: state === 'Open' ? 'No polls open' : 'No polls',
+            message:
               state === 'Open'
                 ? 'When a community you belong to asks a question, it will be here.'
-                : 'Nothing has been asked yet.'
-            }
-            action={canCreate ? 'Ask a question' : undefined}
-            onAction={() => router.push('/community-life/poll/create')}
-          />
-        ) : (
-          polls.map((poll) => (
+                : 'Nothing has been asked yet.',
+            action: canCreate
+              ? { label: 'Ask a question', onPress: () => router.push('/community-life/poll/create') }
+              : undefined,
+          }}
+        >
+          {polls.map((poll) => (
             <View key={poll.pollId} className="mb-3">
               <PollCard
                 poll={poll}
                 onPress={() => router.push(`/community-life/poll/${poll.pollId}` as never)}
               />
             </View>
-          ))
-        )}
+          ))}
 
-        {hasNextPage ? (
-          <View className="mb-4">
-            {isFetchingNextPage ? (
-              <View className="py-4 items-center" accessibilityLabel="Loading more">
-                <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-              </View>
-            ) : (
-              <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-            )}
-          </View>
-        ) : null}
+          {hasNextPage ? (
+            <View className="mb-4">
+              {isFetchingNextPage ? (
+                <View className="py-4 items-center" accessibilityLabel="Loading more">
+                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                </View>
+              ) : (
+                <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+              )}
+            </View>
+          ) : null}
+        </ListState>
 
         {canCreate && polls.length > 0 ? (
           <View className="mt-2">

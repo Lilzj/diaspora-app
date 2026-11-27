@@ -123,10 +123,11 @@ describe('guide/create.tsx publishes to the server', () => {
 
   it('clears the local draft only after the server confirmed', () => {
     // It used to be cleared *before* anything was attempted, so a member whose
-    // publish failed lost the text as well as the guide. There is exactly one
-    // clearing assignment inside `handlePublish`, and it is inside `onSuccess`.
+    // publish failed lost the text as well as the guide. The first clear after
+    // `handlePublish` begins is inside `onSuccess`, so none comes before it. The
+    // clear is the draft hook's `clearDraft` since 27 Nov 2026 (FARCH-007).
     const publishBlock = CREATE.slice(CREATE.indexOf('const handlePublish'));
-    const clearIndex = publishBlock.indexOf('globalGuideDraft = null;');
+    const clearIndex = publishBlock.indexOf('clearDraft();');
     const onSuccessIndex = publishBlock.indexOf('onSuccess: ({ guide, warnings })');
 
     expect(onSuccessIndex).toBeGreaterThan(-1);

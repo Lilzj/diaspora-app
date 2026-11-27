@@ -32,6 +32,7 @@ import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { MonetizationEmpty, MonetizationSection } from '@/components/monetization';
 import { useTheme } from '@/design-system';
@@ -193,32 +194,43 @@ export default function CampaignReviewsScreen() {
       <ScrollEndScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
       >
+        {/* The 403 stays outside the list's states: it is the platform's answer
+            to who reviews, drawn as the statement it is, not a failed read. */}
         {isForbidden ? (
           <MonetizationEmpty
             icon="shield-outline"
             title="This is the reviewers’ queue"
             message="Your account does not review advertising. Nothing here is hidden from you by mistake — the platform decides who reviews, and it has answered."
           />
-        ) : queue.isError ? (
-          <MonetizationEmpty
-            icon="cloud-offline-outline"
-            title="The queue did not load"
-            message={queue.error?.message ?? 'Try again in a moment.'}
-          />
-        ) : queue.campaigns.length === 0 && !queue.isLoading ? (
-          <MonetizationEmpty
-            icon="checkmark-done-outline"
-            title="Nothing waiting"
-            message="Every campaign that has been paid for has had a decision."
-          />
         ) : (
-          <MonetizationSection title="Waiting on a decision">
-            <View style={{ gap: 12 }}>
-              {queue.campaigns.map((campaign) => (
-                <ReviewRow key={campaign.campaignId} campaign={campaign} />
-              ))}
-            </View>
-          </MonetizationSection>
+          <ListState
+            loading={queue.isLoading}
+            loadingLabel="Loading the review queue"
+            error={
+              queue.isError && queue.campaigns.length === 0
+                ? {
+                    icon: 'cloud-offline-outline',
+                    title: 'The queue did not load',
+                    message: queue.error?.message ?? 'Try again in a moment.',
+                  }
+                : null
+            }
+            onRetry={() => void queue.refetch()}
+            isEmpty={queue.campaigns.length === 0}
+            empty={{
+              icon: 'checkmark-done-outline',
+              title: 'Nothing waiting',
+              message: 'Every campaign that has been paid for has had a decision.',
+            }}
+          >
+            <MonetizationSection title="Waiting on a decision">
+              <View style={{ gap: 12 }}>
+                {queue.campaigns.map((campaign) => (
+                  <ReviewRow key={campaign.campaignId} campaign={campaign} />
+                ))}
+              </View>
+            </MonetizationSection>
+          </ListState>
         )}
       </ScrollEndScrollView>
     </View>

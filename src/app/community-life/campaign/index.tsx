@@ -11,10 +11,10 @@ import {
   CampaignCard,
   ChipRow,
   CommunityScreen,
-  EmptyState,
   PrimaryButton,
   SecondaryButton,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useCampaigns, useCommunityAccess } from '@/hooks/community-life';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { CampaignCategory } from '@/types/community-advanced';
@@ -146,42 +146,43 @@ export default function CampaignListScreen() {
       </View>
 
       <View className="px-5 mt-4">
-        {campaigns.length === 0 && !isLoading ? (
-          <EmptyState
-            icon="heart-outline"
-            title={mineOnly ? 'You have not started a campaign' : 'No campaigns running'}
-            body={
-              mineOnly
-                ? 'Campaigns you organise appear here, drafts included, from the moment you create one.'
-                : query || category
-                  ? 'Nothing matches those filters right now.'
-                  : 'When somebody in your community raises money for something, it will be here.'
-            }
-            action={access.canCreateCampaign ? 'Start a campaign' : undefined}
-            onAction={() => router.push('/community-life/campaign/create')}
-          />
-        ) : (
-          campaigns.map((campaign) => (
+        {/* The shell draws the list's loading and error; the list says when it is empty. */}
+        <ListState
+          isEmpty={campaigns.length === 0}
+          empty={{
+            icon: 'heart-outline',
+            title: mineOnly ? 'You have not started a campaign' : 'No campaigns running',
+            message: mineOnly
+              ? 'Campaigns you organise appear here, drafts included, from the moment you create one.'
+              : query || category
+                ? 'Nothing matches those filters right now.'
+                : 'When somebody in your community raises money for something, it will be here.',
+            action: access.canCreateCampaign
+              ? { label: 'Start a campaign', onPress: () => router.push('/community-life/campaign/create') }
+              : undefined,
+          }}
+        >
+          {campaigns.map((campaign) => (
             <View key={campaign.campaignId} className="mb-4">
               <CampaignCard
                 campaign={campaign}
                 onPress={() => router.push(`/community-life/campaign/${campaign.campaignId}` as never)}
               />
             </View>
-          ))
-        )}
+          ))}
 
-        {hasNextPage ? (
-          <View className="mb-4">
-            {isFetchingNextPage ? (
-              <View className="py-4 items-center" accessibilityLabel="Loading more">
-                <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-              </View>
-            ) : (
-              <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-            )}
-          </View>
-        ) : null}
+          {hasNextPage ? (
+            <View className="mb-4">
+              {isFetchingNextPage ? (
+                <View className="py-4 items-center" accessibilityLabel="Loading more">
+                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                </View>
+              ) : (
+                <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+              )}
+            </View>
+          ) : null}
+        </ListState>
 
         {access.canCreateCampaign && campaigns.length > 0 ? (
           <View className="mt-2">

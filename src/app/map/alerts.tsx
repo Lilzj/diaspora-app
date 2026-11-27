@@ -41,6 +41,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import {
   AlertCard,
   AlertFreshnessBanner,
@@ -309,93 +310,102 @@ export default function CommunityAlertsScreen() {
                 </Text>
               </Pressable>
             </View>
-          ) : alerts.isLoading ? (
-            <MapLoadingState label="Loading alerts…" />
-          ) : alerts.isError ? (
-            <MapErrorState
-              kind={isOffline ? 'offline' : classifyError(alerts.error)}
-              onRetry={() => void alerts.refetch()}
-            />
-          ) : active.length === 0 ? (
-            <MapEmptyState
-              hasFilters={false}
-              onWiden={() =>
-                setViewport({
-                  ...viewport,
-                  latitudeDelta: viewport.latitudeDelta * 2.5,
-                  longitudeDelta: viewport.longitudeDelta * 2.5,
-                })
-              }
-            />
           ) : (
-            active.map((alert) => (
-              <View key={alert.id}>
-                <AlertCard alert={alert} onPress={() => setSelectedId(alert.id)} />
+            <ListState
+              loading={alerts.isLoading}
+              skeleton={<MapLoadingState label="Loading alerts…" />}
+              error={
+                alerts.isError && active.length === 0 ? (
+                  <MapErrorState
+                    kind={isOffline ? 'offline' : classifyError(alerts.error)}
+                    onRetry={() => void alerts.refetch()}
+                  />
+                ) : null
+              }
+            >
+              {/* The map's own empty state, kept as it is: its "Search wider" widens this view. */}
+              {active.length === 0 ? (
+                <MapEmptyState
+                  hasFilters={false}
+                  onWiden={() =>
+                    setViewport({
+                      ...viewport,
+                      latitudeDelta: viewport.latitudeDelta * 2.5,
+                      longitudeDelta: viewport.longitudeDelta * 2.5,
+                    })
+                  }
+                />
+              ) : (
+                active.map((alert) => (
+                  <View key={alert.id}>
+                    <AlertCard alert={alert} onPress={() => setSelectedId(alert.id)} />
 
-                {selected?.id === alert.id ? (
-                  <View className="flex-row gap-2 mt-2">
-                    <Pressable
-                      onPress={() => handleOpen(alert)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Read the full alert: ${alert.title}`}
-                      style={{ backgroundColor: tokens.color.primary[500] }}
-                      className="flex-1 py-2.5 rounded-xl items-center"
-                    >
-                      <Text className="text-white text-[10px] font-black uppercase tracking-wider">
-                        Read
-                      </Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() =>
-                        router.push({
-                          pathname: '/map/route',
-                          params: {
-                            destLat: String(alert.coordinate.latitude),
-                            destLon: String(alert.coordinate.longitude),
-                            destLabel: alert.areaName,
-                          },
-                        })
-                      }
-                      accessibilityRole="button"
-                      accessibilityLabel={`Get directions to ${alert.areaName}`}
-                      style={{
-                        backgroundColor: tokens.color.surface.card,
-                        borderColor: tokens.color.border.default,
-                      }}
-                      className="flex-1 py-2.5 rounded-xl border items-center"
-                    >
-                      <Text
-                        style={{ color: tokens.color.text.secondary }}
-                        className="text-[10px] font-black uppercase tracking-wider"
-                      >
-                        Directions
-                      </Text>
-                    </Pressable>
-
-                    {alert.isShareable ? (
-                      <Pressable
-                        onPress={() => void handleShare(alert)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Share the alert: ${alert.title}`}
-                        style={{
-                          backgroundColor: tokens.color.surface.card,
-                          borderColor: tokens.color.border.default,
-                        }}
-                        className="flex-1 py-2.5 rounded-xl border items-center"
-                      >
-                        <Text
-                          style={{ color: tokens.color.text.secondary }}
-                          className="text-[10px] font-black uppercase tracking-wider"
+                    {selected?.id === alert.id ? (
+                      <View className="flex-row gap-2 mt-2">
+                        <Pressable
+                          onPress={() => handleOpen(alert)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Read the full alert: ${alert.title}`}
+                          style={{ backgroundColor: tokens.color.primary[500] }}
+                          className="flex-1 py-2.5 rounded-xl items-center"
                         >
-                          Share
-                        </Text>
-                      </Pressable>
+                          <Text className="text-white text-[10px] font-black uppercase tracking-wider">
+                            Read
+                          </Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() =>
+                            router.push({
+                              pathname: '/map/route',
+                              params: {
+                                destLat: String(alert.coordinate.latitude),
+                                destLon: String(alert.coordinate.longitude),
+                                destLabel: alert.areaName,
+                              },
+                            })
+                          }
+                          accessibilityRole="button"
+                          accessibilityLabel={`Get directions to ${alert.areaName}`}
+                          style={{
+                            backgroundColor: tokens.color.surface.card,
+                            borderColor: tokens.color.border.default,
+                          }}
+                          className="flex-1 py-2.5 rounded-xl border items-center"
+                        >
+                          <Text
+                            style={{ color: tokens.color.text.secondary }}
+                            className="text-[10px] font-black uppercase tracking-wider"
+                          >
+                            Directions
+                          </Text>
+                        </Pressable>
+
+                        {alert.isShareable ? (
+                          <Pressable
+                            onPress={() => void handleShare(alert)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Share the alert: ${alert.title}`}
+                            style={{
+                              backgroundColor: tokens.color.surface.card,
+                              borderColor: tokens.color.border.default,
+                            }}
+                            className="flex-1 py-2.5 rounded-xl border items-center"
+                          >
+                            <Text
+                              style={{ color: tokens.color.text.secondary }}
+                              className="text-[10px] font-black uppercase tracking-wider"
+                            >
+                              Share
+                            </Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
                     ) : null}
                   </View>
-                ) : null}
-              </View>
-            ))
+                ))
+              )}
+            </ListState>
           )}
         </ScrollView>
       ) : null}

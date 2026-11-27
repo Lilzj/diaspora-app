@@ -24,11 +24,10 @@ import { useTheme } from '@/design-system';
 import {
   CertificateCard,
   CourseCard,
-  CreatorCardSkeleton,
-  CreatorEmptyState,
   CreatorScreen,
   CreatorSection,
 } from '@/components/creator-economy';
+import { ListState } from '@/components/ListState';
 import {
   useAcademyActions,
   useCreatorAcademy,
@@ -168,84 +167,59 @@ export default function CreatorAcademyScreen() {
         ) : undefined
       }
     >
+      {/* The first read is the shell's to draw (`load.isLoading`); the list draws its empties. */}
       <View className="px-5 pt-5">
-        {academy.isLoading ? (
-          <CreatorCardSkeleton rows={4} />
-        ) : (
-          <>
-            {/* ── Continue ─────────────────────────────────────────────── */}
-            {inProgress.length > 0 ? (
-              <CreatorSection title="Continue" subtitle="Pick up where you left off">
-                {inProgress.map((course) => (
-                  <CourseCard
-                    key={course.courseId}
-                    course={course}
-                    onPress={openCourse}
-                    onToggleSaved={toggleSaved}
-                  />
-                ))}
-              </CreatorSection>
-            ) : null}
-
-            {/* ── Saved ────────────────────────────────────────────────── */}
-            {saved.length > 0 ? (
-              <CreatorSection title="Saved" count={saved.length}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingRight: 8 }}
-                >
-                  {saved.map((course) => (
-                    <CourseCard
-                      key={course.courseId}
-                      course={course}
-                      onPress={openCourse}
-                      layout="rail"
-                    />
-                  ))}
-                </ScrollView>
-              </CreatorSection>
-            ) : null}
-
-            {/* ── By section ───────────────────────────────────────────── */}
-            {section === 'all' ? (
-              bySection.length === 0 ? (
-                <CreatorEmptyState
-                  icon="school-outline"
-                  title="No courses yet"
-                  body="Diaspora has not published any Academy content."
-                />
-              ) : (
-                bySection.map((group) => (
-                  <CreatorSection
-                    key={group.section.key}
-                    title={`${group.section.icon ?? ''} ${group.section.title}`.trim()}
-                    subtitle={group.section.description ?? undefined}
-                  >
-                    {group.courses.map((course) => (
-                      <CourseCard
-                        key={course.courseId}
-                        course={course}
-                        onPress={openCourse}
-                        onToggleSaved={toggleSaved}
-                      />
-                    ))}
-                  </CreatorSection>
-                ))
-              )
-            ) : academy.courses.length === 0 ? (
-              <CreatorEmptyState
-                icon="school-outline"
-                title="Nothing in this section"
-                body="Diaspora has not published courses here yet."
-                actionLabel="Show everything"
-                onAction={() => setSection('all')}
+        {/* ── Continue ─────────────────────────────────────────────── */}
+        {inProgress.length > 0 ? (
+          <CreatorSection title="Continue" subtitle="Pick up where you left off">
+            {inProgress.map((course) => (
+              <CourseCard
+                key={course.courseId}
+                course={course}
+                onPress={openCourse}
+                onToggleSaved={toggleSaved}
               />
-            ) : (
+            ))}
+          </CreatorSection>
+        ) : null}
+
+        {/* ── Saved ────────────────────────────────────────────────── */}
+        {saved.length > 0 ? (
+          <CreatorSection title="Saved" count={saved.length}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: 8 }}
+            >
+              {saved.map((course) => (
+                <CourseCard
+                  key={course.courseId}
+                  course={course}
+                  onPress={openCourse}
+                  layout="rail"
+                />
+              ))}
+            </ScrollView>
+          </CreatorSection>
+        ) : null}
+
+        {/* ── By section ───────────────────────────────────────────── */}
+        {section === 'all' ? (
+          <ListState
+            isEmpty={bySection.length === 0}
+            empty={{
+              icon: 'school-outline',
+              title: 'No courses yet',
+              message: 'Diaspora has not published any Academy content.',
+            }}
+          >
+            {bySection.map((group) => (
               <CreatorSection
-                title={academy.sections.find((entry) => entry.key === section)?.title ?? 'Courses'}
+                key={group.section.key}
+                title={`${group.section.icon ?? ''} ${group.section.title}`.trim()}
+                subtitle={group.section.description ?? undefined}
               >
-                {academy.courses.map((course) => (
+                {group.courses.map((course) => (
                   <CourseCard
                     key={course.courseId}
                     course={course}
@@ -254,59 +228,82 @@ export default function CreatorAcademyScreen() {
                   />
                 ))}
               </CreatorSection>
-            )}
-
-            {/* ── Certificates ─────────────────────────────────────────── */}
-            {certificates.certificates.length > 0 ? (
-              <CreatorSection
-                title="Your certificates"
-                count={certificates.certificates.length}
-                subtitle="Each one carries a reference somebody else can check"
-              >
-                {certificates.certificates.map((certificate) => (
-                  <Pressable
-                    key={certificate.certificateId}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Certificate for ${certificate.courseTitle}`}
-                    onPress={() =>
-                      trackCreatorEvent('creator.certificate.viewed', {
-                        courseId: certificate.courseId,
-                      })
-                    }
-                  >
-                    <CertificateCard certificate={certificate} />
-                  </Pressable>
-                ))}
-              </CreatorSection>
-            ) : null}
-
-            {/* ── Completed ────────────────────────────────────────────── */}
-            {completed.length > 0 && section === 'all' ? (
-              <CreatorSection title="Finished" count={completed.length}>
-                <View
-                  style={{
-                    backgroundColor: tokens.color.success.surface,
-                  }}
-                  className="rounded-2xl p-4 flex-row items-center"
-                  accessible
-                  accessibilityLabel={`You have finished ${completed.length} ${completed.length === 1 ? 'course' : 'courses'}.`}
-                >
-                  <Ionicons
-                    name="checkmark-done-circle"
-                    size={22}
-                    color={tokens.color.success.default}
-                  />
-                  <Text
-                    style={{ color: tokens.color.text.primary }}
-                    className="text-[13px] font-bold ml-2.5 flex-1"
-                  >
-                    {completed.length} {completed.length === 1 ? 'course' : 'courses'} finished
-                  </Text>
-                </View>
-              </CreatorSection>
-            ) : null}
-          </>
+            ))}
+          </ListState>
+        ) : (
+          <ListState
+            isEmpty={academy.courses.length === 0}
+            empty={{
+              icon: 'school-outline',
+              title: 'Nothing in this section',
+              message: 'Diaspora has not published courses here yet.',
+              action: { label: 'Show everything', onPress: () => setSection('all') },
+            }}
+          >
+            <CreatorSection
+              title={academy.sections.find((entry) => entry.key === section)?.title ?? 'Courses'}
+            >
+              {academy.courses.map((course) => (
+                <CourseCard
+                  key={course.courseId}
+                  course={course}
+                  onPress={openCourse}
+                  onToggleSaved={toggleSaved}
+                />
+              ))}
+            </CreatorSection>
+          </ListState>
         )}
+
+        {/* ── Certificates ─────────────────────────────────────────── */}
+        {certificates.certificates.length > 0 ? (
+          <CreatorSection
+            title="Your certificates"
+            count={certificates.certificates.length}
+            subtitle="Each one carries a reference somebody else can check"
+          >
+            {certificates.certificates.map((certificate) => (
+              <Pressable
+                key={certificate.certificateId}
+                accessibilityRole="button"
+                accessibilityLabel={`Certificate for ${certificate.courseTitle}`}
+                onPress={() =>
+                  trackCreatorEvent('creator.certificate.viewed', {
+                    courseId: certificate.courseId,
+                  })
+                }
+              >
+                <CertificateCard certificate={certificate} />
+              </Pressable>
+            ))}
+          </CreatorSection>
+        ) : null}
+
+        {/* ── Completed ────────────────────────────────────────────── */}
+        {completed.length > 0 && section === 'all' ? (
+          <CreatorSection title="Finished" count={completed.length}>
+            <View
+              style={{
+                backgroundColor: tokens.color.success.surface,
+              }}
+              className="rounded-2xl p-4 flex-row items-center"
+              accessible
+              accessibilityLabel={`You have finished ${completed.length} ${completed.length === 1 ? 'course' : 'courses'}.`}
+            >
+              <Ionicons
+                name="checkmark-done-circle"
+                size={22}
+                color={tokens.color.success.default}
+              />
+              <Text
+                style={{ color: tokens.color.text.primary }}
+                className="text-[13px] font-bold ml-2.5 flex-1"
+              >
+                {completed.length} {completed.length === 1 ? 'course' : 'courses'} finished
+              </Text>
+            </View>
+          </CreatorSection>
+        ) : null}
       </View>
     </CreatorScreen>
   );

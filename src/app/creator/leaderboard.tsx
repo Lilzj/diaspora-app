@@ -19,14 +19,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useTheme } from '@/design-system';
-import {
-  CreatorCard,
-  CreatorCardSkeleton,
-  CreatorEmptyState,
-  CreatorScreen,
-  LeaderboardHeader,
-  LeaderboardRow,
-} from '@/components/creator-economy';
+import { CreatorCard, CreatorScreen, LeaderboardHeader, LeaderboardRow } from '@/components/creator-economy';
+import { ListState } from '@/components/ListState';
 import { useCreatorLeaderboard } from '@/hooks/creator-economy';
 import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 
@@ -152,63 +146,65 @@ export default function CreatorLeaderboardScreen() {
       }
     >
       <View className="px-5 pt-5">
-        {query.isLoading ? (
-          <CreatorCardSkeleton rows={4} />
-        ) : !leaderboard || leaderboard.entries.length === 0 ? (
-          <CreatorEmptyState
-            icon="podium-outline"
-            title="No ranking yet"
-            body="Diaspora has not published a ranking for this scope and period."
-          />
-        ) : (
-          <>
-            <LeaderboardHeader leaderboard={leaderboard} />
+        {/* The first read and its failure are the shell's to draw (`load`); the list draws its empty. */}
+        <ListState
+          isEmpty={!leaderboard || leaderboard.entries.length === 0}
+          empty={{
+            icon: 'podium-outline',
+            title: 'No ranking yet',
+            message: 'Diaspora has not published a ranking for this scope and period.',
+          }}
+        >
+          {leaderboard ? (
+            <>
+              <LeaderboardHeader leaderboard={leaderboard} />
 
-            {/* The viewer's position, pinned. Always visible, even when off-page. */}
-            {viewer ? (
-              <View
-                style={{ backgroundColor: tokens.color.neutral[100] }}
-                className="rounded-2xl p-3.5 mb-4"
-                accessible
-                accessibilityLabel={`Your position: rank ${viewer.rank} with ${viewer.score.toLocaleString()} ${leaderboard.scoreLabel.toLowerCase()}.`}
-              >
-                <Text
-                  style={{ color: tokens.color.primary[600] }}
-                  className="text-[10px] font-black uppercase tracking-widest mb-1"
+              {/* The viewer's position, pinned. Always visible, even when off-page. */}
+              {viewer ? (
+                <View
+                  style={{ backgroundColor: tokens.color.neutral[100] }}
+                  className="rounded-2xl p-3.5 mb-4"
+                  accessible
+                  accessibilityLabel={`Your position: rank ${viewer.rank} with ${viewer.score.toLocaleString()} ${leaderboard.scoreLabel.toLowerCase()}.`}
                 >
-                  Where you are
-                </Text>
-                <View className="flex-row items-baseline">
                   <Text
-                    style={{ color: tokens.color.primary[600], fontVariant: ['tabular-nums'] }}
-                    className="text-2xl font-black"
+                    style={{ color: tokens.color.primary[600] }}
+                    className="text-[10px] font-black uppercase tracking-widest mb-1"
                   >
-                    #{viewer.rank}
+                    Where you are
                   </Text>
-                  <Text
-                    style={{ color: tokens.color.text.secondary }}
-                    className="text-[12px] font-bold ml-2"
-                  >
-                    {viewer.score.toLocaleString()} {leaderboard.scoreLabel.toLowerCase()}
-                  </Text>
+                  <View className="flex-row items-baseline">
+                    <Text
+                      style={{ color: tokens.color.primary[600], fontVariant: ['tabular-nums'] }}
+                      className="text-2xl font-black"
+                    >
+                      #{viewer.rank}
+                    </Text>
+                    <Text
+                      style={{ color: tokens.color.text.secondary }}
+                      className="text-[12px] font-bold ml-2"
+                    >
+                      {viewer.score.toLocaleString()} {leaderboard.scoreLabel.toLowerCase()}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            ) : null}
+              ) : null}
 
-            <CreatorCard padded={false}>
-              <View className="px-2 py-1">
-                {leaderboard.entries.map((entry) => (
-                  <LeaderboardRow
-                    key={entry.creatorId}
-                    entry={entry}
-                    scoreLabel={leaderboard.scoreLabel}
-                    isViewer={entry.creatorId === viewer?.creatorId}
-                  />
-                ))}
-              </View>
-            </CreatorCard>
-          </>
-        )}
+              <CreatorCard padded={false}>
+                <View className="px-2 py-1">
+                  {leaderboard.entries.map((entry) => (
+                    <LeaderboardRow
+                      key={entry.creatorId}
+                      entry={entry}
+                      scoreLabel={leaderboard.scoreLabel}
+                      isViewer={entry.creatorId === viewer?.creatorId}
+                    />
+                  ))}
+                </View>
+              </CreatorCard>
+            </>
+          ) : null}
+        </ListState>
 
         <Text
           style={{ color: tokens.color.text.disabled }}

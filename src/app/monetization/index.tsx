@@ -20,11 +20,11 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import { AccessGate, FinancialErrorView, StatusBadge } from '@/components/financial';
 import {
   ExpiringPromotionCard,
-  MonetizationEmpty,
   MonetizationRow,
   MonetizationSection,
   PromotionRow,
@@ -248,24 +248,29 @@ export default function MonetizationHomeScreen() {
               : undefined
           }
         >
-          {isLoading ? (
-            <View style={{ gap: 8 }}>
-              {[0, 1].map((index) => (
-                <View
-                  key={index}
-                  style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.3 }}
-                  className="rounded-2xl h-28"
-                />
-              ))}
-            </View>
-          ) : activePromotions.length === 0 ? (
-            <MonetizationEmpty
-              icon="megaphone-outline"
-              title={isFirstRun ? 'Nothing promoted yet' : 'No promotions running'}
-              message="Promote a listing, job, property or event from the item itself and it gets shown to more people nearby."
-              action={{ label: 'See what you can promote', onPress: () => router.push('/monetization/promote') }}
-            />
-          ) : (
+          {/* The overview's failure stays the whole-screen return above: nearly every section reads it. */}
+          <ListState
+            loading={isLoading}
+            skeleton={
+              <View accessible accessibilityLabel="Loading your promotions." style={{ gap: 8 }}>
+                {[0, 1].map((index) => (
+                  <View
+                    key={index}
+                    style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.3 }}
+                    className="rounded-2xl h-28"
+                  />
+                ))}
+              </View>
+            }
+            isEmpty={activePromotions.length === 0}
+            empty={{
+              icon: 'megaphone-outline',
+              title: isFirstRun ? 'Nothing promoted yet' : 'No promotions running',
+              message:
+                'Promote a listing, job, property or event from the item itself and it gets shown to more people nearby.',
+              action: { label: 'See what you can promote', onPress: () => router.push('/monetization/promote') },
+            }}
+          >
             <View style={{ gap: 8 }}>
               {activePromotions.slice(0, 3).map((promotion) => (
                 <PromotionRow
@@ -275,7 +280,7 @@ export default function MonetizationHomeScreen() {
                 />
               ))}
             </View>
-          )}
+          </ListState>
         </MonetizationSection>
 
         {/* 4 — Performance. `/financial/placements/me/performance/summary`, real. */}

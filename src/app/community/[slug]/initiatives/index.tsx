@@ -33,6 +33,7 @@ import { trackCommunityEvent } from '@/lib/community/analytics';
 import { CommunityAvatar, communityOriginLabel } from '@/components/community-directory/CommunityIdentity';
 import { CommunityInitiativeCard } from '@/components/community-directory/CommunityPanels';
 import { CommunityUnavailablePanel } from '@/components/community-directory/CommunityStatePanels';
+import { ListState } from '@/components/ListState';
 import type { CommunityInitiativeStatus } from '@/types/community-directory';
 import { backOr } from '@/lib/platform/navigation';
 
@@ -157,43 +158,48 @@ export default function CommunityInitiativesRoute() {
           })}
         </View>
 
-        {community.isLoading || initiatives.isLoading ? (
-          <CommunityUnavailablePanel reason="loading" subject="initiatives" />
-        ) : community.unavailable ? (
-          <CommunityUnavailablePanel
-            reason={community.unavailable}
-            subject="initiatives"
-            detail={community.data?.statusReason}
-          />
-        ) : initiatives.unavailable === 'feature-disabled' ? (
-          <CommunityUnavailablePanel reason="feature-disabled" subject="initiatives" />
-        ) : initiatives.isError ? (
-          // Unanswered is not none: the server's sentence where it sent one.
-          <CommunityUnavailablePanel
-            reason="error"
-            subject="initiatives"
-            detail={readError?.message}
-            onAction={() => void initiatives.refetch()}
-          />
-        ) : list.length === 0 ? (
-          <CommunityUnavailablePanel
-            reason="empty"
-            subject="initiatives"
-            detail={
-              status
-                ? `No initiative here is ${status.toLowerCase()}.`
-                : 'Nothing is being worked on together here yet.'
-            }
-          />
-        ) : (
-          list.map((initiative) => (
+        {/* Through the shared list state (FARCH-007, 27 Nov 2026). The community's
+            own reasons stay the community panel's; the empty keeps its words. */}
+        <ListState
+          loading={community.isLoading || initiatives.isLoading}
+          loadingLabel="Loading initiatives"
+          error={
+            community.unavailable ? (
+              <CommunityUnavailablePanel
+                reason={community.unavailable}
+                subject="initiatives"
+                detail={community.data?.statusReason}
+              />
+            ) : initiatives.unavailable === 'feature-disabled' ? (
+              <CommunityUnavailablePanel reason="feature-disabled" subject="initiatives" />
+            ) : initiatives.isError && list.length === 0 ? (
+              // Unanswered is not none: the server's sentence where it sent one.
+              <CommunityUnavailablePanel
+                reason="error"
+                subject="initiatives"
+                detail={readError?.message}
+                onAction={() => void initiatives.refetch()}
+              />
+            ) : null
+          }
+          isEmpty={list.length === 0}
+          empty={{
+            icon: 'file-tray-outline',
+            title: 'Nothing here yet',
+            message: status
+              ? `No initiative here is ${status.toLowerCase()}.`
+              : 'Nothing is being worked on together here yet.',
+            testID: 'community-unavailable-empty',
+          }}
+        >
+          {list.map((initiative) => (
             <CommunityInitiativeCard
               key={initiative.id}
               initiative={initiative}
               onPress={() => router.push(`/community/${slug}/initiatives/${initiative.id}`)}
             />
-          ))
-        )}
+          ))}
+        </ListState>
       </ScrollView>
     </SafeAreaView>
   );

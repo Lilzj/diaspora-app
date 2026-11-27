@@ -36,16 +36,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { PhotoDropZone } from '@/components/PhotoDropZone';
+import { usePhotoUpload } from '@/hooks/photo-upload';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { useNotification } from '@/providers/notification-provider';
-import { useMediaUpload, toLocalFile } from '@/hooks/media';
 import type { ChosenPhoto } from '@/types/media';
 import { useAuthStore } from '@/store/auth';
 import { useMemberCurrency, currencyForResidence } from '@/lib/domain/member-currency';
@@ -128,32 +127,6 @@ function photosOf(listing: MarketplaceListingForEdit): string[] {
   return ids;
 }
 
-const pickPhoto = async (
-  from: 'camera' | 'gallery',
-  refuse: (message: string) => void
-): Promise<ImagePicker.ImagePickerAsset | null> => {
-  const permission =
-    from === 'camera'
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-  if (permission.status !== 'granted') {
-    refuse(
-      from === 'camera'
-        ? 'We need access to your camera to take photos.'
-        : 'We need access to your photos to upload images.'
-    );
-    return null;
-  }
-
-  const result =
-    from === 'camera'
-      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.8 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8 });
-
-  return !result.canceled && result.assets?.length ? result.assets[0] : null;
-};
-
 function Toggle({
   label,
   value,
@@ -200,7 +173,7 @@ export default function EditMarketplaceListingScreen() {
   const [added, setAdded] = useState<ChosenPhoto[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  const upload = useMediaUpload({ kind: 'image' });
+  const photoUpload = usePhotoUpload('Add a photo');
 
   useEffect(() => {
     if (!listing) return;
@@ -275,9 +248,9 @@ export default function EditMarketplaceListingScreen() {
       }
     }
 
-    if (upload.isUploading) missing.push('the photo that is still uploading');
+    if (photoUpload.upload.isUploading) missing.push('the photo that is still uploading');
     return missing;
-  }, [form, listing, isGiveaway, priceLabel, upload.isUploading]);
+  }, [form, listing, isGiveaway, priceLabel, photoUpload.upload.isUploading]);
 
   const hasChanges = useMemo(() => {
     if (!form || !baseline) return false;
@@ -292,38 +265,8 @@ export default function EditMarketplaceListingScreen() {
 
   const canSave = hasChanges && stillNeeded.length === 0 && !isSaving;
 
-  const addPhoto = useCallback(
-    async (from: 'camera' | 'gallery') => {
-      const picked = await pickPhoto(from, (message) =>
-        showAlert({ type: 'error', title: 'Permission Denied', message })
-      );
-      if (!picked) return;
-      const asset = await upload.upload(toLocalFile(picked));
-      // Null is a failed upload, and the drop zone shows the server's sentence.
-      // Nothing joins the list: a photo the platform never received must not
-      // look exactly like one it did.
-      if (!asset) return;
-      setAdded((prev) => [...prev, { mediaId: asset.mediaId, previewUri: asset.thumbnailUrl ?? picked.uri }]);
-    },
-    [showAlert, upload]
-  );
-
-  const choosePhotoSource = () => {
-    if (Platform.OS === 'web') {
-      void addPhoto('gallery');
-      return;
-    }
-    showAlert({
-      type: 'info',
-      title: 'Add a photo',
-      message: 'Take a new photo or choose one you already have.',
-      buttons: [
-        { text: '📷 Take Photo (Camera)', onPress: () => void addPhoto('camera') },
-        { text: '🖼️ Choose from Gallery', onPress: () => void addPhoto('gallery') },
-        { text: 'Cancel', style: 'cancel' },
-      ],
-    });
-  };
+  // Uploaded now, attached on save.
+  const choosePhotoSource = () => photoUpload.choose((photo) => setAdded((prev) => [...prev, photo]));
 
   const save = async () => {
     if (!listing || !form || !canSave) return;
@@ -544,9 +487,7 @@ export default function EditMarketplaceListingScreen() {
           <PhotoDropZone
             label="Photos"
             prompt={atPhotoLimit ? `A listing holds at most ${MAX_MARKETPLACE_LISTING_MEDIA} photos` : 'Tap to add a photo'}
-            busy={upload.isUploading}
-            busyLabel={upload.phase === 'processing' ? 'Processing…' : `Uploading ${Math.round(upload.progress * 100)}%`}
-            error={upload.phase === 'failed' ? upload.error : null}
+            {...photoUpload.dropZone}
             disabled={atPhotoLimit}
             onPress={choosePhotoSource}
           >

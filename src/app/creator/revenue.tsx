@@ -24,14 +24,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
 import {
   CreatorCard,
-  CreatorEmptyState,
   CreatorScreen,
   CreatorSection,
   EarningRow,
@@ -40,6 +39,7 @@ import {
   RevenueHeadline,
 } from '@/components/creator-economy';
 import { AmountDisplay, FinancialErrorInline, LabelledAmount } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import { useCreatorAccess, useCreatorEarnings, useCreatorRevenue } from '@/hooks/creator-economy';
 import { useWithdrawals } from '@/hooks/financial';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
@@ -47,6 +47,7 @@ import { earningDestination, presentEarningState } from '@/lib/domain/creator-ec
 import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
 import { CREATOR_EARNING_FILTER_STATES } from '@/types/creator-economy';
 import type { CreatorEarning } from '@/types/creator-economy';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 
 export default function CreatorRevenueScreen() {
   const { tokens } = useTheme();
@@ -331,51 +332,53 @@ export default function CreatorRevenueScreen() {
             ))}
           </ScrollView>
 
-          {earnings.isLoading ? (
-            <View className="py-10 items-center">
-              <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-            </View>
-          ) : earnings.error ? (
-            /*
-              **A failure is not an empty list, and this rendered it as one.**
+          <ListState
+            loading={earnings.isLoading}
+            loadingLabel="Loading your earnings"
+            error={
+              /*
+                **A failure is not an empty list, and this rendered it as one.**
 
-              The branch below keys on `earnings.length === 0`, which is equally
-              true when the request never succeeded. `GET /creators/me/earnings`
-              answered 500 for every call — an untranslatable LINQ expression —
-              and this screen told the member "Nothing here. Donations and shares
-              of what people buy against your work will appear here as you earn
-              them", beside a summary that said they had earned a thousand
-              pounds.
+                The branch below keys on `earnings.length === 0`, which is equally
+                true when the request never succeeded. `GET /creators/me/earnings`
+                answered 500 for every call — an untranslatable LINQ expression —
+                and this screen told the member "Nothing here. Donations and shares
+                of what people buy against your work will appear here as you earn
+                them", beside a summary that said they had earned a thousand
+                pounds.
 
-              Two reads of the same data disagreeing on one screen, with the
-              wrong one presented as calm and the right one as an error nobody
-              saw. The retry matters too: without it a member's only recovery
-              from a transient failure was to guess that pulling to refresh
-              might help.
-            */
-            <View className="py-6">
-              <FinancialErrorInline error={earnings.error} onRetry={() => earnings.refetch()} />
-            </View>
-          ) : earnings.earnings.length === 0 ? (
-            <CreatorEmptyState
-              icon="cash-outline"
-              title="Nothing here"
-              body={
+                Two reads of the same data disagreeing on one screen, with the
+                wrong one presented as calm and the right one as an error nobody
+                saw. The retry matters too: without it a member's only recovery
+                from a transient failure was to guess that pulling to refresh
+                might help.
+              */
+              earnings.error && earnings.earnings.length === 0 ? (
+                <View className="py-6">
+                  <FinancialErrorInline error={earnings.error} onRetry={() => earnings.refetch()} />
+                </View>
+              ) : null
+            }
+            isEmpty={earnings.earnings.length === 0}
+            empty={{
+              icon: 'cash-outline',
+              title: 'Nothing here',
+              message:
                 stateFilter || sourceFilter
                   ? 'No earnings match that filter.'
-                  : 'Donations and shares of what people buy against your work will appear here as you earn them.'
-              }
-              actionLabel={stateFilter || sourceFilter ? 'Clear filters' : undefined}
-              onAction={
+                  : 'Donations and shares of what people buy against your work will appear here as you earn them.',
+              action:
                 stateFilter || sourceFilter
-                  ? () => {
-                      setStateFilter(undefined);
-                      setSourceFilter(undefined);
+                  ? {
+                      label: 'Clear filters',
+                      onPress: () => {
+                        setStateFilter(undefined);
+                        setSourceFilter(undefined);
+                      },
                     }
-                  : undefined
-              }
-            />
-          ) : (
+                  : undefined,
+            }}
+          >
             <CreatorCard padded={false}>
               <View className="px-4">
                 {earnings.earnings.map((earning) => (
@@ -405,7 +408,7 @@ export default function CreatorRevenueScreen() {
                 </Pressable>
               ) : null}
             </CreatorCard>
-          )}
+          </ListState>
         </CreatorSection>
 
         {/* ── Money lives in the wallet ────────────────────────────────── */}
@@ -413,19 +416,25 @@ export default function CreatorRevenueScreen() {
           title="Payouts"
           subtitle="Money you have moved out of Diaspora"
         >
-          {payouts.isLoading ? (
-            <View className="py-10 items-center">
-              <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-            </View>
-          ) : (payouts.data?.length ?? 0) === 0 ? (
-            <CreatorEmptyState
-              icon="arrow-up-circle-outline"
-              title="You have not withdrawn anything yet"
-              body="When you move money out of your Diaspora wallet, each payout appears here with what arrived and where it went."
-              actionLabel="Withdraw"
-              onAction={() => router.push('/wallet/withdraw')}
-            />
-          ) : (
+          <ListState
+            loading={payouts.isLoading}
+            loadingLabel="Loading your payouts"
+            error={
+              payouts.error && (payouts.data?.length ?? 0) === 0 ? (
+                <View className="py-6">
+                  <FinancialErrorInline error={payouts.error as FinancialError} onRetry={() => void payouts.refetch()} />
+                </View>
+              ) : null
+            }
+            isEmpty={(payouts.data?.length ?? 0) === 0}
+            empty={{
+              icon: 'arrow-up-circle-outline',
+              title: 'You have not withdrawn anything yet',
+              message:
+                'When you move money out of your Diaspora wallet, each payout appears here with what arrived and where it went.',
+              action: { label: 'Withdraw', onPress: () => router.push('/wallet/withdraw') },
+            }}
+          >
             <CreatorCard padded={false}>
               <View className="px-4">
                 {payouts.data?.map((payout) => (
@@ -433,7 +442,7 @@ export default function CreatorRevenueScreen() {
                 ))}
               </View>
             </CreatorCard>
-          )}
+          </ListState>
         </CreatorSection>
 
         <CreatorSection title="Your money">

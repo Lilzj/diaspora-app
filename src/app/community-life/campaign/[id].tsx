@@ -43,6 +43,7 @@ import {
   readableDate,
 } from '@/components/community';
 import { AmountDisplay } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import {
   useCampaign,
   useCampaignAction,
@@ -66,10 +67,10 @@ export default function CampaignScreen() {
   const access = useCommunityAccess();
 
   const { campaign, isLoading, isError, error, refetch, isEnabled } = useCampaign(id);
-  const { data: updates } = useCampaignUpdates(id);
+  const updatesRead = useCampaignUpdates(id);
   const { data: milestones } = useCampaignMilestones(id);
-  const { data: fundUsage } = useCampaignFundUsage(id);
-  const { supporters, hasNextPage, fetchNextPage } = useCampaignSupporters(id);
+  const fundUsageRead = useCampaignFundUsage(id);
+  const supportersRead = useCampaignSupporters(id);
   // The caller's own gifts, under their name (20 Oct 2026). Anonymous gifts are
   // not in it: they store no donor.
   const myGifts = useMyCampaignDonations(id);
@@ -283,56 +284,55 @@ export default function CampaignScreen() {
             {/* Your own gifts — `GET /communities/campaigns/{id}/donations/me`.
                 Drawn only when there are some; a failed read says so rather
                 than implying you have not given. */}
-            {myGifts.isError ? (
-              <Text
-                testID="campaign-my-gifts-error"
-                accessibilityRole="text"
-                style={{ color: tokens.color.text.secondary }}
-                className="text-[11px] font-semibold mt-3"
-              >
-                Your own gifts to this campaign could not be loaded just now.
-              </Text>
-            ) : myGifts.data.length > 0 ? (
-              <View className="mt-3" testID="campaign-my-gifts">
-                <Card>
-                  <Text
-                    accessibilityRole="header"
-                    style={{ color: tokens.color.text.primary }}
-                    className="text-sm font-black tracking-tight mb-1"
-                  >
-                    Your gifts
-                  </Text>
-                  {myGifts.data.map((gift) => (
-                    <View
-                      key={gift.donation.donationId}
-                      className="flex-row items-center justify-between py-2"
+            <ListState
+              error={myGifts.isError && myGifts.data.length === 0 && {
+                title: 'Your own gifts to this campaign could not be loaded just now.',
+                testID: 'campaign-my-gifts-error',
+              }}
+              onRetry={myGifts.refetch}
+            >
+              {myGifts.data.length > 0 ? (
+                <View className="mt-3" testID="campaign-my-gifts">
+                  <Card>
+                    <Text
+                      accessibilityRole="header"
+                      style={{ color: tokens.color.text.primary }}
+                      className="text-sm font-black tracking-tight mb-1"
                     >
-                      <View className="flex-1 mr-3">
-                        <Text
-                          style={{ color: tokens.color.text.primary }}
-                          className="text-xs font-bold"
-                        >
-                          {readableDate(gift.donation.completedAt ?? gift.donation.createdAt)}
-                        </Text>
-                        <Text
-                          style={{ color: tokens.color.text.placeholder }}
-                          className="text-[10px] font-semibold mt-0.5"
-                        >
-                          {presentGivingStatus(gift.status).label}
-                        </Text>
+                      Your gifts
+                    </Text>
+                    {myGifts.data.map((gift) => (
+                      <View
+                        key={gift.donation.donationId}
+                        className="flex-row items-center justify-between py-2"
+                      >
+                        <View className="flex-1 mr-3">
+                          <Text
+                            style={{ color: tokens.color.text.primary }}
+                            className="text-xs font-bold"
+                          >
+                            {readableDate(gift.donation.completedAt ?? gift.donation.createdAt)}
+                          </Text>
+                          <Text
+                            style={{ color: tokens.color.text.placeholder }}
+                            className="text-[10px] font-semibold mt-0.5"
+                          >
+                            {presentGivingStatus(gift.status).label}
+                          </Text>
+                        </View>
+                        <AmountDisplay value={gift.donation.amount} size="small" accessibilityPrefix="You gave" />
                       </View>
-                      <AmountDisplay value={gift.donation.amount} size="small" accessibilityPrefix="You gave" />
-                    </View>
-                  ))}
-                  <Text
-                    style={{ color: tokens.color.text.placeholder }}
-                    className="text-[10px] font-semibold mt-2 leading-relaxed"
-                  >
-                    Gifts you made anonymously are not listed: Diaspora does not record who gave them.
-                  </Text>
-                </Card>
-              </View>
-            ) : null}
+                    ))}
+                    <Text
+                      style={{ color: tokens.color.text.placeholder }}
+                      className="text-[10px] font-semibold mt-2 leading-relaxed"
+                    >
+                      Gifts you made anonymously are not listed: Diaspora does not record who gave them.
+                    </Text>
+                  </Card>
+                </View>
+              ) : null}
+            </ListState>
 
             {/*
               The hybrid marker is gone, and its absence is the change.
@@ -380,7 +380,7 @@ export default function CampaignScreen() {
                 accessibilityLabel="Campaign sections"
                 options={[
                   { value: 'story' as const, label: 'Story' },
-                  { value: 'updates' as const, label: `Updates (${updates.length})` },
+                  { value: 'updates' as const, label: `Updates (${updatesRead.data.length})` },
                   { value: 'supporters' as const, label: 'Supporters' },
                   { value: 'transparency' as const, label: 'Where it goes' },
                 ]}
@@ -426,14 +426,14 @@ export default function CampaignScreen() {
           {/* ── Updates ───────────────────────────────────────────────────── */}
           {tab === 'updates' ? (
             <View className="px-5 mt-4">
-              {updates.length === 0 ? (
-                <EmptyState
-                  icon="megaphone-outline"
-                  title="No updates yet"
-                  body="The organiser has not posted an update since this started."
-                />
-              ) : (
-                updates.map((update) => (
+              <ListState
+                loading={updatesRead.isLoading} loadingLabel="Loading updates"
+                error={updatesRead.isError && updatesRead.data.length === 0 && { title: 'Updates could not be loaded', message: updatesRead.error?.message }}
+                onRetry={updatesRead.refetch}
+                isEmpty={updatesRead.data.length === 0}
+                empty={{ icon: 'megaphone-outline', title: 'No updates yet', message: 'The organiser has not posted an update since this started.' }}
+              >
+                {updatesRead.data.map((update) => (
                   <View key={update.updateId} className="mb-3">
                     <Card>
                       <Text
@@ -456,8 +456,8 @@ export default function CampaignScreen() {
                       </Text>
                     </Card>
                   </View>
-                ))
-              )}
+                ))}
+              </ListState>
 
               {campaign.canManage ? (
                 <View className="mt-2">
@@ -484,14 +484,14 @@ export default function CampaignScreen() {
               />
 
               <View className="mt-3">
-                {supporters.length === 0 ? (
-                  <EmptyState
-                    icon="people-outline"
-                    title="No supporters listed"
-                    body="Be the first, or they may all have given anonymously."
-                  />
-                ) : (
-                  supporters.map((supporter, index) => (
+                <ListState
+                  loading={supportersRead.isLoading} loadingLabel="Loading supporters"
+                  error={supportersRead.isError && supportersRead.supporters.length === 0 && { title: 'Supporters could not be loaded', message: supportersRead.error?.message }}
+                  onRetry={() => void supportersRead.refetch()}
+                  isEmpty={supportersRead.supporters.length === 0}
+                  empty={{ icon: 'people-outline', title: 'No supporters listed', message: 'Be the first, or they may all have given anonymously.' }}
+                >
+                  {supportersRead.supporters.map((supporter, index) => (
                     <View
                       key={`${supporter.userId ?? 'anon'}-${index}`}
                       className="flex-row items-center py-3"
@@ -538,14 +538,14 @@ export default function CampaignScreen() {
                         />
                       ) : null}
                     </View>
-                  ))
-                )}
+                  ))}
 
-                {hasNextPage ? (
-                  <View className="mt-3">
-                    <SecondaryButton label="Show more supporters" onPress={() => void fetchNextPage()} />
-                  </View>
-                ) : null}
+                  {supportersRead.hasNextPage ? (
+                    <View className="mt-3">
+                      <SecondaryButton label="Show more supporters" onPress={() => void supportersRead.fetchNextPage()} />
+                    </View>
+                  ) : null}
+                </ListState>
               </View>
             </View>
           ) : null}
@@ -597,7 +597,7 @@ export default function CampaignScreen() {
                 adjust them, but a supporter reading this page is entitled to
                 know they do not add up against what the cause actually raised.
               */}
-              {fundUsage?.isOverReported ? (
+              {fundUsageRead.data?.isOverReported ? (
                 <View className="mb-3">
                   <InlineRefusal
                     icon="alert-circle-outline"
@@ -606,7 +606,13 @@ export default function CampaignScreen() {
                 </View>
               ) : null}
 
-              {fundUsage && fundUsage.lines.length > 0 ? (
+              <ListState
+                loading={fundUsageRead.isLoading} loadingLabel="Loading the breakdown"
+                error={fundUsageRead.isError && !fundUsageRead.data && { title: 'The breakdown could not be loaded', message: fundUsageRead.error?.message }}
+                onRetry={fundUsageRead.refetch}
+                isEmpty={!fundUsageRead.data || fundUsageRead.data.lines.length === 0}
+                empty={{ icon: 'pie-chart-outline', title: 'No breakdown published', message: 'The organiser has not published how the money will be spent.' }}
+              >
                 <View>
                   <Text
                     accessibilityRole="header"
@@ -615,7 +621,7 @@ export default function CampaignScreen() {
                   >
                     Where the money goes
                   </Text>
-                  {fundUsage.lines.map((line) => (
+                  {fundUsageRead.data?.lines.map((line) => (
                     <Card key={line.id} style={{ marginBottom: 10 }}>
                       <View className="flex-row items-start justify-between">
                         <View className="flex-1 pr-3">
@@ -687,13 +693,7 @@ export default function CampaignScreen() {
                     </Card>
                   ))}
                 </View>
-              ) : (
-                <EmptyState
-                  icon="pie-chart-outline"
-                  title="No breakdown published"
-                  body="The organiser has not published how the money will be spent."
-                />
-              )}
+              </ListState>
 
               {/*
                 No simulation footer here any more. Milestones carry the

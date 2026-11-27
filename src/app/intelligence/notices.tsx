@@ -5,11 +5,12 @@
 // Diaspora platform admins and each says so ("Posted by Diaspora platform admin").
 
 import React from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { PostedBy } from '@/components/intelligence/PostedBy';
 import { useOfficialNotices } from '@/hooks/country-intelligence';
@@ -31,21 +32,12 @@ export default function NoticesScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title={code ? `Notices · ${code}` : 'Notices'} showBack />
 
-      {results.isLoading ? (
-        <View className="flex-1 items-center justify-center" accessible accessibilityLabel="Loading notices">
-          <ActivityIndicator color="#F59300" />
-        </View>
-      ) : results.error ? (
-        <View className="flex-1 items-center justify-center p-6">
-          <Text className="text-base font-black text-content-primary text-center">
-            Notices are unavailable
-          </Text>
-          <Text className="text-xs text-content-muted text-center mt-2">{results.error}</Text>
-          <TouchableOpacity onPress={results.refresh} className="mt-5 bg-surface-muted px-4 py-2.5 rounded-xl">
-            <Text className="text-xs font-black text-content-secondary uppercase">Try again</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
+      <ListState
+        loading={results.isLoading}
+        loadingLabel="Loading notices"
+        error={results.error && results.notices.length === 0 ? { title: 'Notices are unavailable', message: results.error } : null}
+        onRetry={results.refresh}
+      >
         <FlatList
           data={results.notices}
           keyExtractor={(notice) => notice.officialNoticeId}
@@ -54,19 +46,15 @@ export default function NoticesScreen() {
             if (results.hasMore) results.loadMore();
           }}
           ListEmptyComponent={
-            <View className="items-center p-8">
-              <Text className="text-3xl mb-2">📢</Text>
-              <Text className="text-base font-black text-content-primary text-center">
-                No notices for {code || 'this country'}
-              </Text>
-              <Text className="text-xs text-content-muted text-center mt-2 leading-relaxed">
-                When Diaspora posts something members here should know, it appears here.
-              </Text>
-            </View>
+            <ListEmpty
+              icon="megaphone-outline"
+              title={`No notices for ${code || 'this country'}`}
+              message="When Diaspora posts something members here should know, it appears here."
+            />
           }
           renderItem={({ item }) => <NoticeCard notice={item} />}
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

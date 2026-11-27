@@ -59,7 +59,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 
-import { EmptyState } from '@/components/EmptyState';
+import { ListState } from '@/components/ListState';
 import { Skeleton } from '@/components/Skeleton';
 import { humanise, relativeTime } from '@/components/community-social';
 import { useModerationQueue } from '@/hooks/community-social';
@@ -97,109 +97,97 @@ export default function ModerationQueueScreen() {
         contentContainerStyle={{ paddingBottom: bottomInset }}
         refreshControl={<RefreshControl refreshing={false} onRefresh={queue.refresh} />}
       >
-        {queue.isLoading ? (
-          <QueueSkeleton />
-        ) : queue.error ? (
-          <EmptyState
-            icon="📡"
-            title="We could not load the queue"
-            description={queue.error}
-            action={
-              <TouchableOpacity
-                accessible
-                accessibilityRole="button"
-                accessibilityLabel="Try again"
-                onPress={queue.refresh}
-                className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
+        <ListState
+          loading={queue.isLoading}
+          skeleton={<QueueSkeleton />}
+          error={
+            queue.error && queue.items.length === 0
+              ? { title: 'We could not load the queue', message: queue.error }
+              : null
+          }
+          onRetry={queue.refresh}
+          isEmpty={queue.isEmpty}
+          empty={{
+            icon: 'checkmark-done-outline',
+            title: 'Nothing waiting',
+            message: 'No reported content is pending a decision right now.',
+          }}
+        >
+          {queue.items.map((item) => {
+            const key = `${item.contentType}|${item.contentId}`;
+            const isGone = item.title === REMOVED_TITLE;
+
+            return (
+              <View
+                key={key}
+                className="bg-surface-card border border-subtle rounded-2xl p-4 mb-4"
               >
-                <Text className="text-white font-extrabold text-sm">Try again</Text>
-              </TouchableOpacity>
-            }
-          />
-        ) : queue.isEmpty ? (
-          <EmptyState
-            icon="✅"
-            title="Nothing waiting"
-            description="No reported content is pending a decision right now."
-          />
-        ) : (
-          <>
-            {queue.items.map((item) => {
-              const key = `${item.contentType}|${item.contentId}`;
-              const isGone = item.title === REMOVED_TITLE;
-
-              return (
-                <View
-                  key={key}
-                  className="bg-surface-card border border-subtle rounded-2xl p-4 mb-4"
-                >
-                  <View className="flex-row items-start justify-between mb-2">
-                    <View className="flex-1 mr-3">
-                      {/* `title` is the literal "(removed)" when the content is
-                          already gone. That is a state, not a heading. */}
-                      {isGone ? (
-                        <Text className="text-sm font-black text-content-faint italic">
-                          This content has already been removed
-                        </Text>
-                      ) : (
-                        <Text className="text-sm font-black text-content-primary leading-snug">
-                          {item.title}
-                        </Text>
-                      )}
-                      <Text className="text-[10px] font-bold text-content-faint uppercase tracking-wider mt-1">
-                        {humanise(item.contentType)} · {item.status}
+                <View className="flex-row items-start justify-between mb-2">
+                  <View className="flex-1 mr-3">
+                    {/* `title` is the literal "(removed)" when the content is
+                        already gone. That is a state, not a heading. */}
+                    {isGone ? (
+                      <Text className="text-sm font-black text-content-faint italic">
+                        This content has already been removed
                       </Text>
-                    </View>
-
-                    <View className="bg-surface-muted px-2 py-1 rounded-lg">
-                      <Text className="text-[10px] font-black text-error-default">
-                        {item.reportCount} {item.reportCount === 1 ? 'report' : 'reports'}
+                    ) : (
+                      <Text className="text-sm font-black text-content-primary leading-snug">
+                        {item.title}
                       </Text>
-                    </View>
+                    )}
+                    <Text className="text-[10px] font-bold text-content-faint uppercase tracking-wider mt-1">
+                      {humanise(item.contentType)} · {item.status}
+                    </Text>
                   </View>
 
-                  {/* The reasons, which are the only description of the problem
-                      this route carries — `authorName`, and `reporterName` on
-                      every report, are hardcoded null, so there is nobody to
-                      name. Read from the reports: the row has no list of them. */}
-                  <View className="flex-row flex-wrap mb-3">
-                    {queueRowReasons(item).map((reason) => (
-                      <Text
-                        key={reason}
-                        className="text-[10px] font-bold text-content-secondary bg-surface-muted px-2 py-1 rounded mr-2 mb-1.5"
-                      >
-                        {humanise(reason)}
-                      </Text>
-                    ))}
+                  <View className="bg-surface-muted px-2 py-1 rounded-lg">
+                    <Text className="text-[10px] font-black text-error-default">
+                      {item.reportCount} {item.reportCount === 1 ? 'report' : 'reports'}
+                    </Text>
                   </View>
-
-                  <Text className="text-[10px] font-semibold text-content-faint mb-3">
-                    First reported {relativeTime(item.createdAt)} · last{' '}
-                    {relativeTime(queueRowLastReportedAt(item))}
-                  </Text>
-
-                  {/* Decisions are made on the content's case in the staff console
-                      (7 Nov 2026): a reason code and a note the owner reads are
-                      required there, a removal needs a second member of staff, and
-                      the owner is told. This screen only shows what is waiting. */}
-                  <Text className="text-[11px] font-semibold text-content-secondary leading-relaxed">
-                    Decide this in the staff console, on its case, where the reason and a
-                    second check are required and the owner is told.
-                  </Text>
                 </View>
-              );
-            })}
 
-            {/* Point 4. There is no next page to offer and no way to know
-                whether one exists, so the list says what it is rather than
-                letting its own length imply completeness. */}
-            <Text className="text-[10px] font-semibold text-content-faint leading-relaxed mt-2">
-              This queue is not paged. The server groups reports by content after
-              reading them, so this may not be everything waiting — pull to refresh
-              after acting on what is here.
-            </Text>
-          </>
-        )}
+                {/* The reasons, which are the only description of the problem
+                    this route carries — `authorName`, and `reporterName` on
+                    every report, are hardcoded null, so there is nobody to
+                    name. Read from the reports: the row has no list of them. */}
+                <View className="flex-row flex-wrap mb-3">
+                  {queueRowReasons(item).map((reason) => (
+                    <Text
+                      key={reason}
+                      className="text-[10px] font-bold text-content-secondary bg-surface-muted px-2 py-1 rounded mr-2 mb-1.5"
+                    >
+                      {humanise(reason)}
+                    </Text>
+                  ))}
+                </View>
+
+                <Text className="text-[10px] font-semibold text-content-faint mb-3">
+                  First reported {relativeTime(item.createdAt)} · last{' '}
+                  {relativeTime(queueRowLastReportedAt(item))}
+                </Text>
+
+                {/* Decisions are made on the content's case in the staff console
+                    (7 Nov 2026): a reason code and a note the owner reads are
+                    required there, a removal needs a second member of staff, and
+                    the owner is told. This screen only shows what is waiting. */}
+                <Text className="text-[11px] font-semibold text-content-secondary leading-relaxed">
+                  Decide this in the staff console, on its case, where the reason and a
+                  second check are required and the owner is told.
+                </Text>
+              </View>
+            );
+          })}
+
+          {/* Point 4. There is no next page to offer and no way to know
+              whether one exists, so the list says what it is rather than
+              letting its own length imply completeness. */}
+          <Text className="text-[10px] font-semibold text-content-faint leading-relaxed mt-2">
+            This queue is not paged. The server groups reports by content after
+            reading them, so this may not be everything waiting — pull to refresh
+            after acting on what is here.
+          </Text>
+        </ListState>
 
         <View className="h-8" />
       </ScrollEndScrollView>

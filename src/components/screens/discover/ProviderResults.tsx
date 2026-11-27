@@ -7,9 +7,11 @@ import { router } from 'expo-router';
 import { providerPlaceLine } from '@/lib/platform/listing-place';
 import { photoUriOf } from '@/lib/platform/media-url';
 import { Image as ExpoImage } from 'expo-image';
+import { ListState } from '@/components/ListState';
 import {
-  EmptyStateView,
   ShowMoreButton,
+  couldNotLoad,
+  noMatch,
   pagingState,
 } from '@/components/screens/discover/ResultStates';
 import type { OriginFilter } from '@/components/screens/discover/useOriginFilter';
@@ -24,7 +26,7 @@ interface ProviderResultsProps {
 
 export function ProviderResults({ origin, providers, search }: ProviderResultsProps) {
   const { filteredListings } = origin;
-  const { providerSearch, providerDistanceNote } = providers;
+  const { providerSearch, providerDistanceNote, retryProviders } = providers;
   const { emptyStatePlace } = search;
 
   return (
@@ -32,18 +34,21 @@ export function ProviderResults({ origin, providers, search }: ProviderResultsPr
       {providerDistanceNote ? (
         <Text className="text-xs text-content-secondary mb-3">{providerDistanceNote}</Text>
       ) : null}
-      {providerSearch.isError ? (
-        /* Distinct from the empty state on purpose. "There are no
-           providers near you" and "we could not ask" are opposite
-           facts, and collapsing the second into the first tells the
-           member the reassuring one. */
-        <EmptyStateView
-          label="providers"
-          place={emptyStatePlace}
-          error="We could not reach service providers just now."
-        />
-      ) : filteredListings.length > 0 ? (
-        filteredListings.map((item) => (
+      {/* Distinct from the empty state on purpose. "There are no
+          providers near you" and "we could not ask" are opposite
+          facts, and collapsing the second into the first tells the
+          member the reassuring one. */}
+      <ListState
+        error={
+          providerSearch.isError
+            ? couldNotLoad('providers', 'We could not reach service providers just now.', false)
+            : null
+        }
+        onRetry={retryProviders}
+        isEmpty={filteredListings.length === 0}
+        empty={noMatch('providers', emptyStatePlace)}
+      >
+        {filteredListings.map((item) => (
           <TouchableOpacity
             key={item.providerId}
             onPress={() => router.push(`/provider/${item.providerId}`)}
@@ -100,10 +105,8 @@ export function ProviderResults({ origin, providers, search }: ProviderResultsPr
               </View>
             </View>
           </TouchableOpacity>
-        ))
-       ) : (
-         <EmptyStateView label="providers" place={emptyStatePlace} />
-       )}
+        ))}
+      </ListState>
        {providerSearch.hasMore ? (
          <ShowMoreButton
            label="Show more providers"

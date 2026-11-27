@@ -19,6 +19,7 @@ import { resolveAddress, suggestAddresses, type AddressSuggestion } from '@/lib/
 import { newIdempotencyKey } from '@/lib/domain/idempotency';
 import { countryByCode } from '@/lib/platform/calling-code';
 import { useNotification } from '@/providers/notification-provider';
+import { ListState } from '@/components/ListState';
 import { useThemeTokens } from '@/design-system';
 import { useSavedPlaces, useSavePlace } from '@/hooks/saved-places';
 import { DEFAULT_SAVED_LABELS } from '@/lib/location/saved-places';
@@ -336,23 +337,21 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                   </TouchableOpacity>
                 )}
                 ListEmptyComponent={
-                  searchFailed ? (
-                    <View className="p-8 items-center justify-center">
-                      <Text className="text-5xl mb-3">📡</Text>
-                      <Text className="text-sm font-bold text-content-primary">Search did not go through</Text>
-                      <Text className="text-xs text-content-muted text-center mt-1 leading-relaxed max-w-[240px]">
-                        Place search is not available just now. Check your connection and try again, or use your GPS location above.
-                      </Text>
-                    </View>
-                  ) : (
-                  <View className="p-8 items-center justify-center">
-                    <Text className="text-5xl mb-3">📍</Text>
-                    <Text className="text-sm font-bold text-content-primary">No locations found</Text>
-                    <Text className="text-xs text-content-muted text-center mt-1 leading-relaxed max-w-[220px]">
-                      We couldn't find matches for "{searchQuery}". Try searching for major cities or countries.
-                    </Text>
-                  </View>
-                  )
+                  <ListState
+                    error={
+                      searchFailed && {
+                        icon: 'cloud-offline-outline',
+                        title: 'Search did not go through',
+                        message: 'Place search is not available just now. Check your connection and try again, or use your GPS location above.',
+                      }
+                    }
+                    isEmpty
+                    empty={{
+                      icon: 'location-outline',
+                      title: 'No locations found',
+                      message: `We couldn't find matches for "${searchQuery}". Try searching for major cities or countries.`,
+                    }}
+                  />
                 }
               />
             ) : (

@@ -10,11 +10,11 @@ import { useTheme } from '@/design-system';
 import {
   ChipRow,
   CommunityScreen,
-  EmptyState,
   OpportunityCard,
   PrimaryButton,
   SecondaryButton,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useOpportunities } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
@@ -138,23 +138,29 @@ export default function VolunteerListScreen() {
       </View>
 
       <View className="px-5 mt-4">
-        {opportunities.length === 0 && !isLoading ? (
-          <EmptyState
-            icon="hand-left-outline"
-            title="Nothing to volunteer for right now"
-            body={
+        {/* The shell draws the list's loading and error; the list says when it is empty. */}
+        <ListState
+          isEmpty={opportunities.length === 0}
+          empty={{
+            icon: 'hand-left-outline',
+            title: 'Nothing to volunteer for right now',
+            message:
               query || cause
                 ? 'Try widening your filters.'
-                : 'When a community near you needs help, it will show up here.'
-            }
-            action={query || cause ? 'Clear filters' : undefined}
-            onAction={() => {
-              setQuery('');
-              setCause('');
-            }}
-          />
-        ) : (
-          opportunities.map((opportunity) => (
+                : 'When a community near you needs help, it will show up here.',
+            action:
+              query || cause
+                ? {
+                    label: 'Clear filters',
+                    onPress: () => {
+                      setQuery('');
+                      setCause('');
+                    },
+                  }
+                : undefined,
+          }}
+        >
+          {opportunities.map((opportunity) => (
             <View key={opportunity.opportunityId} className="mb-3">
               <OpportunityCard
                 opportunity={opportunity}
@@ -163,20 +169,20 @@ export default function VolunteerListScreen() {
                 }
               />
             </View>
-          ))
-        )}
+          ))}
 
-        {hasNextPage ? (
-          <View className="mb-4">
-            {isFetchingNextPage ? (
-              <View className="py-4 items-center" accessibilityLabel="Loading more">
-                <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-              </View>
-            ) : (
-              <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-            )}
-          </View>
-        ) : null}
+          {hasNextPage ? (
+            <View className="mb-4">
+              {isFetchingNextPage ? (
+                <View className="py-4 items-center" accessibilityLabel="Loading more">
+                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                </View>
+              ) : (
+                <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+              )}
+            </View>
+          ) : null}
+        </ListState>
 
         <View className="mt-2">
           <PrimaryButton

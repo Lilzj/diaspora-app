@@ -4,9 +4,11 @@
 import React from 'react';
 import { View } from 'react-native';
 import { JobCard } from '@/components/JobCard';
+import { ListState } from '@/components/ListState';
 import {
-  EmptyStateView,
   ShowMoreButton,
+  couldNotLoad,
+  noMatch,
   pagingState,
 } from '@/components/screens/discover/ResultStates';
 import type { JobTab } from '@/components/screens/discover/useJobTab';
@@ -20,20 +22,19 @@ interface JobResultsProps {
 }
 
 export function JobResults({ jobs, origin, search }: JobResultsProps) {
-  const { jobSearch } = jobs;
+  const { jobSearch, retryJobs } = jobs;
   const { filteredJobs } = origin;
   const { emptyStatePlace } = search;
 
   return (
     <View>
-      {jobSearch.isError ? (
-        <EmptyStateView
-          label="jobs"
-          place={emptyStatePlace}
-          error="We could not reach jobs just now."
-        />
-      ) : filteredJobs.length > 0 ? (
-        filteredJobs.map((item, index) => (
+      <ListState
+        error={jobSearch.isError ? couldNotLoad('jobs', 'We could not reach jobs just now.', false) : null}
+        onRetry={retryJobs}
+        isEmpty={filteredJobs.length === 0}
+        empty={noMatch('jobs', emptyStatePlace)}
+      >
+        {filteredJobs.map((item, index) => (
           /* The cast is the same one `CommunityContentSection`
              makes for this route: `useScopedContent` returns
              rows from `GET /jobs` as opaque records because the
@@ -45,10 +46,8 @@ export function JobResults({ jobs, origin, search }: JobResultsProps) {
             key={String(item.jobId ?? item.id ?? index)}
             job={item as never}
           />
-        ))
-      ) : (
-        <EmptyStateView label="jobs" place={emptyStatePlace} />
-      )}
+        ))}
+      </ListState>
       {jobSearch.hasMore ? (
         <ShowMoreButton label="Show more jobs" state={pagingState(jobSearch)} onPress={jobSearch.loadMore} />
       ) : null}

@@ -3,11 +3,12 @@
  */
 
 import React, { useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConversationRequestCard } from '@/components/conversation/ConversationRequestCard';
 import { ConversationEmptyState } from '@/components/conversation/ConversationEmptyState';
+import { ListState } from '@/components/ListState';
 import { useConversationStore } from '@/store/conversation';
 import { ConversationHub } from '@/lib/transport/conversation-hub';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -16,7 +17,7 @@ export default function ConversationRequestsScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
 
-  const { requests, isLoadingRequests, loadRequests, acceptRequest, declineRequest } =
+  const { requests, isLoadingRequests, requestsError, loadRequests, acceptRequest, declineRequest } =
     useConversationStore();
 
   useEffect(() => {
@@ -39,13 +40,18 @@ export default function ConversationRequestsScreen() {
         </Text>
       </View>
 
-      {isLoadingRequests ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#F59300" size="large" />
-        </View>
-      ) : requests.length === 0 ? (
-        <ConversationEmptyState filter="Requests" />
-      ) : (
+      {/* A failed read is said, not drawn as "No pending requests" (FARCH-007,
+          27 Nov 2026): the store swallowed it, so an outage read as an empty inbox. */}
+      <ListState
+        loading={isLoadingRequests && requests.length === 0}
+        loadingLabel="Loading message requests"
+        error={
+          requestsError && requests.length === 0
+            ? { title: 'Message requests could not be loaded', message: requestsError }
+            : null
+        }
+        onRetry={() => void loadRequests()}
+      >
         <FlatList
           data={requests}
           keyExtractor={(item) => item.requestId}
@@ -57,10 +63,11 @@ export default function ConversationRequestsScreen() {
               onBlock={() => ConversationHub.block(item.fromUser.userId, 'Blocked from request')}
             />
           )}
+          ListEmptyComponent={<ConversationEmptyState filter="Requests" />}
           contentContainerStyle={{ paddingTop: 16, paddingBottom: bottomInset }}
           showsVerticalScrollIndicator={false}
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

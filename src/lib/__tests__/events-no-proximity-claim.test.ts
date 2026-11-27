@@ -122,7 +122,9 @@ function emptySearchHelper(): string {
 describe('the empty state describes the search that was actually run', () => {
   it('is built from the filters that were applied', () => {
     expect(EVENTS).toMatch(/function describeEmptyEventSearch/);
-    expect(EVENTS).toMatch(/desc=\{describeEmptyEventSearch\(\{/);
+    // The empty list's sentence, as `ListState` takes it since FARCH-007 (it was the local
+    // EmptyState's `desc`). Still the helper's, still called with the applied filters.
+    expect(EVENTS).toMatch(/message: describeEmptyEventSearch\(\{/);
   });
 
   it('names the city, which is what the search narrowed by', () => {

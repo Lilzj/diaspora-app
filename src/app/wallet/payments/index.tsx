@@ -18,6 +18,7 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import {
   AccessGate,
@@ -121,29 +122,16 @@ export default function PaymentHistoryScreen() {
         </ScrollView>
       </View>
 
-      {query.isLoading ? (
-        <TransactionListSkeleton rows={7} />
-      ) : query.isError && query.error ? (
-        <FinancialErrorView error={query.error as FinancialError} onRetry={query.refetch} />
-      ) : payments.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Ionicons name="card-outline" size={34} color={tokens.color.text.placeholder} />
-          <Text
-            style={{ color: tokens.color.text.primary }}
-            className="text-base font-black text-center tracking-tight mt-4 mb-2"
-          >
-            {status ? 'Nothing here' : 'No payments yet'}
-          </Text>
-          <Text
-            style={{ color: tokens.color.text.secondary }}
-            className="text-sm font-medium text-center leading-relaxed"
-          >
-            {status
-              ? 'Try another filter to see your other payments.'
-              : 'Anything you pay for on Diaspora will be listed here, including attempts that did not go through.'}
-          </Text>
-        </View>
-      ) : (
+      <ListState
+        loading={query.isLoading}
+        skeleton={<TransactionListSkeleton rows={7} />}
+        error={
+          query.isError && payments.length === 0 ? (
+            <FinancialErrorView error={query.error as FinancialError} onRetry={query.refetch} />
+          ) : null
+        }
+      >
+        {/* Mounted when empty too, so pulling still refreshes an empty list. */}
         <ScrollEndFlatList
           data={payments}
           keyExtractor={(item) => item.paymentIntentId}
@@ -160,6 +148,17 @@ export default function PaymentHistoryScreen() {
             />
           }
           renderItem={({ item }) => <PaymentRow payment={item} />}
+          ListEmptyComponent={
+            <ListEmpty
+              icon="card-outline"
+              title={status ? 'Nothing here' : 'No payments yet'}
+              message={
+                status
+                  ? 'Try another filter to see your other payments.'
+                  : 'Anything you pay for on Diaspora will be listed here, including attempts that did not go through.'
+              }
+            />
+          }
           ListFooterComponent={
             payments.length >= TAKE ? (
               <View className="px-5 py-6">
@@ -173,7 +172,7 @@ export default function PaymentHistoryScreen() {
             ) : undefined
           }
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

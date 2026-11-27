@@ -16,13 +16,17 @@ import type { OrgFormState } from '@/types/community-life';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
-import { Button } from '@/components/Button';
 import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { useLocationStore, getActiveLocation } from '@/store/location';
 import { useAuthStore } from '@/store/auth';
 import { toOrganizationTypeKey } from '@/lib/domain/community-life-catalogue';
+import { WizardHeader } from '@/components/forms/WizardHeader';
+import { WizardFooter } from '@/components/forms/WizardFooter';
 import { backOr } from '@/lib/platform/navigation';
+
+/** The six steps, by the name each one is headed with. */
+const STEPS = ['Category', 'Basic Info', 'Location', 'Contact & Socials', 'Verification', 'Preview & Publish'] as const;
 
 // Organisation types are the server's since 13 Oct 2026 (`useCommunityLifeCatalogue`).
 // The form offered "Doctors", "Lawyers", "Restaurants", "Embassies" and more that are
@@ -377,42 +381,29 @@ export default function CreateOrgScreen() {
     <FeatureGate featureName="Organizations">
       <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
       
-      {/* Top Navbar */}
-      <View className="px-6 py-4 border-b border-faint flex-row items-center justify-between bg-surface-card shadow-sm">
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={handleBack} className="mr-3 p-1">
-            <Ionicons name="arrow-back" size={24} color={tokens.color.text.primary} />
+      <WizardHeader
+        name="Register Hub"
+        steps={STEPS}
+        // `step` counts from 1 on this screen.
+        step={step - 1}
+        onBack={handleBack}
+        rightAction={
+          <TouchableOpacity
+            onPress={handleSaveDraft}
+            disabled={isDraftSaving}
+            className="bg-surface-muted px-3 py-1.5 rounded-xl border border-subtle flex-row items-center"
+          >
+            {isDraftSaving ? (
+              <ActivityIndicator size="small" color="#F59300" />
+            ) : (
+              <>
+                <Ionicons name="cloud-upload-outline" size={13} color={tokens.color.text.secondary} className="mr-1" />
+                <Text className="text-[10px] font-black text-content-tertiary">SAVE DRAFT</Text>
+              </>
+            )}
           </TouchableOpacity>
-          <View>
-            <Text className="text-lg font-black text-content-primary tracking-tight">Register Hub</Text>
-            <Text className="text-[10px] text-content-muted font-bold uppercase">Step {step} of 6</Text>
-          </View>
-        </View>
-
-        {/* Auto-save draft action */}
-        <TouchableOpacity
-          onPress={handleSaveDraft}
-          disabled={isDraftSaving}
-          className="bg-surface-muted px-3 py-1.5 rounded-xl border border-subtle flex-row items-center"
-        >
-          {isDraftSaving ? (
-            <ActivityIndicator size="small" color="#F59300" />
-          ) : (
-            <>
-              <Ionicons name="cloud-upload-outline" size={13} color={tokens.color.text.secondary} className="mr-1" />
-              <Text className="text-[10px] font-black text-content-tertiary">SAVE DRAFT</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Progress Bar */}
-      <View className="h-1 bg-surface-muted w-full">
-        <View
-          className="h-full bg-primary-500"
-          style={{ width: `${(step / 6) * 100}%` }}
-        />
-      </View>
+        }
+      />
 
       {isSubmitting ? (
         <View className="flex-1 justify-center items-center">
@@ -757,36 +748,15 @@ export default function CreateOrgScreen() {
             </View>
           )}
 
-          {/* Buttons action group */}
-          <View className="mt-8 mb-10">
-            {stillNeeded.length > 0 ? (
-              <Text className="text-xs font-semibold text-content-muted mb-3">
-                Still needed: {stillNeeded.join(', ')}
-              </Text>
-            ) : valueProblem ? (
-              <Text className="text-xs font-semibold text-content-muted mb-3">{valueProblem}</Text>
-            ) : null}
-
-            <View className="flex-row gap-3">
-              {step > 1 && (
-                <Button
-                  label="Back"
-                  variant="outline"
-                  className="flex-1"
-                  onPress={handleBack}
-                />
-              )}
-              <Button
-                label={step === 6 ? 'Publish' : 'Continue'}
-                className="flex-1"
-                isLoading={isSubmitting}
-                disabled={stillNeeded.length > 0 || valueProblem !== null}
-                onPress={step === 6 ? handlePublish : handleNext}
-              />
-            </View>
-          </View>
-
          </ScrollView>
+          <WizardFooter
+            onBack={step > 1 ? handleBack : undefined}
+            onNext={step === 6 ? () => void handlePublish() : handleNext}
+            nextLabel={step === 6 ? 'Publish' : 'Continue'}
+            stillNeeded={stillNeeded}
+            problem={valueProblem}
+            isLoading={isSubmitting}
+          />
         </KeyboardAvoidingView>
       )}
 

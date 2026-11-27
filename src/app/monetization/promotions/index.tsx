@@ -18,9 +18,10 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import { FinancialErrorView } from '@/components/financial';
-import { MonetizationEmpty, PromotionRow } from '@/components/monetization';
+import { PromotionRow } from '@/components/monetization';
 import { usePromotions } from '@/hooks/monetization';
 import type { PromotionFilter } from '@/types/monetization';
 import { useRefreshControl } from '@/hooks/usePullToRefresh';
@@ -122,31 +123,38 @@ export default function PromotionsScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
         refreshControl={refreshControl}
       >
-        {isLoading ? (
-          <View accessible accessibilityLabel="Loading your promotions." style={{ gap: 10 }}>
-            {[0, 1, 2].map((index) => (
-              <View
-                key={index}
-                style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.25 }}
-                className="rounded-2xl h-28"
-              />
-            ))}
-          </View>
-        ) : promotions.length === 0 ? (
-          <MonetizationEmpty
-            icon="megaphone-outline"
-            title={filter === 'all' ? 'No promotions yet' : `Nothing ${FILTERS.find((entry) => entry.key === filter)?.label.toLowerCase()}`}
-            message={
+        {/* The read's failure stays the whole-screen return above: the chips'
+            counts come from the same read, so there is nothing else to show. */}
+        <ListState
+          loading={isLoading}
+          skeleton={
+            <View accessible accessibilityLabel="Loading your promotions." style={{ gap: 10 }}>
+              {[0, 1, 2].map((index) => (
+                <View
+                  key={index}
+                  style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.25 }}
+                  className="rounded-2xl h-28"
+                />
+              ))}
+            </View>
+          }
+          isEmpty={promotions.length === 0}
+          empty={{
+            icon: 'megaphone-outline',
+            title:
+              filter === 'all'
+                ? 'No promotions yet'
+                : `Nothing ${FILTERS.find((entry) => entry.key === filter)?.label.toLowerCase()}`,
+            message:
               filter === 'all'
                 ? 'When you promote a listing, job, property or event it appears here so you can keep track of it.'
-                : 'Try another tab, or promote something new.'
-            }
-            action={{
+                : 'Try another tab, or promote something new.',
+            action: {
               label: 'See what you can promote',
               onPress: () => router.push('/monetization/promote'),
-            }}
-          />
-        ) : (
+            },
+          }}
+        >
           <View style={{ gap: 10 }}>
             {promotions.map((promotion) => (
               <PromotionRow
@@ -156,7 +164,7 @@ export default function PromotionsScreen() {
               />
             ))}
           </View>
-        )}
+        </ListState>
       </ScrollEndScrollView>
     </SafeAreaView>
   );

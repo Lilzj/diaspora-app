@@ -39,7 +39,7 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { seeAllDestination } from '@/lib/platform/see-all-routes';
 import { NotificationBell } from '@/components/NotificationBell';
 import { Avatar } from '@/components/Avatar';
-import { EmptyState } from '@/components/EmptyState';
+import { ListState } from '@/components/ListState';
 import { Skeleton } from '@/components/Skeleton';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import { useAuthStore } from '@/store/auth';
@@ -481,73 +481,79 @@ export default function HomeScreen() {
 
         {/* ── The recommendations feed ─────────────────────────────────────── */}
 
-        {isLoading ? (
-          <FeedSkeleton />
-        ) : error ? (
-          <FeedError message={error} isSignedOut={isSignedOut} onRetry={refresh} />
-        ) : isEmpty ? (
-          // Rule 2. An empty feed is empty. The screen it replaced could not
-          // reach this state, because it had nothing to be empty of.
-          <EmptyState
-            icon="🧭"
-            title="Nothing recommended yet"
-            description="As you read, search and save, this page fills up with things chosen for where you are and what you are looking for."
-            action={
+        {/* Rule 2. Loading, failed and empty are three different things to say,
+            said through the shared list state since 27 Nov 2026 (FARCH-007).
+            Signed out is the one failure with its own way out, and it does not
+            look like one: no Recommendations route is decorated with
+            `.RequireAuthorization()`, so the platform writes a bare 401 with no
+            `WWW-Authenticate` challenge and a generic handler reads it as a
+            server fault. */}
+        <ListState
+          loading={isLoading}
+          skeleton={<FeedSkeleton />}
+          error={
+            error && sections.length === 0
+              ? isSignedOut
+                ? {
+                    icon: 'key-outline',
+                    title: 'Sign in to see your feed',
+                    message: error,
+                    action: { label: 'Sign in', onPress: () => router.push('/login') },
+                  }
+                : { icon: 'cloud-offline-outline', title: 'We could not load your feed', message: error }
+              : null
+          }
+          onRetry={isSignedOut ? undefined : refresh}
+          isEmpty={isEmpty}
+          empty={{
+            icon: 'compass-outline',
+            title: 'Nothing recommended yet',
+            message:
+              'As you read, search and save, this page fills up with things chosen for where you are and what you are looking for.',
+            action: { label: 'Start exploring', onPress: () => router.push('/discover') },
+          }}
+        >
+          {/* The platform saying, in its own words, that it does not know this
+              member yet. Rendered from `isColdStart` and `profileCompleteness`
+              rather than inferred from an empty section — a generic feed and
+              an absent feed are different things. */}
+          {feed?.isColdStart ? (
+            <View className="px-6 mb-4">
               <TouchableOpacity
                 accessible
                 accessibilityRole="button"
-                accessibilityLabel="Explore the app"
-                onPress={() => router.push('/discover')}
-                className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
+                accessibilityLabel={`Your profile is ${feed.profileCompleteness} percent complete. Complete it for better recommendations.`}
+                onPress={() => router.push('/profile')}
+                activeOpacity={0.9}
+                className="bg-surface-card rounded-2xl border border-faint p-4 flex-row items-center"
               >
-                <Text className="text-white font-extrabold text-sm">Start exploring</Text>
+                <Text className="text-xl mr-3">✨</Text>
+                <View className="flex-1">
+                  <Text className="text-sm font-black text-content-strong">
+                    These are popular picks, not yours yet
+                  </Text>
+                  <Text className="text-xs font-semibold text-content-muted mt-0.5 leading-relaxed">
+                    Your profile is {feed.profileCompleteness}% complete. Finish it and this page
+                    starts choosing for you.
+                  </Text>
+                </View>
+                <Text className="text-content-faint ml-2">›</Text>
               </TouchableOpacity>
-            }
-          />
-        ) : (
-          <>
-            {/* The platform saying, in its own words, that it does not know this
-                member yet. Rendered from `isColdStart` and `profileCompleteness`
-                rather than inferred from an empty section — a generic feed and
-                an absent feed are different things. */}
-            {feed?.isColdStart ? (
-              <View className="px-6 mb-4">
-                <TouchableOpacity
-                  accessible
-                  accessibilityRole="button"
-                  accessibilityLabel={`Your profile is ${feed.profileCompleteness} percent complete. Complete it for better recommendations.`}
-                  onPress={() => router.push('/profile')}
-                  activeOpacity={0.9}
-                  className="bg-surface-card rounded-2xl border border-faint p-4 flex-row items-center"
-                >
-                  <Text className="text-xl mr-3">✨</Text>
-                  <View className="flex-1">
-                    <Text className="text-sm font-black text-content-strong">
-                      These are popular picks, not yours yet
-                    </Text>
-                    <Text className="text-xs font-semibold text-content-muted mt-0.5 leading-relaxed">
-                      Your profile is {feed.profileCompleteness}% complete. Finish it and this page
-                      starts choosing for you.
-                    </Text>
-                  </View>
-                  <Text className="text-content-faint ml-2">›</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
+            </View>
+          ) : null}
 
-            {/* Rule 1. In the order the server sent, keyed by `key`. Nothing
-                below reads `sections[n]`. */}
-            {sections.map((section) => (
-              <FeedSectionRail
-                key={section.key}
-                section={section}
-                onOpen={openRecommendation}
-                onDismiss={dismissRecommendation}
-                onImpression={recordImpression}
-              />
-            ))}
-          </>
-        )}
+          {/* Rule 1. In the order the server sent, keyed by `key`. Nothing
+              below reads `sections[n]`. */}
+          {sections.map((section) => (
+            <FeedSectionRail
+              key={section.key}
+              section={section}
+              onOpen={openRecommendation}
+              onDismiss={dismissRecommendation}
+              onImpression={recordImpression}
+            />
+          ))}
+        </ListState>
 
         <View className="h-8" />
       </ScrollView>
@@ -669,47 +675,6 @@ function FeedSkeleton() {
         ))}
       </View>
     </View>
-  );
-}
-
-/**
- * The failed state.
- *
- * Signed out is separated from everything else because it is the only failure
- * here with an action attached — and because it does not look like one. No route
- * in the Recommendations module is decorated with `.RequireAuthorization()`; the
- * check lives in a pipeline behaviour that throws, so the platform writes a bare
- * 401 with no `WWW-Authenticate` challenge and a generic handler reads it as a
- * server fault.
- */
-function FeedError({
-  message,
-  isSignedOut,
-  onRetry,
-}: {
-  message: string;
-  isSignedOut: boolean;
-  onRetry: () => void;
-}) {
-  return (
-    <EmptyState
-      icon={isSignedOut ? '🔑' : '📡'}
-      title={isSignedOut ? 'Sign in to see your feed' : 'We could not load your feed'}
-      description={message}
-      action={
-        <TouchableOpacity
-          accessible
-          accessibilityRole="button"
-          accessibilityLabel={isSignedOut ? 'Sign in' : 'Try again'}
-          onPress={() => (isSignedOut ? router.push('/login') : onRetry())}
-          className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
-        >
-          <Text className="text-white font-extrabold text-sm">
-            {isSignedOut ? 'Sign in' : 'Try again'}
-          </Text>
-        </TouchableOpacity>
-      }
-    />
   );
 }
 

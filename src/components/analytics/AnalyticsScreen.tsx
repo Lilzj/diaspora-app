@@ -47,6 +47,7 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design-system';
 import { FinancialErrorView } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import type { ScreenAvailability, ScreenLoad } from '@/components/layout/screen-groups';
 import type { AnalyticsDataset } from '@/types/analytics';
 import type { AnalyticsVerdict } from '@/lib/analytics/access';
@@ -258,7 +259,9 @@ export function AnalyticsScreen({
             </View>
           ) : null}
 
-          {isLoading ? <AnalyticsSkeleton rows={4} /> : children}
+          <ListState loading={isLoading} skeleton={<AnalyticsSkeleton rows={4} />}>
+            {children}
+          </ListState>
         </View>
       </Body>
     </>

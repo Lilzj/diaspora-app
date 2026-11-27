@@ -19,12 +19,13 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import {
   View, FlatList, KeyboardAvoidingView, Platform,
-  Clipboard, ActivityIndicator, TouchableOpacity, Text, Modal, Pressable, TextInput,
+  Clipboard, TouchableOpacity, Text, Modal, Pressable, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ReportModal } from '@/components/ReportModal';
 import { useLocalSearchParams } from 'expo-router';
 import { useConversationStore } from '@/store/conversation';
+import { ListState } from '@/components/ListState';
 import { useTypingStore } from '@/store/typing';
 import { useAuthStore } from '@/store/auth';
 import { ConversationHub } from '@/lib/transport/conversation-hub';
@@ -91,7 +92,7 @@ export default function ConversationScreen() {
   const flatListRef = useRef<FlatList>(null);
   const isAtBottom = useRef(true);
 
-  const { conversations, messages, isLoadingMessages, loadMessages, markConversationRead } =
+  const { conversations, messages, isLoadingMessages, messagesError, loadMessages, markConversationRead } =
     useConversationStore();
   const { getTypingLabel } = useTypingStore();
 
@@ -369,7 +370,7 @@ export default function ConversationScreen() {
 
   const other = conversation?.participants.find((p) => !p.isCurrentUser);
 
-  if (!conversation && !isLoadingMessages[id]) {
+  if (!conversation && !isLoadingMessages[id] && !messagesError[id]) {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <Text className="text-5xl mb-4">💬</Text>
@@ -589,12 +590,11 @@ export default function ConversationScreen() {
           <ConnectionBanner state={connectionState} />
         )}
 
-        {/* Main scroll area */}
-        {isLoadingMessages[id] ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color="#F59300" size="large" />
-          </View>
-        ) : (
+        {/* Main scroll area. Messages already on screen stay through a reload. */}
+        <ListState
+          loading={isLoadingMessages[id] && convMessages.length === 0} loadingLabel="Loading this conversation"
+          error={!!messagesError[id] && convMessages.length === 0 && { title: 'This conversation could not be loaded', message: messagesError[id] }}
+          onRetry={() => void loadMessages(id)}>
           <FlatList
             ref={flatListRef}
             data={convMessages}
@@ -674,7 +674,7 @@ export default function ConversationScreen() {
               flatListRef.current?.scrollToEnd({ animated: false });
             }}
           />
-        )}
+        </ListState>
 
         {/* Floating new message badge */}
         {newMessageCount > 0 && (

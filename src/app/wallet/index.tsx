@@ -23,6 +23,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import {
   AccessGate,
@@ -435,40 +436,34 @@ export default function WalletScreen() {
           style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
           className="rounded-2xl border overflow-hidden mt-2"
         >
-          {transactionsQuery.isLoading ? (
-            <TransactionListSkeleton rows={4} />
-          ) : transactionsQuery.isError && transactionsQuery.error ? (
-            <View className="p-4">
-              <FinancialErrorInline
-                error={transactionsQuery.error as FinancialError}
-                onRetry={transactionsQuery.refetch}
-              />
-            </View>
-          ) : transactions.length === 0 ? (
-            <View className="px-5 py-10 items-center">
-              <Ionicons name="receipt-outline" size={28} color={tokens.color.text.placeholder} />
-              <Text
-                style={{ color: tokens.color.text.secondary }}
-                className="text-sm font-bold mt-3 text-center"
-              >
-                Nothing has happened yet
-              </Text>
-              <Text
-                style={{ color: tokens.color.text.placeholder }}
-                className="text-xs font-medium mt-1 text-center leading-relaxed"
-              >
-                Payments, refunds and credit will appear here as they happen.
-              </Text>
-            </View>
-          ) : (
-            transactions.map((transaction) => (
+          <ListState
+            loading={transactionsQuery.isLoading}
+            skeleton={<TransactionListSkeleton rows={4} />}
+            error={
+              transactionsQuery.isError && transactions.length === 0 ? (
+                <View className="p-4">
+                  <FinancialErrorInline
+                    error={transactionsQuery.error as FinancialError}
+                    onRetry={transactionsQuery.refetch}
+                  />
+                </View>
+              ) : null
+            }
+            isEmpty={transactions.length === 0}
+            empty={{
+              icon: 'receipt-outline',
+              title: 'Nothing has happened yet',
+              message: 'Payments, refunds and credit will appear here as they happen.',
+            }}
+          >
+            {transactions.map((transaction) => (
               <TransactionRow
                 key={transaction.transactionId}
                 transaction={transaction}
                 onPress={() => router.push(`/wallet/transactions/${transaction.transactionId}`)}
               />
-            ))
-          )}
+            ))}
+          </ListState>
         </View>
 
         {/* ── Everything else ─────────────────────────────────────────── */}

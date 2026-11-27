@@ -6,6 +6,8 @@ import { View, TouchableOpacity, Text } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { toDateString } from '@/utils/calendar-date';
+import { ListState } from '@/components/ListState';
+import { ListSkeleton } from '@/components/screens/community-life-events/ListSkeleton';
 import type { EventsCalendar } from '@/components/screens/community-life-events/useEventsCalendar';
 import type {
   CommunityLifeLists,
@@ -20,7 +22,7 @@ export function CalendarTab({ calendar, lists }: CalendarTabProps) {
   const {
     calendarView, setCalendarView, selectedDateStr, setSelectedDateStr, setReminderModalOpen,
   } = calendar;
-  const { calendarEvents } = lists;
+  const { calendarEvents, calendarLoading, calendarError, refresh } = lists;
 
   // ── DEFECT-013: the calendar was hardcoded to July 2026 ──────────────────
   //
@@ -164,8 +166,19 @@ export function CalendarTab({ calendar, lists }: CalendarTabProps) {
           Schedule for {selectedDateStr}
         </Text>
         
-        {selectedDateEvents.length > 0 ? (
-          selectedDateEvents.map((item) => (
+        <ListState
+          loading={calendarLoading && calendarEvents.length === 0}
+          skeleton={<ListSkeleton label="Loading the calendar" />}
+          error={
+            calendarError && calendarEvents.length === 0
+              ? { title: 'Calendar events could not be loaded', message: calendarError.message }
+              : null
+          }
+          onRetry={refresh}
+          isEmpty={selectedDateEvents.length === 0}
+          empty={{ icon: 'cafe-outline', title: 'No schedules or reminders for this date' }}
+        >
+          {selectedDateEvents.map((item) => (
             <TouchableOpacity
               key={item.id}
               onPress={() => {
@@ -186,13 +199,8 @@ export function CalendarTab({ calendar, lists }: CalendarTabProps) {
               </View>
               {item.type === 'Event' && <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />}
             </TouchableOpacity>
-          ))
-        ) : (
-          <View className="bg-surface-card border border-subtle rounded-3xl p-6 items-center py-8">
-            <Ionicons name="cafe-outline" size={32} color="#D1D5DB" />
-            <Text className="text-xs text-content-faint font-bold mt-2">No schedules or reminders for this date</Text>
-          </View>
-        )}
+          ))}
+        </ListState>
       </View>
     </View>
   );

@@ -55,6 +55,8 @@ import {
   CommunitySelectorSheet,
   MultiCommunityGapNotice,
 } from '@/components/community-directory';
+import { WizardHeader } from '@/components/forms/WizardHeader';
+import { WizardFooter } from '@/components/forms/WizardFooter';
 
 type StepKey =
   | 'welcome'
@@ -74,6 +76,19 @@ const STEPS: StepKey[] = [
   'notifications',
   'done',
 ];
+
+/** Each step, as the header names it. */
+const STEP_TITLES: Record<StepKey, string> = {
+  welcome: 'Welcome',
+  residence: 'Where you live',
+  primary: 'Main community',
+  interested: 'Communities to follow',
+  preferences: 'What others see',
+  notifications: 'Notifications',
+  done: 'All set',
+};
+
+const STEP_NAMES = STEPS.map((key) => STEP_TITLES[key]);
 
 export default function CommunityOnboardingScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
@@ -123,6 +138,9 @@ export default function CommunityOnboardingScreen() {
     trackCommunityEvent('community.onboarding.skipped', { stepKey: step, stepIndex });
     setStepIndex((prev) => Math.min(prev + 1, STEPS.length - 1));
   }, [step, stepIndex]);
+
+  // Back a step. The flow only went forward until the wizard shell (27 Nov 2026).
+  const back = useCallback(() => setStepIndex((prev) => Math.max(prev - 1, 0)), []);
 
   const finish = useCallback(async () => {
     setBusy(true);
@@ -179,50 +197,28 @@ export default function CommunityOnboardingScreen() {
 
   return (
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
-      {/* Progress + skip */}
-      <View className="px-4 pt-2 pb-3">
-        <View className="flex-row items-center justify-between mb-2">
-          <Text
-            accessibilityRole="text"
-            accessibilityLabel={`Step ${stepIndex + 1} of ${STEPS.length}`}
-            style={{ color: tokens.color.text.placeholder }}
-            className="text-[10px] font-black uppercase tracking-widest"
-          >
-            Step {stepIndex + 1} of {STEPS.length}
-          </Text>
-
-          {step !== 'done' ? (
+      <WizardHeader
+        name="Your communities"
+        steps={STEP_NAMES}
+        step={stepIndex}
+        showBack={stepIndex > 0}
+        onBack={back}
+        rightAction={
+          step !== 'done' ? (
             <TouchableOpacity
               accessible
               accessibilityRole="button"
               accessibilityLabel="Skip this step. You can choose communities later."
               onPress={skip}
+              className="p-2"
             >
-              <Text
-                style={{ color: tokens.color.text.placeholder }}
-                className="text-[11px] font-bold"
-              >
+              <Text style={{ color: tokens.color.text.placeholder }} className="text-[11px] font-bold">
                 Skip
               </Text>
             </TouchableOpacity>
-          ) : null}
-        </View>
-
-        <View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={{ backgroundColor: tokens.color.neutral[200] }}
-          className="h-1 rounded-full overflow-hidden"
-        >
-          <View
-            style={{
-              width: `${((stepIndex + 1) / STEPS.length) * 100}%`,
-              backgroundColor: tokens.color.primary[500],
-            }}
-            className="h-1 rounded-full"
-          />
-        </View>
-      </View>
+          ) : undefined
+        }
+      />
 
       <ScrollEndScrollView
         endNavigation={false} contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}>
@@ -505,32 +501,13 @@ export default function CommunityOnboardingScreen() {
         ) : null}
       </ScrollEndScrollView>
 
-      {/* Footer */}
-      <View
-        style={{ borderColor: tokens.color.border.default }}
-        className="px-4 py-3 border-t"
-      >
-        <TouchableOpacity
-          accessible
-          accessibilityRole="button"
-          accessibilityLabel={step === 'done' ? 'Finish and go to the app' : 'Continue'}
-          accessibilityState={{ busy, disabled: busy }}
-          disabled={busy}
-          onPress={step === 'done' ? () => void finish() : advance}
-          activeOpacity={0.85}
-          style={{ backgroundColor: tokens.color.primary[500], opacity: busy ? 0.6 : 1 }}
-          className="rounded-2xl py-3.5 items-center"
-          testID="community-onboarding-continue"
-        >
-          {busy ? (
-            <ActivityIndicator color={tokens.color.text.inverse} />
-          ) : (
-            <Text style={{ color: tokens.color.text.inverse }} className="text-sm font-black">
-              {step === 'done' ? 'Finish' : 'Continue'}
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      <WizardFooter
+        onBack={stepIndex > 0 ? back : undefined}
+        onNext={step === 'done' ? () => void finish() : advance}
+        nextLabel={step === 'done' ? 'Finish' : 'Continue'}
+        isLoading={busy}
+        disabled={busy}
+      />
 
       <CommunitySelectorSheet
         visible={pickerFor !== null}

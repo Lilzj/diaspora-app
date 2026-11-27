@@ -24,9 +24,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { ListState } from '@/components/ListState';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { fetchMemberReservations, type MemberReservation } from '@/lib/api/reservations-api';
@@ -49,16 +50,13 @@ export default function MyTransactionsScreen() {
     void load();
   }, [load]);
 
-  if (isLoading) {
-    return (
-      <SafeAreaView className="flex-1 bg-surface-background">
-        <ScreenHeader title="Purchases & tenancies" />
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  /** Which module fell over, in the member's words. */
+  const failedSentence =
+    failed.includes('marketplace') && failed.includes('housing')
+      ? 'We could not reach your purchases or your tenancies just now.'
+      : failed.includes('marketplace')
+        ? 'We could not reach your purchases just now. Any tenancies are shown below.'
+        : 'We could not reach your tenancies just now. Any purchases are shown below.';
 
   return (
     <SafeAreaView className="flex-1 bg-surface-background">
@@ -67,73 +65,75 @@ export default function MyTransactionsScreen() {
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* A module that failed is not a module with nothing in it. Saying which
           * one fell over keeps "you have no purchases" from being printed over a
-          * marketplace that simply could not be reached. */}
-        {failed.length > 0 ? (
+          * marketplace that simply could not be reached. Beside the other
+          * module's rows it is a notice; with nothing to show it is the list's
+          * error, with a way to ask again (FARCH-007, 27 Nov 2026). */}
+        {failed.length > 0 && rows.length > 0 ? (
           <View className="bg-surface-card border border-subtle rounded-2xl p-4 mt-3">
             <Text className="text-[13px] font-black text-content-strong mb-1">
               Some of this could not be loaded
             </Text>
-            <Text className="text-[11px] text-content-muted leading-relaxed">
-              {failed.includes('marketplace') && failed.includes('housing')
-                ? 'We could not reach your purchases or your tenancies just now.'
-                : failed.includes('marketplace')
-                  ? 'We could not reach your purchases just now. Any tenancies are shown below.'
-                  : 'We could not reach your tenancies just now. Any purchases are shown below.'}
-            </Text>
+            <Text className="text-[11px] text-content-muted leading-relaxed">{failedSentence}</Text>
           </View>
         ) : null}
 
-        {rows.length === 0 && failed.length === 0 ? (
-          <View className="items-center py-16">
-            <Text className="text-base font-black text-content-strong mb-1 text-center">
-              Nothing here yet
-            </Text>
-            <Text className="text-xs text-content-muted text-center leading-relaxed">
-              Things you buy and places you rent through Diaspora will appear here.
-            </Text>
-          </View>
-        ) : null}
-
-        {rows.map((row) => (
-          <View
-            key={`${row.subject}-${row.id}`}
-            className="bg-surface-card border border-subtle rounded-2xl p-4 mt-3"
-          >
-            <Text className="text-[10px] font-bold text-content-muted uppercase mb-1">
-              {row.subject === 'seller' ? 'Purchase' : 'Tenancy'} · {row.status}
-            </Text>
-
-            <Text className="text-[14px] font-black text-content-strong">{row.listingTitle}</Text>
-
-            {row.counterpartyName ? (
-              <Text className="text-[11px] text-content-muted mt-0.5">
-                {row.subject === 'seller' ? 'from' : 'with'} {row.counterpartyName}
+        <ListState
+          loading={isLoading}
+          loadingLabel="Loading purchases and tenancies"
+          error={
+            failed.length > 0 && rows.length === 0
+              ? { title: 'Some of this could not be loaded', message: failedSentence }
+              : null
+          }
+          onRetry={() => void load()}
+          isEmpty={rows.length === 0}
+          empty={{
+            icon: 'receipt-outline',
+            title: 'Nothing here yet',
+            message: 'Things you buy and places you rent through Diaspora will appear here.',
+          }}
+        >
+          {rows.map((row) => (
+            <View
+              key={`${row.subject}-${row.id}`}
+              className="bg-surface-card border border-subtle rounded-2xl p-4 mt-3"
+            >
+              <Text className="text-[10px] font-bold text-content-muted uppercase mb-1">
+                {row.subject === 'seller' ? 'Purchase' : 'Tenancy'} · {row.status}
               </Text>
-            ) : null}
 
-            {/* The control exists only where the server would accept the review.
-              * `isRateable` is the module's own rule — `Completed` for a
-              * purchase, `Occupied` for a tenancy — so this cannot offer a
-              * button that is then refused. A signed lease is deliberately not
-              * enough: it is a promise, not a tenancy. */}
-            {row.isRateable && row.counterpartyId ? (
-              <TouchableOpacity
-                onPress={() =>
-                  router.push(
-                    `/write-review?subject=${row.subject}&subjectId=${encodeURIComponent(
-                      row.counterpartyId as string,
-                    )}&reservationId=${encodeURIComponent(row.id)}` as never,
-                  )
-                }
-                className="bg-primary-500 rounded-full py-2.5 mt-3 items-center"
-              >
-                <Text className="text-white text-[12px] font-black">
-                  {row.subject === 'seller' ? 'Rate this purchase' : 'Rate this tenancy'}
+              <Text className="text-[14px] font-black text-content-strong">{row.listingTitle}</Text>
+
+              {row.counterpartyName ? (
+                <Text className="text-[11px] text-content-muted mt-0.5">
+                  {row.subject === 'seller' ? 'from' : 'with'} {row.counterpartyName}
                 </Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ))}
+              ) : null}
+
+              {/* The control exists only where the server would accept the review.
+                * `isRateable` is the module's own rule — `Completed` for a
+                * purchase, `Occupied` for a tenancy — so this cannot offer a
+                * button that is then refused. A signed lease is deliberately not
+                * enough: it is a promise, not a tenancy. */}
+              {row.isRateable && row.counterpartyId ? (
+                <TouchableOpacity
+                  onPress={() =>
+                    router.push(
+                      `/write-review?subject=${row.subject}&subjectId=${encodeURIComponent(
+                        row.counterpartyId as string,
+                      )}&reservationId=${encodeURIComponent(row.id)}` as never,
+                    )
+                  }
+                  className="bg-primary-500 rounded-full py-2.5 mt-3 items-center"
+                >
+                  <Text className="text-white text-[12px] font-black">
+                    {row.subject === 'seller' ? 'Rate this purchase' : 'Rate this tenancy'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ))}
+        </ListState>
       </ScrollView>
     </SafeAreaView>
   );

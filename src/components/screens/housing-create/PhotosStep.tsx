@@ -13,7 +13,7 @@ interface PhotosStepProps {
 
 export function PhotosStep({ photos }: PhotosStepProps) {
   const {
-    coverPhoto, galleryPhotos, setGalleryPhotos, coverUpload, galleryUpload, coverBusy, galleryBusy,
+    coverPhoto, galleryPhotos, setGalleryPhotos, cover, gallery,
     handleCoverPhotoSelect, handleAddGalleryPhoto,
   } = photos;
 
@@ -35,30 +35,17 @@ export function PhotosStep({ photos }: PhotosStepProps) {
         prompt="Tap to upload cover image"
         previewUri={coverPhoto?.previewUri ?? null}
         changeLabel="📷 Change Cover Photo"
-        busy={coverBusy}
-        busyLabel={
-          coverUpload.phase === 'processing'
-            ? 'Processing…'
-            : `Uploading ${Math.round(coverUpload.progress * 100)}%`
-        }
-        // The platform's own sentence where it gave one — it knows
-        // whether the file was too large, the wrong type or refused by
-        // a scanner, and each needs a different next step. Nothing was
-        // added to the listing, and this is how they find that out.
-        error={coverUpload.phase === 'failed' ? coverUpload.error : null}
+        // Busy, what the wait is, and the platform's own sentence if it
+        // refused: nothing was added to the listing, and this is how the
+        // member finds out.
+        {...cover.dropZone}
         onPress={handleCoverPhotoSelect}
       />
 
       <PhotoDropZone
         label="Gallery Images"
         prompt="Tap to add a gallery photo"
-        busy={galleryBusy}
-        busyLabel={
-          galleryUpload.phase === 'processing'
-            ? 'Processing…'
-            : `Uploading ${Math.round(galleryUpload.progress * 100)}%`
-        }
-        error={galleryUpload.phase === 'failed' ? galleryUpload.error : null}
+        {...gallery.dropZone}
         onPress={handleAddGalleryPhoto}
       >
         {/* Above the panel rather than inside it: these are a set the

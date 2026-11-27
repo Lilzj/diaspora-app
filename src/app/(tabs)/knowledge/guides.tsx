@@ -34,9 +34,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
-import { FlatList, View, Text, ActivityIndicator, RefreshControl } from 'react-native';
+import { FlatList, View, ActivityIndicator, RefreshControl } from 'react-native';
 
 import { GuideResultCard } from '@/components/guides/GuideResultCard';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { useKnowledgeSearchStore } from '@/store/knowledge-search';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useGuideCategories, useGuideSearch } from '@/hooks/guides';
@@ -78,65 +79,51 @@ export default function KnowledgeGuidesScreen() {
     sort: SORT_KEYS[sortBy],
   });
 
-  if (results.isLoading) {
-    return (
-      <View
-        accessible
-        accessibilityRole="progressbar"
-        accessibilityLabel="Loading guides"
-        className="flex-1 items-center justify-center bg-surface-background"
-      >
-        <ActivityIndicator color="#F59300" />
-      </View>
-    );
-  }
-
-  // A failed request and an empty knowledge base need different words. The
-  // fixture screen could only ever say the second.
-  if (results.error && results.guides.length === 0) {
-    return (
-      <View className="flex-1 items-center justify-center p-6 bg-surface-background">
-        <Text className="text-4xl mb-2">📖</Text>
-        <Text className="text-sm font-bold text-content-strong">Guides are unavailable</Text>
-        <Text className="text-xs text-content-faint text-center mt-1 leading-relaxed max-w-[260px]">
-          {results.error}
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <View className="flex-1 bg-surface-background">
-      <FlatList
-        data={results.guides}
-        keyExtractor={(item) => item.guideId}
-        contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
-        refreshControl={
-          <RefreshControl refreshing={results.isRefreshing} onRefresh={results.refresh} />
+      {/* A failed request and an empty knowledge base need different words. The
+          fixture screen could only ever say the second. Through the shared list
+          state since 27 Nov 2026 (FARCH-007); the list stays mounted when empty
+          so a pull still reads again. */}
+      <ListState
+        loading={results.isLoading}
+        loadingLabel="Loading guides"
+        error={
+          results.error && results.guides.length === 0
+            ? { icon: 'book-outline', title: 'Guides are unavailable', message: results.error }
+            : null
         }
-        // `hasMore`, never an empty page — see `hooks/guides`.
-        onEndReachedThreshold={0.4}
-        onEndReached={results.loadMore}
-        renderItem={({ item }) => (
-          <GuideResultCard guide={item} categoryName={categoryNames.get(item.categoryKey)} />
-        )}
-        ListFooterComponent={
-          results.isFetchingMore ? (
-            <View className="py-4 items-center">
-              <ActivityIndicator color="#F59300" />
-            </View>
-          ) : undefined
-        }
-        ListEmptyComponent={
-          <View className="flex-1 items-center justify-center p-6">
-            <Text className="text-4xl mb-2">📖</Text>
-            <Text className="text-sm font-bold text-content-strong">No community guides found</Text>
-            <Text className="text-xs text-content-faint text-center mt-1 leading-relaxed max-w-[240px]">
-              Try relaxing your filters or searching for other items in our Knowledge Hub.
-            </Text>
-          </View>
-        }
-      />
+        onRetry={results.refresh}
+      >
+        <FlatList
+          data={results.guides}
+          keyExtractor={(item) => item.guideId}
+          contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
+          refreshControl={
+            <RefreshControl refreshing={results.isRefreshing} onRefresh={results.refresh} />
+          }
+          // `hasMore`, never an empty page — see `hooks/guides`.
+          onEndReachedThreshold={0.4}
+          onEndReached={results.loadMore}
+          renderItem={({ item }) => (
+            <GuideResultCard guide={item} categoryName={categoryNames.get(item.categoryKey)} />
+          )}
+          ListFooterComponent={
+            results.isFetchingMore ? (
+              <View className="py-4 items-center">
+                <ActivityIndicator color="#F59300" />
+              </View>
+            ) : undefined
+          }
+          ListEmptyComponent={
+            <ListEmpty
+              icon="book-outline"
+              title="No community guides found"
+              message="Try relaxing your filters or searching for other items in our Knowledge Hub."
+            />
+          }
+        />
+      </ListState>
     </View>
   );
 }

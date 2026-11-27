@@ -26,11 +26,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/design-system';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { AddressSearchField } from '@/components/maps/AddressSearchField';
 import {
   CostOfLivingPanel,
@@ -262,6 +263,7 @@ export default function AreaScreen() {
                 insights={insights.data ?? []}
                 isLoading={insights.isLoading}
                 isError={insights.isError}
+                onRetry={() => void insights.refetch()}
               />
             </>
           ) : null}
@@ -427,11 +429,13 @@ function AreaInsightsSection({
   insights,
   isLoading,
   isError,
+  onRetry,
 }: {
   chosen: ChosenPoint;
   insights: AreaInsight[];
   isLoading: boolean;
   isError: boolean;
+  onRetry: () => void;
 }) {
   const { tokens } = useTheme();
   const submit = useSubmitAreaInsight();
@@ -476,18 +480,15 @@ function AreaInsightsSection({
         What members say about this area
       </Text>
 
-      {isLoading ? (
-        <ActivityIndicator size="small" color={tokens.color.primary[500]} style={{ marginTop: 12 }} />
-      ) : isError ? (
-        <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-semibold mt-2">
-          Members&apos; notes could not be loaded just now.
-        </Text>
-      ) : insights.length === 0 ? (
-        <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-semibold mt-2">
-          Nobody has shared anything about this area yet.
-        </Text>
-      ) : (
-        insights.map((insight) => (
+      <ListState
+        loading={isLoading}
+        loadingLabel="Loading members' notes"
+        error={isError && insights.length === 0 ? { title: "Members' notes could not be loaded just now." } : null}
+        onRetry={onRetry}
+        isEmpty={insights.length === 0}
+        empty={{ icon: 'chatbubbles-outline', title: 'Nobody has shared anything about this area yet.' }}
+      >
+        {insights.map((insight) => (
           <View
             key={insight.id}
             style={{ borderTopColor: tokens.color.border.default }}
@@ -507,8 +508,8 @@ function AreaInsightsSection({
               </Text>
             ) : null}
           </View>
-        ))
-      )}
+        ))}
+      </ListState>
 
       {/* ── Share one ─────────────────────────────────────────────────────── */}
       <View style={{ borderTopColor: tokens.color.border.default }} className="border-t pt-4 mt-4">

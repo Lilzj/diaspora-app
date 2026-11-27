@@ -31,6 +31,7 @@ import {
   VerifiedFigure,
 } from '@/components/community';
 import { AmountDisplay } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import { useCommunityImpact, useGivingHistory } from '@/hooks/community-life';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
 import type { AnalyticsPeriod } from '@/types/community-advanced';
@@ -204,14 +205,14 @@ export default function CommunityImpactScreen() {
         */}
         {impact ? (
           <Section title="Community" style={{ marginHorizontal: -20 }}>
-            {impact.metrics.length === 0 ? (
-              <View className="px-5">
-                <InlineRefusal
-                  icon="information-circle-outline"
-                  reason="Diaspora has not measured anything for this scope and period yet."
-                />
-              </View>
-            ) : (
+            {/* The shell draws the impact read's loading and error; the metrics say when there are none. */}
+            <ListState
+              isEmpty={impact.metrics.length === 0}
+              empty={{
+                icon: 'information-circle-outline',
+                title: 'Diaspora has not measured anything for this scope and period yet.',
+              }}
+            >
               <View className="px-5 flex-row flex-wrap" style={{ gap: 10 }}>
                 {impact.metrics.map((metric) => (
                   <View key={metric.key} style={{ width: '47%' }}>
@@ -238,7 +239,7 @@ export default function CommunityImpactScreen() {
                   </View>
                 ))}
               </View>
-            )}
+            </ListState>
           </Section>
         ) : null}
 

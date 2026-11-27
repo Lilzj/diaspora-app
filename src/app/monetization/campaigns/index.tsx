@@ -24,8 +24,9 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
-import { FinancialErrorView } from '@/components/financial';
+import { FinancialErrorInline } from '@/components/financial';
 import {
   CampaignRow,
   MonetizationEmpty,
@@ -101,14 +102,6 @@ export default function CampaignsScreen() {
             />
           </View>
         </ScrollEndScrollView>
-      </Shell>
-    );
-  }
-
-  if (isError && error) {
-    return (
-      <Shell>
-        <FinancialErrorView error={error} onRetry={refetch} />
       </Shell>
     );
   }
@@ -255,35 +248,43 @@ export default function CampaignsScreen() {
               </View>
             ) : null}
 
-            {isLoading ? (
-              <View accessible accessibilityLabel="Loading your campaigns." style={{ gap: 10 }}>
-                {[0, 1].map((index) => (
-                  <View
-                    key={index}
-                    style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.3 }}
-                    className="rounded-2xl h-32"
-                  />
-                ))}
-              </View>
-            ) : filtered.length === 0 ? (
-              <MonetizationEmpty
-                icon="albums-outline"
-                title={campaigns.length === 0 ? 'No campaigns yet' : 'Nothing in here'}
-                message={
+            <ListState
+              loading={isLoading}
+              skeleton={
+                <View accessible accessibilityLabel="Loading your campaigns." style={{ gap: 10 }}>
+                  {[0, 1].map((index) => (
+                    <View
+                      key={index}
+                      style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.3 }}
+                      className="rounded-2xl h-32"
+                    />
+                  ))}
+                </View>
+              }
+              // In this section rather than over the whole screen, which took the
+              // create button and the review queue away with the list.
+              error={
+                isError && campaigns.length === 0 && error ? (
+                  <FinancialErrorInline error={error} onRetry={refetch} />
+                ) : null
+              }
+              isEmpty={filtered.length === 0}
+              empty={{
+                icon: 'albums-outline',
+                title: campaigns.length === 0 ? 'No campaigns yet' : 'Nothing in here',
+                message:
                   campaigns.length === 0
                     ? 'A campaign puts your business in front of people across Diaspora — the home feed, search, category directories and more.'
-                    : 'Try another tab.'
-                }
-                action={
+                    : 'Try another tab.',
+                action:
                   campaigns.length === 0
                     ? {
                         label: 'Create your first campaign',
                         onPress: () => router.push('/monetization/campaigns/create'),
                       }
-                    : undefined
-                }
-              />
-            ) : (
+                    : undefined,
+              }}
+            >
               <View style={{ gap: 10 }}>
                 {filtered.map((campaign) => (
                   <CampaignRow
@@ -293,7 +294,7 @@ export default function CampaignsScreen() {
                   />
                 ))}
               </View>
-            )}
+            </ListState>
           </MonetizationSection>
         </View>
       </ScrollEndScrollView>

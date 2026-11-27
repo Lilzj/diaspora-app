@@ -27,13 +27,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import { useSavedSearches, useSavedSearchMutations } from '@/hooks/automation';
 import { AutomationErrorNotice, SavedSearchRow } from '@/components/automation';
@@ -125,41 +125,33 @@ export default function SavedSearchesScreen() {
       </ScrollView>
 
       <ScrollEndScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: bottomInset }}>
-        {isLoading ? (
-          <View className="py-16 items-center">
-            <ActivityIndicator color={tokens.color.primary[500]} />
-          </View>
-        ) : error ? (
-          <AutomationErrorNotice
-            message={
-              error.blame === 'platform' ? 'Saved searches are not ready yet' : error.message
-            }
-            hint={
-              error.blame === 'platform'
-                ? 'You will be able to save a search from any list and be told when something new matches it.'
-                : error.recoveryHint
-            }
-            blame={error.blame}
-          />
-        ) : searches.length === 0 ? (
-          <View className="items-center py-12 px-6">
-            <Ionicons name="bookmark-outline" size={36} color={tokens.color.primary[500]} />
-            <Text
-              style={{ color: tokens.color.text.primary }}
-              className="text-base font-black mt-4 mb-1 text-center"
-            >
-              No saved searches yet
-            </Text>
-            <Text
-              style={{ color: tokens.color.text.secondary }}
-              className="text-xs font-medium text-center leading-relaxed"
-            >
-              Search for a job, a home or something in the marketplace, then save it. Diaspora can
-              watch it for you.
-            </Text>
-          </View>
-        ) : (
-          Array.from(grouped.entries()).map(([key, entries]) => (
+        <ListState
+          loading={isLoading}
+          loadingLabel="Loading saved searches"
+          error={
+            error && searches.length === 0 ? (
+              <AutomationErrorNotice
+                message={
+                  error.blame === 'platform' ? 'Saved searches are not ready yet' : error.message
+                }
+                hint={
+                  error.blame === 'platform'
+                    ? 'You will be able to save a search from any list and be told when something new matches it.'
+                    : error.recoveryHint
+                }
+                blame={error.blame}
+              />
+            ) : null
+          }
+          isEmpty={searches.length === 0}
+          empty={{
+            icon: 'bookmark-outline',
+            title: 'No saved searches yet',
+            message:
+              'Search for a job, a home or something in the marketplace, then save it. Diaspora can watch it for you.',
+          }}
+        >
+          {Array.from(grouped.entries()).map(([key, entries]) => (
             <View key={key} className="mb-5">
               <Text
                 accessibilityRole="header"
@@ -187,8 +179,8 @@ export default function SavedSearchesScreen() {
                 />
               ))}
             </View>
-          ))
-        )}
+          ))}
+        </ListState>
       </ScrollEndScrollView>
     </SafeAreaView>
   );

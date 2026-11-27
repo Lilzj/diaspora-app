@@ -29,6 +29,7 @@ import { FlashList } from '@shopify/flash-list';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import { useAutomationRuns } from '@/hooks/automation';
 import { AutomationErrorNotice, RunRow } from '@/components/automation';
@@ -126,49 +127,38 @@ export default function AutomationHistoryScreen() {
         })}
       </ScrollView>
 
-      {isLoading ? (
-        <View className="py-16 items-center">
-          <ActivityIndicator color={tokens.color.primary[500]} />
-        </View>
-      ) : error ? (
-        <View className="px-4 pt-4">
-          <AutomationErrorNotice
-            message={
-              error.blame === 'platform'
-                ? 'There is no run history yet'
-                : error.message
-            }
-            hint={
-              error.blame === 'platform'
-                ? // Was: "Diaspora cannot run automations automatically yet, so
-                  // there is nothing to show here." `GET /automations/runs`
-                  // answers and `AutomationSchedulerWorker` is what fills it, so
-                  // that sentence described a platform that no longer exists. A
-                  // platform blame on this read is a fault, and an *empty*
-                  // history is a different state handled below.
-                  (error.recoveryHint
-                    ?? 'This is on the platform rather than on your automations. Anything you have set up is saved and still scheduled.')
-                : error.recoveryHint
-            }
-            blame={error.blame}
-          />
-        </View>
-      ) : runs.length === 0 ? (
-        <View className="px-8 py-16 items-center">
-          <Text
-            style={{ color: tokens.color.text.primary }}
-            className="text-base font-black text-center mb-1"
-          >
-            {emptyMessage}
-          </Text>
-          <Text
-            style={{ color: tokens.color.text.secondary }}
-            className="text-xs font-medium text-center leading-relaxed"
-          >
-            When your automations run, each one will appear here with what it did.
-          </Text>
-        </View>
-      ) : (
+      <ListState
+        loading={isLoading}
+        loadingLabel="Loading history"
+        error={
+          error && runs.length === 0 ? (
+            <View className="px-4 pt-4">
+              <AutomationErrorNotice
+                message={
+                  error.blame === 'platform'
+                    ? 'There is no run history yet'
+                    : error.message
+                }
+                hint={
+                  error.blame === 'platform'
+                    ? // Was: "Diaspora cannot run automations automatically yet, so
+                      // there is nothing to show here." `GET /automations/runs`
+                      // answers and `AutomationSchedulerWorker` is what fills it, so
+                      // that sentence described a platform that no longer exists. A
+                      // platform blame on this read is a fault, and an *empty*
+                      // history is a different state handled below.
+                      (error.recoveryHint
+                        ?? 'This is on the platform rather than on your automations. Anything you have set up is saved and still scheduled.')
+                    : error.recoveryHint
+                }
+                blame={error.blame}
+                onRetry={refetch}
+              />
+            </View>
+          ) : null
+        }
+      >
+        {/* Mounted when empty too, so pulling still refreshes an empty history. */}
         <FlashList
           data={runs}
           keyExtractor={(item) => item.id}
@@ -177,6 +167,13 @@ export default function AutomationHistoryScreen() {
           onEndReachedThreshold={0.5}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}
           refreshControl={refreshControl}
+          ListEmptyComponent={
+            <ListEmpty
+              icon="time-outline"
+              title={emptyMessage}
+              message="When your automations run, each one will appear here with what it did."
+            />
+          }
           ListFooterComponent={
             isFetchingMore ? (
               <View className="py-6 items-center">
@@ -185,7 +182,7 @@ export default function AutomationHistoryScreen() {
             ) : null
           }
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

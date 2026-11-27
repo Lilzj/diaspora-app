@@ -38,7 +38,7 @@ export default function CommunityLifeScreen() {
   const saved = useSavedItems(lists);
 
   const { activeTab } = tabs;
-  const { isLoading, isOffline, refreshControl } = lists;
+  const { isOffline, refreshControl } = lists;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -62,50 +62,44 @@ export default function CommunityLifeScreen() {
         two screens linking to each other in the first place.
       */}
 
-      {/* 4. Tab Contents */}
-      {isLoading ? (
-        /* Accessibility Skeleton Loading State */
-        <View className="flex-1 p-6 gap-4">
-          <View className="h-44 bg-subtle rounded-3xl animate-pulse" />
-          <View className="h-6 bg-subtle rounded w-2/3" />
-          <View className="h-4 bg-subtle rounded w-1/2" />
-        </View>
-      ) : (
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: bottomInset }}
-          refreshControl={refreshControl}
-        >
-          
-          {/* ==================== EVENTS TAB ==================== */}
-          {activeTab === 'events' && (
-            <EventsTab eventSearch={eventSearch} lists={lists} place={place} saved={saved} />
-          )}
+      {/* 4. Tab Contents. Each tab draws its own list state under its own search and
+          filters (FARCH-007). A skeleton used to replace this whole ScrollView while any
+          of the three reads ran, which unmounted the search field mid-word and the
+          pull-to-refresh with it. */}
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
+        refreshControl={refreshControl}
+      >
 
-          {/* ==================== DIRECTORY TAB ==================== */}
-          {activeTab === 'directory' && (
-            <DirectoryTab
-              directorySearch={directorySearch}
-              lists={lists}
-              place={place}
-              saved={saved}
-            />
-          )}
+        {/* ==================== EVENTS TAB ==================== */}
+        {activeTab === 'events' && (
+          <EventsTab eventSearch={eventSearch} lists={lists} place={place} saved={saved} />
+        )}
 
-          {/* ==================== CALENDAR TAB ==================== */}
-          {activeTab === 'calendar' && (
-            <CalendarTab calendar={calendar} lists={lists} />
-          )}
+        {/* ==================== DIRECTORY TAB ==================== */}
+        {activeTab === 'directory' && (
+          <DirectoryTab
+            directorySearch={directorySearch}
+            lists={lists}
+            place={place}
+            saved={saved}
+          />
+        )}
 
-          {/* ==================== SAVED TAB ==================== */}
-          {activeTab === 'saved' && (
-            <SavedTab saved={saved} />
-          )}
+        {/* ==================== CALENDAR TAB ==================== */}
+        {activeTab === 'calendar' && (
+          <CalendarTab calendar={calendar} lists={lists} />
+        )}
 
-          <View className="h-10" />
-        </ScrollView>
-      )}
+        {/* ==================== SAVED TAB ==================== */}
+        {activeTab === 'saved' && (
+          <SavedTab saved={saved} lists={lists} />
+        )}
+
+        <View className="h-10" />
+      </ScrollView>
 
       {/* --- Overlay Modal: Location Picker --- */}
       <LocationModal place={place} />

@@ -3,54 +3,49 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import type { ListMessage } from '@/components/ListState';
 
-// Reuseable Empty State
-//
-// `error` is the remediation. Housing and Marketplace both read remote routes,
-// and both used to render this same "nothing matched your search" panel when the
-// request had in fact failed — for Marketplace, on *every* request, because the
-// path was wrong. Telling a member their search found nothing when the search
-// never ran is the specific untruth this parameter exists to prevent.
-export function EmptyStateView({
-  place,
-  label,
-  error,
-}: {
-  /** Somewhere to name, or empty when the location is not precise enough to have one. */
-  place: string;
-  label: string;
-  error?: string | null;
-}) {
-  if (error) {
-    return (
-      <View className="items-center justify-center py-16 bg-surface-card border border-faint rounded-3xl p-6">
-        <Text className="text-5xl mb-3">⚠️</Text>
-        <Text className="text-base font-bold text-content-strong text-center">
-          Could not load {label}
-        </Text>
-        <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed">
-          {error} This is not an empty result — we could not reach Diaspora. Pull down to try again.
-        </Text>
-      </View>
-    );
-  }
+// What a tab says in place of its results, drawn by `ListState` since 27 Nov
+// 2026 (FARCH-007). The two sentences are this screen's; the look is shared.
 
-  return (
-    <View className="items-center justify-center py-16 bg-surface-card border border-faint rounded-3xl p-6">
-      <Text className="text-5xl mb-3">🔍</Text>
-      {/* ── The place may not have a name ────────────────────────────────────
-          A country-precision location has no city — that is what UAT-104's fix
-          made possible, and this sentence still read `No providers match in `
-          with nothing after it. `place` is empty exactly when there is nothing
-          to name, and the sentence changes shape rather than trailing off. */}
-      <Text className="text-base font-bold text-content-strong text-center">
-        {place ? `No ${label} match in ${place}` : `No ${label} match nearby`}
-      </Text>
-      <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed">
-        Try checking spelling, removing query filters, or widening the discovery radius.
-      </Text>
-    </View>
-  );
+/**
+ * A search that ran and found nothing.
+ *
+ * ── The place may not have a name ────────────────────────────────────────
+ * A country-precision location has no city — that is what UAT-104's fix made
+ * possible, and this sentence still read `No providers match in ` with nothing
+ * after it. `place` is empty exactly when there is nothing to name, and the
+ * sentence changes shape rather than trailing off.
+ */
+export function noMatch(label: string, place: string): ListMessage {
+  return {
+    icon: 'search-outline',
+    title: place ? `No ${label} match in ${place}` : `No ${label} match nearby`,
+    message: 'Try checking spelling, removing query filters, or widening the discovery radius.',
+  };
+}
+
+/**
+ * A search that could not be asked.
+ *
+ * Housing and Marketplace both read remote routes, and both used to render the
+ * "nothing matched your search" panel when the request had in fact failed — for
+ * Marketplace, on *every* request, because the path was wrong. Telling a member
+ * their search found nothing when the search never ran is the specific untruth
+ * this exists to prevent.
+ *
+ * "Pull down to try again" only where a pull asks again: the screen's pull
+ * re-runs the Housing and Marketplace reads and nothing else, so the other tabs
+ * say "Try again" on the button instead.
+ */
+export function couldNotLoad(label: string, error: string, pullAsksAgain: boolean): ListMessage {
+  return {
+    icon: 'cloud-offline-outline',
+    title: `Could not load ${label}`,
+    message: `${error} This is not an empty result — we could not reach Diaspora.${
+      pullAsksAgain ? ' Pull down to try again.' : ''
+    }`,
+  };
 }
 
 /** The "Show more" state of a paged hook. */

@@ -32,12 +32,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SAVED_COLLECTION_CONFIG, type SavedContentType } from '@/types/saved';
 import { useSavedStore } from '@/store/saved';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { ListState } from '@/components/ListState';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { resolveSavedItems, type ResolvedSavedItem } from '@/lib/platform/saved-resolver';
 import { useBookmarkedGuides } from '@/hooks/guides';
@@ -80,20 +81,9 @@ function SavedRow({ title, subtitle, onPress }: { title: string; subtitle?: stri
   );
 }
 
-function NothingSaved({ hint }: { hint: string }) {
-  return (
-    <View className="items-center py-16">
-      <Text className="text-base font-black text-content-primary mb-1 text-center">
-        Nothing saved here yet
-      </Text>
-      <Text className="text-xs text-content-muted text-center leading-relaxed">{hint}</Text>
-    </View>
-  );
-}
-
 function SavedGuides() {
   const bottomInset = useBottomInset();
-  const { guides, isLoading, error, hasMore, isFetchingMore, loadMore } = useBookmarkedGuides();
+  const { guides, isLoading, error, hasMore, isFetchingMore, loadMore, refresh } = useBookmarkedGuides();
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -103,43 +93,47 @@ function SavedGuides() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}
       >
-        {isLoading ? (
-          <View className="items-center py-16">
-            <ActivityIndicator />
-          </View>
-        ) : null}
-
-        {error ? (
+        {/* A failed "Show more" keeps the guides already read, and says so beside them. */}
+        {error && guides.length > 0 ? (
           <Text className="text-xs text-error-default mb-3" accessibilityRole="alert">
             {error}
           </Text>
         ) : null}
 
-        {!isLoading && !error && guides.length === 0 ? (
-          <NothingSaved hint="Tap Save guide at the end of any guide to keep it here." />
-        ) : null}
+        <ListState
+          loading={isLoading}
+          loadingLabel="Loading your saved guides"
+          error={error && guides.length === 0 ? { title: 'Your saved guides could not be loaded', message: error } : null}
+          onRetry={refresh}
+          isEmpty={guides.length === 0}
+          empty={{
+            icon: 'bookmark-outline',
+            title: 'Nothing saved here yet',
+            message: 'Tap Save guide at the end of any guide to keep it here.',
+          }}
+        >
+          {guides.map((guide) => (
+            <SavedRow
+              key={guide.guideId}
+              title={guide.title}
+              subtitle={[guide.countryCode, guide.cityName].filter(Boolean).join(' · ')}
+              onPress={() => router.push(`/guide/${guide.guideId}` as never)}
+            />
+          ))}
 
-        {guides.map((guide) => (
-          <SavedRow
-            key={guide.guideId}
-            title={guide.title}
-            subtitle={[guide.countryCode, guide.cityName].filter(Boolean).join(' · ')}
-            onPress={() => router.push(`/guide/${guide.guideId}` as never)}
-          />
-        ))}
-
-        {hasMore ? (
-          <TouchableOpacity
-            onPress={() => loadMore()}
-            disabled={isFetchingMore}
-            className="items-center py-3"
-            accessibilityRole="button"
-          >
-            <Text className="text-xs font-bold text-primary-600">
-              {isFetchingMore ? 'Loading…' : 'Show more'}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
+          {hasMore ? (
+            <TouchableOpacity
+              onPress={() => loadMore()}
+              disabled={isFetchingMore}
+              className="items-center py-3"
+              accessibilityRole="button"
+            >
+              <Text className="text-xs font-bold text-primary-600">
+                {isFetchingMore ? 'Loading…' : 'Show more'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </ListState>
       </ScrollEndScrollView>
     </SafeAreaView>
   );
@@ -148,7 +142,7 @@ function SavedGuides() {
 function SavedBookmarks({ category }: { category: string | undefined }) {
   const bottomInset = useBottomInset();
 
-  const { savedItems, isLoaded, load } = useSavedStore();
+  const { savedItems, isLoaded, error: storeError, load } = useSavedStore();
 
   const [items, setItems] = useState<ResolvedSavedItem[]>([]);
   const [unresolved, setUnresolved] = useState(0);
@@ -185,6 +179,9 @@ function SavedBookmarks({ category }: { category: string | undefined }) {
   }, [resolve]);
 
   const isBusy = !isLoaded || isResolving;
+  // A read of the store that failed before it ever answered. Without this the
+  // spinner never resolved: `isLoaded` stays false and the effect does not run again.
+  const loadError = isLoaded ? null : storeError;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -195,24 +192,27 @@ function SavedBookmarks({ category }: { category: string | undefined }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}
       >
-        {isBusy ? (
-          <View className="items-center py-16">
-            <ActivityIndicator />
-          </View>
-        ) : null}
-
-        {!isBusy && items.length === 0 ? (
-          <NothingSaved hint="Tap the heart on anything you want to come back to." />
-        ) : null}
-
-        {items.map((item) => (
-          <SavedRow
-            key={item.contentId}
-            title={item.title}
-            subtitle={item.subtitle}
-            onPress={() => router.push(item.href as never)}
-          />
-        ))}
+        <ListState
+          loading={isBusy && !loadError}
+          loadingLabel="Loading your saved items"
+          error={loadError ? { title: loadError, message: 'Check your connection and try again.' } : null}
+          onRetry={() => void load()}
+          isEmpty={items.length === 0}
+          empty={{
+            icon: 'heart-outline',
+            title: 'Nothing saved here yet',
+            message: 'Tap the heart on anything you want to come back to.',
+          }}
+        >
+          {items.map((item) => (
+            <SavedRow
+              key={item.contentId}
+              title={item.title}
+              subtitle={item.subtitle}
+              onPress={() => router.push(item.href as never)}
+            />
+          ))}
+        </ListState>
 
         {/* Saved things go away, and a member who saved nine and sees seven
           * deserves to know why rather than wonder which two they imagined. */}

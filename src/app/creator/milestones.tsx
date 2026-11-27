@@ -16,14 +16,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
-import {
-  CreatorCardSkeleton,
-  CreatorEmptyState,
-  CreatorScreen,
-  CreatorSection,
-  MilestoneCard,
-} from '@/components/creator-economy';
+import { CreatorScreen, CreatorSection, MilestoneCard } from '@/components/creator-economy';
 import { FinancialErrorInline } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import { useClaimMilestone, useCreatorAccess, useCreatorMilestones } from '@/hooks/creator-economy';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
 import { orderMilestones } from '@/lib/domain/creator-economy';
@@ -182,21 +177,19 @@ export default function CreatorMilestonesScreen() {
           </View>
         ) : null}
 
-        {query.isLoading ? (
-          <CreatorCardSkeleton rows={4} />
-        ) : visible.length === 0 ? (
-          <CreatorEmptyState
-            icon="trophy-outline"
-            title="No milestones here"
-            body={
+        {/* The first read and its failure are the shell's to draw (`load`); the list draws its empty. */}
+        <ListState
+          isEmpty={visible.length === 0}
+          empty={{
+            icon: 'trophy-outline',
+            title: 'No milestones here',
+            message:
               category === 'all'
                 ? 'Diaspora has not set any milestones for your account yet.'
-                : 'Nothing in this category.'
-            }
-            actionLabel={category === 'all' ? undefined : 'Show all'}
-            onAction={category === 'all' ? undefined : () => setCategory('all')}
-          />
-        ) : (
+                : 'Nothing in this category.',
+            action: category === 'all' ? undefined : { label: 'Show all', onPress: () => setCategory('all') },
+          }}
+        >
           <CreatorSection title={category === 'all' ? 'All milestones' : category}>
             {visible.map((milestone) => (
               <MilestoneCard
@@ -209,7 +202,7 @@ export default function CreatorMilestonesScreen() {
               />
             ))}
           </CreatorSection>
-        )}
+        </ListState>
 
         <Text
           style={{ color: tokens.color.text.disabled }}

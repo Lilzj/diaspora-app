@@ -27,6 +27,7 @@ import { Pressable, Text, View, type ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import { ListEmpty, type ListMessage } from '@/components/ListState';
 import { useMediaAsset } from '@/hooks/media';
 import { Button } from '@/components/Button';
 import { AmountDisplay } from '@/components/financial';
@@ -610,38 +611,14 @@ export function EmptyState({
   action?: string;
   onAction?: () => void;
 }) {
-  const { tokens } = useTheme();
-
+  // Drawn by the shared list state since 27 Nov 2026 (FARCH-007).
   return (
-    <View className="items-center px-8 py-12">
-      <View
-        style={{ backgroundColor: tokens.color.surface.elevated }}
-        className="w-14 h-14 rounded-full items-center justify-center mb-3"
-      >
-        <Ionicons name={icon as never} size={24} color={tokens.color.text.placeholder} />
-      </View>
-
-      <Text
-        accessibilityRole="header"
-        style={{ color: tokens.color.text.primary }}
-        className="text-sm font-black tracking-tight text-center"
-      >
-        {title}
-      </Text>
-
-      <Text
-        style={{ color: tokens.color.text.placeholder }}
-        className="text-xs font-semibold text-center mt-1.5 leading-relaxed"
-      >
-        {body}
-      </Text>
-
-      {action && onAction ? (
-        <View className="mt-5 w-full max-w-xs">
-          <PrimaryButton label={action} onPress={onAction} />
-        </View>
-      ) : null}
-    </View>
+    <ListEmpty
+      icon={icon as ListMessage['icon']}
+      title={title}
+      message={body}
+      action={action && onAction ? { label: action, onPress: onAction } : undefined}
+    />
   );
 }
 

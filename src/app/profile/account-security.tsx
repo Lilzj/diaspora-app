@@ -26,11 +26,12 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { fetchSessions, revokeOtherSessions, revokeSession } from '@/lib/api/auth-api';
 import { useAuthStore } from '@/store/auth';
@@ -178,54 +179,54 @@ export default function AccountSecurityScreen() {
           </Text>
 
           <View className="gap-4">
-            {devices.map((item) => (
-              <View key={item.id} className="flex-row justify-between items-center border-b border-faint pb-3 last:border-b-0 last:pb-0">
-                <View className="flex-1 mr-4">
-                  <View className="flex-row items-center">
-                    <Text className="text-xl mr-2">💻</Text>
-                    <Text className="text-sm font-extrabold text-content-primary">{item.deviceName}</Text>
-                    {item.isCurrent && (
-                      <Text className="text-[8px] bg-surface-muted text-success-default px-1.5 py-0.5 rounded font-black uppercase ml-2">Current</Text>
-                    )}
-                  </View>
-                  {/* Platform and last-seen, not a geolocated guess. See the
-                      file header. */}
-                  <Text className="text-[10px] text-content-muted mt-1 leading-relaxed">
-                    {item.platform}
-                    {item.appVersion ? ` · v${item.appVersion}` : ''} · Last active: {lastSeenLabel(item.lastSeenAt)}
-                  </Text>
-                </View>
-
-                {!item.isCurrent && (
-                  <TouchableOpacity
-                    onPress={() => handleRevokeDevice(item.id, item.deviceName)}
-                    className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-xl"
-                  >
-                    <Text className="text-[9px] font-black text-error-default uppercase">Revoke</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-
-            {isLoading && (
-              <View className="py-4 items-center">
-                <ActivityIndicator size="small" />
-              </View>
-            )}
-
             {/* An unreachable server and an empty list must not read the same. */}
-            {!isLoading && loadError && (
-              <View className="py-3">
-                <Text className="text-xs text-error-default text-center">{loadError}</Text>
-                <TouchableOpacity onPress={load} className="mt-2 items-center">
-                  <Text className="text-xs font-bold text-primary-500">Try again</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <ListState
+              loading={isLoading && devices.length === 0}
+              loadingLabel="Loading your active sessions"
+              error={loadError && devices.length === 0 ? { title: loadError } : null}
+              onRetry={() => void load()}
+              isEmpty={devices.length === 0}
+              empty={{ icon: 'laptop-outline', title: 'No other active sessions detected.' }}
+            >
+              {devices.map((item) => (
+                <View key={item.id} className="flex-row justify-between items-center border-b border-faint pb-3 last:border-b-0 last:pb-0">
+                  <View className="flex-1 mr-4">
+                    <View className="flex-row items-center">
+                      <Text className="text-xl mr-2">💻</Text>
+                      <Text className="text-sm font-extrabold text-content-primary">{item.deviceName}</Text>
+                      {item.isCurrent && (
+                        <Text className="text-[8px] bg-surface-muted text-success-default px-1.5 py-0.5 rounded font-black uppercase ml-2">Current</Text>
+                      )}
+                    </View>
+                    {/* Platform and last-seen, not a geolocated guess. See the
+                        file header. */}
+                    <Text className="text-[10px] text-content-muted mt-1 leading-relaxed">
+                      {item.platform}
+                      {item.appVersion ? ` · v${item.appVersion}` : ''} · Last active: {lastSeenLabel(item.lastSeenAt)}
+                    </Text>
+                  </View>
 
-            {!isLoading && !loadError && devices.length === 0 && (
-              <Text className="text-xs text-content-faint italic text-center py-4">No other active sessions detected.</Text>
-            )}
+                  {!item.isCurrent && (
+                    <TouchableOpacity
+                      onPress={() => handleRevokeDevice(item.id, item.deviceName)}
+                      className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-xl"
+                    >
+                      <Text className="text-[9px] font-black text-error-default uppercase">Revoke</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+
+              {/* A re-read that failed beside rows already shown: they may be stale, so it says so. */}
+              {!isLoading && loadError ? (
+                <View className="py-3">
+                  <Text className="text-xs text-error-default text-center">{loadError}</Text>
+                  <TouchableOpacity onPress={load} className="mt-2 items-center">
+                    <Text className="text-xs font-bold text-primary-500">Try again</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </ListState>
           </View>
         </View>
 

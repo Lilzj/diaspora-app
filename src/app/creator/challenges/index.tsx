@@ -13,12 +13,8 @@ import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
-import {
-  ChallengeCard,
-  CreatorCardSkeleton,
-  CreatorEmptyState,
-  CreatorScreen,
-} from '@/components/creator-economy';
+import { ChallengeCard, CreatorCardSkeleton, CreatorScreen } from '@/components/creator-economy';
+import { ListState } from '@/components/ListState';
 import { useCreatorAccess, useCreatorChallenges } from '@/hooks/creator-economy';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
 import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
@@ -123,21 +119,23 @@ export default function CreatorChallengesScreen() {
       }
     >
       <View className="px-5 pt-5">
-        {query.isLoading ? (
-          <CreatorCardSkeleton rows={3} />
-        ) : query.challenges.length === 0 ? (
-          <CreatorEmptyState
-            icon="flag-outline"
-            title="Nothing here"
-            body={active.empty}
-            actionLabel={group !== 'open' ? 'See what is open' : undefined}
-            onAction={group !== 'open' ? () => setGroup('open') : undefined}
-          />
-        ) : (
-          query.challenges.map((challenge) => (
+        {/* The error is the shell's (`load.error`); the list draws the rest. */}
+        <ListState
+          loading={query.isLoading}
+          loadingLabel="Loading challenges"
+          skeleton={<CreatorCardSkeleton rows={3} />}
+          isEmpty={query.challenges.length === 0}
+          empty={{
+            icon: 'flag-outline',
+            title: 'Nothing here',
+            message: active.empty,
+            action: group !== 'open' ? { label: 'See what is open', onPress: () => setGroup('open') } : undefined,
+          }}
+        >
+          {query.challenges.map((challenge) => (
             <ChallengeCard key={challenge.challengeId} challenge={challenge} onPress={open} />
-          ))
-        )}
+          ))}
+        </ListState>
 
         <Text
           style={{ color: tokens.color.text.disabled }}

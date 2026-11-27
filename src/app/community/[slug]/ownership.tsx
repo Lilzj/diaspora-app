@@ -39,6 +39,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { CommunityRoleBadge, CommunityUnavailablePanel, rolesForDisplay } from '@/components/community-directory';
+import { ListState } from '@/components/ListState';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import { canPerform } from '@/lib/community/access';
@@ -210,8 +211,9 @@ export default function CommunityOwnershipScreen() {
     );
   }
 
-  // Neither the owner nor anybody who has been asked: there is nothing here.
-  if (!mayHandOver && waitingOnMe.length === 0 && !offers.isLoading) {
+  // Neither the owner nor anybody who has been asked: there is nothing here. An
+  // offers read that failed is not "nobody asked you" — it is said below.
+  if (!mayHandOver && waitingOnMe.length === 0 && !offers.isLoading && !offers.isError) {
     return (
       <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
         <ScreenHeader onBack={() => backOr()} title="Hand this community over" />
@@ -228,78 +230,95 @@ export default function CommunityOwnershipScreen() {
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}
       >
         {/* ── Offers waiting on this member's answer ────────────────────── */}
-        {waitingOnMe.length > 0 ? (
-          <View className="mb-6">
-            <Text
-              accessibilityRole="header"
-              style={{ color: tokens.color.text.primary }}
-              className="text-sm font-black mb-2"
-            >
-              {waitingOnMe.length === 1 ? 'You have been asked to take over a community' : 'You have been asked to take over these communities'}
-            </Text>
-
-            {waitingOnMe.map((item) => (
-              <View
-                key={item.id}
-                testID={`ownership-offer-${item.id}`}
-                style={{
-                  backgroundColor: tokens.color.surface.card,
-                  borderColor: tokens.color.primary[500],
-                }}
-                className="rounded-2xl border p-4 mb-2"
+        {/* Through the shared list state (FARCH-007, 27 Nov 2026): a failed read
+            is said where the offers would be, not at the foot of the screen, and
+            an empty list still draws nothing. */}
+        <ListState
+          loading={offers.isLoading}
+          loadingLabel="Loading the offers waiting on you"
+          error={
+            offers.isError && offers.offers.length === 0
+              ? {
+                  title: 'We could not read the offers waiting on you.',
+                  message: 'This is not the same as there being none.',
+                }
+              : null
+          }
+          onRetry={() => void offers.refetch()}
+        >
+          {waitingOnMe.length > 0 ? (
+            <View className="mb-6">
+              <Text
+                accessibilityRole="header"
+                style={{ color: tokens.color.text.primary }}
+                className="text-sm font-black mb-2"
               >
-                <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
-                  {item.communityName}
-                </Text>
-                <Text
-                  style={{ color: tokens.color.text.secondary }}
-                  className="text-[11px] font-semibold mt-0.5"
-                >
-                  Offered by {item.offeredByName ?? 'its owner'} · answer by {formatDate(item.expiresAt)}
-                </Text>
+                {waitingOnMe.length === 1 ? 'You have been asked to take over a community' : 'You have been asked to take over these communities'}
+              </Text>
 
-                {item.message ? (
+              {waitingOnMe.map((item) => (
+                <View
+                  key={item.id}
+                  testID={`ownership-offer-${item.id}`}
+                  style={{
+                    backgroundColor: tokens.color.surface.card,
+                    borderColor: tokens.color.primary[500],
+                  }}
+                  className="rounded-2xl border p-4 mb-2"
+                >
+                  <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
+                    {item.communityName}
+                  </Text>
                   <Text
                     style={{ color: tokens.color.text.secondary }}
-                    className="text-xs font-semibold leading-relaxed mt-2"
+                    className="text-[11px] font-semibold mt-0.5"
                   >
-                    “{item.message}”
+                    Offered by {item.offeredByName ?? 'its owner'} · answer by {formatDate(item.expiresAt)}
                   </Text>
-                ) : null}
 
-                <View className="flex-row mt-3">
-                  <TouchableOpacity
-                    accessible
-                    accessibilityRole="button"
-                    accessibilityLabel={`Accept ${item.communityName}`}
-                    disabled={decide.isPending}
-                    onPress={() => answer(item, true)}
-                    style={{ backgroundColor: tokens.color.primary[600], opacity: decide.isPending ? 0.6 : 1 }}
-                    className="flex-1 rounded-xl px-4 py-2.5 items-center mr-2"
-                  >
-                    <Text className="text-xs font-black" style={{ color: '#ffffff' }}>
-                      Accept
+                  {item.message ? (
+                    <Text
+                      style={{ color: tokens.color.text.secondary }}
+                      className="text-xs font-semibold leading-relaxed mt-2"
+                    >
+                      “{item.message}”
                     </Text>
-                  </TouchableOpacity>
+                  ) : null}
 
-                  <TouchableOpacity
-                    accessible
-                    accessibilityRole="button"
-                    accessibilityLabel={`Decline ${item.communityName}`}
-                    disabled={decide.isPending}
-                    onPress={() => answer(item, false)}
-                    style={{ borderColor: tokens.color.border.default }}
-                    className="flex-1 rounded-xl border px-4 py-2.5 items-center"
-                  >
-                    <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-black">
-                      Decline
-                    </Text>
-                  </TouchableOpacity>
+                  <View className="flex-row mt-3">
+                    <TouchableOpacity
+                      accessible
+                      accessibilityRole="button"
+                      accessibilityLabel={`Accept ${item.communityName}`}
+                      disabled={decide.isPending}
+                      onPress={() => answer(item, true)}
+                      style={{ backgroundColor: tokens.color.primary[600], opacity: decide.isPending ? 0.6 : 1 }}
+                      className="flex-1 rounded-xl px-4 py-2.5 items-center mr-2"
+                    >
+                      <Text className="text-xs font-black" style={{ color: '#ffffff' }}>
+                        Accept
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      accessible
+                      accessibilityRole="button"
+                      accessibilityLabel={`Decline ${item.communityName}`}
+                      disabled={decide.isPending}
+                      onPress={() => answer(item, false)}
+                      style={{ borderColor: tokens.color.border.default }}
+                      className="flex-1 rounded-xl border px-4 py-2.5 items-center"
+                    >
+                      <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-black">
+                        Decline
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            ))}
-          </View>
-        ) : null}
+              ))}
+            </View>
+          ) : null}
+        </ListState>
 
         {/* ── The owner's side ──────────────────────────────────────────── */}
         {mayHandOver ? (
@@ -313,35 +332,33 @@ export default function CommunityOwnershipScreen() {
               they accept. If they accept, you stay on as an administrator.
             </Text>
 
-            {members.isLoading ? (
-              <ActivityIndicator color={tokens.color.primary[500]} style={{ marginTop: 16 }} />
-            ) : members.isError ? (
-              <CommunityUnavailablePanel reason="error" subject="the members" compact />
-            ) : candidates.length === 0 ? (
-              <View
-                style={{ backgroundColor: tokens.color.neutral[100] }}
-                className="rounded-2xl p-4"
-              >
-                <Text
-                  style={{ color: tokens.color.text.secondary }}
-                  className="text-xs font-semibold leading-relaxed"
-                >
-                  There is nobody here who could take it on yet. A community can only be handed to
-                  one of its moderators or administrators — give somebody one of those roles from the
-                  members screen first.
-                </Text>
-                <TouchableOpacity
-                  accessible
-                  accessibilityRole="button"
-                  onPress={() => router.push(`/community/${slug}/members` as never)}
-                  className="mt-3"
-                >
-                  <Text style={{ color: tokens.color.primary[600] }} className="text-xs font-black">
-                    Go to members →
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
+            {/* Through the shared list state (FARCH-007, 27 Nov 2026). A failed
+                read keeps the community panel, which now offers "Try again". */}
+            <ListState
+              loading={members.isLoading}
+              loadingLabel="Loading the members"
+              error={
+                members.isError && members.members.length === 0 ? (
+                  <CommunityUnavailablePanel
+                    reason="error"
+                    subject="the members"
+                    compact
+                    onAction={() => void members.refetch()}
+                  />
+                ) : null
+              }
+              isEmpty={candidates.length === 0}
+              empty={{
+                icon: 'people-outline',
+                title: 'There is nobody here who could take it on yet.',
+                message:
+                  'A community can only be handed to one of its moderators or administrators — give somebody one of those roles from the members screen first.',
+                action: {
+                  label: 'Go to members →',
+                  onPress: () => router.push(`/community/${slug}/members` as never),
+                },
+              }}
+            >
               <>
                 {candidates.map((member) => {
                   const isChosen = chosen?.userId === member.userId;
@@ -472,18 +489,8 @@ export default function CommunityOwnershipScreen() {
                   </Text>
                 </TouchableOpacity>
               </>
-            )}
+            </ListState>
           </View>
-        ) : null}
-
-        {offers.isError ? (
-          <Text
-            accessibilityRole="alert"
-            style={{ color: tokens.color.error.default }}
-            className="text-[11px] font-bold mt-3"
-          >
-            We could not read the offers waiting on you. This is not the same as there being none.
-          </Text>
         ) : null}
       </ScrollEndScrollView>
     </SafeAreaView>

@@ -108,7 +108,7 @@ const CEILING: Record<string, number> = {
   // ── FSOLID-006, the third rule the audit named ──────────────────────────
   //
   // 105 `any` usages, reviewed one at a time on 20 Nov 2026. 71 went and 34
-  // stayed; these are the 29 still here, and why:
+  // stayed; these are the 24 still here, and why:
   //
   //   13  app/marketplace/[id].tsx     the six companion lists. The API types
   //                                    them `unknown[]` on purpose -- the
@@ -131,13 +131,6 @@ const CEILING: Record<string, number> = {
   //                                    when it was typed with the feed item
   //                                    the route sends (RMD-009).
   //
-  //    5  the create screens'          a draft restored from device storage,
-  //       draft singletons             which may predate the current shape --
-  //                                    `marketplace/create.tsx` carries a
-  //                                    comment about a field that changed
-  //                                    meaning in October. The stored value
-  //                                    genuinely is not the current type.
-  //
   //    1  `creator-workspace`         a fixture builder. `JobCard` held
   //                                    another, a wire read defensively; it
   //                                    went on 24 Nov 2026, when the card was
@@ -149,14 +142,26 @@ const CEILING: Record<string, number> = {
   //                                    mock was rebuilt from the wire type
   //                                    (RMD-008).
   //
+  // Five more were the create screens' draft singletons, a draft held in a
+  // module variable because one restored from storage may predate the current
+  // shape. They went on 27 Nov 2026 (FARCH-007), when those wizards moved onto
+  // one draft hook: each draft is declared as the shape its wizard writes, with
+  // the fields an older draft may lack marked optional.
+  //
   // The rule is an error, so a new one fails the build. This number may only
   // go down, and the test below is what makes that true.
-  '@typescript-eslint/no-explicit-any': 29,
+  '@typescript-eslint/no-explicit-any': 24,
   // Debt that came with the linter rather than from the audit, recorded so it
   // cannot grow. Not named by any finding.
   'react-hooks/refs': 81,
-  'react-hooks/set-state-in-effect': 75,
-  'react/no-unescaped-entities': 24,
+  // Five fewer since 27 Nov 2026 (FARCH-007): the effect five draft wizards each
+  // ran on opening to show the banner. The shared draft hook starts with it
+  // shown when the session holds a draft, and shows it once a stored one is read.
+  'react-hooks/set-state-in-effect': 70,
+  // Three fewer since 27 Nov 2026 (FARCH-007): the location search's "No locations
+  // found" sentence, an apostrophe and two quotes in JSX text, is a string the
+  // shared list state draws now.
+  'react/no-unescaped-entities': 21,
   // `MessageBubble` held one more: a voice note's bars were `Math.random()`
   // during render. It went on 24 Nov 2026, with the waveform no route sends
   // (RMD-009).

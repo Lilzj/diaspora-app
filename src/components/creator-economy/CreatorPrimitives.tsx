@@ -22,6 +22,7 @@ import React from 'react';
 import { Pressable, Text, View, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import { ListEmpty, type ListMessage } from '@/components/ListState';
 import {
   clampPercentage,
   describeMetricChange,
@@ -589,45 +590,14 @@ export function CreatorEmptyState({
   actionLabel?: string;
   onAction?: () => void;
 }) {
-  const { tokens } = useTheme();
-
+  // Drawn by the shared list state since 27 Nov 2026 (FARCH-007).
   return (
-    <View className="items-center px-8 py-12" accessible accessibilityLabel={`${title}. ${body}`}>
-      <View
-        style={{ backgroundColor: tokens.color.surface.elevated }}
-        className="w-14 h-14 rounded-full items-center justify-center mb-3"
-      >
-        <Ionicons name={icon as never} size={24} color={tokens.color.text.placeholder} />
-      </View>
-
-      <Text
-        style={{ color: tokens.color.text.primary }}
-        className="text-sm font-black text-center tracking-tight"
-      >
-        {title}
-      </Text>
-
-      <Text
-        style={{ color: tokens.color.text.placeholder }}
-        className="text-xs font-medium text-center mt-1.5 leading-relaxed"
-      >
-        {body}
-      </Text>
-
-      {actionLabel && onAction ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={actionLabel}
-          onPress={onAction}
-          style={{ backgroundColor: tokens.color.primary[500] }}
-          className="rounded-full px-5 py-3 mt-5"
-        >
-          <Text className="text-white text-xs font-black uppercase tracking-wider">
-            {actionLabel}
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
+    <ListEmpty
+      icon={icon as ListMessage['icon']}
+      title={title}
+      message={body}
+      action={actionLabel && onAction ? { label: actionLabel, onPress: onAction } : undefined}
+    />
   );
 }
 

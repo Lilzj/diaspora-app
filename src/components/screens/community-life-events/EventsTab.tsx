@@ -11,7 +11,8 @@ import { eventHost } from '@/lib/api/event-host';
 import { eventDistanceLabel } from '@/lib/domain/events-nearby';
 import type { Event, EventCategory } from '@/types/community-life';
 import { describeEventPrice } from '@/lib/api/event-wire';
-import { EmptyState } from '@/components/screens/community-life-events/EmptyState';
+import { ListState } from '@/components/ListState';
+import { ListSkeleton } from '@/components/screens/community-life-events/ListSkeleton';
 import { EventSearchBar } from '@/components/screens/community-life-events/EventSearchBar';
 import { EventScopeChips } from '@/components/screens/community-life-events/EventScopeChips';
 import { EventFilters } from '@/components/screens/community-life-events/EventFilters';
@@ -94,7 +95,7 @@ export function EventsTab({ eventSearch, lists, place, saved }: EventsTabProps) 
   const {
     eventQuery, selectedEventCat, eventScope, eventRadiusKm, eventFree, eventTimeFilter, viewMode,
   } = eventSearch;
-  const { eventsList } = lists;
+  const { eventsList, eventsLoading, eventsError, refresh } = lists;
   const { placeName } = place;
   const { isSaved, handleSaveToggle } = saved;
 
@@ -128,12 +129,42 @@ export function EventsTab({ eventSearch, lists, place, saved }: EventsTabProps) 
       {/* Category selector */}
       <EventCategoryChips eventSearch={eventSearch} />
 
-      {/* View Rendering */}
-      {viewMode === 'map' ? (
-        /* Premium Map Marker Simulation */
-        <EventMap eventSearch={eventSearch} lists={lists} />
-      ) : eventsList.length > 0 ? (
-        eventsList.map((item) => (
+      {/* View Rendering. One list state for both views (FARCH-007): a map with no pins
+          is still a map, so only the list says it is empty. */}
+      <ListState
+        loading={eventsLoading && eventsList.length === 0}
+        skeleton={<ListSkeleton label="Loading events" />}
+        error={
+          eventsError && eventsList.length === 0
+            ? { title: 'Events could not be loaded', message: eventsError.message }
+            : null
+        }
+        onRetry={refresh}
+        isEmpty={viewMode === 'list' && eventsList.length === 0}
+        empty={{
+          icon: 'calendar-outline',
+          title:
+            eventScope === 'nearby'
+              ? `No events within ${eventRadiusKm} km`
+              : eventScope === 'communities'
+                ? 'No events in your communities'
+                : `No events in ${placeName}`,
+          message: describeEmptyEventSearch({
+            city: placeName,
+            scope: eventScope,
+            radiusKm: eventRadiusKm,
+            category: selectedEventCat,
+            query: eventQuery,
+            timeFilter: eventTimeFilter,
+            freeOnly: eventFree,
+          }),
+          action: { label: 'Create Event', onPress: () => router.push('/community-life/event/create') },
+        }}
+      >
+        {viewMode === 'map' ? (
+          /* Premium Map Marker Simulation */
+          <EventMap eventSearch={eventSearch} lists={lists} />
+        ) : eventsList.map((item) => (
           <TouchableOpacity
             key={item.id}
             onPress={() => router.push(`/community-life/event/${item.id}`)}
@@ -235,29 +266,8 @@ export function EventsTab({ eventSearch, lists, place, saved }: EventsTabProps) 
               </View>
             </View>
           </TouchableOpacity>
-        ))
-      ) : (
-        <EmptyState
-          title={
-            eventScope === 'nearby'
-              ? `No events within ${eventRadiusKm} km`
-              : eventScope === 'communities'
-                        ? 'No events in your communities'
-                        : `No events in ${placeName}`
-          }
-          desc={describeEmptyEventSearch({
-                    city: placeName,
-                    scope: eventScope,
-            radiusKm: eventRadiusKm,
-            category: selectedEventCat,
-            query: eventQuery,
-            timeFilter: eventTimeFilter,
-            freeOnly: eventFree,
-          })}
-          actionText="Create Event"
-          onPressAction={() => router.push('/community-life/event/create')}
-        />
-      )}
+        ))}
+      </ListState>
     </View>
     </TourSpotlight>
   );

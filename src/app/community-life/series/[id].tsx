@@ -34,6 +34,7 @@ import {
   readableDate,
 } from '@/components/community';
 import { AmountDisplay } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import { useCancelSeries, useOccurrences, useSeries } from '@/hooks/community-life';
 import { describeSeries } from '@/lib/domain/community-state';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
@@ -48,10 +49,14 @@ export default function SeriesDetailScreen() {
 
   const { series, isLoading, isError, error, refetch } = useSeries(id);
   const {
+    occurrences,
     upcoming,
     past,
     cancelled,
     isLoading: isLoadingOccurrences,
+    isError: isOccurrencesError,
+    error: occurrencesError,
+    refetch: refetchOccurrences,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -324,30 +329,35 @@ export default function SeriesDetailScreen() {
               />
 
               <View className="mt-2">
-                {isLoadingOccurrences ? (
-                  <View className="py-8 items-center" accessibilityLabel="Loading dates">
-                    <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                  </View>
-                ) : list.length === 0 ? (
-                  <EmptyState
-                    icon="calendar-outline"
-                    title={
+                {/* A failed read used to fall through to "No upcoming dates". The error is
+                    drawn only with no dates at all: a tab may be empty while others are not. */}
+                <ListState
+                  loading={isLoadingOccurrences}
+                  loadingLabel="Loading dates"
+                  error={
+                    isOccurrencesError && occurrences.length === 0
+                      ? { title: 'Dates could not be loaded', message: occurrencesError?.message }
+                      : null
+                  }
+                  onRetry={() => void refetchOccurrences()}
+                  isEmpty={list.length === 0}
+                  empty={{
+                    icon: 'calendar-outline',
+                    title:
                       tab === 'upcoming'
                         ? 'No upcoming dates'
                         : tab === 'past'
                           ? 'Nothing has happened yet'
-                          : 'Nothing cancelled'
-                    }
-                    body={
+                          : 'Nothing cancelled',
+                    message:
                       tab === 'upcoming'
                         ? 'The organiser has not scheduled any more of these.'
                         : tab === 'past'
                           ? 'This series has not run yet.'
-                          : 'Every date in this series is going ahead.'
-                    }
-                  />
-                ) : (
-                  list.map((occurrence) => (
+                          : 'Every date in this series is going ahead.',
+                  }}
+                >
+                  {list.map((occurrence) => (
                     <View key={occurrence.occurrenceId} className="mb-2.5">
                       <OccurrenceRow
                         occurrence={occurrence}
@@ -356,20 +366,20 @@ export default function SeriesDetailScreen() {
                         }
                       />
                     </View>
-                  ))
-                )}
+                  ))}
 
-                {hasNextPage && tab === 'upcoming' ? (
-                  <View className="mt-1 mb-3">
-                    {isFetchingNextPage ? (
-                      <View className="py-3 items-center" accessibilityLabel="Loading more dates">
-                        <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                      </View>
-                    ) : (
-                      <SecondaryButton label="Show more dates" onPress={() => void fetchNextPage()} />
-                    )}
-                  </View>
-                ) : null}
+                  {hasNextPage && tab === 'upcoming' ? (
+                    <View className="mt-1 mb-3">
+                      {isFetchingNextPage ? (
+                        <View className="py-3 items-center" accessibilityLabel="Loading more dates">
+                          <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                        </View>
+                      ) : (
+                        <SecondaryButton label="Show more dates" onPress={() => void fetchNextPage()} />
+                      )}
+                    </View>
+                  ) : null}
+                </ListState>
               </View>
             </View>
           </Section>

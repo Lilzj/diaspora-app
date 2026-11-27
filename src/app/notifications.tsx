@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { NotificationItem } from '@/components/NotificationItem';
-import { EmptyState } from '@/components/EmptyState';
+import { ListEmpty, ListState } from '@/components/ListState';
 import {
   useDeleteNotification,
   useMarkAllNotificationsRead,
@@ -172,31 +172,33 @@ export default function NotificationsScreen() {
         </View>
       ) : null}
 
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator />
-        </View>
-      ) : isError ? (
-        // Not "you have no notifications": an inbox that could not be read says
-        // so, because "all caught up" over a failed request is a lie a member
-        // acts on by not looking again.
-        <EmptyState
-          icon="📡"
-          title="Your notifications could not be loaded"
-          description="Check your connection and pull down to try again."
-        />
-      ) : notifications.length === 0 ? (
-        <EmptyState
-          icon="🔔"
-          title="No notifications"
-          description="You're all caught up! We'll let you know when something happens."
-        />
-      ) : (
+      {/* Not "you have no notifications": an inbox that could not be read says
+          so, because "all caught up" over a failed request is a lie a member
+          acts on by not looking again. Through the shared list state since 27
+          Nov 2026 (FARCH-007): the error has no list to pull on, so it offers
+          "Try again"; an empty inbox keeps the list, so a pull still reads again. */}
+      <ListState
+        loading={isLoading}
+        loadingLabel="Loading notifications"
+        error={
+          isError && notifications.length === 0
+            ? { title: 'Your notifications could not be loaded', message: 'Check your connection and try again.' }
+            : null
+        }
+        onRetry={() => void refetch()}
+      >
         <ScrollEndFlatList
           data={notifications}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: bottomInset }}
           refreshControl={refreshControl}
+          ListEmptyComponent={
+            <ListEmpty
+              icon="notifications-outline"
+              title="No notifications"
+              message="You're all caught up! We'll let you know when something happens."
+            />
+          }
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={
@@ -219,7 +221,7 @@ export default function NotificationsScreen() {
             />
           )}
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

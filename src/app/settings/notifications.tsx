@@ -45,6 +45,7 @@ import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import { useNotificationPreferences } from '@/hooks/integrations';
 import { fetchNotificationCategories, notificationKeys } from '@/lib/api/notifications-api';
@@ -131,10 +132,20 @@ export default function NotificationSettingsScreen() {
               subtitle="These apply everywhere you are signed in."
             />
 
-            {preferences.categories.length === 0 && categories.isLoading ? (
-              <ActivityIndicator color={tokens.color.primary[500]} />
-            ) : (
-              [...preferences.categories]
+            <ListState
+              loading={preferences.categories.length === 0 && categories.isLoading}
+              loadingLabel="Loading notification categories"
+              error={
+                preferences.categories.length === 0 && categories.isError
+                  ? {
+                      title: 'Notification categories could not be loaded',
+                      message: 'Check your connection and try again.',
+                    }
+                  : null
+              }
+              onRetry={() => void categories.refetch()}
+            >
+              {[...preferences.categories]
                 .sort((a, b) => a.position - b.position)
                 .map((category) => (
                   <CategoryRow
@@ -143,8 +154,8 @@ export default function NotificationSettingsScreen() {
                     disabled={isUpdating}
                     onChange={(enabled) => update({ categories: { [category.key]: enabled } })}
                   />
-                ))
-            )}
+                ))}
+            </ListState>
 
             {/* ── Quiet hours and digests ───────────────────────────────── */}
             <Heading

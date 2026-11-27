@@ -26,6 +26,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { WizardHeader } from '@/components/forms/WizardHeader';
+import { WizardFooter } from '@/components/forms/WizardFooter';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 import { Button } from '@/components/Button';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { useAuthStore } from '@/store/auth';
@@ -45,10 +48,18 @@ type IdentityDocumentType =
 /** Where the member is in the check. Named so the requirements below can cover every one. */
 type Step = 'intro' | 'document_select' | 'capture' | 'selfie' | 'analyzing' | 'submitted';
 
+/**
+ * The steps a member fills in, by their titles. The intro before them and the
+ * wait and result after them are not steps: there is nothing to fill in.
+ */
+const WIZARD_STEPS: Step[] = ['document_select', 'capture', 'selfie'];
+const STEP_TITLES = ['Choose a document', 'Photograph it', 'Add a selfie'];
+
 export default function IdentityVerificationScreen() {
   // `submitted` replaced `success`. The screen can report that documents were
   // received; it cannot report that they were accepted.
   const [step, setStep] = useState<Step>('intro');
+  const bottomInset = useBottomInset();
   const [docType, setDocType] = useState<IdentityDocumentType | null>(null);
   const [documentMediaId, setDocumentMediaId] = useState<string | null>(null);
   const [selfieMediaId, setSelfieMediaId] = useState<string | null>(null);
@@ -152,7 +163,11 @@ export default function IdentityVerificationScreen() {
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-card">
-      <ScreenHeader title="Verify Identity" showBack={step !== 'analyzing' && step !== 'submitted'} />
+      {WIZARD_STEPS.includes(step) ? (
+        <WizardHeader name="Verify Identity" steps={STEP_TITLES} step={WIZARD_STEPS.indexOf(step)} />
+      ) : (
+        <ScreenHeader title="Verify Identity" showBack={step !== 'analyzing' && step !== 'submitted'} />
+      )}
 
       <ScrollEndScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
         
@@ -270,18 +285,6 @@ export default function IdentityVerificationScreen() {
               </Text>
             )}
 
-            {stillNeeded.length > 0 ? (
-              <Text className="text-xs font-semibold text-content-muted mb-3">
-                Still needed: {stillNeeded.join(', ')}
-              </Text>
-            ) : null}
-
-            <Button
-              label="Continue"
-              disabled={stillNeeded.length > 0}
-              onPress={() => setStep('selfie')}
-              className="w-full"
-            />
           </View>
         )}
 
@@ -310,18 +313,6 @@ export default function IdentityVerificationScreen() {
               </View>
             ) : null}
 
-            {stillNeeded.length > 0 ? (
-              <Text className="text-xs font-semibold text-content-muted mt-6">
-                Still needed: {stillNeeded.join(', ')}
-              </Text>
-            ) : null}
-
-            <Button
-              label="Submit for review"
-              disabled={stillNeeded.length > 0}
-              onPress={() => void handleSubmit()}
-              className="w-full mt-6"
-            />
           </View>
         )}
 
@@ -357,6 +348,16 @@ export default function IdentityVerificationScreen() {
         )}
 
       </ScrollEndScrollView>
+
+      {step === 'capture' || step === 'selfie' ? (
+        <WizardFooter
+          onBack={() => setStep(step === 'capture' ? 'document_select' : 'capture')}
+          onNext={step === 'capture' ? () => setStep('selfie') : () => void handleSubmit()}
+          nextLabel={step === 'capture' ? 'Continue' : 'Submit for review'}
+          stillNeeded={stillNeeded}
+          bottomInset={bottomInset}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

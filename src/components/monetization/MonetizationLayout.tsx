@@ -12,6 +12,7 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import { ListEmpty, type ListMessage } from '@/components/ListState';
 
 export function MonetizationSection({
   title,
@@ -179,50 +180,7 @@ export function MonetizationEmpty({
   message: string;
   action?: { label: string; onPress: () => void };
 }) {
-  const { tokens } = useTheme();
-
-  return (
-    <View
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={`${title}. ${message}`}
-      style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
-      className="rounded-3xl border items-center px-6 py-10"
-    >
-      <View
-        style={{ backgroundColor: tokens.color.neutral[100] }}
-        className="w-14 h-14 rounded-2xl items-center justify-center mb-4"
-      >
-        <Ionicons name={icon as never} size={26} color={tokens.color.text.placeholder} />
-      </View>
-
-      <Text
-        style={{ color: tokens.color.text.primary }}
-        className="text-base font-black tracking-tight text-center"
-      >
-        {title}
-      </Text>
-      <Text
-        style={{ color: tokens.color.text.secondary }}
-        className="text-sm font-medium leading-relaxed text-center mt-2"
-      >
-        {message}
-      </Text>
-
-      {action ? (
-        <TouchableOpacity
-          onPress={action.onPress}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={action.label}
-          style={{ backgroundColor: tokens.color.primary[500] }}
-          className="rounded-full px-6 py-3 mt-5"
-        >
-          <Text style={{ color: '#FFFFFF' }} className="text-sm font-black tracking-tight">
-            {action.label}
-          </Text>
-        </TouchableOpacity>
-      ) : null}
-    </View>
-  );
+  // Drawn by the shared list state since 27 Nov 2026 (FARCH-007). It was a card of
+  // its own; it has the look every other list has now.
+  return <ListEmpty icon={icon as ListMessage['icon']} title={title} message={message} action={action} />;
 }

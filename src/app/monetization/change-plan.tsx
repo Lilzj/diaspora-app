@@ -37,11 +37,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import { FinancialErrorInline, FinancialErrorView, PaymentConfirmButton } from '@/components/financial';
 import {
   LabelledPrice,
-  MonetizationEmpty,
   MonetizationGapNotice,
   MonetizationSection,
   PlanCard,
@@ -168,15 +168,27 @@ export default function ChangePlanScreen() {
 
   // Nothing to change from. Subscribing is a different flow with a real backend
   // behind it, so send them there rather than showing an empty change screen.
+  // A plan that could not be read is not the free plan: it used to be drawn as one.
   if (!subscriptionQuery.isLoading && !subscription) {
     return (
       <Shell>
         <View className="p-5">
-          <MonetizationEmpty
-            icon="swap-horizontal-outline"
-            title="Nothing to change yet"
-            message="You are on the free plan. Start a paid plan first, and you can move between tiers from here."
-            action={{ label: 'See plans', onPress: () => router.replace('/monetization/plans') }}
+          <ListState
+            error={
+              subscriptionQuery.isError ? (
+                <FinancialErrorView
+                  error={subscriptionQuery.error as FinancialError}
+                  onRetry={subscriptionQuery.refetch}
+                />
+              ) : null
+            }
+            isEmpty
+            empty={{
+              icon: 'swap-horizontal-outline',
+              title: 'Nothing to change yet',
+              message: 'You are on the free plan. Start a paid plan first, and you can move between tiers from here.',
+              action: { label: 'See plans', onPress: () => router.replace('/monetization/plans') },
+            }}
           />
         </View>
       </Shell>
@@ -200,27 +212,31 @@ export default function ChangePlanScreen() {
             Moving down takes effect when the period you have already paid for ends.
           </Text>
 
-          {isLoading ? (
-            <View accessible accessibilityLabel="Loading the plans." style={{ gap: 12 }}>
-              {[0, 1].map((index) => (
-                <View
-                  key={index}
-                  style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.3 }}
-                  className="rounded-3xl h-52"
-                />
-              ))}
-            </View>
-          ) : choices.length === 0 ? (
-            <MonetizationEmpty
-              icon="checkmark-circle-outline"
-              title="There is nowhere to move"
-              message="There is nothing to move to at the moment. You can cancel from your plan screen if you no longer need it."
-              action={{
+          <ListState
+            loading={isLoading}
+            skeleton={
+              <View accessible accessibilityLabel="Loading the plans." style={{ gap: 12 }}>
+                {[0, 1].map((index) => (
+                  <View
+                    key={index}
+                    style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.3 }}
+                    className="rounded-3xl h-52"
+                  />
+                ))}
+              </View>
+            }
+            isEmpty={choices.length === 0}
+            empty={{
+              icon: 'checkmark-circle-outline',
+              title: 'There is nowhere to move',
+              message:
+                'There is nothing to move to at the moment. You can cancel from your plan screen if you no longer need it.',
+              action: {
                 label: 'Your plan',
                 onPress: () => router.replace('/monetization/subscription'),
-              }}
-            />
-          ) : (
+              },
+            }}
+          >
             <View style={{ gap: 12 }}>
               {choices.map((view) => (
                 <PlanCard
@@ -231,7 +247,7 @@ export default function ChangePlanScreen() {
                 />
               ))}
             </View>
-          )}
+          </ListState>
         </View>
 
         {/* The preview. Every figure asked for, none computed here. */}

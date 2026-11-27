@@ -22,6 +22,7 @@ import { ConversationHub } from '@/lib/transport/conversation-hub';
 import { ConversationCard } from '@/components/conversation/ConversationCard';
 import { InboxFilterBar } from '@/components/conversation/InboxFilterBar';
 import { ConversationEmptyState } from '@/components/conversation/ConversationEmptyState';
+import { ListState } from '@/components/ListState';
 import { Skeleton } from '@/components/Skeleton';
 import type { Conversation, InboxFilter } from '@/types/conversation';
 import { useThemeTokens } from '@/design-system';
@@ -36,7 +37,7 @@ export default function MessagesScreen() {
   const { showAlert } = useNotification();
   const { isAuthenticated } = useAuthStore();
   const {
-    conversations, isLoadingConversations, activeFilter, requests,
+    conversations, isLoadingConversations, conversationsError, activeFilter, requests,
     loadConversations, loadRequests, setActiveFilter,
   } = useConversationStore();
 
@@ -237,30 +238,43 @@ export default function MessagesScreen() {
         />
       )}
 
-      {/* Conversation list */}
-      {isLoadingConversations && !refreshing ? (
-        <View className="flex-1 px-4 pt-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <View key={i} className="flex-row items-center mb-4">
-              <Skeleton width={52} height={52} borderRadius={26} />
-              <View className="flex-1 ml-3">
-                <View style={{ marginBottom: 8 }}>
-                  <Skeleton width="60%" height={14} borderRadius={7} />
+      {/* Conversation list. A failed read is said rather than drawn as "No
+          conversations yet" (FARCH-007, 27 Nov 2026): the store kept
+          `conversationsError` and nothing read it. */}
+      <ListState
+        loading={isLoadingConversations && !refreshing}
+        skeleton={
+          <View
+            className="flex-1 px-4 pt-4"
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="Loading conversations"
+          >
+            <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <View key={i} className="flex-row items-center mb-4">
+                  <Skeleton width={52} height={52} borderRadius={26} />
+                  <View className="flex-1 ml-3">
+                    <View style={{ marginBottom: 8 }}>
+                      <Skeleton width="60%" height={14} borderRadius={7} />
+                    </View>
+                    <View style={{ marginBottom: 6 }}>
+                      <Skeleton width="80%" height={12} borderRadius={6} />
+                    </View>
+                    <Skeleton width="50%" height={12} borderRadius={6} />
+                  </View>
                 </View>
-                <View style={{ marginBottom: 6 }}>
-                  <Skeleton width="80%" height={12} borderRadius={6} />
-                </View>
-                <Skeleton width="50%" height={12} borderRadius={6} />
-              </View>
+              ))}
             </View>
-          ))}
-        </View>
-      ) : filtered.length === 0 ? (
-        <ConversationEmptyState
-          filter={searchQuery ? 'All' : activeFilter}
-          onExplore={() => router.push('/(tabs)/discover')}
-        />
-      ) : (
+          </View>
+        }
+        error={
+          conversationsError && conversations.length === 0
+            ? { title: 'Conversations could not be loaded', message: conversationsError }
+            : null
+        }
+        onRetry={() => void loadConversations()}
+      >
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.conversationId}
@@ -270,6 +284,12 @@ export default function MessagesScreen() {
               onLongPress={handleLongPress}
             />
           )}
+          ListEmptyComponent={
+            <ConversationEmptyState
+              filter={searchQuery ? 'All' : activeFilter}
+              onExplore={() => router.push('/(tabs)/discover')}
+            />
+          }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F59300" />
           }
@@ -277,7 +297,7 @@ export default function MessagesScreen() {
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={undefined}
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

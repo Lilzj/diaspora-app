@@ -27,6 +27,7 @@ import {
   Stat,
   readableDate,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import {
   useMyAssignments,
   useMyVolunteerApplications,
@@ -42,7 +43,9 @@ export default function VolunteerDashboardScreen() {
 
   const { data: applications, isLoading, isError, error, refetch } =
     useMyVolunteerApplications();
-  const { data: assignments } = useMyAssignments();
+  // Not the read the shell watches: the shifts tab draws its own first load and failure.
+  const assignmentsRead = useMyAssignments();
+  const assignments = assignmentsRead.data;
   const { summary } = useVolunteerHours();
 
   const grouped = useMemo(
@@ -82,15 +85,16 @@ export default function VolunteerDashboardScreen() {
       {/* ── Applications ──────────────────────────────────────────────────── */}
       {tab === 'applications' ? (
         <View className="px-5 mt-4">
-          {applications.length === 0 ? (
-            <EmptyState
-              icon="hand-left-outline"
-              title="No applications yet"
-              body="When you apply to volunteer, you can follow the decision here."
-              action="Find something to help with"
-              onAction={() => router.push('/community-life/volunteer')}
-            />
-          ) : (
+          {/* The shell draws this read's loading and error; the list says when it is empty. */}
+          <ListState
+            isEmpty={applications.length === 0}
+            empty={{
+              icon: 'hand-left-outline',
+              title: 'No applications yet',
+              message: 'When you apply to volunteer, you can follow the decision here.',
+              action: { label: 'Find something to help with', onPress: () => router.push('/community-life/volunteer') },
+            }}
+          >
             <>
               {grouped.live.length > 0 ? (
                 <>
@@ -188,20 +192,30 @@ export default function VolunteerDashboardScreen() {
                 </Section>
               ) : null}
             </>
-          )}
+          </ListState>
         </View>
       ) : null}
 
       {/* ── Assignments ───────────────────────────────────────────────────── */}
       {tab === 'assignments' ? (
         <View className="px-5 mt-4">
-          {assignments.length === 0 ? (
-            <EmptyState
-              icon="clipboard-outline"
-              title="No shifts yet"
-              body="Once an organiser approves you and puts you on a shift, it will show up here."
-            />
-          ) : (
+          {/* Both of these used to read as "No shifts yet". */}
+          <ListState
+            loading={assignmentsRead.isLoading}
+            loadingLabel="Loading your shifts"
+            error={
+              assignmentsRead.isError && assignments.length === 0
+                ? { title: 'Shifts could not be loaded', message: assignmentsRead.error?.message }
+                : null
+            }
+            onRetry={assignmentsRead.refetch}
+            isEmpty={assignments.length === 0}
+            empty={{
+              icon: 'clipboard-outline',
+              title: 'No shifts yet',
+              message: 'Once an organiser approves you and puts you on a shift, it will show up here.',
+            }}
+          >
             <>
               {grouped.upcoming.length > 0 ? (
                 <>
@@ -318,7 +332,7 @@ export default function VolunteerDashboardScreen() {
                 </Section>
               ) : null}
             </>
-          )}
+          </ListState>
         </View>
       ) : null}
 

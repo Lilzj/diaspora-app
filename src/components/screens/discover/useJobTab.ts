@@ -1,8 +1,10 @@
 // Discover: the Jobs tab, read from `GET /jobs`.
 // Lifted out of `app/(tabs)/discover.tsx` (FSOLID-001), which composes it.
 
+import { useQueryClient } from '@tanstack/react-query';
 import { jobScopeParams } from '@/lib/domain/discover-scope';
 import { jobFilterParams } from '@/lib/platform/discover-filters';
+import { communityScopedKeys } from '@/lib/api/community-directory-api';
 import { useScopedContentPages } from '@/hooks/communities';
 import type { DiscoverSearch } from '@/components/screens/discover/useDiscoverSearch';
 import type { DiscoverFilters } from '@/components/screens/discover/useDiscoverFilters';
@@ -47,7 +49,14 @@ export function useJobTab(search: DiscoverSearch, filters: DiscoverFilters) {
 
   const baseJobs = jobSearch.items;
 
-  return { jobSearch, baseJobs };
+  // "Try again" for a first page that failed (FARCH-007). The paged hook has no
+  // refetch of its own and the screen's pull re-runs only Housing and
+  // Marketplace, so the scoped-content read on screen is asked again by its key.
+  const queryClient = useQueryClient();
+  const retryJobs = () =>
+    void queryClient.refetchQueries({ queryKey: communityScopedKeys.contentAll(), type: 'active' });
+
+  return { jobSearch, baseJobs, retryJobs };
 }
 
 /** What `useJobTab` holds, as the screen reads it. */

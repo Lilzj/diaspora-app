@@ -25,12 +25,12 @@ import {
   Card,
   ChipRow,
   CommunityScreen,
-  EmptyState,
   InlineRefusal,
   PrimaryButton,
   Section,
   VerifiedFigure,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useAreaActivity, useEventsAroundPoint } from '@/hooks/community-life';
 import { useMemberPoint } from '@/hooks/member-point';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
@@ -132,19 +132,20 @@ export default function AreaEventsScreen() {
               <VerifiedFigure label={`Real — events within ${radiusKm} km`} />
             </View>
 
-            {events.events.length === 0 && !events.isLoading ? (
-              <EmptyState
-                icon="calendar-outline"
-                title={`Nothing published within ${radiusKm} km`}
-                body={
+            {/* The shell draws the read's loading and error; the list says when it is empty. */}
+            <ListState
+              isEmpty={events.events.length === 0 && !events.isLoading}
+              empty={{
+                icon: 'calendar-outline',
+                title: `Nothing published within ${radiusKm} km`,
+                message:
                   radiusKm < 10
                     ? 'Try a wider distance above, or post one yourself.'
-                    : 'Nothing is published this close yet. You can post one yourself.'
-                }
-              />
-            ) : (
-              events.events.map((event) => <AreaEventCard key={event.id} event={event} />)
-            )}
+                    : 'Nothing is published this close yet. You can post one yourself.',
+              }}
+            >
+              {events.events.map((event) => <AreaEventCard key={event.id} event={event} />)}
+            </ListState>
           </View>
         </>
       )}

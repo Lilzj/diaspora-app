@@ -4,7 +4,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { MarketplaceCard } from '@/components/MarketplaceCard';
-import { EmptyStateView, ShowMoreButton } from '@/components/screens/discover/ResultStates';
+import { ListState } from '@/components/ListState';
+import { ShowMoreButton, couldNotLoad, noMatch } from '@/components/screens/discover/ResultStates';
 import type { ListingSearches } from '@/components/screens/discover/useListingSearches';
 import type { OriginFilter } from '@/components/screens/discover/useOriginFilter';
 import type { DiscoverSearch } from '@/components/screens/discover/useDiscoverSearch';
@@ -18,7 +19,7 @@ interface MarketplaceResultsProps {
 }
 
 export function MarketplaceResults({ listings, origin, search, view }: MarketplaceResultsProps) {
-  const { marketplaceError, marketCursor, marketMore, loadMoreMarketplace } = listings;
+  const { marketplaceError, marketCursor, marketMore, loadMoreMarketplace, refresh } = listings;
   const { displayedMarketplaceListings, marketRatingNote } = origin;
   const { emptyStatePlace } = search;
   const { isGridView, setIsGridView } = view;
@@ -46,8 +47,14 @@ export function MarketplaceResults({ listings, origin, search, view }: Marketpla
         <Text className="text-xs text-content-secondary mb-3">{marketRatingNote}</Text>
       ) : null}
 
-      {displayedMarketplaceListings.length > 0 ? (
-        isGridView ? (
+      {/* The screen's pull re-runs this read, so its error says so as well as offering the button. */}
+      <ListState
+        error={marketplaceError ? couldNotLoad('marketplace listings', marketplaceError, true) : null}
+        onRetry={refresh}
+        isEmpty={displayedMarketplaceListings.length === 0}
+        empty={noMatch('marketplace listings', emptyStatePlace)}
+      >
+        {isGridView ? (
           <View className="flex-row flex-wrap justify-between">
             {displayedMarketplaceListings.map((item) => (
               <MarketplaceCard key={item.id} listing={item} variant="grid" />
@@ -59,10 +66,8 @@ export function MarketplaceResults({ listings, origin, search, view }: Marketpla
               <MarketplaceCard key={item.id} listing={item} variant="list" />
             ))}
           </View>
-        )
-      ) : (
-        <EmptyStateView label="marketplace listings" place={emptyStatePlace} error={marketplaceError} />
-      )}
+        )}
+      </ListState>
       {marketCursor ? (
         <ShowMoreButton label="Show more items" state={marketMore} onPress={loadMoreMarketplace} />
       ) : null}

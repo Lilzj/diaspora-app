@@ -20,13 +20,13 @@ import {
   ChipRow,
   CommunityScreen,
   CommunityStatusBadge,
-  EmptyState,
   InlineRefusal,
   PrimaryButton,
   SecondaryButton,
   readableDate,
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import {
   useApplicants,
   useAssignVolunteer,
@@ -114,18 +114,19 @@ export default function ApplicantsScreen() {
               </View>
             ) : null}
 
-            {applicants.length === 0 && !isLoading ? (
-              <EmptyState
-                icon="people-outline"
-                title={filter === 'Pending' ? 'Nothing to review' : 'Nobody here'}
-                body={
+            {/* The shell draws the list's loading and error; the list says when it is empty. */}
+            <ListState
+              isEmpty={applicants.length === 0}
+              empty={{
+                icon: 'people-outline',
+                title: filter === 'Pending' ? 'Nothing to review' : 'Nobody here',
+                message:
                   filter === 'Pending'
                     ? 'Every application has been decided.'
-                    : 'No applicant is in this state.'
-                }
-              />
-            ) : (
-              applicants.map((applicant) => (
+                    : 'No applicant is in this state.',
+              }}
+            >
+              {applicants.map((applicant) => (
                 <View key={applicant.applicationId} className="mb-3">
                   <Card
                     accessibilityLabel={`${applicant.displayName}, applied ${readableDate(applicant.submittedAt)}. ${describeVolunteerApplication(applicant.status).label}.`}
@@ -293,20 +294,20 @@ export default function ApplicantsScreen() {
                     ) : null}
                   </Card>
                 </View>
-              ))
-            )}
+              ))}
 
-            {hasNextPage ? (
-              <View className="mb-4">
-                {isFetchingNextPage ? (
-                  <View className="py-4 items-center" accessibilityLabel="Loading more">
-                    <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                  </View>
-                ) : (
-                  <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-                )}
-              </View>
-            ) : null}
+              {hasNextPage ? (
+                <View className="mb-4">
+                  {isFetchingNextPage ? (
+                    <View className="py-4 items-center" accessibilityLabel="Loading more">
+                      <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                    </View>
+                  ) : (
+                    <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+                  )}
+                </View>
+              ) : null}
+            </ListState>
           </View>
         </>
       )}

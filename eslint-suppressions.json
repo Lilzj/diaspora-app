@@ -38,14 +38,6 @@
       "count": 1
     }
   },
-  "src/app/(tabs)/post.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "src/app/access-gateway.tsx": {
     "react/no-unescaped-entities": {
       "count": 2
@@ -164,14 +156,11 @@
     }
   },
   "src/app/guide/create.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "react-hooks/refs": {
       "count": 4
     },
     "react-hooks/set-state-in-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "src/app/guide/edit/[id].tsx": {
@@ -231,11 +220,8 @@
     }
   },
   "src/app/marketplace/create.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "src/app/marketplace/edit/[id].tsx": {
@@ -289,11 +275,8 @@
     }
   },
   "src/app/update/create.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "src/app/update/edit/[id].tsx": {
@@ -329,9 +312,6 @@
   "src/components/GlobalLocationSelector.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
-    },
-    "react/no-unescaped-entities": {
-      "count": 3
     }
   },
   "src/components/GuideCard.tsx": {
@@ -488,14 +468,6 @@
     }
   },
   "src/components/screens/housing-create/useHousingCatalogue.ts": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/components/screens/housing-create/useHousingDraft.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }

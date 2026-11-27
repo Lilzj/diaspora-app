@@ -24,11 +24,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useVisaAdvisories } from '@/hooks/country-intelligence';
 import { PostedBy } from '@/components/intelligence/PostedBy';
@@ -78,16 +79,17 @@ export default function VisaAdvisoriesScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title={`Entering ${country}`} showBack />
 
-      {results.isLoading ? (
-        <View
-          accessible
-          accessibilityRole="progressbar"
-          accessibilityLabel="Loading entry rules"
-          className="flex-1 items-center justify-center"
-        >
-          <ActivityIndicator color="#F59300" />
-        </View>
-      ) : (
+      {/* The error had the empty state's slot, and only showed when there were no rows. */}
+      <ListState
+        loading={results.isLoading}
+        loadingLabel="Loading entry rules"
+        error={
+          results.error && sections.length === 0
+            ? { icon: 'airplane-outline', title: 'Entry rules are unavailable', message: results.error }
+            : null
+        }
+        onRetry={results.refresh}
+      >
         <FlatList
           data={sections}
           keyExtractor={(item) => item.title}
@@ -114,19 +116,14 @@ export default function VisaAdvisoriesScreen() {
             </View>
           )}
           ListEmptyComponent={
-            <View className="items-center justify-center py-16 px-6">
-              <Text className="text-4xl mb-2">🛂</Text>
-              <Text className="text-sm font-bold text-content-strong text-center">
-                {results.error ? 'Entry rules are unavailable' : 'No published rules'}
-              </Text>
-              <Text className="text-xs text-content-faint text-center mt-1 leading-relaxed max-w-[280px]">
-                {results.error ??
-                  `Nobody has published entry rules for ${country} yet. Check the destination’s own immigration service.`}
-              </Text>
-            </View>
+            <ListEmpty
+              icon="airplane-outline"
+              title="No published rules"
+              message={`Nobody has published entry rules for ${country} yet. Check the destination’s own immigration service.`}
+            />
           }
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

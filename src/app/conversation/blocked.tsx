@@ -32,9 +32,10 @@
 import React, { useCallback, useState } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { ConversationHub } from '@/lib/transport/conversation-hub';
 import type { BlockedUser } from '@/types/conversation';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -112,49 +113,31 @@ export default function BlockedUsersScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Blocked Users" showBack />
 
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <ActivityIndicator />
-          <Text className="text-sm text-content-muted text-center mt-4">
-            Loading your blocklist…
-          </Text>
-        </View>
-      ) : isError ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-5xl mb-6">⚠️</Text>
-          <Text className="text-lg font-bold text-content-strong text-center">
-            Blocklist unavailable
-          </Text>
-          <Text className="text-sm text-content-muted text-center mt-2">
-            We could not load who you have blocked. Anyone you blocked is still blocked — this is a
-            problem showing the list, not with the blocks themselves.
-          </Text>
-          <TouchableOpacity
-            onPress={() => refetch()}
-            disabled={isRefetching}
-            className="bg-surface-muted border border-subtle px-4 py-3 rounded-xl mt-6"
-            activeOpacity={0.7}
-          >
-            <Text className="text-sm font-bold text-content-secondary">
-              {isRefetching ? 'Retrying…' : 'Try again'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : !blocked || blocked.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-5xl mb-6">🔓</Text>
-          <Text className="text-lg font-bold text-content-strong text-center">No blocked users</Text>
-          <Text className="text-sm text-content-muted text-center mt-2">
-            Users you block will appear here.
-          </Text>
-        </View>
-      ) : (
+      {/* Still three states, now drawn by the shared list state (FARCH-007, 27 Nov
+          2026). The list stays mounted when empty, so a pull still reads again. */}
+      <ListState
+        loading={isLoading}
+        loadingLabel="Loading your blocklist…"
+        error={
+          isError && (blocked ?? []).length === 0
+            ? {
+                title: 'Blocklist unavailable',
+                message:
+                  'We could not load who you have blocked. Anyone you blocked is still blocked — this is a problem showing the list, not with the blocks themselves.',
+              }
+            : null
+        }
+        onRetry={() => void refetch()}
+      >
         <FlatList
-          data={blocked}
+          data={blocked ?? []}
           keyExtractor={(item) => item.userId}
           contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
           refreshing={isRefetching}
           onRefresh={() => refetch()}
+          ListEmptyComponent={
+            <ListEmpty icon="lock-open-outline" title="No blocked users" message="Users you block will appear here." />
+          }
           renderItem={({ item }) => (
             <View className="bg-surface-card border border-subtle rounded-2xl px-4 py-4 mb-3 flex-row items-center">
               <View className="w-12 h-12 rounded-full bg-subtle items-center justify-center mr-3">
@@ -183,7 +166,7 @@ export default function BlockedUsersScreen() {
             </View>
           )}
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }
