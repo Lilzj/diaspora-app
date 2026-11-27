@@ -29,6 +29,8 @@
 // return.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { SCREEN_PARTS_ROOT, filesUnder } from './support/screen-files';
+
 const fs = require('fs') as {
   readFileSync(path: string, encoding: string): string;
   readdirSync(path: string, options: { withFileTypes: true }): {
@@ -120,7 +122,8 @@ function violations(file: string, source: string): Violation[] {
 }
 
 describe('no screen calls a hook after an early return', () => {
-  const files = screenFiles(SCREENS);
+  // The routes, and the parts composed screens are made of (FSOLID-001).
+  const files = [...screenFiles(SCREENS), ...filesUnder(SCREEN_PARTS_ROOT)];
 
   it('finds screens to check', () => {
     expect(files.length).toBeGreaterThan(50);

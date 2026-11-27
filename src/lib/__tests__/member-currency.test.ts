@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { currencyForResidence, FALLBACK_CURRENCY } from '@/lib/domain/member-currency';
+import { SCREEN_PARTS_ROOT, filesUnder } from './support/screen-files';
 
 const fs = require('fs') as {
   readFileSync(p: string, e: string): string;
@@ -45,7 +46,8 @@ describe('currencyForResidence', () => {
 });
 
 describe('the app', () => {
-  const all = screens(path.join(process.cwd(), 'src', 'app'));
+  // The routes, and the parts composed screens are made of (FSOLID-001).
+  const all = [...screens(path.join(process.cwd(), 'src', 'app')), ...filesUnder(SCREEN_PARTS_ROOT)];
 
   it('scans the screens it claims to', () => {
     // A sweep that finds nothing passes; pin that it found the forms it is about.
@@ -56,6 +58,7 @@ describe('the app', () => {
       'app/housing/create.tsx',
       'app/job/create.tsx',
       'app/community-life/campaign/create.tsx',
+      'components/screens/housing-create/useHousingPricing.ts',
     ]) {
       expect(names.some((name) => name.endsWith(form))).toBe(true);
     }

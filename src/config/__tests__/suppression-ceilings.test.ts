@@ -162,7 +162,11 @@ const CEILING: Record<string, number> = {
   // (RMD-009).
   'react-hooks/purity': 14,
   'react-hooks/immutability': 9,
-  'react-hooks/preserve-manual-memoization': 6,
+  // `discover.tsx` held two more, both on the callback that clears a search
+  // sentence, where the compiler inferred two of its setters as dependencies.
+  // It reports neither for the same callback in the hook that callback moved
+  // to when the screen was split (FSOLID-001, 27 Nov 2026).
+  'react-hooks/preserve-manual-memoization': 4,
   'react-hooks/static-components': 4,
   'react-hooks/globals': 2,
   'react-hooks/use-memo': 1,

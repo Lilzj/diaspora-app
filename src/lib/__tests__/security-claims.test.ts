@@ -41,6 +41,7 @@
 // Required locally with narrow signatures, as the sibling suites do: adding
 // `"node"` to `types` in `tsconfig.json` makes `@types/node` shadow the ambient
 // React Native `globalThis` and breaks twenty boundary assertions.
+import { SCREEN_PARTS_ROOT, filesUnder } from './support/screen-files';
 declare const __dirname: string;
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
 const readdirSync: (path: string, options: object) => Array<{
@@ -110,7 +111,13 @@ function tsxFilesUnder(directory: string): string[] {
 }
 
 describe('no screen claims a security control the server does not enforce', () => {
-  const files = [...tsxFilesUnder(SCREENS), ...tsxFilesUnder(COMPONENTS)];
+  const files = [
+    ...tsxFilesUnder(SCREENS),
+    ...tsxFilesUnder(COMPONENTS),
+    // The hooks of composed screens, which hold the alerts and messages their
+    // routes did; their sections are `.tsx` and already above (FSOLID-001).
+    ...filesUnder(SCREEN_PARTS_ROOT).filter((file) => file.endsWith('.ts')),
+  ];
 
   it('found screens to check', () => {
     // A scan that matched nothing would pass this whole suite for the wrong

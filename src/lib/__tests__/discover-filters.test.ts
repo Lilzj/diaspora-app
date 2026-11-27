@@ -36,6 +36,7 @@ import {
   type HousingSheetFilters,
   type MarketplaceSheetFilters,
 } from '../platform/discover-filters';
+import { screenSource } from './support/screen-files';
 
 const MAURITIUS: DiscoverScope = { kind: 'country', countryCode: 'MU' };
 const ROSE_HILL: DiscoverScope = { kind: 'town', countryCode: 'MU', cityName: 'Rose Hill' };
@@ -373,9 +374,9 @@ describe('the marketplace sheet', () => {
 });
 
 describe('where it is used', () => {
-  const fs = require('fs') as { readFileSync(p: string, e: string): string };
   const path = require('path') as { join(...s: string[]): string };
-  const discover = fs.readFileSync(path.join(process.cwd(), 'src', 'app', '(tabs)', 'discover.tsx'), 'utf8');
+  // A screen is read whole: its route and every part it composes from (FSOLID-001).
+  const discover = screenSource(path.join(process.cwd(), 'src', 'app', '(tabs)', 'discover.tsx'));
 
   it('filters, sorts and pages on the server, not within one page on the phone', () => {
     // The page filters that hid later pages' matches, and the page sorts.

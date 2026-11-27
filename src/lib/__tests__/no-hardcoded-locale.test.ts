@@ -24,7 +24,8 @@ const path = require('path') as {
   relative(from: string, to: string): string;
 };
 
-const ROOTS = ['src/app', 'src/lib'];
+// `src/components/screens` holds the parts composed screens are made of (FSOLID-001).
+const ROOTS = ['src/app', 'src/components/screens', 'src/lib'];
 
 /** Runtime source only: no tests, no fixtures. */
 function runtimeFiles(): string[] {
@@ -73,6 +74,7 @@ describe('no hard-coded British defaults in runtime code', () => {
         'src/app/community-life/volunteer/create.tsx',
         'src/app/community-life/series/create.tsx',
         'src/app/wallet/payout-accounts.tsx',
+        'src/components/screens/discover/useListingSearches.ts',
         'src/lib/api/event-wire.ts',
         'src/lib/domain/trustEngine.ts',
       ])

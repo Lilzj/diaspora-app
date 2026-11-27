@@ -16,13 +16,14 @@
 // off, and that it never interpolates a bare `cityName`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
+import { screenSource } from './support/screen-files';
+
 const path = require('path') as { join(...segments: string[]): string };
 
 /** A file's code with its comments removed. See `password-auth.test.ts`. */
 function read(...segments: string[]): string {
-  return fs
-    .readFileSync(path.join(process.cwd(), ...segments), 'utf8')
+  // A screen is read whole: its route and every part it composes from (FSOLID-001).
+  return screenSource(path.join(process.cwd(), ...segments))
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split(String.fromCharCode(10))
     .filter((line: string) => !/^\s*(\/\/|\*|\{\/\*)/.test(line))

@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { jobFilterParams, JOB_TYPE_CHOICES } from '@/lib/platform/discover-filters';
+import { screenSource } from '@/lib/__tests__/support/screen-files';
 
 describe('jobFilterParams', () => {
   it('sends the name the route parses, not the one on the chip', () => {
@@ -56,13 +57,10 @@ describe('jobFilterParams', () => {
 });
 
 describe('the Jobs sheet', () => {
-  const fs = require('fs');
   const path = require('path');
 
-  const discover = fs.readFileSync(
-    path.join(process.cwd(), 'src', 'app', '(tabs)', 'discover.tsx'),
-    'utf8'
-  );
+  // A screen is read whole: its route and every part it composes from (FSOLID-001).
+  const discover = screenSource(path.join(process.cwd(), 'src', 'app', '(tabs)', 'discover.tsx'));
 
   it('sends the sheet filters with the jobs request', () => {
     expect(discover).toContain('jobFilterParams(selectedJobType, filterVerified)');

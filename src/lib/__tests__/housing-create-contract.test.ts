@@ -19,7 +19,8 @@
 // explaining what the screen used to say.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
+import { screenSource } from './support/screen-files';
+
 const path = require('path') as { join(...segments: string[]): string };
 
 function withoutComments(source: string): string {
@@ -30,8 +31,9 @@ function withoutComments(source: string): string {
     .join('\n');
 }
 
+// A screen is read whole: its route and every part it composes from (FSOLID-001).
 const SOURCE = withoutComments(
-  fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'housing', 'create.tsx'), 'utf8')
+  screenSource(path.join(process.cwd(), 'src', 'app', 'housing', 'create.tsx'))
 );
 
 describe('the housing create payload', () => {
