@@ -54,6 +54,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const { withoutComments } = require('./source-text');
+
 const ROOT = path.resolve(__dirname, '..');
 const CONFIG_DIR = path.join(ROOT, 'src', 'config');
 
@@ -247,16 +249,14 @@ function blankFields(source, fileName) {
  * alone, which is the case this must not get wrong.
  */
 function blankOrphanedConstants(code) {
-  const withoutComments = code
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/^[^\n]*?\/\/[^\n]*$/gm, (line) => (line.trim().startsWith('//') ? ' ' : line));
+  const uncommented = withoutComments(code);
 
   const declaration = /^const ([A-Z][A-Z0-9_]*)\s*=\s*(?=['"`])/gm;
   const orphans = [];
   let match;
   while ((match = declaration.exec(code)) !== null) {
     const name = match[1];
-    const references = (withoutComments.match(new RegExp(`\\b${name}\\b`, 'g')) ?? []).length;
+    const references = (uncommented.match(new RegExp(`\\b${name}\\b`, 'g')) ?? []).length;
     if (references <= 1) orphans.push({ name, valueAt: match.index + match[0].length });
   }
 
