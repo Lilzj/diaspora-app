@@ -41,10 +41,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
-import { FlatList, View, Text, Switch, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { FlatList, View, Text, Switch, RefreshControl, ActivityIndicator } from 'react-native';
 
 import { CommunityPostCard } from '@/components/community-social';
-import { EmptyState } from '@/components/EmptyState';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { Skeleton } from '@/components/Skeleton';
 import { useCommunityFeed } from '@/hooks/community-social';
 import { useAuthStore } from '@/store/auth';
@@ -119,40 +119,25 @@ export default function KnowledgeUpdatesScreen() {
         </View>
       ) : null}
 
-      {feed.isLoading ? (
-        <UpdatesSkeleton />
-      ) : feed.error ? (
-        <EmptyState
-          icon={isSignedOut ? '🔑' : '📡'}
-          title={isSignedOut ? 'Sign in to see community alerts' : 'We could not load the alerts'}
-          description={feed.error}
-          action={
-            <TouchableOpacity
-              accessible
-              accessibilityRole="button"
-              accessibilityLabel={isSignedOut ? 'Sign in' : 'Try again'}
-              onPress={() => (isSignedOut ? router.push('/login') : feed.refresh())}
-              className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
-            >
-              <Text className="text-white font-extrabold text-sm">
-                {isSignedOut ? 'Sign in' : 'Try again'}
-              </Text>
-            </TouchableOpacity>
-          }
-        />
-      ) : feed.isEmpty ? (
-        // An empty feed renders as empty. The screen this replaced could not
-        // reach this state, because its seven fixtures were always there.
-        <EmptyState
-          icon="📢"
-          title="No community alerts yet"
-          description={
-            showExpiredUpdates
-              ? 'Nothing has been posted here, expired or otherwise.'
-              : 'Nothing active right now. Turn on "Show Expired Alerts" to look through what has already passed.'
-          }
-        />
-      ) : (
+      {/* Loading, failed and empty through the shared list state (FARCH-007, 27
+          Nov 2026). The list stays mounted when empty, so a pull still reads again. */}
+      <ListState
+        loading={feed.isLoading}
+        skeleton={<UpdatesSkeleton />}
+        error={
+          feed.error && feed.posts.length === 0
+            ? isSignedOut
+              ? {
+                  icon: 'key-outline',
+                  title: 'Sign in to see community alerts',
+                  message: feed.error,
+                  action: { label: 'Sign in', onPress: () => router.push('/login') },
+                }
+              : { icon: 'cloud-offline-outline', title: 'We could not load the alerts', message: feed.error }
+            : null
+        }
+        onRetry={isSignedOut ? undefined : feed.refresh}
+      >
         <FlatList
           data={feed.posts}
           // `postId`. `updateId` is the same value under the module's older
@@ -177,8 +162,21 @@ export default function KnowledgeUpdatesScreen() {
               </View>
             ) : undefined
           }
+          ListEmptyComponent={
+            // An empty feed renders as empty. The screen this replaced could not
+            // reach this state, because its seven fixtures were always there.
+            <ListEmpty
+              icon="megaphone-outline"
+              title="No community alerts yet"
+              message={
+                showExpiredUpdates
+                  ? 'Nothing has been posted here, expired or otherwise.'
+                  : 'Nothing active right now. Turn on "Show Expired Alerts" to look through what has already passed.'
+              }
+            />
+          }
         />
-      )}
+      </ListState>
     </View>
   );
 }

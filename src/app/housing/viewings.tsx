@@ -15,13 +15,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Button } from '@/components/Button';
 import { DatePickerInput } from '@/components/DatePickerInput';
-import { EmptyState } from '@/components/EmptyState';
+import { ListState } from '@/components/ListState';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useThemeTokens } from '@/design-system';
 import { useUpdateViewing, useViewings } from '@/hooks/housing-viewings';
@@ -159,28 +159,29 @@ export default function ViewingsScreen() {
         ))}
       </View>
 
-      {viewings.isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#F59300" />
-        </View>
-      ) : viewings.isError ? (
-        <EmptyState
-          icon="📡"
-          title="Could not load viewings"
-          description={viewingUpdateRefusal(viewings.error).replace('nothing was changed', 'nothing was loaded')}
-          action={<Button label="Try again" onPress={() => void viewings.refetch()} />}
-        />
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon="🏠"
-          title={side === 'landlord' ? 'No viewing requests yet' : 'You have not asked to see a home yet'}
-          description={
+      {/* Through the shared list state (FARCH-007, 27 Nov 2026). */}
+      <ListState
+        loading={viewings.isLoading}
+        loadingLabel="Loading viewings"
+        error={
+          viewings.isError && items.length === 0
+            ? {
+                title: 'Could not load viewings',
+                message: viewingUpdateRefusal(viewings.error).replace('nothing was changed', 'nothing was loaded'),
+              }
+            : null
+        }
+        onRetry={() => void viewings.refetch()}
+        isEmpty={items.length === 0}
+        empty={{
+          icon: 'home-outline',
+          title: side === 'landlord' ? 'No viewing requests yet' : 'You have not asked to see a home yet',
+          message:
             side === 'landlord'
               ? 'When someone asks to see one of your homes, the request appears here for you to answer.'
-              : 'Ask to see a home from its page, and you can follow your request here.'
-          }
-        />
-      ) : (
+              : 'Ask to see a home from its page, and you can follow your request here.',
+        }}
+      >
         <ScrollView className="flex-1 px-5" refreshControl={refreshControl} contentContainerStyle={{ paddingBottom: 48 }}>
           {open.length > 0 && (
             <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mt-3 mb-2">
@@ -216,7 +217,7 @@ export default function ViewingsScreen() {
             />
           ))}
         </ScrollView>
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

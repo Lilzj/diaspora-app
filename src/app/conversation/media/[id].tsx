@@ -3,13 +3,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useLocalSearchParams } from 'expo-router';
 import { ConversationHub } from '@/lib/transport/conversation-hub';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { ListEmpty, ListState } from '@/components/ListState';
 import type { ConversationMediaGallery } from '@/types/conversation';
 
 export default function ConversationMediaScreen() {
@@ -24,18 +25,31 @@ export default function ConversationMediaScreen() {
     images: [], documents: [], voice: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+  // The read had no `catch`, so a failure left every tab saying "No photos yet"
+  // (FARCH-007, 27 Nov 2026). It is said now, with a way to ask again.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [activeTab, setActiveTab] = useState<'images' | 'documents' | 'voice'>('images');
 
   useEffect(() => {
     const load = async () => {
       try {
         setMedia(await ConversationHub.media(String(id)));
+        setLoadFailed(false);
+      } catch {
+        setLoadFailed(true);
       } finally {
         setIsLoading(false);
       }
     };
     void load();
-  }, [id]);
+  }, [id, attempt]);
+
+  const retry = () => {
+    setLoadFailed(false);
+    setIsLoading(true);
+    setAttempt((count) => count + 1);
+  };
 
   const tabs = [
     { key: 'images' as const, label: '📷 Photos', count: media.images.length },
@@ -66,17 +80,17 @@ export default function ConversationMediaScreen() {
         ))}
       </View>
 
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#F59300" size="large" />
-        </View>
-      ) : activeTab === 'images' ? (
-        media.images.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-5xl mb-4">📷</Text>
-            <Text className="text-base font-bold text-content-tertiary">No photos yet</Text>
-          </View>
-        ) : (
+      <ListState
+        loading={isLoading}
+        loadingLabel="Loading media"
+        error={
+          loadFailed
+            ? { title: 'Media could not be loaded', message: 'Check your connection and try again.' }
+            : null
+        }
+        onRetry={retry}
+      >
+        {activeTab === 'images' ? (
           <FlatList
             data={media.images}
             keyExtractor={(_, i) => String(i)}
@@ -86,16 +100,10 @@ export default function ConversationMediaScreen() {
                 <Image source={{ uri: item.url }} style={{ flex: 1 }} contentFit="cover" />
               </View>
             )}
+            ListEmptyComponent={<ListEmpty icon="image-outline" title="No photos yet" />}
             contentContainerStyle={{ padding: 1, paddingBottom: bottomInset }}
           />
-        )
-      ) : activeTab === 'documents' ? (
-        media.documents.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-5xl mb-4">📄</Text>
-            <Text className="text-base font-bold text-content-tertiary">No documents yet</Text>
-          </View>
-        ) : (
+        ) : activeTab === 'documents' ? (
           <FlatList
             data={media.documents}
             keyExtractor={(_, i) => String(i)}
@@ -110,15 +118,9 @@ export default function ConversationMediaScreen() {
                 </View>
               </View>
             )}
+            ListEmptyComponent={<ListEmpty icon="document-outline" title="No documents yet" />}
             contentContainerStyle={{ paddingVertical: 8 }}
           />
-        )
-      ) : (
-        media.voice.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-5xl mb-4">🎤</Text>
-            <Text className="text-base font-bold text-content-tertiary">No voice notes yet</Text>
-          </View>
         ) : (
           <FlatList
             data={media.voice}
@@ -136,10 +138,11 @@ export default function ConversationMediaScreen() {
                 </View>
               </View>
             )}
+            ListEmptyComponent={<ListEmpty icon="mic-outline" title="No voice notes yet" />}
             contentContainerStyle={{ paddingVertical: 8 }}
           />
-        )
-      )}
+        )}
+      </ListState>
     </SafeAreaView>
   );
 }

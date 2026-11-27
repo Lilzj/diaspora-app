@@ -9,6 +9,7 @@ import { ConversationHub } from '@/lib/transport/conversation-hub';
 // B15 — `GET /donations/causes` replaces this screen's `MOCK_CAUSES`.
 import { useDonationCauses } from '@/hooks/financial';
 import { FinancialErrorInline } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import { useLocationStore } from '@/store/location';
 import type { DonationCause } from '@/types/financial';
 import type { FinancialError } from '@/lib/transport/financial-errors';
@@ -281,27 +282,30 @@ export default function DonationCausesScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         keyboardShouldPersistTaps="handled"
       >
-        {causesQuery.isLoading ? (
-          <View className="items-center py-16">
-            <Text className="text-sm font-bold text-content-muted">Loading causes…</Text>
-          </View>
-        ) : causesQuery.isError && causesQuery.error ? (
-          <FinancialErrorInline
-            error={causesQuery.error as FinancialError}
-            onRetry={causesQuery.refetch}
-          />
-        ) : filtered.length === 0 ? (
-          <View className="items-center py-16">
-            <Text className="text-4xl mb-3">🔍</Text>
-            <Text className="text-sm font-bold text-content-secondary">No causes found</Text>
-            <Text className="text-xs text-content-faint mt-1 text-center">
-              {causes.length === 0
+        {/* Through the shared list state (FARCH-007, 27 Nov 2026). The error stays
+            the financial area's own, with its retry. */}
+        <ListState
+          loading={causesQuery.isLoading}
+          loadingLabel="Loading causes…"
+          error={
+            causesQuery.isError && causesQuery.error && causes.length === 0 ? (
+              <FinancialErrorInline
+                error={causesQuery.error as FinancialError}
+                onRetry={causesQuery.refetch}
+              />
+            ) : null
+          }
+          isEmpty={filtered.length === 0}
+          empty={{
+            icon: 'search-outline',
+            title: 'No causes found',
+            message:
+              causes.length === 0
                 ? 'There are no causes listed near you at the moment.'
-                : 'Try adjusting your search or filter'}
-            </Text>
-          </View>
-        ) : (
-          filtered.map((cause) => (
+                : 'Try adjusting your search or filter',
+          }}
+        >
+          {filtered.map((cause) => (
             <TouchableOpacity
               key={cause.id}
               onPress={() => setSelectedCause(cause)}
@@ -376,8 +380,8 @@ export default function DonationCausesScreen() {
                 ) : null}
               </View>
             </TouchableOpacity>
-          ))
-        )}
+          ))}
+        </ListState>
       </ScrollEndScrollView>
 
       {/* Raise a Cause sheet */}

@@ -20,11 +20,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { FlatList } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import {
   AccessGate,
@@ -134,13 +134,16 @@ export default function TransactionHistoryScreen() {
         </ScrollView>
       </View>
 
-      {query.isLoading ? (
-        <TransactionListSkeleton rows={8} />
-      ) : query.isError && query.error ? (
-        <FinancialErrorView error={query.error as FinancialError} onRetry={query.refetch} />
-      ) : transactions.length === 0 ? (
-        <EmptyTransactions filter={filter} onClear={() => setFilter(undefined)} />
-      ) : (
+      <ListState
+        loading={query.isLoading}
+        skeleton={<TransactionListSkeleton rows={8} />}
+        error={
+          query.isError && transactions.length === 0 ? (
+            <FinancialErrorView error={query.error as FinancialError} onRetry={query.refetch} />
+          ) : null
+        }
+      >
+        {/* Mounted when empty too, so pulling still refreshes an empty list. */}
         <ScrollEndFlatList
           data={transactions}
           keyExtractor={(item) => item.transactionId}
@@ -165,9 +168,21 @@ export default function TransactionHistoryScreen() {
               onPress={() => router.push(`/wallet/transactions/${item.transactionId}`)}
             />
           )}
+          ListEmptyComponent={
+            <ListEmpty
+              icon="receipt-outline"
+              title={filter ? 'Nothing of this kind yet' : 'No transactions yet'}
+              message={
+                filter
+                  ? 'Try another filter, or clear it to see everything.'
+                  : 'Payments, refunds and credit will appear here as they happen.'
+              }
+              action={filter ? { label: 'Clear filter', onPress: () => setFilter(undefined) } : undefined}
+            />
+          }
           ListFooterComponent={atPageLimit ? <PageLimitFooter /> : undefined}
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }
@@ -203,45 +218,6 @@ function PageLimitFooter() {
           Open your full statement
         </Text>
       </TouchableOpacity>
-    </View>
-  );
-}
-
-function EmptyTransactions({ filter, onClear }: { filter?: string; onClear: () => void }) {
-  const { tokens } = useTheme();
-
-  return (
-    <View className="flex-1 items-center justify-center px-8 py-12">
-      <Ionicons name="receipt-outline" size={36} color={tokens.color.text.placeholder} />
-      <Text
-        style={{ color: tokens.color.text.primary }}
-        className="text-base font-black text-center tracking-tight mt-4 mb-2"
-      >
-        {filter ? 'Nothing of this kind yet' : 'No transactions yet'}
-      </Text>
-      <Text
-        style={{ color: tokens.color.text.secondary }}
-        className="text-sm font-medium text-center leading-relaxed"
-      >
-        {filter
-          ? 'Try another filter, or clear it to see everything.'
-          : 'Payments, refunds and credit will appear here as they happen.'}
-      </Text>
-
-      {filter ? (
-        <TouchableOpacity
-          onPress={onClear}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Clear the filter"
-          className="mt-4"
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Text style={{ color: tokens.color.primary[500] }} className="text-[11px] font-black uppercase tracking-wider">
-            Clear filter
-          </Text>
-        </TouchableOpacity>
-      ) : null}
     </View>
   );
 }

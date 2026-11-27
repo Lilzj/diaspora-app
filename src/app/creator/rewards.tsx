@@ -30,13 +30,13 @@ import { useAuthStore } from '@/store/auth';
 import {
   CreatorCard,
   CreatorCardSkeleton,
-  CreatorEmptyState,
   CreatorScreen,
   EarnPointsList,
   PointsBalanceCard,
   RewardCard,
 } from '@/components/creator-economy';
 import { FinancialErrorInline } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import {
   useCreatorAccess,
   useCreatorConversionPolicy,
@@ -227,53 +227,73 @@ export default function CreatorRewardsScreen() {
 
         {/* ── Spend ────────────────────────────────────────────────────── */}
         {tab === 'spend' ? (
-          catalogue.isLoading ? (
-            <CreatorCardSkeleton rows={3} />
-          ) : catalogue.rewards.length === 0 ? (
-            <CreatorEmptyState
-              icon="gift-outline"
-              title="Nothing to spend points on yet"
-              body="Diaspora adds rewards as the programme grows. Your points keep their value in the meantime."
-            />
-          ) : (
-            <>
-              {catalogue.rewards.map((reward) => (
-                <RewardCard
-                  key={reward.rewardId}
-                  reward={reward}
-                  availablePoints={available}
-                  canRedeem={claimRefusal.allowed}
-                  redeemBlockedReason={claimRefusal.allowed ? undefined : claimRefusal.message}
-                  isRedeeming={redeemingId === reward.rewardId}
-                  onRedeem={onRedeem}
-                />
-              ))}
-            </>
-          )
+          <ListState
+            loading={catalogue.isLoading}
+            loadingLabel="Loading rewards"
+            skeleton={<CreatorCardSkeleton rows={3} />}
+            error={
+              catalogue.error && catalogue.rewards.length === 0 ? (
+                <FinancialErrorInline error={catalogue.error} onRetry={() => void catalogue.refetch()} />
+              ) : null
+            }
+            isEmpty={catalogue.rewards.length === 0}
+            empty={{
+              icon: 'gift-outline',
+              title: 'Nothing to spend points on yet',
+              message: 'Diaspora adds rewards as the programme grows. Your points keep their value in the meantime.',
+            }}
+          >
+            {catalogue.rewards.map((reward) => (
+              <RewardCard
+                key={reward.rewardId}
+                reward={reward}
+                availablePoints={available}
+                canRedeem={claimRefusal.allowed}
+                redeemBlockedReason={claimRefusal.allowed ? undefined : claimRefusal.message}
+                isRedeeming={redeemingId === reward.rewardId}
+                onRedeem={onRedeem}
+              />
+            ))}
+          </ListState>
         ) : null}
 
         {/* ── Earn ─────────────────────────────────────────────────────── */}
         {tab === 'earn' ? (
-          rules.isLoading ? (
-            <CreatorCardSkeleton rows={4} />
-          ) : (
+          <ListState
+            loading={rules.isLoading}
+            loadingLabel="Loading what pays points"
+            skeleton={<CreatorCardSkeleton rows={4} />}
+            // The hook exposes no refetch, so this error offers no retry.
+            error={
+              rules.error !== null && rules.rules.length === 0
+                ? { title: 'What pays points could not be loaded', message: rules.error }
+                : null
+            }
+          >
+            {/* An empty list is EarnPointsList's to say ("Nothing pays points yet"). */}
             <EarnPointsList rules={rules.rules} />
-          )
+          </ListState>
         ) : null}
 
         {/* ── History ──────────────────────────────────────────────────── */}
         {tab === 'history' ? (
-          redemptions.isLoading ? (
-            <CreatorCardSkeleton rows={2} />
-          ) : redemptions.redemptions.length === 0 ? (
-            <CreatorEmptyState
-              icon="receipt-outline"
-              title="Nothing redeemed yet"
-              body="Rewards you spend points on will appear here with what Diaspora issued."
-              actionLabel="See what is available"
-              onAction={() => setTab('spend')}
-            />
-          ) : (
+          <ListState
+            loading={redemptions.isLoading}
+            loadingLabel="Loading your redemptions"
+            skeleton={<CreatorCardSkeleton rows={2} />}
+            error={
+              redemptions.error && redemptions.redemptions.length === 0 ? (
+                <FinancialErrorInline error={redemptions.error} onRetry={() => void redemptions.refetch()} />
+              ) : null
+            }
+            isEmpty={redemptions.redemptions.length === 0}
+            empty={{
+              icon: 'receipt-outline',
+              title: 'Nothing redeemed yet',
+              message: 'Rewards you spend points on will appear here with what Diaspora issued.',
+              action: { label: 'See what is available', onPress: () => setTab('spend') },
+            }}
+          >
             <CreatorCard padded={false}>
               {redemptions.redemptions.map((redemption, index) => (
                 <View
@@ -345,7 +365,7 @@ export default function CreatorRewardsScreen() {
                 </View>
               ))}
             </CreatorCard>
-          )
+          </ListState>
         ) : null}
       </View>
     </CreatorScreen>

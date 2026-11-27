@@ -32,7 +32,6 @@ import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
 import {
   CreatorCard,
-  CreatorEmptyState,
   CreatorScreen,
   CreatorSection,
   PeriodSelector,
@@ -43,6 +42,8 @@ import {
   useCreatorAccess,
   useCreatorAnalytics,
 } from '@/hooks/creator-economy';
+import { FinancialErrorInline } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/domain/creator-access';
 import { PERIOD_LABELS, formatCount } from '@/lib/domain/creator-economy';
 import { trackCreatorEvent } from '@/lib/platform/creator-analytics';
@@ -332,48 +333,47 @@ export default function CreatorAnalyticsScreen() {
             })}
           </ScrollView>
 
-          {content.isLoading ? (
-            <View className="py-10 items-center">
-              <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-            </View>
-          ) : content.items.length === 0 ? (
-            <CreatorEmptyState
-              icon="bar-chart-outline"
-              title="Nothing to report"
-              body="Publish something and its performance will show up here."
-              actionLabel="Write a guide"
-              onAction={() => router.push('/guide/create')}
-            />
-          ) : (
-            <>
-              {content.items.map((item) => (
-                <ContentPerformanceCard
-                  key={item.contentId}
-                  item={item}
-                  route={itemAnalyticsRoute(String(item.contentType), item.contentId)}
-                  onOpen={openContent}
-                />
-              ))}
+          <ListState
+            loading={content.isLoading}
+            loadingLabel="Loading your content"
+            error={content.error && content.items.length === 0 ? (
+              <FinancialErrorInline error={content.error} onRetry={() => void content.refetch()} />
+            ) : null}
+            isEmpty={content.items.length === 0}
+            empty={{
+              icon: 'bar-chart-outline',
+              title: 'Nothing to report',
+              message: 'Publish something and its performance will show up here.',
+              action: { label: 'Write a guide', onPress: () => router.push('/guide/create') },
+            }}
+          >
+            {content.items.map((item) => (
+              <ContentPerformanceCard
+                key={item.contentId}
+                item={item}
+                route={itemAnalyticsRoute(String(item.contentType), item.contentId)}
+                onOpen={openContent}
+              />
+            ))}
 
-              {content.hasNextPage ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Load more content"
-                  accessibilityState={{ busy: content.isFetchingNextPage }}
-                  disabled={content.isFetchingNextPage}
-                  onPress={() => content.fetchNextPage()}
-                  className="py-3 items-center"
+            {content.hasNextPage ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Load more content"
+                accessibilityState={{ busy: content.isFetchingNextPage }}
+                disabled={content.isFetchingNextPage}
+                onPress={() => content.fetchNextPage()}
+                className="py-3 items-center"
+              >
+                <Text
+                  style={{ color: tokens.color.primary[500] }}
+                  className="text-[11px] font-black uppercase tracking-wider"
                 >
-                  <Text
-                    style={{ color: tokens.color.primary[500] }}
-                    className="text-[11px] font-black uppercase tracking-wider"
-                  >
-                    {content.isFetchingNextPage ? 'Loading…' : 'Load more'}
-                  </Text>
-                </Pressable>
-              ) : null}
-            </>
-          )}
+                  {content.isFetchingNextPage ? 'Loading…' : 'Load more'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </ListState>
         </CreatorSection>
 
         {/* ── Where else to look ───────────────────────────────────────── */}

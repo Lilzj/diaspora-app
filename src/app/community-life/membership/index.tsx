@@ -18,10 +18,10 @@ import { useTheme } from '@/design-system';
 import {
   ChipRow,
   CommunityScreen,
-  EmptyState,
   MembershipProgrammeCard,
   SecondaryButton,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useMembershipDiscovery } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
 import { trackCommunityEvent } from '@/lib/platform/community-analytics';
@@ -183,34 +183,36 @@ export default function MembershipDiscoveryScreen() {
       </View>
 
       <View className="px-5 mt-4">
-        {programmes.length === 0 && !isLoading ? (
-          <EmptyState
-            icon="search-outline"
-            title="No membership programmes match that"
+        {/* The shell draws the list's loading and error; the list says when it is empty. */}
+        <ListState
+          isEmpty={programmes.length === 0}
+          empty={{
+            icon: 'search-outline',
+            title: 'No membership programmes match that',
             // This screen searches *membership programmes* — the ones an
             // organisation runs and you pay or apply for. It does not search the
             // community directory, and saying "no community near you" made an
             // empty programme table read as an empty platform. There are twelve
             // communities to join; none of them charges for it.
-            body={
-              hasFilters
-                ? 'Try widening your filters — a nearby organisation may take a different kind of member.'
-                : 'No organisation near you runs a paid or approved membership yet. Communities you can simply join are in the directory.'
-            }
-            action={hasFilters ? 'Clear filters' : 'Browse communities'}
-            onAction={() => {
-              if (!hasFilters) {
-                router.push('/community');
-                return;
-              }
-              setQuery('');
-              setCategory('All');
-              setPriceBand('any');
-              setEligibleOnly(false);
-            }}
-          />
-        ) : (
-          programmes.map((programme) => (
+            message: hasFilters
+              ? 'Try widening your filters — a nearby organisation may take a different kind of member.'
+              : 'No organisation near you runs a paid or approved membership yet. Communities you can simply join are in the directory.',
+            action: {
+              label: hasFilters ? 'Clear filters' : 'Browse communities',
+              onPress: () => {
+                if (!hasFilters) {
+                  router.push('/community');
+                  return;
+                }
+                setQuery('');
+                setCategory('All');
+                setPriceBand('any');
+                setEligibleOnly(false);
+              },
+            },
+          }}
+        >
+          {programmes.map((programme) => (
             <View key={programme.organizationId} className="mb-3">
               <MembershipProgrammeCard
                 programme={programme}
@@ -219,20 +221,20 @@ export default function MembershipDiscoveryScreen() {
                 }
               />
             </View>
-          ))
-        )}
+          ))}
 
-        {hasNextPage ? (
-          <View className="mt-2 mb-4">
-            {isFetchingNextPage ? (
-              <View className="py-4 items-center" accessibilityLabel="Loading more">
-                <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-              </View>
-            ) : (
-              <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-            )}
-          </View>
-        ) : null}
+          {hasNextPage ? (
+            <View className="mt-2 mb-4">
+              {isFetchingNextPage ? (
+                <View className="py-4 items-center" accessibilityLabel="Loading more">
+                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                </View>
+              ) : (
+                <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+              )}
+            </View>
+          ) : null}
+        </ListState>
       </View>
     </CommunityScreen>
   );

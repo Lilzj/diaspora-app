@@ -37,9 +37,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import { AccessGate, FinancialErrorInline, StatusBadge } from '@/components/financial';
 import { FinancialPermissions } from '@/lib/domain/financial-access';
@@ -368,50 +368,39 @@ export default function PayoutAccountsScreen() {
             Diaspora. Three components describing three different flows on one
             screen.
           */}
-          {identityHint ? null : destinationsQuery.isLoading ? (
-            <View className="py-10 items-center">
-              <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-            </View>
-          ) : destinations.length === 0 ? (
-            <View
-              style={{
-                backgroundColor: tokens.color.surface.card,
-                borderColor: tokens.color.border.default,
+          {identityHint ? null : (
+            <ListState
+              loading={destinationsQuery.isLoading}
+              loadingLabel="Loading payout accounts"
+              // A failed read is not "no payout account yet": it used to be drawn as one.
+              error={
+                destinationsQuery.isError && destinations.length === 0 ? (
+                  <FinancialErrorInline
+                    error={destinationsQuery.error as FinancialError}
+                    onRetry={() => void destinationsQuery.refetch()}
+                  />
+                ) : null
+              }
+              isEmpty={destinations.length === 0}
+              empty={{
+                icon: 'business-outline',
+                title: 'No payout account yet',
+                message:
+                  'Money you earn sits in your Diaspora wallet until you add somewhere to send it. You set this up with our payments provider, so your bank details never touch Diaspora.',
               }}
-              className="rounded-3xl border p-6 items-center"
             >
-              <Ionicons
-                name="business-outline"
-                size={28}
-                color={tokens.color.text.placeholder}
-              />
-              <Text
-                style={{ color: tokens.color.text.primary }}
-                className="text-base font-bold mt-3 text-center"
-              >
-                No payout account yet
-              </Text>
-              <Text
-                style={{ color: tokens.color.text.secondary }}
-                className="text-xs font-semibold mt-2 text-center leading-relaxed"
-              >
-                Money you earn sits in your Diaspora wallet until you add somewhere to send it.
-                You set this up with our payments provider, so your bank details never touch
-                Diaspora.
-              </Text>
-            </View>
-          ) : (
-            <View className="gap-3">
-              {destinations.map((destination) => (
-                <DestinationRow
-                  key={destination.destinationId}
-                  destination={destination}
-                  isBusy={refreshDestination.isPending || removeDestination.isPending}
-                  onCheckAgain={() => onCheckAgain(destination)}
-                  onRemove={() => onRemove(destination)}
-                />
-              ))}
-            </View>
+              <View className="gap-3">
+                {destinations.map((destination) => (
+                  <DestinationRow
+                    key={destination.destinationId}
+                    destination={destination}
+                    isBusy={refreshDestination.isPending || removeDestination.isPending}
+                    onCheckAgain={() => onCheckAgain(destination)}
+                    onRemove={() => onRemove(destination)}
+                  />
+                ))}
+              </View>
+            </ListState>
           )}
 
           {identityHint ? null : (

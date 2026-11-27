@@ -20,9 +20,11 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
   AccessGate,
+  FinancialErrorInline,
   FinancialErrorView,
   TransactionListSkeleton,
 } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import {
   useConversionPolicy,
   useRewardBalance,
@@ -356,26 +358,24 @@ export default function RewardsScreen() {
           </View>
         }
         renderItem={({ item }) => <RewardRow entry={item} />}
+        // A failed history read said "No points yet" (FARCH-007, 27 Nov 2026): the
+        // empty branch was the only one there was.
         ListEmptyComponent={
-          historyQuery.isLoading ? (
-            <TransactionListSkeleton rows={5} />
-          ) : (
-            <View className="px-8 py-10 items-center">
-              <Ionicons name="sparkles-outline" size={30} color={tokens.color.text.placeholder} />
-              <Text
-                style={{ color: tokens.color.text.secondary }}
-                className="text-sm font-bold text-center mt-3"
-              >
-                No points yet
-              </Text>
-              <Text
-                style={{ color: tokens.color.text.placeholder }}
-                className="text-xs font-medium text-center mt-1 leading-relaxed"
-              >
-                Publishing guides, writing reviews and helping others all earn points.
-              </Text>
-            </View>
-          )
+          <ListState
+            loading={historyQuery.isLoading}
+            skeleton={<TransactionListSkeleton rows={5} />}
+            error={
+              historyQuery.isError && historyQuery.error ? (
+                <FinancialErrorInline error={historyQuery.error as FinancialError} onRetry={historyQuery.refetch} />
+              ) : null
+            }
+            isEmpty
+            empty={{
+              icon: 'sparkles-outline',
+              title: 'No points yet',
+              message: 'Publishing guides, writing reviews and helping others all earn points.',
+            }}
+          />
         }
         ListFooterComponent={
           historyQuery.isFetchingNextPage ? (

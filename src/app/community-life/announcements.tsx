@@ -21,12 +21,12 @@ import {
   Card,
   ChipRow,
   CommunityScreen,
-  EmptyState,
   InlineRefusal,
   PrimaryButton,
   SecondaryButton,
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import {
   useAnnouncements,
   useOrganizationCapabilities,
@@ -218,14 +218,16 @@ export default function AnnouncementsScreen() {
           </View>
 
           <View className="px-5 mt-4">
-            {announcements.length === 0 && !isLoading ? (
-              <EmptyState
-                icon="megaphone-outline"
-                title="Nothing announced"
-                body="When a community you belong to has something to say, it will be here and in your notifications."
-              />
-            ) : (
-              announcements.map((announcement) => (
+            {/* The shell draws the feed's loading and error; the list says when it is empty. */}
+            <ListState
+              isEmpty={announcements.length === 0}
+              empty={{
+                icon: 'megaphone-outline',
+                title: 'Nothing announced',
+                message: 'When a community you belong to has something to say, it will be here and in your notifications.',
+              }}
+            >
+              {announcements.map((announcement) => (
                 <View key={announcement.announcementId} className="mb-2.5">
                   <AnnouncementCard
                     announcement={announcement}
@@ -238,20 +240,20 @@ export default function AnnouncementsScreen() {
                     }}
                   />
                 </View>
-              ))
-            )}
+              ))}
 
-            {hasNextPage ? (
-              <View className="mb-4">
-                {isFetchingNextPage ? (
-                  <View className="py-4 items-center" accessibilityLabel="Loading more">
-                    <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-                  </View>
-                ) : (
-                  <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-                )}
-              </View>
-            ) : null}
+              {hasNextPage ? (
+                <View className="mb-4">
+                  {isFetchingNextPage ? (
+                    <View className="py-4 items-center" accessibilityLabel="Loading more">
+                      <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                    </View>
+                  ) : (
+                    <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+                  )}
+                </View>
+              ) : null}
+            </ListState>
 
             <InlineRefusal
               icon="notifications-outline"

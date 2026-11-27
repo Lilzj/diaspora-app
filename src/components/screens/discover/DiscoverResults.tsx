@@ -5,6 +5,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { JobCardSkeleton } from '@/components/Skeleton';
+import { ListState } from '@/components/ListState';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { FeatureGate } from '@/components/FeatureGate';
 import { ProviderResults } from '@/components/screens/discover/ProviderResults';
@@ -71,28 +72,41 @@ export function DiscoverResults({
     <FeatureGate featureName={activeTab} fullScreen={false}>
       <View className="p-6">
       
-      {showLoading ? (
-        /* Loading Skeleton States */
-        <View className="flex-col gap-4">
-          {activeTab === 'Jobs' ? (
-            [1, 2, 3].map((n) => <JobCardSkeleton key={n} />)
-          ) : (
-            [1, 2, 3].map((n) => (
-              <View key={n} className="bg-surface-card p-4 rounded-3xl border border-subtle opacity-60">
-                <View className="h-32 bg-subtle rounded-xl mb-4" />
-                <View className="h-6 bg-subtle rounded w-2/3 mb-2" />
-                <View className="h-4 bg-subtle rounded w-1/2" />
-              </View>
-            ))
-          )}
-        </View>
-      ) : (
-        /* Actual Results rendering */
-        /* The results themselves are the third spotlight anchor. Steps
-           that described a badge on an individual card point here
-           instead: wrapping a rendered row would register whichever row
-           happened to render last, so the spotlight would land on an
-           arbitrary card. */
+      {/* The first read of the tab in view, through the shared list state
+          (FARCH-007, 27 Nov 2026). The skeleton stands in for the whole results
+          area, notes and "Show more" included, as it always has; each tab part
+          says its own error and empty. */}
+      <ListState
+        loading={showLoading}
+        skeleton={
+          <View
+            className="flex-col gap-4"
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel={`Loading ${activeTab.toLowerCase()}`}
+          >
+            <View className="flex-col gap-4" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+              {activeTab === 'Jobs' ? (
+                [1, 2, 3].map((n) => <JobCardSkeleton key={n} />)
+              ) : (
+                [1, 2, 3].map((n) => (
+                  <View key={n} className="bg-surface-card p-4 rounded-3xl border border-subtle opacity-60">
+                    <View className="h-32 bg-subtle rounded-xl mb-4" />
+                    <View className="h-6 bg-subtle rounded w-2/3 mb-2" />
+                    <View className="h-4 bg-subtle rounded w-1/2" />
+                  </View>
+                ))
+              )}
+            </View>
+          </View>
+        }
+      >
+        {/* Actual Results rendering */}
+        {/* The results themselves are the third spotlight anchor. Steps
+            that described a badge on an individual card point here
+            instead: wrapping a rendered row would register whichever row
+            happened to render last, so the spotlight would land on an
+            arbitrary card. */}
         <TourSpotlight spotlightKey="discover_results">
         <View>
           {/* Providers Tab */}
@@ -143,7 +157,7 @@ export function DiscoverResults({
           )}
         </View>
         </TourSpotlight>
-      )}
+      </ListState>
       </View>
     </FeatureGate>
   );

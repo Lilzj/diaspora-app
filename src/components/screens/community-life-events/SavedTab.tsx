@@ -7,15 +7,23 @@ import { useThemeTokens } from '@/design-system';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { organizationKind, organizationLine } from '@/lib/domain/organization-summary';
+import { ListState } from '@/components/ListState';
+import { ListSkeleton } from '@/components/screens/community-life-events/ListSkeleton';
 import type { SavedItems } from '@/components/screens/community-life-events/useSavedItems';
+import type {
+  CommunityLifeLists,
+} from '@/components/screens/community-life-events/useCommunityLifeLists';
 
 interface SavedTabProps {
   saved: SavedItems;
+  /** The events and directory reads the saved items are picked from: loading, or failed (FARCH-007). */
+  lists: CommunityLifeLists;
 }
 
-export function SavedTab({ saved }: SavedTabProps) {
+export function SavedTab({ saved, lists }: SavedTabProps) {
   const tokens = useThemeTokens();
   const { savedSearchQuery, setSavedSearchQuery, savedEvents, followedOrgs } = saved;
+  const { eventsLoading, eventsError, orgsLoading, orgsError, refresh } = lists;
 
   return (
     <View className="p-5">
@@ -37,8 +45,19 @@ export function SavedTab({ saved }: SavedTabProps) {
         Saved Events ({savedEvents.length})
       </Text>
       
-      {savedEvents.length > 0 ? (
-        savedEvents.map((evt) => (
+      <ListState
+        loading={eventsLoading && savedEvents.length === 0}
+        skeleton={<ListSkeleton label="Loading saved events" />}
+        error={
+          eventsError && savedEvents.length === 0
+            ? { title: 'Saved events could not be loaded', message: eventsError.message }
+            : null
+        }
+        onRetry={refresh}
+        isEmpty={savedEvents.length === 0}
+        empty={{ icon: 'bookmark-outline', title: 'No saved events match search' }}
+      >
+        {savedEvents.map((evt) => (
           <TouchableOpacity
             key={evt.id}
             onPress={() => router.push(`/community-life/event/${evt.id}`)}
@@ -59,21 +78,27 @@ export function SavedTab({ saved }: SavedTabProps) {
             </View>
             <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
           </TouchableOpacity>
-        ))
-      ) : (
-        <View className="bg-surface-card border border-subtle rounded-3xl p-6 items-center py-8 mb-6">
-          <Ionicons name="bookmark-outline" size={28} color="#D1D5DB" />
-          <Text className="text-xs text-content-faint font-bold mt-2">No saved events match search</Text>
-        </View>
-      )}
+        ))}
+      </ListState>
 
       {/* Followed Organizations */}
       <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3.5 mt-4">
         Followed Hubs ({followedOrgs.length})
       </Text>
       
-      {followedOrgs.length > 0 ? (
-        followedOrgs.map((org) => (
+      <ListState
+        loading={orgsLoading && followedOrgs.length === 0}
+        skeleton={<ListSkeleton label="Loading followed hubs" />}
+        error={
+          orgsError && followedOrgs.length === 0
+            ? { title: 'Followed hubs could not be loaded', message: orgsError.message }
+            : null
+        }
+        onRetry={refresh}
+        isEmpty={followedOrgs.length === 0}
+        empty={{ icon: 'people-outline', title: 'Not following any hubs yet' }}
+      >
+        {followedOrgs.map((org) => (
           <TouchableOpacity
             key={org.organizationId}
             onPress={() => router.push(`/community-life/org/${org.organizationId}`)}
@@ -94,13 +119,8 @@ export function SavedTab({ saved }: SavedTabProps) {
             </View>
             <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
           </TouchableOpacity>
-        ))
-      ) : (
-        <View className="bg-surface-card border border-subtle rounded-3xl p-6 items-center py-8">
-          <Ionicons name="people-outline" size={28} color="#D1D5DB" />
-          <Text className="text-xs text-content-faint font-bold mt-2">Not following any hubs yet</Text>
-        </View>
-      )}
+        ))}
+      </ListState>
 
     </View>
   );

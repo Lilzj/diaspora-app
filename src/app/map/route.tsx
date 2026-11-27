@@ -28,6 +28,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import {
   DiasporaMap,
   MapErrorState,
@@ -309,43 +310,44 @@ export default function RoutePlanningScreen() {
 
         {/* ── Routes ─────────────────────────────────────────────────────── */}
         <View className="mt-4">
-          {planner.isLoading ? (
-            <MapLoadingState label="Comparing routes…" />
-          ) : planner.error ? (
-            <MapErrorState
-              kind={planner.error}
-              onRetry={() => void plan(travelMode)}
-            />
-          ) : planner.routes.length === 0 ? (
-            <MapErrorState kind="no-route" />
-          ) : (
-            <>
-              <Text
-                style={{ color: tokens.color.text.placeholder }}
-                className="text-[10px] font-black uppercase tracking-widest mb-2"
-              >
-                {planner.routes.length === 1
-                  ? 'Your route'
-                  : `${planner.routes.length} ways to get there`}
-              </Text>
+          <ListState
+            loading={planner.isLoading}
+            skeleton={<MapLoadingState label="Comparing routes…" />}
+            // A failed plan clears the routes, so there is never a row to keep beside it.
+            error={planner.error ? <MapErrorState kind={planner.error} onRetry={() => void plan(travelMode)} /> : null}
+          >
+            {/* "No route" is the map's own answer rather than a failed read, and keeps its own state. */}
+            {planner.routes.length === 0 ? (
+              <MapErrorState kind="no-route" />
+            ) : (
+              <>
+                <Text
+                  style={{ color: tokens.color.text.placeholder }}
+                  className="text-[10px] font-black uppercase tracking-widest mb-2"
+                >
+                  {planner.routes.length === 1
+                    ? 'Your route'
+                    : `${planner.routes.length} ways to get there`}
+                </Text>
 
-              {planner.routes.map((route) => (
-                <RouteSummaryCard
-                  key={route.id}
-                  route={route}
-                  isSelected={route.id === selectedRoute?.id}
-                  supportsTraffic={planner.supportsTraffic}
-                  onSelect={() => {
-                    setSelectedRouteId(route.id);
-                    setViewport(boundsToViewport(route.bounds));
-                    trackMapsEvent('maps.route.alternative_selected', {
-                      travelMode: route.travelMode,
-                    });
-                  }}
-                />
-              ))}
-            </>
-          )}
+                {planner.routes.map((route) => (
+                  <RouteSummaryCard
+                    key={route.id}
+                    route={route}
+                    isSelected={route.id === selectedRoute?.id}
+                    supportsTraffic={planner.supportsTraffic}
+                    onSelect={() => {
+                      setSelectedRouteId(route.id);
+                      setViewport(boundsToViewport(route.bounds));
+                      trackMapsEvent('maps.route.alternative_selected', {
+                        travelMode: route.travelMode,
+                      });
+                    }}
+                  />
+                ))}
+              </>
+            )}
+          </ListState>
         </View>
 
         {/* ── Transit itinerary — §16 ────────────────────────────────────── */}

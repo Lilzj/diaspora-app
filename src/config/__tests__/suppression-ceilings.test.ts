@@ -158,7 +158,10 @@ const CEILING: Record<string, number> = {
   // ran on opening to show the banner. The shared draft hook starts with it
   // shown when the session holds a draft, and shows it once a stored one is read.
   'react-hooks/set-state-in-effect': 70,
-  'react/no-unescaped-entities': 24,
+  // Three fewer since 27 Nov 2026 (FARCH-007): the location search's "No locations
+  // found" sentence, an apostrophe and two quotes in JSX text, is a string the
+  // shared list state draws now.
+  'react/no-unescaped-entities': 21,
   // `MessageBubble` held one more: a voice note's bars were `Math.random()`
   // during render. It went on 24 Nov 2026, with the waveform no route sends
   // (RMD-009).

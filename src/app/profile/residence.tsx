@@ -21,12 +21,13 @@
 // earns standing in it, and that is `/verification/country`.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { DatePickerInput } from '@/components/DatePickerInput';
+import { ListState } from '@/components/ListState';
 import { useNotification } from '@/providers/notification-provider';
 import { useResidenceEditor, useResidenceTimeline } from '@/hooks/residence';
 import { toIsoDay, type ResidenceWire } from '@/lib/location/residence';
@@ -248,78 +249,73 @@ export default function ResidenceScreen() {
         contentContainerStyle={{ padding: 24, gap: 24 }}
         showsVerticalScrollIndicator={false}
       >
-        {isLoading && (
-          <View className="py-10 items-center" accessibilityLabel="Loading your residence history">
-            <ActivityIndicator />
-          </View>
-        )}
-
-        {error !== null && (
-          <View className="bg-surface-sunken border border-subtle rounded-2xl p-4">
-            <Text className="text-sm text-content-secondary leading-relaxed">{error}</Text>
-            <TouchableOpacity onPress={refresh} className="mt-3">
-              <Text className="text-sm font-extrabold text-primary-500">Try again</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {!isLoading && error === null && (
-          <>
-            {/*
-              A line, not a modal, and it appears only after a month of
-              consistent readings. A member on a three-week trip home never sees
-              it; a member who actually moved sees it once and can make it go
-              away for six months by saying no.
-            */}
-            {hinted !== null && (
-              <View className="bg-surface-muted border border-subtle rounded-3xl p-5">
-                <Text className="text-sm font-extrabold text-content-primary">
-                  Living in {allCountries.find((country) => country.code === hinted)?.name ?? hinted} now?
-                </Text>
-                <Text className="text-xs text-content-secondary leading-relaxed mt-1">
-                  Your phone has been there for a while. Adding it opens that community —
-                  nothing changes until you do.
-                </Text>
-
-                <View className="flex-row gap-4 mt-3">
-                  <TouchableOpacity
-                    onPress={() => {
-                      setMode('moving');
-                      setLeavingCode(openResidences[0]?.countryCode ?? null);
-                      setArrivingCode(hinted);
-                      setCountryQuery(
-                        allCountries.find((country) => country.code === hinted)?.name ?? ''
-                      );
-                    }}
-                    accessibilityRole="button"
-                  >
-                    <Text className="text-xs font-extrabold text-primary-600">Yes, I moved</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => {
-                      void dismissSuggestion(hinted);
-                      setHinted(null);
-                    }}
-                    accessibilityRole="button"
-                  >
-                    <Text className="text-xs font-bold text-content-muted">No, just visiting</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">
-                Your countries
+        <ListState
+          loading={isLoading}
+          loadingLabel="Loading your residence history"
+          error={
+            error !== null && residences.length === 0
+              ? { title: 'Your residence history could not be loaded', message: error }
+              : null
+          }
+          onRetry={refresh}
+        >
+          {/*
+            A line, not a modal, and it appears only after a month of
+            consistent readings. A member on a three-week trip home never sees
+            it; a member who actually moved sees it once and can make it go
+            away for six months by saying no.
+          */}
+          {hinted !== null && (
+            <View className="bg-surface-muted border border-subtle rounded-3xl p-5">
+              <Text className="text-sm font-extrabold text-content-primary">
+                Living in {allCountries.find((country) => country.code === hinted)?.name ?? hinted} now?
+              </Text>
+              <Text className="text-xs text-content-secondary leading-relaxed mt-1">
+                Your phone has been there for a while. Adding it opens that community —
+                nothing changes until you do.
               </Text>
 
-              {residences.length === 0 && (
-                <Text className="text-xs text-content-muted leading-relaxed">
-                  You have not added a country yet. Add where you live to see its community.
-                </Text>
-              )}
+              <View className="flex-row gap-4 mt-3">
+                <TouchableOpacity
+                  onPress={() => {
+                    setMode('moving');
+                    setLeavingCode(openResidences[0]?.countryCode ?? null);
+                    setArrivingCode(hinted);
+                    setCountryQuery(
+                      allCountries.find((country) => country.code === hinted)?.name ?? ''
+                    );
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Text className="text-xs font-extrabold text-primary-600">Yes, I moved</Text>
+                </TouchableOpacity>
 
+                <TouchableOpacity
+                  onPress={() => {
+                    void dismissSuggestion(hinted);
+                    setHinted(null);
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Text className="text-xs font-bold text-content-muted">No, just visiting</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
+            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">
+              Your countries
+            </Text>
+
+            <ListState
+              isEmpty={residences.length === 0}
+              empty={{
+                icon: 'earth-outline',
+                title: 'You have not added a country yet.',
+                message: 'Add where you live to see its community.',
+              }}
+            >
               <View className="gap-4">
                 {residences.map((residence) => (
                   <ResidenceRow
@@ -335,150 +331,150 @@ export default function ResidenceScreen() {
                   />
                 ))}
               </View>
+            </ListState>
+          </View>
+
+          {mode === 'idle' && (
+            <View className="gap-3">
+              <TouchableOpacity
+                onPress={() => {
+                  setMode('moving');
+                  setLeavingCode(openResidences[0]?.countryCode ?? null);
+                }}
+                className="bg-primary-500 rounded-2xl py-4 items-center"
+                accessibilityRole="button"
+              >
+                <Text className="text-sm font-extrabold text-white">I have moved country</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setMode('adding');
+                  setLeavingCode(null);
+                }}
+                className="border border-subtle rounded-2xl py-4 items-center"
+                accessibilityRole="button"
+              >
+                <Text className="text-sm font-extrabold text-content-secondary">
+                  Add another country I live in
+                </Text>
+              </TouchableOpacity>
+
+              <Text className="text-[11px] text-content-muted leading-relaxed px-1">
+                Living in two places is fine — add both. Leaving a country never costs you the
+                standing you built there.
+              </Text>
             </View>
+          )}
 
-            {mode === 'idle' && (
-              <View className="gap-3">
-                <TouchableOpacity
-                  onPress={() => {
-                    setMode('moving');
-                    setLeavingCode(openResidences[0]?.countryCode ?? null);
-                  }}
-                  className="bg-primary-500 rounded-2xl py-4 items-center"
-                  accessibilityRole="button"
-                >
-                  <Text className="text-sm font-extrabold text-white">I have moved country</Text>
-                </TouchableOpacity>
+          {mode !== 'idle' && (
+            <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm gap-4">
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest">
+                {mode === 'moving'
+                  ? 'Record a move'
+                  : mode === 'leaving'
+                    ? `Leaving ${leaving?.countryName ?? 'this country'}`
+                    : 'Add a country'}
+              </Text>
 
-                <TouchableOpacity
-                  onPress={() => {
-                    setMode('adding');
-                    setLeavingCode(null);
-                  }}
-                  className="border border-subtle rounded-2xl py-4 items-center"
-                  accessibilityRole="button"
-                >
-                  <Text className="text-sm font-extrabold text-content-secondary">
-                    Add another country I live in
-                  </Text>
-                </TouchableOpacity>
-
-                <Text className="text-[11px] text-content-muted leading-relaxed px-1">
-                  Living in two places is fine — add both. Leaving a country never costs you the
-                  standing you built there.
-                </Text>
-              </View>
-            )}
-
-            {mode !== 'idle' && (
-              <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm gap-4">
-                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest">
-                  {mode === 'moving'
-                    ? 'Record a move'
-                    : mode === 'leaving'
-                      ? `Leaving ${leaving?.countryName ?? 'this country'}`
-                      : 'Add a country'}
-                </Text>
-
-                {mode === 'moving' && openResidences.length > 0 && (
-                  <View className="gap-2">
-                    <Text className="text-xs font-bold text-content-secondary">Moving from</Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {openResidences.map((residence) => (
-                        <TouchableOpacity
-                          key={residence.countryCode}
-                          onPress={() => setLeavingCode(residence.countryCode)}
-                          className={`px-3 py-2 rounded-xl border ${
-                            leavingCode === residence.countryCode
-                              ? 'border-primary-500 bg-surface-muted'
-                              : 'border-subtle'
-                          }`}
-                          accessibilityRole="button"
-                        >
-                          <Text className="text-xs font-bold text-content-primary">
-                            {residence.flag} {residence.countryName}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {mode === 'moving' && openResidences.length === 0 && (
-                  <Text className="text-xs text-content-muted leading-relaxed">
-                    None of your countries is open, so there is nothing to move out of. Adding the
-                    new one is enough.
-                  </Text>
-                )}
-
-                {mode !== 'leaving' && (
+              {mode === 'moving' && openResidences.length > 0 && (
                 <View className="gap-2">
-                  <Text className="text-xs font-bold text-content-secondary">
-                    {mode === 'moving' ? 'Moving to' : 'Country'}
-                  </Text>
-
+                  <Text className="text-xs font-bold text-content-secondary">Moving from</Text>
                   <View className="flex-row flex-wrap gap-2">
-                    {countryMatches.map((country) => (
+                    {openResidences.map((residence) => (
                       <TouchableOpacity
-                        key={country.code}
-                        onPress={() => {
-                          setArrivingCode(country.code);
-                          setCountryQuery(country.name);
-                        }}
+                        key={residence.countryCode}
+                        onPress={() => setLeavingCode(residence.countryCode)}
                         className={`px-3 py-2 rounded-xl border ${
-                          arrivingCode === country.code
+                          leavingCode === residence.countryCode
                             ? 'border-primary-500 bg-surface-muted'
                             : 'border-subtle'
                         }`}
                         accessibilityRole="button"
                       >
                         <Text className="text-xs font-bold text-content-primary">
-                          {country.flag} {country.name}
+                          {residence.flag} {residence.countryName}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </View>
-                )}
+              )}
 
-                <DatePickerInput
-                  label={
-                    mode === 'moving'
-                      ? 'Date you moved'
-                      : mode === 'leaving'
-                        ? 'Date you left'
-                        : 'Date you arrived'
-                  }
-                  value={movedOn}
-                  onChangeDate={setMovedOn}
-                />
+              {mode === 'moving' && openResidences.length === 0 && (
+                <Text className="text-xs text-content-muted leading-relaxed">
+                  None of your countries is open, so there is nothing to move out of. Adding the
+                  new one is enough.
+                </Text>
+              )}
 
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={reset}
-                    className="flex-1 border border-subtle rounded-2xl py-4 items-center"
-                    accessibilityRole="button"
-                  >
-                    <Text className="text-sm font-extrabold text-content-secondary">Cancel</Text>
-                  </TouchableOpacity>
+              {mode !== 'leaving' && (
+              <View className="gap-2">
+                <Text className="text-xs font-bold text-content-secondary">
+                  {mode === 'moving' ? 'Moving to' : 'Country'}
+                </Text>
 
-                  <TouchableOpacity
-                    onPress={mode === 'leaving' ? handleLeave : handleMove}
-                    disabled={editor.isPending}
-                    className={`flex-1 rounded-2xl py-4 items-center ${
-                      editor.isPending ? 'bg-primary-300' : 'bg-primary-500'
-                    }`}
-                    accessibilityRole="button"
-                  >
-                    <Text className="text-sm font-extrabold text-white">
-                      {editor.isPending ? 'Saving…' : 'Save'}
-                    </Text>
-                  </TouchableOpacity>
+                <View className="flex-row flex-wrap gap-2">
+                  {countryMatches.map((country) => (
+                    <TouchableOpacity
+                      key={country.code}
+                      onPress={() => {
+                        setArrivingCode(country.code);
+                        setCountryQuery(country.name);
+                      }}
+                      className={`px-3 py-2 rounded-xl border ${
+                        arrivingCode === country.code
+                          ? 'border-primary-500 bg-surface-muted'
+                          : 'border-subtle'
+                      }`}
+                      accessibilityRole="button"
+                    >
+                      <Text className="text-xs font-bold text-content-primary">
+                        {country.flag} {country.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
-            )}
-          </>
-        )}
+              )}
+
+              <DatePickerInput
+                label={
+                  mode === 'moving'
+                    ? 'Date you moved'
+                    : mode === 'leaving'
+                      ? 'Date you left'
+                      : 'Date you arrived'
+                }
+                value={movedOn}
+                onChangeDate={setMovedOn}
+              />
+
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  onPress={reset}
+                  className="flex-1 border border-subtle rounded-2xl py-4 items-center"
+                  accessibilityRole="button"
+                >
+                  <Text className="text-sm font-extrabold text-content-secondary">Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={mode === 'leaving' ? handleLeave : handleMove}
+                  disabled={editor.isPending}
+                  className={`flex-1 rounded-2xl py-4 items-center ${
+                    editor.isPending ? 'bg-primary-300' : 'bg-primary-500'
+                  }`}
+                  accessibilityRole="button"
+                >
+                  <Text className="text-sm font-extrabold text-white">
+                    {editor.isPending ? 'Saving…' : 'Save'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </ListState>
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );

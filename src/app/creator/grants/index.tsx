@@ -18,12 +18,13 @@ import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
 import {
   CreatorCardSkeleton,
-  CreatorEmptyState,
   CreatorScreen,
   CreatorSection,
   GrantApplicationCard,
   GrantCard,
 } from '@/components/creator-economy';
+import { FinancialErrorInline } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import {
   useCommunityGrants,
   useCreatorAccess,
@@ -226,40 +227,48 @@ export default function CommunityGrantsScreen() {
               </ScrollView>
             ) : null}
 
-            {grants.isLoading ? (
-              <CreatorCardSkeleton rows={3} />
-            ) : grants.grants.length === 0 ? (
-              <CreatorEmptyState
-                icon="cash-outline"
-                title="No grants open"
-                body={
+            {/* A failed read of the grants is the shell's (`load.error`). */}
+            <ListState
+              loading={grants.isLoading}
+              loadingLabel="Loading grants"
+              skeleton={<CreatorCardSkeleton rows={3} />}
+              isEmpty={grants.grants.length === 0}
+              empty={{
+                icon: 'cash-outline',
+                title: 'No grants open',
+                message:
                   category === 'all'
                     ? 'Diaspora opens grant rounds through the year. Check back, or turn on notifications.'
-                    : 'Nothing open in this category.'
-                }
-                actionLabel={category === 'all' ? undefined : 'Show all'}
-                onAction={category === 'all' ? undefined : () => setCategory('all')}
-              />
-            ) : (
-              grants.grants.map((grant) => (
+                    : 'Nothing open in this category.',
+                action: category === 'all' ? undefined : { label: 'Show all', onPress: () => setCategory('all') },
+              }}
+            >
+              {grants.grants.map((grant) => (
                 <GrantCard key={grant.grantId} grant={grant} onPress={openGrant} />
-              ))
-            )}
+              ))}
+            </ListState>
           </>
         ) : null}
 
+        {/* The shell watches only the grants, so a failed read of these is said here. */}
         {tab === 'mine' ? (
-          applications.isLoading ? (
-            <CreatorCardSkeleton rows={2} />
-          ) : applications.applications.length === 0 ? (
-            <CreatorEmptyState
-              icon="document-text-outline"
-              title="No applications yet"
-              body="Grants you apply for will be listed here with where each one has got to."
-              actionLabel="See what is open"
-              onAction={() => setTab('open')}
-            />
-          ) : (
+          <ListState
+            loading={applications.isLoading}
+            loadingLabel="Loading your applications"
+            skeleton={<CreatorCardSkeleton rows={2} />}
+            error={
+              applications.error && applications.applications.length === 0 ? (
+                <FinancialErrorInline error={applications.error} onRetry={() => void applications.refetch()} />
+              ) : null
+            }
+            isEmpty={applications.applications.length === 0}
+            empty={{
+              icon: 'document-text-outline',
+              title: 'No applications yet',
+              message: 'Grants you apply for will be listed here with where each one has got to.',
+              action: { label: 'See what is open', onPress: () => setTab('open') },
+            }}
+          >
             <CreatorSection title="Your applications">
               {applications.applications.map((application) => (
                 <GrantApplicationCard
@@ -269,7 +278,7 @@ export default function CommunityGrantsScreen() {
                 />
               ))}
             </CreatorSection>
-          )
+          </ListState>
         ) : null}
 
         <Text

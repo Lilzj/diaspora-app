@@ -17,19 +17,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Share, Text, View } from 'react-native';
+import { Pressable, Share, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
 import {
   CreatorCard,
-  CreatorEmptyState,
   CreatorScreen,
   CreatorSection,
   ReferralRow,
   ReferralStats,
 } from '@/components/creator-economy';
+import { FinancialErrorInline } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import {
   useCreatorAccess,
   useCreatorReferrals,
@@ -253,17 +254,23 @@ export default function CreatorReferralsScreen() {
 
           {/* ── History ──────────────────────────────────────────────────── */}
           <CreatorSection title="Everyone you invited" count={history.referrals.length}>
-            {history.isLoading ? (
-              <View className="py-10 items-center">
-                <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-              </View>
-            ) : history.referrals.length === 0 ? (
-              <CreatorEmptyState
-                icon="person-add-outline"
-                title="Nobody yet"
-                body="Share your link and the people who join will appear here, with where each one has got to."
-              />
-            ) : (
+            {/* The shell watches the programme, so a failed read of this list is said here. */}
+            <ListState
+              loading={history.isLoading}
+              loadingLabel="Loading everyone you invited"
+              error={
+                history.error && history.referrals.length === 0 ? (
+                  <FinancialErrorInline error={history.error} onRetry={() => void history.refetch()} />
+                ) : null
+              }
+              isEmpty={history.referrals.length === 0}
+              empty={{
+                icon: 'person-add-outline',
+                title: 'Nobody yet',
+                message:
+                  'Share your link and the people who join will appear here, with where each one has got to.',
+              }}
+            >
               <CreatorCard padded={false}>
                 <View className="px-4">
                   {history.referrals.map((referral) => (
@@ -289,7 +296,7 @@ export default function CreatorReferralsScreen() {
                   </Pressable>
                 ) : null}
               </CreatorCard>
-            )}
+            </ListState>
           </CreatorSection>
 
           {/* ── Where the points land ────────────────────────────────────── */}

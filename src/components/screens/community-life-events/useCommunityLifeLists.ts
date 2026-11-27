@@ -1,5 +1,5 @@
-// Community Life: the events, organisations and calendar entries the screen reads, and the loading
-// flag all three requests share. Lifted out of `app/community-life/events.tsx` (FSOLID-001), which
+// Community Life: the events, organisations and calendar entries the screen reads, and whether each
+// read is loading or failed. Lifted out of `app/community-life/events.tsx` (FSOLID-001), which
 // composes it.
 
 import { useState, useEffect } from 'react';
@@ -7,6 +7,7 @@ import { useNotification } from '@/providers/notification-provider';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { fetchEvents, fetchOrganizations, fetchCalendar } from '@/lib/api/community-life-api';
 import { useConnectivityStore } from '@/lib/platform/connectivity';
+import { toFinancialError, type FinancialError } from '@/lib/transport/financial-errors';
 import type { Event, OrganizationSearchCard, CalendarEvent } from '@/types/community-life';
 import type { EventsTabs } from '@/components/screens/community-life-events/useEventsTabs';
 import type { EventsPlace } from '@/components/screens/community-life-events/useEventsPlace';
@@ -81,7 +82,16 @@ export function useCommunityLifeLists(
   const { dirQuery, selectedDirCat } = directorySearch;
   const { customReminders } = calendar;
 
-  const [isLoading, setIsLoading] = useState(false);
+  // One flag per read, and what each read last failed with (FARCH-007). They were one shared flag and
+  // a `console.error`: a tab said it was empty while its own read was still running, or had failed.
+  // The events and directory reads start on mount, so their first frame is a load, not "nothing".
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [orgsLoading, setOrgsLoading] = useState(true);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [eventsError, setEventsError] = useState<FinancialError | null>(null);
+  const [orgsError, setOrgsError] = useState<FinancialError | null>(null);
+  const [calendarError, setCalendarError] = useState<FinancialError | null>(null);
+  const isLoading = eventsLoading || orgsLoading || calendarLoading;
 
   // ── Offline state ──────────────────────────────────────────────────────────
   //
@@ -108,7 +118,7 @@ export function useCommunityLifeLists(
   // than TanStack, so there is no `refetch()` to hand over — `useEffectRefresh`
   // is the equivalent, and carries the reasoning for why resolving on
   // `isLoading` needs a three-phase guard.
-  const { nonce: refreshNonce, refreshControl } = useEffectRefresh(isLoading);
+  const { nonce: refreshNonce, refreshControl, refresh } = useEffectRefresh(isLoading);
 
   // Fetch Events
   useEffect(() => {
@@ -122,11 +132,11 @@ export function useCommunityLifeLists(
     // whatever was last fetched this session, and the banner saying why nothing
     // is refreshing.
     if (isOffline) {
-      setIsLoading(false);
+      setEventsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    setEventsLoading(true);
     // Through `fetchEvents` rather than `apiClient.get` by hand. This screen was
     // building its own query string — `cityName`, `query`, `filterType`,
     // `timeFilter`, `sortBy` — none of which the route binds, and that is
@@ -152,10 +162,12 @@ export function useCommunityLifeLists(
       sortBy: eventSortBy === 'nearest' && !isNearby ? 'date' : eventSortBy,
     }).then(page => {
       setEventsList(page.items);
+      setEventsError(null);
     }).catch(err => {
       console.error('Failed to load events', err);
+      setEventsError(toFinancialError(err, 'read'));
     }).finally(() => {
-      setIsLoading(false);
+      setEventsLoading(false);
     });
   }, [selectedLocation, selectedEventCat, eventQuery, eventFree, eventTimeFilter, eventSortBy, eventScope, eventRadiusKm, nearbyPoint, isOffline, refreshNonce]);
 
@@ -164,21 +176,23 @@ export function useCommunityLifeLists(
     // Same reasoning as the events fetch above: offline means no request, not a
     // fixture directory presented as cached organisations.
     if (isOffline) {
-      setIsLoading(false);
+      setOrgsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    setOrgsLoading(true);
     fetchOrganizations({
       cityName: selectedLocation.city || undefined,
       category: selectedDirCat,
       query: dirQuery || undefined,
     }).then(page => {
       setOrgsList(page.items);
+      setOrgsError(null);
     }).catch(err => {
       console.error('Failed to load directory organizations', err);
+      setOrgsError(toFinancialError(err, 'read'));
     }).finally(() => {
-      setIsLoading(false);
+      setOrgsLoading(false);
     });
   }, [selectedLocation, selectedDirCat, dirQuery, isOffline, refreshNonce]);
 
@@ -190,7 +204,7 @@ export function useCommunityLifeLists(
       return;
     }
     if (activeTab === 'calendar') {
-      setIsLoading(true);
+      setCalendarLoading(true);
       // No city. `GET /community-life/calendar` binds `from`, `to`,
       // `countryCode` and `neighborhoodAreaId` and nothing else, so the
       // `cityName` this used to send was discarded and the calendar has always
@@ -207,10 +221,12 @@ export function useCommunityLifeLists(
           color: '#F59E0B'
         }));
         setCalendarEvents([...apiData, ...mappedReminders]);
+        setCalendarError(null);
       }).catch(err => {
         console.error('Failed to load calendar events', err);
+        setCalendarError(toFinancialError(err, 'read'));
       }).finally(() => {
-        setIsLoading(false);
+        setCalendarLoading(false);
       });
     }
   }, [activeTab, selectedLocation, customReminders, isOffline, refreshNonce]);
@@ -262,7 +278,10 @@ export function useCommunityLifeLists(
   };
 
   return {
-    isLoading, isOffline, isRetrying, eventsList, orgsList, calendarEvents, refreshControl,
+    isOffline, isRetrying, eventsList, orgsList, calendarEvents, refreshControl,
+    eventsLoading, orgsLoading, calendarLoading, eventsError, orgsError, calendarError,
+    // "Try again" on a tab's error: the same re-run a pull starts, from a button.
+    refresh,
     handleRetryConnection,
   };
 }

@@ -38,6 +38,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
+import { ListState } from '@/components/ListState';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
@@ -273,52 +274,57 @@ export default function HiringWorkspaceScreen() {
           </TouchableOpacity>
         </View>
 
-        {applicants.error ? (
+        {/* A failed refresh keeps the rows on screen, with the reason beside them. */}
+        {applicants.error && applicants.applications.length > 0 ? (
           <View className="mx-4 p-4 rounded-xl bg-surface-muted border border-error-default">
             <Text className="text-sm font-bold text-error-default">{applicants.error}</Text>
           </View>
         ) : null}
 
-        {applicants.isLoading ? (
-          <View className="py-10 items-center">
-            <ActivityIndicator color="#F59300" />
+        {/* Loading, unread and empty through the shared list state (FARCH-007,
+            27 Nov 2026). They were three separate blocks, each free to draw beside
+            the others; with nothing to show, a failed read is now said, with a retry. */}
+        <ListState
+          loading={applicants.isLoading}
+          loadingLabel="Loading applicants"
+          error={
+            applicants.error && applicants.applications.length === 0
+              ? { title: 'Applicants could not be loaded', message: applicants.error }
+              : null
+          }
+          onRetry={applicants.refresh}
+          isEmpty={applicants.isEmpty}
+          empty={{
+            icon: 'folder-open-outline',
+            title: unviewedOnly ? 'Everything has been opened' : 'No active applicants',
+            message: unviewedOnly
+              ? 'Every application still under consideration has been opened by someone on your team.'
+              : 'Applications to your open roles appear here.',
+          }}
+        >
+          <View className="px-4">
+            {applicants.applications.map((application) => (
+              <ApplicantRow
+                key={application.applicationId}
+                application={application}
+                decisions={allowedFrom(application.status)}
+                isDeciding={isDeciding}
+                onDecide={(status) => onDecide(application, status)}
+              />
+            ))}
           </View>
-        ) : null}
 
-        {applicants.isEmpty ? (
-          <EmptyState
-            icon="🗂"
-            title={unviewedOnly ? 'Everything has been opened' : 'No active applicants'}
-            description={
-              unviewedOnly
-                ? 'Every application still under consideration has been opened by someone on your team.'
-                : 'Applications to your open roles appear here.'
-            }
-          />
-        ) : null}
-
-        <View className="px-4">
-          {applicants.applications.map((application) => (
-            <ApplicantRow
-              key={application.applicationId}
-              application={application}
-              decisions={allowedFrom(application.status)}
-              isDeciding={isDeciding}
-              onDecide={(status) => onDecide(application, status)}
-            />
-          ))}
-        </View>
-
-        {applicants.hasMore ? (
-          <View className="px-4 py-4">
-            <Button
-              label={applicants.isFetchingMore ? 'Loading…' : 'Show more'}
-              variant="outline"
-              isLoading={applicants.isFetchingMore}
-              onPress={applicants.loadMore}
-            />
-          </View>
-        ) : null}
+          {applicants.hasMore ? (
+            <View className="px-4 py-4">
+              <Button
+                label={applicants.isFetchingMore ? 'Loading…' : 'Show more'}
+                variant="outline"
+                isLoading={applicants.isFetchingMore}
+                onPress={applicants.loadMore}
+              />
+            </View>
+          ) : null}
+        </ListState>
       </ScrollView>
     </SafeAreaView>
   );

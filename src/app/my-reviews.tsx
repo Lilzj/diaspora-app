@@ -47,13 +47,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { ActivityIndicator, ScrollView, View, Text } from 'react-native';
+import { ScrollView, View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { ListState } from '@/components/ListState';
 import { router } from 'expo-router';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useMyProviderReviews } from '@/hooks/providers';
+import { providerKeys } from '@/lib/api/providers-api';
 
 export default function MyReviewsScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
@@ -64,6 +67,10 @@ export default function MyReviewsScreen() {
   const { page, isLoading, isError } = useMyProviderReviews();
   const runsABusiness = page?.providerId != null;
   const received = page?.items ?? [];
+
+  // "Try again": the reviews hook has no refetch of its own (FARCH-007).
+  const queryClient = useQueryClient();
+  const retry = () => void queryClient.refetchQueries({ queryKey: providerKeys.myReviews() });
 
   return (
     <SafeAreaView className="flex-1 bg-surface-background">
@@ -103,28 +110,31 @@ export default function MyReviewsScreen() {
             Reviews of your business
           </Text>
 
-          {isLoading ? (
-            <View className="py-8 items-center" accessibilityRole="progressbar">
-              <ActivityIndicator />
-            </View>
-          ) : isError ? (
-            <Text className="text-sm text-content-muted leading-relaxed">
-              These could not be loaded just now. Nothing is wrong with your business page.
-            </Text>
-          ) : !runsABusiness ? (
+          {/* Through the shared list state (FARCH-007, 27 Nov 2026). */}
+          <ListState
+            loading={isLoading}
+            loadingLabel="Loading reviews of your business"
+            error={
+              isError && received.length === 0
+                ? { title: 'These could not be loaded just now.', message: 'Nothing is wrong with your business page.' }
+                : null
+            }
+            onRetry={retry}
             // The distinction `providerId` exists to make. Saying "no reviews
             // yet" to somebody who runs no business would be answering a
             // question they never asked.
-            <Text className="text-sm text-content-muted leading-relaxed">
-              You do not run a business on Diaspora. If you list one, reviews members leave on it
-              will appear here.
-            </Text>
-          ) : received.length === 0 ? (
-            <Text className="text-sm text-content-muted leading-relaxed">
-              Nobody has reviewed your business yet.
-            </Text>
-          ) : (
-            received.map((review) => (
+            isEmpty={!runsABusiness || received.length === 0}
+            empty={
+              runsABusiness
+                ? { icon: 'star-outline', title: 'Nobody has reviewed your business yet.' }
+                : {
+                    icon: 'storefront-outline',
+                    title: 'You do not run a business on Diaspora.',
+                    message: 'If you list one, reviews members leave on it will appear here.',
+                  }
+            }
+          >
+            {received.map((review) => (
               <View
                 key={review.reviewId}
                 className="bg-surface-card border border-subtle rounded-2xl p-4 mb-3"
@@ -142,8 +152,8 @@ export default function MyReviewsScreen() {
                   </Text>
                 ) : null}
               </View>
-            ))
-          )}
+            ))}
+          </ListState>
         </View>
       </ScrollView>
     </SafeAreaView>

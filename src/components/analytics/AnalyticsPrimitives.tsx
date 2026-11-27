@@ -30,6 +30,7 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import { ListEmpty } from '@/components/ListState';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LAYOUT
@@ -266,55 +267,18 @@ export function AnalyticsEmptyState({
   actionLabel?: string;
   onAction?: () => void;
 }) {
-  const { tokens } = useTheme();
+  // Drawn by the shared list state since 27 Nov 2026 (FARCH-007). The words stay
+  // this component's, one set per reason: "nothing happened" and "not measured"
+  // are different things to say, and the analytics screens say both.
   const presentation = EMPTY_PRESENTATION[reason];
-
-  const headline = title ?? presentation.title;
-  const detail = body ?? presentation.body;
-
   return (
-    <View
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={`${headline}. ${detail}`}
-      className="items-center px-6 py-10"
+    <ListEmpty
+      icon={presentation.icon}
+      title={title ?? presentation.title}
+      message={body ?? presentation.body}
+      action={actionLabel && onAction ? { label: actionLabel, onPress: onAction } : undefined}
       testID={`analytics-empty-${reason}`}
-    >
-      <View
-        style={{ backgroundColor: tokens.color.neutral[100] }}
-        className="w-14 h-14 rounded-full items-center justify-center mb-3"
-      >
-        <Ionicons name={presentation.icon} size={22} color={tokens.color.text.placeholder} />
-      </View>
-
-      <Text
-        style={{ color: tokens.color.text.primary }}
-        className="text-[13px] font-black tracking-tight text-center"
-      >
-        {headline}
-      </Text>
-
-      <Text
-        style={{ color: tokens.color.text.placeholder }}
-        className="text-[11px] font-semibold text-center mt-1.5 leading-relaxed"
-      >
-        {detail}
-      </Text>
-
-      {actionLabel && onAction ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={actionLabel}
-          onPress={onAction}
-          style={{ backgroundColor: tokens.color.primary[500] }}
-          className="rounded-full px-4 py-2.5 mt-4"
-        >
-          <Text className="text-white text-[11px] font-black uppercase tracking-wider">
-            {actionLabel}
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
+    />
   );
 }
 

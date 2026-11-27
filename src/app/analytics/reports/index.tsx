@@ -23,10 +23,10 @@ import { useAnalyticsReports, useReportMutations } from '@/hooks/analytics';
 import { trackAnalyticsEvent } from '@/lib/analytics/events';
 import {
   AnalyticsChipRow,
-  AnalyticsEmptyState,
   AnalyticsHeader,
   AnalyticsSkeleton,
 } from '@/components/analytics';
+import { ListState } from '@/components/ListState';
 import { describeRange } from '@/lib/analytics/time-range';
 
 type Scope = 'mine' | 'favorites';
@@ -96,30 +96,34 @@ export default function SavedReportsScreen() {
           Reports are private to you. Sharing a report with a community, an organisation or the whole platform is not available yet, so there is no shared list.
         </Text>
 
-        {isLoading ? (
-          <AnalyticsSkeleton rows={3} />
-        ) : isError ? (
+        <ListState
+          loading={isLoading}
+          skeleton={<AnalyticsSkeleton rows={3} />}
           // Unanswered is not "you have no reports".
-          <AnalyticsEmptyState
-            reason="backend-unavailable"
-            title="Your reports could not be loaded"
-            body="Check your connection and try again."
-            actionLabel="Try again"
-            onAction={() => void refetch()}
-          />
-        ) : reports.length === 0 ? (
-          <AnalyticsEmptyState
-            reason="no-data"
-            title={scope === 'favorites' ? 'No favourites yet' : 'You have not built a report yet'}
-            body={
+          error={
+            reports.length === 0 && isError ? {
+              icon: 'cloud-offline-outline',
+              title: 'Your reports could not be loaded',
+              message: 'Check your connection and try again.',
+              testID: 'analytics-empty-backend-unavailable',
+            } : null
+          }
+          onRetry={() => void refetch()}
+          isEmpty={reports.length === 0}
+          empty={{
+            icon: 'document-outline',
+            title: scope === 'favorites' ? 'No favourites yet' : 'You have not built a report yet',
+            message:
               scope === 'mine'
                 ? 'Build one to save a set of figures, a period and a comparison you want to come back to.'
-                : 'Reports you mark as favourites will show up here.'
-            }
-            actionLabel={scope === 'mine' ? 'Build a report' : undefined}
-            onAction={scope === 'mine' ? () => router.push('/analytics/reports/build') : undefined}
-          />
-        ) : (
+                : 'Reports you mark as favourites will show up here.',
+            action:
+              scope === 'mine'
+                ? { label: 'Build a report', onPress: () => router.push('/analytics/reports/build') }
+                : undefined,
+            testID: 'analytics-empty-no-data',
+          }}
+        >
           <View
             style={{
               backgroundColor: tokens.color.surface.card,
@@ -204,7 +208,7 @@ export default function SavedReportsScreen() {
               </View>
             ))}
           </View>
-        )}
+        </ListState>
       </ScrollEndScrollView>
     </SafeAreaView>
   );

@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ContributorDirectory } from '@/components/knowledge/ContributorDirectory';
 import { useKnowledgeSearchStore } from '@/store/knowledge-search';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { ListState } from '@/components/ListState';
 import { useThemeTokens } from '@/design-system';
 import {
   countryFlagEmoji,
@@ -152,38 +153,23 @@ export default function KnowledgeContributorsScreen() {
           </View>
         )}
         renderItem={({ item }) => <CountryRow country={item} />}
+        // The list stays mounted under its header (the directory and the country
+        // figures), so the country list's own states are drawn in its empty slot.
         ListEmptyComponent={() => (
-          <View className="items-center justify-center py-12 bg-surface-card rounded-3xl border border-faint p-6">
-            {countries.isLoading ? (
-              <ActivityIndicator color={tokens.color.text.placeholder} />
-            ) : countries.isError ? (
-              <>
-                <Text className="text-sm font-bold text-content-strong text-center">
-                  We could not load the country list
-                </Text>
-                <TouchableOpacity
-                  onPress={() => void countries.refetch()}
-                  className="bg-primary-500 px-5 py-2.5 rounded-xl mt-4"
-                  accessibilityRole="button"
-                  accessibilityLabel="Try again"
-                >
-                  <Text className="text-white font-black text-xs">Try again</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text className="text-4xl mb-2" accessibilityElementsHidden importantForAccessibility="no">
-                  🌍
-                </Text>
-                <Text className="text-sm font-bold text-content-strong">No countries match</Text>
-                <Text className="text-xs text-content-faint text-center mt-1 leading-relaxed max-w-[240px]">
-                  {query
-                    ? 'Try a different search term to find a country page.'
-                    : 'The platform does not hold knowledge for any country yet.'}
-                </Text>
-              </>
-            )}
-          </View>
+          <ListState
+            loading={countries.isLoading}
+            loadingLabel="Loading countries"
+            error={countries.isError && { icon: 'earth-outline', title: 'We could not load the country list' }}
+            onRetry={() => void countries.refetch()}
+            isEmpty
+            empty={{
+              icon: 'earth-outline',
+              title: 'No countries match',
+              message: query
+                ? 'Try a different search term to find a country page.'
+                : 'The platform does not hold knowledge for any country yet.',
+            }}
+          />
         )}
       />
     </View>

@@ -31,6 +31,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import {
   useAutomation,
@@ -78,7 +79,7 @@ export default function AutomationDetailScreen() {
   const personal = usePersonalScope();
   const { automation, isLoading, error } = useAutomation(automationId);
   const scope = automation?.scope ?? personal;
-  const { runs } = useAutomationRuns(automationId);
+  const { runs, isLoading: runsLoading, error: runsError, refetch: refetchRuns } = useAutomationRuns(automationId);
   const { audit } = useAutomationAudit(automationId);
   const mutations = useAutomationMutations(scope);
   const simulator = useAutomationSimulation(scope);
@@ -249,32 +250,37 @@ export default function AutomationDetailScreen() {
             }
           />
 
-          {runs.length === 0 ? (
-            <Text
-              style={{ color: tokens.color.text.secondary }}
-              className="text-xs font-medium leading-relaxed"
-            >
-              {/* Not "never run". In this build nothing runs, and a bare "never
-                  run" would read as a fault rather than as the platform's
-                  state — which the preview above already explains. */}
-              Nothing yet.
-            </Text>
-          ) : (
-            runs
-              .slice(0, 3)
-              .map((run) => (
-                <RunRow
-                  key={run.id}
-                  run={run}
-                  showAutomationName={false}
-                  onPress={() =>
-                    router.push(
-                      `/automation/run/${run.id}?automationId=${automation.id}` as never
-                    )
-                  }
+          {/* Not "never run". In this build nothing runs, and a bare "never
+              run" would read as a fault rather than as the platform's
+              state — which the preview above already explains. A failed read
+              is not "nothing yet" either: it used to be drawn as one. */}
+          <ListState
+            loading={runsLoading}
+            loadingLabel="Loading runs"
+            error={
+              runsError && runs.length === 0 ? (
+                <AutomationErrorNotice
+                  message={runsError.message}
+                  hint={runsError.recoveryHint}
+                  blame={runsError.blame}
+                  onRetry={refetchRuns}
                 />
-              ))
-          )}
+              ) : null
+            }
+            isEmpty={runs.length === 0}
+            empty={{ icon: 'time-outline', title: 'Nothing yet.' }}
+          >
+            {runs.slice(0, 3).map((run) => (
+              <RunRow
+                key={run.id}
+                run={run}
+                showAutomationName={false}
+                onPress={() =>
+                  router.push(`/automation/run/${run.id}?automationId=${automation.id}` as never)
+                }
+              />
+            ))}
+          </ListState>
         </View>
 
         {audit.length > 0 ? (

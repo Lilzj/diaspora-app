@@ -174,13 +174,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SearchBar } from '@/components/SearchBar';
 import { CategoryChip } from '@/components/CategoryChip';
-import { EmptyState } from '@/components/EmptyState';
-import { Button } from '@/components/Button';
+import { ListEmpty, ListState, type ListMessage } from '@/components/ListState';
+import { providerKeys } from '@/lib/api/providers-api';
 import { ProviderCard } from '@/components/ProviderCard';
 import { bundledTutorials } from '@/lib/content/tutorials';
 import { TutorialCard } from '@/components/explore/TutorialCard';
@@ -222,6 +223,9 @@ interface MapPin {
   rating: number;
 }
 
+const CATEGORIES_UNREAD: ListMessage = { title: 'Service categories could not be loaded', message: 'Check your connection and try again.' };
+const CATEGORIES_EMPTY: ListMessage = { icon: 'grid-outline', title: 'Service categories are unavailable just now.' };
+
 export default function SearchScreen() {
   // Under the tab bar, which is in the layout flow and reserves the safe
   // area itself, so this is the breathing room above it.
@@ -243,7 +247,7 @@ export default function SearchScreen() {
   const activeLocation = getActiveLocation(store);
 
   /** The real service taxonomy. Replaces `mockCategories`. */
-  const { categories, isLoading: categoriesLoading } = useServiceCategories();
+  const { categories, isLoading: categoriesLoading, isError: categoriesFailed } = useServiceCategories();
 
   /**
    * The selected category, resolved against the real taxonomy.
@@ -287,6 +291,8 @@ export default function SearchScreen() {
   // Memoised because the `?? []` built a fresh array on every render, which
   // made every memo downstream of it recompute on every render too.
   const providers = useMemo(() => providerSearch.page?.items ?? [], [providerSearch.page]);
+  const queryClient = useQueryClient(); // "Try again": neither provider hook refetches (FARCH-007)
+  const retryProviderReads = () => void queryClient.refetchQueries({ queryKey: providerKeys.all, type: 'active' });
 
   /**
    * One impression per provider the member was actually shown.
@@ -488,13 +494,14 @@ export default function SearchScreen() {
             Popular Categories
           </Text>
 
-          {categoriesLoading ? (
-            <ActivityIndicator className="mt-4" />
-          ) : categories.length === 0 ? (
-            <Text className="text-sm text-content-muted font-semibold">
-              Service categories are unavailable just now.
-            </Text>
-          ) : (
+          <ListState
+            loading={categoriesLoading}
+            loadingLabel="Loading categories"
+            error={categoriesFailed && categories.length === 0 ? CATEGORIES_UNREAD : null}
+            onRetry={retryProviderReads}
+            isEmpty={categories.length === 0}
+            empty={CATEGORIES_EMPTY}
+          >
             <View className="flex-row flex-wrap">
               {categories.map((cat) => (
                 <CategoryChip
@@ -508,7 +515,7 @@ export default function SearchScreen() {
                 />
               ))}
             </View>
-          )}
+          </ListState>
         </ScrollView>
       ) : viewMode === 'map' ? (
         <View className="flex-1 p-4 bg-surface-background">
@@ -564,24 +571,17 @@ export default function SearchScreen() {
               </Text>
             </View>
 
-            {providerSearch.isLoading ? (
-              <ActivityIndicator className="my-4" />
-            ) : providerSearch.isError ? (
-              /* Distinct from the empty state on purpose. "There are no plumbers
-                 near you" and "we could not ask" are opposite facts. */
-              <View className="bg-surface-card rounded-2xl border border-subtle p-4">
-                <Text className="text-xs font-bold text-content-secondary">
-                  We could not reach service providers just now.
-                </Text>
-              </View>
-            ) : providersEmpty ? (
-              <View className="bg-surface-card rounded-2xl border border-subtle p-4">
-                <Text className="text-xs font-bold text-content-secondary">
-                  No service providers matched this search.
-                </Text>
-              </View>
-            ) : (
-              providers.map((item) => (
+            {/* Distinct from the empty state on purpose. "There are no plumbers
+                near you" and "we could not ask" are opposite facts. */}
+            <ListState
+              loading={providerSearch.isLoading}
+              loadingLabel="Loading service providers"
+              error={providerSearch.isError ? { title: 'We could not reach service providers just now.' } : null}
+              onRetry={retryProviderReads}
+              isEmpty={providersEmpty}
+              empty={{ icon: 'search-outline', title: 'No service providers matched this search.' }}
+            >
+              {providers.map((item) => (
                 <ProviderCard
                   key={item.providerId}
                   listingId={item.providerId}
@@ -597,8 +597,8 @@ export default function SearchScreen() {
                   isOpenNow={item.isOpenNow ?? undefined}
                   variant="list"
                 />
-              ))
-            )}
+              ))}
+            </ListState>
           </View>
 
           {/* 📖 GUIDES — GET /guides, which binds the taxonomy as a slug. */}
@@ -690,11 +690,11 @@ export default function SearchScreen() {
           )}
 
           {providersEmpty && filteredHelpTutorials.length === 0 && query ? (
-            <EmptyState
-              icon="🔍"
+            <ListEmpty
+              icon="search-outline"
               title="Nothing matched that search"
-              description={`We could not find service providers matching "${query}". The sections above report separately on guides, jobs, events and organisations.`}
-              action={<Button label="Clear Search" variant="outline" size="sm" onPress={clearSearch} />}
+              message={`We could not find service providers matching "${query}". The sections above report separately on guides, jobs, events and organisations.`}
+              action={{ label: 'Clear Search', onPress: clearSearch }}
             />
           ) : null}
 

@@ -17,10 +17,10 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import {
   AccessGate,
@@ -50,7 +50,13 @@ export default function StatementScreen() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
-  const { wallet, wallets, isLoading: walletLoading } = usePrimaryWallet();
+  const {
+    wallet,
+    wallets,
+    isLoading: walletLoading,
+    error: walletError,
+    refetch: refetchWallets,
+  } = usePrimaryWallet();
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [entryType, setEntryType] = useState<string | undefined>(undefined);
 
@@ -163,39 +169,20 @@ export default function StatementScreen() {
         </ScrollView>
       </View>
 
-      {walletLoading || ledger.isLoading ? (
-        <TransactionListSkeleton rows={9} />
-      ) : ledger.isError && ledger.error ? (
-        <FinancialErrorView error={ledger.error as FinancialError} onRetry={ledger.refetch} />
-      ) : !activeWallet ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Ionicons name="wallet-outline" size={34} color={tokens.color.text.placeholder} />
-          <Text
-            style={{ color: tokens.color.text.secondary }}
-            className="text-sm font-bold text-center mt-4"
-          >
-            You do not have a wallet yet
-          </Text>
-        </View>
-      ) : entries.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Ionicons name="document-text-outline" size={34} color={tokens.color.text.placeholder} />
-          <Text
-            style={{ color: tokens.color.text.primary }}
-            className="text-base font-black text-center tracking-tight mt-4 mb-2"
-          >
-            {entryType ? 'Nothing of this kind' : 'Your statement is empty'}
-          </Text>
-          <Text
-            style={{ color: tokens.color.text.secondary }}
-            className="text-sm font-medium text-center leading-relaxed"
-          >
-            {entryType
-              ? 'Try another filter.'
-              : 'Every movement of money in or out of your wallet will be listed here, permanently.'}
-          </Text>
-        </View>
-      ) : (
+      <ListState
+        loading={walletLoading || ledger.isLoading}
+        skeleton={<TransactionListSkeleton rows={9} />}
+        // The wallets read failing used to read as "You do not have a wallet yet".
+        error={
+          walletError && !activeWallet ? (
+            <FinancialErrorView error={walletError} onRetry={refetchWallets} />
+          ) : ledger.isError && entries.length === 0 ? (
+            <FinancialErrorView error={ledger.error as FinancialError} onRetry={ledger.refetch} />
+          ) : null
+        }
+        isEmpty={!activeWallet}
+        empty={{ icon: 'wallet-outline', title: 'You do not have a wallet yet' }}
+      >
         <ScrollEndFlatList
           data={entries}
           keyExtractor={(item) => item.entryId}
@@ -209,12 +196,23 @@ export default function StatementScreen() {
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.6}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          ListEmptyComponent={
+            <ListEmpty
+              icon="document-text-outline"
+              title={entryType ? 'Nothing of this kind' : 'Your statement is empty'}
+              message={
+                entryType
+                  ? 'Try another filter.'
+                  : 'Every movement of money in or out of your wallet will be listed here, permanently.'
+              }
+            />
+          }
           ListFooterComponent={
             ledger.isFetchingNextPage ? (
               <View className="py-6 items-center" accessibilityLabel="Loading more of your statement">
                 <ActivityIndicator size="small" color={tokens.color.primary[500]} />
               </View>
-            ) : !ledger.hasNextPage ? (
+            ) : !ledger.hasNextPage && entries.length > 0 ? (
               <View className="py-8 items-center">
                 <Text
                   style={{ color: tokens.color.text.placeholder }}
@@ -226,7 +224,7 @@ export default function StatementScreen() {
             ) : undefined
           }
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

@@ -34,10 +34,10 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
-import { FinancialErrorView, StatusBadge } from '@/components/financial';
+import { FinancialErrorInline, StatusBadge } from '@/components/financial';
 import {
-  MonetizationEmpty,
   MonetizationRow,
   MonetizationSection,
 } from '@/components/monetization';
@@ -53,6 +53,7 @@ import {
 } from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
 import { useRefreshControl } from '@/hooks/usePullToRefresh';
+import type { FinancialError } from '@/lib/transport/financial-errors';
 import {
   describeInvoiceKind,
   describePaymentMethod,
@@ -96,21 +97,10 @@ export default function BillingScreen() {
     [paymentsQuery.data]
   );
 
-  // Above the early return below, and it has to stay there. A hook after a
-  // conditional return runs on some renders and not others, and React aborts
-  // the tree with "Rendered more hooks than during the previous render" the
-  // moment the condition flips. The same shape crashed the wallet on a cold
-  // start; nothing in tsc or the test suite sees it.
   const refreshControl = useRefreshControl([billing.refetch, invoices.refetch]);
 
-  if (billing.isError && billing.error) {
-    return (
-      <Shell>
-        <FinancialErrorView error={billing.error} onRetry={billing.refetch} />
-      </Shell>
-    );
-  }
-
+  // No whole-screen error any more: the charges read failing is said in its own
+  // section below, and the sections that do not depend on it stay readable.
   const subscription = subscriptionQuery.data;
 
   return (
@@ -172,99 +162,107 @@ export default function BillingScreen() {
             It covers subscriptions and nothing else. A promotion due to renew is
             not in this list. Invoices for what was already paid are section 5. */}
         <MonetizationSection title="Coming up">
-          {upcoming.charges.length > 0 ? (
-            <View
-              style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
-              className="rounded-2xl border overflow-hidden"
-            >
-              {upcoming.charges.map((charge, index) => {
-                // `willRenew: false` inverts what every field on the row means:
-                // the amount is zero and the date is when **access ends**, not
-                // when money is taken. Rendering it as a forthcoming payment
-                // would tell a member who has already cancelled that they are
-                // about to be charged again.
-                const when = new Date(charge.chargeAt).toLocaleDateString();
-                const headline = charge.willRenew
-                  ? `Renews on ${when}`
-                  : `Access ends on ${when}`;
-
-                return (
-                  <View
-                    key={charge.subscriptionId}
-                    accessible
-                    accessibilityRole="text"
-                    accessibilityLabel={
-                      charge.willRenew
-                        ? `Your plan renews on ${when}. ${pricing.describe(charge.amount)} will be taken.`
-                        : `Your plan does not renew. Access ends on ${when}. Nothing further will be charged.`
-                    }
-                    style={{
-                      borderTopColor: tokens.color.border.default,
-                      borderTopWidth: index === 0 ? 0 : 1,
-                    }}
-                    className="px-4 py-3.5"
-                  >
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-1 mr-3">
-                        <Text style={{ color: tokens.color.text.primary }} className="text-sm font-semibold">
-                          {headline}
-                        </Text>
-                        <Text
-                          style={{ color: tokens.color.text.placeholder }}
-                          className="text-[11px] font-medium mt-0.5"
-                        >
-                          {charge.willRenew
-                            ? 'Taken automatically'
-                            : 'Nothing further will be charged'}
-                        </Text>
-                      </View>
-                      {charge.willRenew ? (
-                        <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
-                          {pricing.format(charge.amount)}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          ) : subscription?.currentPeriodEnd ? (
-            // The fallback, and it is now a narrower case than it was. The
-            // upcoming-charges route answers for a subscription the platform can
-            // price; an empty list next to a live `currentPeriodEnd` means it
-            // could not, so the served date is shown without an amount rather
-            // than a figure this screen invented.
-            <View
-              accessible
-              accessibilityRole="text"
-              accessibilityLabel={`Your plan ${
-                subscription.cancelAtPeriodEnd ? 'ends' : 'renews'
-              } on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}. Diaspora cannot show the amount in advance yet.`}
-              style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
-              className="rounded-2xl border p-4"
-            >
-              <Text style={{ color: tokens.color.text.primary }} className="text-sm font-semibold leading-relaxed">
-                Your plan {subscription.cancelAtPeriodEnd ? 'ends' : 'renews'} on{' '}
-                {new Date(subscription.currentPeriodEnd).toLocaleDateString()}.
-              </Text>
-              <Text
-                style={{ color: tokens.color.text.placeholder }}
-                className="text-[11px] font-medium leading-relaxed mt-1.5"
+          <ListState
+            loading={upcoming.isLoading}
+            loadingLabel="Loading what is coming up"
+            // A failed read is not "nothing is due", and used to be drawn as one. The
+            // hook offers no refetch, so this says so without a retry it cannot keep.
+            error={
+              upcoming.isError && upcoming.charges.length === 0 && upcoming.error ? (
+                <FinancialErrorInline error={upcoming.error} />
+              ) : null
+            }
+            isEmpty={upcoming.charges.length === 0 && !subscription?.currentPeriodEnd}
+            empty={{
+              icon: 'calendar-outline',
+              title: 'Nothing is due. You are on the free plan and have no promotions renewing.',
+            }}
+          >
+            {upcoming.charges.length > 0 ? (
+              <View
+                style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
+                className="rounded-2xl border overflow-hidden"
               >
-                Diaspora cannot show the exact amount in advance yet — a discount or a price change can
-                affect it.
-              </Text>
-            </View>
-          ) : (
-            <View
-              style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
-              className="rounded-2xl border p-4"
-            >
-              <Text style={{ color: tokens.color.text.secondary }} className="text-sm font-semibold leading-relaxed">
-                Nothing is due. You are on the free plan and have no promotions renewing.
-              </Text>
-            </View>
-          )}
+                {upcoming.charges.map((charge, index) => {
+                  // `willRenew: false` inverts what every field on the row means:
+                  // the amount is zero and the date is when **access ends**, not
+                  // when money is taken. Rendering it as a forthcoming payment
+                  // would tell a member who has already cancelled that they are
+                  // about to be charged again.
+                  const when = new Date(charge.chargeAt).toLocaleDateString();
+                  const headline = charge.willRenew
+                    ? `Renews on ${when}`
+                    : `Access ends on ${when}`;
+
+                  return (
+                    <View
+                      key={charge.subscriptionId}
+                      accessible
+                      accessibilityRole="text"
+                      accessibilityLabel={
+                        charge.willRenew
+                          ? `Your plan renews on ${when}. ${pricing.describe(charge.amount)} will be taken.`
+                          : `Your plan does not renew. Access ends on ${when}. Nothing further will be charged.`
+                      }
+                      style={{
+                        borderTopColor: tokens.color.border.default,
+                        borderTopWidth: index === 0 ? 0 : 1,
+                      }}
+                      className="px-4 py-3.5"
+                    >
+                      <View className="flex-row items-center justify-between">
+                        <View className="flex-1 mr-3">
+                          <Text style={{ color: tokens.color.text.primary }} className="text-sm font-semibold">
+                            {headline}
+                          </Text>
+                          <Text
+                            style={{ color: tokens.color.text.placeholder }}
+                            className="text-[11px] font-medium mt-0.5"
+                          >
+                            {charge.willRenew
+                              ? 'Taken automatically'
+                              : 'Nothing further will be charged'}
+                          </Text>
+                        </View>
+                        {charge.willRenew ? (
+                          <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
+                            {pricing.format(charge.amount)}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : subscription?.currentPeriodEnd ? (
+              // The fallback, and it is now a narrower case than it was. The
+              // upcoming-charges route answers for a subscription the platform can
+              // price; an empty list next to a live `currentPeriodEnd` means it
+              // could not, so the served date is shown without an amount rather
+              // than a figure this screen invented.
+              <View
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel={`Your plan ${
+                  subscription.cancelAtPeriodEnd ? 'ends' : 'renews'
+                } on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}. Diaspora cannot show the amount in advance yet.`}
+                style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
+                className="rounded-2xl border p-4"
+              >
+                <Text style={{ color: tokens.color.text.primary }} className="text-sm font-semibold leading-relaxed">
+                  Your plan {subscription.cancelAtPeriodEnd ? 'ends' : 'renews'} on{' '}
+                  {new Date(subscription.currentPeriodEnd).toLocaleDateString()}.
+                </Text>
+                <Text
+                  style={{ color: tokens.color.text.placeholder }}
+                  className="text-[11px] font-medium leading-relaxed mt-1.5"
+                >
+                  Diaspora cannot show the exact amount in advance yet — a discount or a price change can
+                  affect it.
+                </Text>
+              </View>
+            ) : null}
+          </ListState>
         </MonetizationSection>
 
         {/* 3 — What you have been charged. Real. */}
@@ -272,23 +270,31 @@ export default function BillingScreen() {
           title="What you have paid"
           subtitle="Every charge Diaspora has taken for a plan or a promotion."
         >
-          {billing.isLoading ? (
-            <View accessible accessibilityLabel="Loading your charges." style={{ gap: 8 }}>
-              {[0, 1, 2].map((index) => (
-                <View
-                  key={index}
-                  style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.25 }}
-                  className="rounded-2xl h-16"
-                />
-              ))}
-            </View>
-          ) : billing.charges.length === 0 ? (
-            <MonetizationEmpty
-              icon="receipt-outline"
-              title="Nothing charged yet"
-              message="When you subscribe to a plan or promote something, the charge appears here."
-            />
-          ) : (
+          <ListState
+            loading={billing.isLoading}
+            skeleton={
+              <View accessible accessibilityLabel="Loading your charges." style={{ gap: 8 }}>
+                {[0, 1, 2].map((index) => (
+                  <View
+                    key={index}
+                    style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.25 }}
+                    className="rounded-2xl h-16"
+                  />
+                ))}
+              </View>
+            }
+            error={
+              billing.isError && billing.charges.length === 0 && billing.error ? (
+                <FinancialErrorInline error={billing.error} onRetry={billing.refetch} />
+              ) : null
+            }
+            isEmpty={billing.charges.length === 0}
+            empty={{
+              icon: 'receipt-outline',
+              title: 'Nothing charged yet',
+              message: 'When you subscribe to a plan or promote something, the charge appears here.',
+            }}
+          >
             <View
               style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
               className="rounded-2xl border overflow-hidden"
@@ -358,7 +364,7 @@ export default function BillingScreen() {
                 );
               })}
             </View>
-          )}
+          </ListState>
         </MonetizationSection>
 
         {/* 4 — Refunds. Real, read-only: issuing one is staff-only on the wire. */}
@@ -423,75 +429,74 @@ export default function BillingScreen() {
                 Your account cannot see payments yet, so its invoices cannot be shown.
               </Text>
             </View>
-          ) : invoices.isLoading ? (
-            <View
-              accessible
-              accessibilityLabel="Loading your invoices."
-              style={{ backgroundColor: tokens.color.neutral[100] }}
-              className="rounded-2xl h-16"
-            />
-          ) : invoices.isError ? (
-            <TouchableOpacity
-              onPress={() => void invoices.refetch()}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Your invoices could not be loaded. Tap to try again."
-              style={{ backgroundColor: tokens.color.warning.surface }}
-              className="rounded-2xl p-4"
-            >
-              <Text style={{ color: tokens.color.text.primary }} className="text-sm font-semibold leading-relaxed">
-                Your invoices could not be loaded.
-              </Text>
-              <Text style={{ color: tokens.color.text.secondary }} className="text-[11px] font-medium mt-1">
-                {invoices.error?.message ?? 'Check your connection.'} Tap to try again.
-              </Text>
-            </TouchableOpacity>
-          ) : invoices.invoices.length === 0 ? (
-            <MonetizationEmpty
-              icon="document-text-outline"
-              title="No invoices yet"
-              message="When you pay for a plan, a purchase or a promotion, its invoice appears here. Donations and contributions have receipts instead."
-            />
           ) : (
-            <View
-              style={{
-                backgroundColor: tokens.color.surface.card,
-                borderColor: tokens.color.border.default,
+            <ListState
+              loading={invoices.isLoading}
+              skeleton={
+                <View
+                  accessible
+                  accessibilityLabel="Loading your invoices."
+                  style={{ backgroundColor: tokens.color.neutral[100] }}
+                  className="rounded-2xl h-16"
+                />
+              }
+              error={
+                invoices.isError && invoices.invoices.length === 0
+                  ? {
+                      title: 'Your invoices could not be loaded.',
+                      message: `${invoices.error?.message ?? 'Check your connection.'} Tap to try again.`,
+                    }
+                  : null
+              }
+              onRetry={() => void invoices.refetch()}
+              isEmpty={invoices.invoices.length === 0}
+              empty={{
+                icon: 'document-text-outline',
+                title: 'No invoices yet',
+                message:
+                  'When you pay for a plan, a purchase or a promotion, its invoice appears here. Donations and contributions have receipts instead.',
               }}
-              className="rounded-2xl border overflow-hidden"
             >
-              {invoices.invoices.map((invoice, index) => {
-                const status = presentInvoiceStatus(invoice.status);
-                return (
-                  <MonetizationRow
-                    key={invoice.invoiceId}
-                    icon="document-text-outline"
-                    label={`Invoice ${invoice.number}`}
-                    hint={`${describeInvoiceKind(invoice.kind)} · ${new Date(
-                      invoice.issuedAt
-                    ).toLocaleDateString()} · ${pricing.format(invoice.total)}`}
-                    marker={invoice.status === 'Paid' ? undefined : status.label}
-                    onPress={() => router.push(`/monetization/invoices/${invoice.invoiceId}`)}
-                    isLast={index === invoices.invoices.length - 1 && !invoices.hasMore}
-                  />
-                );
-              })}
-              {invoices.hasMore ? (
-                <TouchableOpacity
-                  onPress={invoices.loadMore}
-                  disabled={invoices.isLoadingMore}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="Show older invoices"
-                  style={{ borderTopColor: tokens.color.border.default, borderTopWidth: 1 }}
-                  className="px-4 py-3.5 items-center"
-                >
-                  <Text style={{ color: tokens.color.primary[600] }} className="text-sm font-bold">
-                    {invoices.isLoadingMore ? 'Loading…' : 'Show older invoices'}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
+              <View
+                style={{
+                  backgroundColor: tokens.color.surface.card,
+                  borderColor: tokens.color.border.default,
+                }}
+                className="rounded-2xl border overflow-hidden"
+              >
+                {invoices.invoices.map((invoice, index) => {
+                  const status = presentInvoiceStatus(invoice.status);
+                  return (
+                    <MonetizationRow
+                      key={invoice.invoiceId}
+                      icon="document-text-outline"
+                      label={`Invoice ${invoice.number}`}
+                      hint={`${describeInvoiceKind(invoice.kind)} · ${new Date(
+                        invoice.issuedAt
+                      ).toLocaleDateString()} · ${pricing.format(invoice.total)}`}
+                      marker={invoice.status === 'Paid' ? undefined : status.label}
+                      onPress={() => router.push(`/monetization/invoices/${invoice.invoiceId}`)}
+                      isLast={index === invoices.invoices.length - 1 && !invoices.hasMore}
+                    />
+                  );
+                })}
+                {invoices.hasMore ? (
+                  <TouchableOpacity
+                    onPress={invoices.loadMore}
+                    disabled={invoices.isLoadingMore}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel="Show older invoices"
+                    style={{ borderTopColor: tokens.color.border.default, borderTopWidth: 1 }}
+                    className="px-4 py-3.5 items-center"
+                  >
+                    <Text style={{ color: tokens.color.primary[600] }} className="text-sm font-bold">
+                      {invoices.isLoadingMore ? 'Loading…' : 'Show older invoices'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </ListState>
           )}
         </MonetizationSection>
 
@@ -500,23 +505,33 @@ export default function BillingScreen() {
           title="How you can pay"
           subtitle="What Diaspora accepts where you are."
         >
-          {capabilities.isLoading ? (
-            <View style={{ backgroundColor: tokens.color.neutral[100] }} className="rounded-2xl h-20" />
-          ) : (capabilities.data?.supportedMethods.length ?? 0) === 0 ? (
-            <View
-              style={{ backgroundColor: tokens.color.warning.surface }}
-              className="rounded-2xl p-4"
-            >
-              <Text style={{ color: tokens.color.text.primary }} className="text-sm font-semibold leading-relaxed">
-                No payment provider is set up here at the moment, so nothing can be bought right now.
-              </Text>
-            </View>
-          ) : (
+          <ListState
+            loading={capabilities.isLoading}
+            skeleton={
+              <View
+                accessible
+                accessibilityLabel="Loading how you can pay."
+                style={{ backgroundColor: tokens.color.neutral[100] }}
+                className="rounded-2xl h-20"
+              />
+            }
+            // A failed read is not "no payment provider", and used to be drawn as one.
+            error={
+              capabilities.isError && !capabilities.data ? (
+                <FinancialErrorInline error={capabilities.error as FinancialError} onRetry={capabilities.refetch} />
+              ) : null
+            }
+            isEmpty={(capabilities.data?.supportedMethods.length ?? 0) === 0}
+            empty={{
+              icon: 'card-outline',
+              title: 'No payment provider is set up here at the moment, so nothing can be bought right now.',
+            }}
+          >
             <View
               style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
               className="rounded-2xl border overflow-hidden"
             >
-              {capabilities.data!.supportedMethods.map((method, index) => {
+              {(capabilities.data?.supportedMethods ?? []).map((method, index) => {
                 const described = describePaymentMethod(method);
                 return (
                   <View
@@ -553,7 +568,7 @@ export default function BillingScreen() {
                 );
               })}
             </View>
-          )}
+          </ListState>
 
           <Text
             style={{ color: tokens.color.text.placeholder }}

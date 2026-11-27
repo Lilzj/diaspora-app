@@ -26,11 +26,12 @@
 // them as unlocked.
 
 import React, { useState } from 'react';
-import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useFeatureRequirements, useMyVerifications, useTrustProfile, useTrustTimeline } from '@/hooks/trust';
 import { useEmailIdentity } from '@/hooks/integrations';
 import {
@@ -88,7 +89,7 @@ export default function TrustCenterScreen() {
   // `lib/trustEngine.ts` — which cannot be a hook, because it is called from
   // submit handlers on four create screens — reads the same answer this screen
   // renders instead of its own seeded copy.
-  const { profile, canSeeRisk, riskScore, riskLevel, isLoading, error } = useTrustProfile();
+  const { profile, canSeeRisk, riskScore, riskLevel, isLoading, error, refresh } = useTrustProfile();
   // Each verification's latest case: tells "never started" from "in review".
   const { verifications } = useMyVerifications();
   const statusOf = (type: string): VerificationStatus | null =>
@@ -100,6 +101,7 @@ export default function TrustCenterScreen() {
 
   const health = profile ? ACCOUNT_HEALTH_LABELS[profile.healthStatus.health] : null;
   const unlocks = gates.requirements;
+  const countryHistory = profile?.experienceTimeline ?? [];
 
   const getHealthColor = (h: string) => {
     switch (h) {
@@ -315,43 +317,52 @@ export default function TrustCenterScreen() {
               <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
                 <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Country Experience timeline</Text>
                 
-                {(profile?.experienceTimeline.length ?? 0) === 0 && (
-                  <Text className="text-xs text-content-muted leading-relaxed">
-                    {isLoading
-                      ? 'Loading your country history…'
-                      : 'No verified country history yet. Verify your residency to start one.'}
-                  </Text>
-                )}
+                <ListState
+                  loading={isLoading && countryHistory.length === 0}
+                  loadingLabel="Loading your country history…"
+                  error={
+                    error !== null && countryHistory.length === 0
+                      ? { title: 'Your country history could not be loaded', message: error }
+                      : null
+                  }
+                  onRetry={refresh}
+                  isEmpty={countryHistory.length === 0}
+                  empty={{
+                    icon: 'earth-outline',
+                    title: 'No verified country history yet.',
+                    message: 'Verify your residency to start one.',
+                  }}
+                >
+                  <View className="gap-4">
+                    {countryHistory.map((c) => {
+                      const rep = profile?.countryReputations.find(r => r.countryCode === c.countryCode);
+                      // No fallback star rating. `stars` used to default to 3 for
+                      // a country with no standing, which drew three filled stars
+                      // beside "0 pts".
+                      const stars = rep ? rep.stars : 0;
+                      return (
+                        <View key={c.countryCode} className="border-b border-faint pb-3 last:border-b-0 last:pb-0">
+                          <View className="flex-row justify-between items-start">
+                            <View className="flex-row items-center">
+                              <Text className="text-xl mr-3">{c.flag}</Text>
+                              <View>
+                                <Text className="text-sm font-extrabold text-content-primary">{c.countryName}</Text>
+                                <Text className="text-[10px] text-content-muted mt-0.5">
+                                  {c.startYear} – {c.endYear || 'Present'} · {c.role}
+                                </Text>
+                              </View>
+                            </View>
 
-                <View className="gap-4">
-                  {(profile?.experienceTimeline ?? []).map((c) => {
-                    const rep = profile?.countryReputations.find(r => r.countryCode === c.countryCode);
-                    // No fallback star rating. `stars` used to default to 3 for
-                    // a country with no standing, which drew three filled stars
-                    // beside "0 pts".
-                    const stars = rep ? rep.stars : 0;
-                    return (
-                      <View key={c.countryCode} className="border-b border-faint pb-3 last:border-b-0 last:pb-0">
-                        <View className="flex-row justify-between items-start">
-                          <View className="flex-row items-center">
-                            <Text className="text-xl mr-3">{c.flag}</Text>
-                            <View>
-                              <Text className="text-sm font-extrabold text-content-primary">{c.countryName}</Text>
-                              <Text className="text-[10px] text-content-muted mt-0.5">
-                                {c.startYear} – {c.endYear || 'Present'} · {c.role}
-                              </Text>
+                            <View className="items-end">
+                              <Text className="text-xs font-black text-primary-500">{rep ? `${rep.points} pts` : '0 pts'}</Text>
+                              <Text className="text-[10px] mt-0.5 text-amber-500">{'★'.repeat(stars)}</Text>
                             </View>
                           </View>
-                          
-                          <View className="items-end">
-                            <Text className="text-xs font-black text-primary-500">{rep ? `${rep.points} pts` : '0 pts'}</Text>
-                            <Text className="text-[10px] mt-0.5 text-amber-500">{'★'.repeat(stars)}</Text>
-                          </View>
                         </View>
-                      </View>
-                    );
-                  })}
-                </View>
+                      );
+                    })}
+                  </View>
+                </ListState>
 
                 {/*
                   The timeline above is Trust's answer — the countries a reviewer
@@ -378,43 +389,41 @@ export default function TrustCenterScreen() {
           {/* Tab 2: Feature Unlocks */}
           {activeTab === 'unlocks' && (
             <View className="gap-4">
-              {gates.isLoading && unlocks.length === 0 && (
-                <View className="items-center py-8" accessibilityLabel="Loading your feature gates">
-                  <ActivityIndicator />
-                </View>
-              )}
-              {gates.error !== null && (
-                <View className="bg-surface-muted border border-error-default/20 rounded-3xl p-5">
-                  <Text className="text-xs font-extrabold text-error-default mb-1">
-                    Feature gates unavailable
-                  </Text>
-                  <Text className="text-xs text-content-tertiary">{gates.error}</Text>
-                </View>
-              )}
-              {unlocks.map((f) => (
-                <View key={f.featureId} className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
-                  <View className="flex-row justify-between items-center mb-3">
-                    <Text className="text-sm font-black text-content-primary">{f.name}</Text>
-                    <View className={`px-2 py-1 rounded-lg border ${f.isUnlocked ? 'bg-surface-muted border-success-default' : 'bg-surface-background border-subtle'}`}>
-                      <Text className={`text-[9px] font-black uppercase ${f.isUnlocked ? 'text-success-default' : 'text-content-faint'}`}>
-                        {f.isUnlocked ? '✓ Unlocked' : 'Locked'}
-                      </Text>
+              <ListState
+                loading={gates.isLoading && unlocks.length === 0}
+                loadingLabel="Loading your feature gates"
+                error={
+                  gates.error !== null && unlocks.length === 0
+                    ? { title: 'Feature gates unavailable', message: gates.error }
+                    : null
+                }
+                onRetry={gates.refresh}
+              >
+                {unlocks.map((f) => (
+                  <View key={f.featureId} className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
+                    <View className="flex-row justify-between items-center mb-3">
+                      <Text className="text-sm font-black text-content-primary">{f.name}</Text>
+                      <View className={`px-2 py-1 rounded-lg border ${f.isUnlocked ? 'bg-surface-muted border-success-default' : 'bg-surface-background border-subtle'}`}>
+                        <Text className={`text-[9px] font-black uppercase ${f.isUnlocked ? 'text-success-default' : 'text-content-faint'}`}>
+                          {f.isUnlocked ? '✓ Unlocked' : 'Locked'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Requirements List */}
+                    <View className="space-y-2 mt-2">
+                      {f.requirements.map((r, idx) => (
+                        <View key={idx} className="flex-row justify-between items-center py-1.5 border-t border-faint">
+                          <Text className="text-xs text-content-tertiary font-medium">
+                            {r.isMet ? '✅' : '❌'} {r.description}
+                          </Text>
+                          <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
+                        </View>
+                      ))}
                     </View>
                   </View>
-
-                  {/* Requirements List */}
-                  <View className="space-y-2 mt-2">
-                    {f.requirements.map((r, idx) => (
-                      <View key={idx} className="flex-row justify-between items-center py-1.5 border-t border-faint">
-                        <Text className="text-xs text-content-tertiary font-medium">
-                          {r.isMet ? '✅' : '❌'} {r.description}
-                        </Text>
-                        <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ))}
+                ))}
+              </ListState>
             </View>
           )}
 
@@ -423,46 +432,43 @@ export default function TrustCenterScreen() {
             <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
               <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-6">Your diaspora progress timeline</Text>
 
-              {timeline.isLoading && (
-                <View className="items-center py-8" accessibilityLabel="Loading your trust journey">
-                  <ActivityIndicator />
-                </View>
-              )}
+              <ListState
+                loading={timeline.isLoading}
+                loadingLabel="Loading your trust journey"
+                error={
+                  timeline.error !== null && timeline.events.length === 0
+                    ? { title: 'Your trust journey could not be loaded', message: timeline.error }
+                    : null
+                }
+                onRetry={timeline.refresh}
+                isEmpty={timeline.isEmpty}
+                empty={{ icon: 'trail-sign-outline', title: 'Your trust journey starts with your first verification.' }}
+              >
+                <View className="pl-4 border-l-2 border-subtle space-y-8 relative">
+                  {timeline.events.map((evt) => (
+                    <View key={evt.eventId} className="relative mb-6">
+                      {/* Event Circle Anchor */}
+                      <View className="absolute -left-[27px] top-0 w-4 h-4 rounded-full bg-primary-500 border-2 border-white items-center justify-center shadow" />
 
-              {timeline.isEmpty && (
-                <Text className="text-xs text-content-muted leading-relaxed">
-                  Your trust journey starts with your first verification.
-                </Text>
-              )}
-
-              {timeline.error !== null && (
-                <Text className="text-xs text-error-default leading-relaxed">{timeline.error}</Text>
-              )}
-
-              <View className="pl-4 border-l-2 border-subtle space-y-8 relative">
-                {timeline.events.map((evt) => (
-                  <View key={evt.eventId} className="relative mb-6">
-                    {/* Event Circle Anchor */}
-                    <View className="absolute -left-[27px] top-0 w-4 h-4 rounded-full bg-primary-500 border-2 border-white items-center justify-center shadow" />
-
-                    <View className="flex-row items-center gap-1.5 mb-1">
-                      <Text className="text-sm">{evt.icon}</Text>
-                      <Text className="text-xs font-black text-content-primary">{evt.label}</Text>
-                      {/*
-                        An ISO instant, not the date string the seeded store
-                        held. Sliced rather than formatted so a timezone library
-                        is not dragged into this screen for one line.
-                      */}
-                      <Text className="text-[9px] text-content-faint font-bold ml-auto">
-                        {evt.timestamp.slice(0, 10)}
-                      </Text>
+                      <View className="flex-row items-center gap-1.5 mb-1">
+                        <Text className="text-sm">{evt.icon}</Text>
+                        <Text className="text-xs font-black text-content-primary">{evt.label}</Text>
+                        {/*
+                          An ISO instant, not the date string the seeded store
+                          held. Sliced rather than formatted so a timezone library
+                          is not dragged into this screen for one line.
+                        */}
+                        <Text className="text-[9px] text-content-faint font-bold ml-auto">
+                          {evt.timestamp.slice(0, 10)}
+                        </Text>
+                      </View>
+                      {evt.description !== null && evt.description !== undefined && (
+                        <Text className="text-xs text-content-muted leading-relaxed pl-1">{evt.description}</Text>
+                      )}
                     </View>
-                    {evt.description !== null && evt.description !== undefined && (
-                      <Text className="text-xs text-content-muted leading-relaxed pl-1">{evt.description}</Text>
-                    )}
-                  </View>
-                ))}
-              </View>
+                  ))}
+                </View>
+              </ListState>
             </View>
           )}
 

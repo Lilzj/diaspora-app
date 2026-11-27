@@ -20,10 +20,12 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import {
   AccessGate,
   AmountDisplay,
+  FinancialErrorInline,
   FinancialErrorView,
   StatusBadge,
   TransactionListSkeleton,
@@ -126,38 +128,25 @@ export default function GivingScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={tokens.color.primary[500]} />
         }
       >
-        {query.isLoading ? (
-          <TransactionListSkeleton rows={5} />
-        ) : isEmpty ? (
-          <View className="items-center py-16 px-4">
-            <Ionicons name="heart-outline" size={36} color={tokens.color.text.placeholder} />
-            <Text
-              style={{ color: tokens.color.text.primary }}
-              className="text-base font-black text-center tracking-tight mt-4 mb-2"
-            >
-              Nothing here yet
-            </Text>
-            <Text
-              style={{ color: tokens.color.text.secondary }}
-              className="text-sm font-medium text-center leading-relaxed mb-6"
-            >
-              Money, goods, time and skills you give to Diaspora causes and funds will be listed here.
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => router.push('/wallet/donate')}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Find a cause to support"
-              style={{ backgroundColor: tokens.color.primary[500] }}
-              className="h-11 px-6 rounded-full items-center justify-center"
-            >
-              <Text className="text-white text-[11px] font-black uppercase tracking-wider">
-                Find a cause
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
+        {/* The giving history's failure stays the whole-screen return above. The
+            repeating gifts are a read of their own, and its failure used to leave
+            "Nothing here yet", or no repeating gifts at all, in its place. */}
+        <ListState
+          loading={query.isLoading || standing.isLoading}
+          skeleton={<TransactionListSkeleton rows={5} />}
+          error={
+            isEmpty && standing.isError && standing.error ? (
+              <FinancialErrorView error={standing.error} onRetry={standing.refetch} />
+            ) : null
+          }
+          isEmpty={isEmpty}
+          empty={{
+            icon: 'heart-outline',
+            title: 'Nothing here yet',
+            message: 'Money, goods, time and skills you give to Diaspora causes and funds will be listed here.',
+            action: { label: 'Find a cause', onPress: () => router.push('/wallet/donate') },
+          }}
+        >
           <>
             {/* The non-monetary count, stated because the backend keeps it
                 separate and because a "you have given £45" summary would
@@ -196,6 +185,12 @@ export default function GivingScreen() {
               two into "there was a problem" loses the only part that tells them
               whether they need to do something.
             */}
+            {standing.isError && standing.error && standingDonations.length === 0 ? (
+              <View className="mb-5">
+                <FinancialErrorInline error={standing.error} onRetry={standing.refetch} />
+              </View>
+            ) : null}
+
             {standingDonations.length > 0 ? (
               <>
                 <Text
@@ -388,7 +383,7 @@ export default function GivingScreen() {
 
             <AnonymousNote />
           </>
-        )}
+        </ListState>
       </ScrollEndScrollView>
     </SafeAreaView>
   );

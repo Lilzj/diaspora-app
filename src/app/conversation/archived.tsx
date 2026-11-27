@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConversationCard } from '@/components/conversation/ConversationCard';
 import { ConversationEmptyState } from '@/components/conversation/ConversationEmptyState';
+import { ListState } from '@/components/ListState';
 import {
   useConversationStore,
   selectFilteredConversations,
@@ -23,7 +24,7 @@ export default function ArchivedConversationsScreen() {
   const bottomInset = useBottomInset();
 
   const { showAlert } = useNotification();
-  const { conversations, loadConversations } = useConversationStore();
+  const { conversations, loadConversations, isLoadingConversations, conversationsError } = useConversationStore();
 
   useEffect(() => {
     void loadConversations();
@@ -44,19 +45,29 @@ export default function ArchivedConversationsScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Archived" showBack />
 
-      {archived.length === 0 ? (
-        <ConversationEmptyState filter="Archived" />
-      ) : (
+      {/* Read from the inbox, which can be loading or have failed: neither is "nothing
+          archived" (FARCH-007, 27 Nov 2026). */}
+      <ListState
+        loading={isLoadingConversations && conversations.length === 0}
+        loadingLabel="Loading your archived conversations"
+        error={
+          conversationsError && conversations.length === 0
+            ? { title: 'Conversations could not be loaded', message: conversationsError }
+            : null
+        }
+        onRetry={() => void loadConversations()}
+      >
         <FlatList
           data={archived}
           keyExtractor={(item) => item.conversationId}
           renderItem={({ item }) => (
             <ConversationCard conversation={item} onLongPress={handleLongPress} />
           )}
-          contentContainerStyle={{ paddingBottom: bottomInset }}
+          ListEmptyComponent={<ConversationEmptyState filter="Archived" />}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: bottomInset }}
           showsVerticalScrollIndicator={false}
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

@@ -22,6 +22,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import {
   AccessGate,
@@ -31,7 +32,6 @@ import {
 } from '@/components/financial';
 import {
   AudiencePicker,
-  MonetizationEmpty,
   MonetizationSection,
   PlanCard,
   PlanComparisonTable,
@@ -198,23 +198,28 @@ export default function PlansScreen() {
           </Text>
         ) : null}
 
-        {isLoading ? (
-          <View accessible accessibilityLabel="Loading the plans." style={{ gap: 12 }}>
-            {[0, 1, 2].map((index) => (
-              <View
-                key={index}
-                style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.25 }}
-                className="rounded-3xl h-52"
-              />
-            ))}
-          </View>
-        ) : views.length === 0 ? (
-          <MonetizationEmpty
-            icon="pricetags-outline"
-            title="No plans here yet"
-            message="Diaspora does not offer a plan for this in your country at the moment."
-          />
-        ) : (
+        {/* The read's failure stays the whole-screen return above: without the
+            plans there is nothing here to choose between. */}
+        <ListState
+          loading={isLoading}
+          skeleton={
+            <View accessible accessibilityLabel="Loading the plans." style={{ gap: 12 }}>
+              {[0, 1, 2].map((index) => (
+                <View
+                  key={index}
+                  style={{ backgroundColor: tokens.color.neutral[100], opacity: 1 - index * 0.25 }}
+                  className="rounded-3xl h-52"
+                />
+              ))}
+            </View>
+          }
+          isEmpty={views.length === 0}
+          empty={{
+            icon: 'pricetags-outline',
+            title: 'No plans here yet',
+            message: 'Diaspora does not offer a plan for this in your country at the moment.',
+          }}
+        >
           <>
             <View style={{ gap: 12 }}>
               {views.map((view) => (
@@ -243,7 +248,7 @@ export default function PlansScreen() {
               </View>
             ) : null}
           </>
-        )}
+        </ListState>
 
         {error ? (
           <View className="mt-5">

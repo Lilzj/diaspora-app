@@ -43,6 +43,7 @@ import {
 } from '@/components/community-directory/CommunityPanels';
 import { CommunityUnavailablePanel } from '@/components/community-directory/CommunityStatePanels';
 import { governanceWriteError } from '@/components/community-directory/CommunityGovernanceEditor';
+import { ListState } from '@/components/ListState';
 import type { CommunityInitiative, CommunityInitiativeUpdate } from '@/types/community-directory';
 import { backOr } from '@/lib/platform/navigation';
 
@@ -413,47 +414,59 @@ export default function CommunityInitiativeRoute() {
               </View>
             ) : null}
 
-            {updates.isLoading ? (
-              <CommunityUnavailablePanel reason="loading" subject="updates" compact />
-            ) : updates.isError ? (
-              <CommunityUnavailablePanel
-                reason="error"
-                subject="updates"
-                compact
-                detail={(updates.error as { message?: string } | null)?.message}
-                onAction={() => void updates.refetch()}
-              />
-            ) : (updates.data ?? []).length === 0 ? (
-              <CommunityUnavailablePanel
-                reason="empty"
-                subject="updates"
-                compact
-                detail="No update has been posted yet."
-              />
-            ) : (
-              (updates.data ?? []).map((update) => <UpdateCard key={update.id} update={update} />)
-            )}
+            {/* Each list through the shared list state (FARCH-007, 27 Nov 2026); a
+                failed read keeps the community panel, with its "Try again". */}
+            <ListState
+              loading={updates.isLoading}
+              loadingLabel="Loading updates"
+              error={
+                updates.isError && (updates.data ?? []).length === 0 ? (
+                  <CommunityUnavailablePanel
+                    reason="error"
+                    subject="updates"
+                    compact
+                    detail={(updates.error as { message?: string } | null)?.message}
+                    onAction={() => void updates.refetch()}
+                  />
+                ) : null
+              }
+              isEmpty={(updates.data ?? []).length === 0}
+              empty={{
+                icon: 'file-tray-outline',
+                title: 'Nothing here yet',
+                message: 'No update has been posted yet.',
+                testID: 'community-unavailable-empty',
+              }}
+            >
+              {(updates.data ?? []).map((update) => <UpdateCard key={update.id} update={update} />)}
+            </ListState>
 
             <SectionHeading>Taking part</SectionHeading>
 
-            {participants.isLoading ? (
-              <CommunityUnavailablePanel reason="loading" subject="who is taking part" compact />
-            ) : participants.isError ? (
-              <CommunityUnavailablePanel
-                reason="error"
-                subject="who is taking part"
-                compact
-                detail={(participants.error as { message?: string } | null)?.message}
-                onAction={() => void participants.refetch()}
-              />
-            ) : item.participantCount === 0 ? (
-              <CommunityUnavailablePanel
-                reason="empty"
-                subject="who is taking part"
-                compact
-                detail="Nobody is taking part yet."
-              />
-            ) : (
+            <ListState
+              loading={participants.isLoading}
+              loadingLabel="Loading who is taking part"
+              error={
+                participants.isError && visibleParticipants.length === 0 ? (
+                  <CommunityUnavailablePanel
+                    reason="error"
+                    subject="who is taking part"
+                    compact
+                    detail={(participants.error as { message?: string } | null)?.message}
+                    onAction={() => void participants.refetch()}
+                  />
+                ) : null
+              }
+              // The count is everybody and the list only those who chose to be
+              // seen, so "nobody" is the count's answer, never the list's.
+              isEmpty={item.participantCount === 0}
+              empty={{
+                icon: 'file-tray-outline',
+                title: 'Nothing here yet',
+                message: 'Nobody is taking part yet.',
+                testID: 'community-unavailable-empty',
+              }}
+            >
               <View testID="initiative-participants">
                 {visibleParticipants.map((participant) => (
                   <TouchableOpacity
@@ -485,7 +498,7 @@ export default function CommunityInitiativeRoute() {
                   </Text>
                 ) : null}
               </View>
-            )}
+            </ListState>
           </View>
         )}
       </ScrollView>

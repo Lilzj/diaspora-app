@@ -19,11 +19,13 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListState } from '@/components/ListState';
 import { useTheme } from '@/design-system';
 import {
   AccessGate,
   AmountDisplay,
   FinancialErrorInline,
+  FinancialErrorView,
   StatusBadge,
   TransactionListSkeleton,
 } from '@/components/financial';
@@ -75,6 +77,7 @@ export default function PurchasesScreen() {
   const running = placements.filter((placement) => placement.isActive || placement.status === 'Scheduled');
 
   const isEmpty = purchases.length === 0 && placements.length === 0;
+  const readError = (purchasesQuery.error ?? placementsQuery.error) as FinancialError | null;
 
   return (
     <SafeAreaView
@@ -89,27 +92,31 @@ export default function PurchasesScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={tokens.color.primary[500]} />
         }
       >
-        {purchasesQuery.isLoading || placementsQuery.isLoading ? (
-          <TransactionListSkeleton rows={5} />
-        ) : isEmpty ? (
-          <View className="items-center py-16 px-4">
-            <Ionicons name="bag-handle-outline" size={36} color={tokens.color.text.placeholder} />
-            <Text
-              style={{ color: tokens.color.text.primary }}
-              className="text-base font-black text-center tracking-tight mt-4 mb-2"
-            >
-              You have not bought anything yet
-            </Text>
-            <Text
-              style={{ color: tokens.color.text.secondary }}
-              className="text-sm font-medium text-center leading-relaxed"
-            >
-              Boosts, featured placements and premium listings you buy will be listed here, along with how
-              long each one runs for.
-            </Text>
-          </View>
-        ) : (
+        {/* Two reads, one list. With nothing to show, either one failing is the
+            screen's error, where it used to read as "You have not bought anything
+            yet"; with rows to show, a failed read is said above them. */}
+        <ListState
+          loading={purchasesQuery.isLoading || placementsQuery.isLoading}
+          skeleton={<TransactionListSkeleton rows={5} />}
+          error={isEmpty && readError ? <FinancialErrorView error={readError} onRetry={() => void handleRefresh()} /> : null}
+          isEmpty={isEmpty}
+          empty={{
+            icon: 'bag-handle-outline',
+            title: 'You have not bought anything yet',
+            message:
+              'Boosts, featured placements and premium listings you buy will be listed here, along with how long each one runs for.',
+          }}
+        >
           <>
+            {purchasesQuery.isError && purchasesQuery.error && purchases.length === 0 ? (
+              <View className="mb-4">
+                <FinancialErrorInline
+                  error={purchasesQuery.error as FinancialError}
+                  onRetry={purchasesQuery.refetch}
+                />
+              </View>
+            ) : null}
+
             {placementsQuery.isError && placementsQuery.error ? (
               <View className="mb-4">
                 <FinancialErrorInline
@@ -157,7 +164,7 @@ export default function PurchasesScreen() {
               </>
             ) : null}
           </>
-        )}
+        </ListState>
       </ScrollEndScrollView>
     </SafeAreaView>
   );

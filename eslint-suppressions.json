@@ -312,9 +312,6 @@
   "src/components/GlobalLocationSelector.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
-    },
-    "react/no-unescaped-entities": {
-      "count": 3
     }
   },
   "src/components/GuideCard.tsx": {

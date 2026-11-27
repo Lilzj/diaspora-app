@@ -39,6 +39,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ListEmpty, ListState } from '@/components/ListState';
 import {
   FloatingFooter,
   useBottomInset,
@@ -175,46 +176,44 @@ export default function AutomationCenterScreen() {
         <TabBar tab={tab} onChange={setTab} />
       </View>
 
-      {isLoading ? (
-        <View className="py-16 items-center">
-          <ActivityIndicator color={tokens.color.primary[500]} />
-        </View>
-      ) : error ? (
-        <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: bottomInset }}>
-          {/* A gap and a network failure read very differently here, and
-              `blame` is what makes the difference visible: a platform gap gets
-              no retry button, because pressing it would fail identically for
-              ever. §77. */}
-          <AutomationErrorNotice
-            /* Was: "Diaspora cannot store automations yet" / "this part of
-               Diaspora is still being built". Automations are stored — the
-               registry answers, `POST /automations` persists a definition and
-               it comes back with a `nextRunAt`. A `platform` blame here means
-               something the platform owns went wrong on *this* request, not
-               that the capability is absent, so the wording says that. */
-            message={
-              error.blame === 'platform'
-                ? 'Your automations could not be loaded'
-                : error.message
-            }
-            hint={
-              error.blame === 'platform'
-                ? (error.recoveryHint
-                  ?? 'This is on the platform rather than on your setup. Anything you have already saved is untouched.')
-                : error.recoveryHint
-            }
-            blame={error.blame}
-            onRetry={error.blame !== 'platform' ? refetch : undefined}
-          />
+      <ListState
+        loading={isLoading}
+        loadingLabel="Loading automations"
+        error={
+          error && automations.length === 0 ? (
+            <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: bottomInset }}>
+              {/* A gap and a network failure read very differently here, and
+                  `blame` is what makes the difference visible: a platform gap gets
+                  no retry button, because pressing it would fail identically for
+                  ever. §77. */}
+              <AutomationErrorNotice
+                /* Was: "Diaspora cannot store automations yet" / "this part of
+                   Diaspora is still being built". Automations are stored — the
+                   registry answers, `POST /automations` persists a definition and
+                   it comes back with a `nextRunAt`. A `platform` blame here means
+                   something the platform owns went wrong on *this* request, not
+                   that the capability is absent, so the wording says that. */
+                message={
+                  error.blame === 'platform'
+                    ? 'Your automations could not be loaded'
+                    : error.message
+                }
+                hint={
+                  error.blame === 'platform'
+                    ? (error.recoveryHint
+                      ?? 'This is on the platform rather than on your setup. Anything you have already saved is untouched.')
+                    : error.recoveryHint
+                }
+                blame={error.blame}
+                onRetry={error.blame !== 'platform' ? refetch : undefined}
+              />
 
-          <BrowseTemplatesCard />
-        </ScrollView>
-      ) : automations.length === 0 ? (
-        <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: bottomInset }}>
-          <EmptyForTab tab={tab} onClearFilter={() => setTab('all')} />
-          {tab === 'all' ? <BrowseTemplatesCard /> : null}
-        </ScrollView>
-      ) : (
+              <BrowseTemplatesCard />
+            </ScrollView>
+          ) : null
+        }
+      >
+        {/* Mounted when empty too, so pulling still refreshes an empty list. */}
         <FlashList
           data={automations}
           keyExtractor={(item) => item.id}
@@ -225,6 +224,7 @@ export default function AutomationCenterScreen() {
           onEndReachedThreshold={0.5}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomInset }}
           refreshControl={refreshControl}
+          ListEmptyComponent={<EmptyForTab tab={tab} onClearFilter={() => setTab('all')} />}
           ListFooterComponent={
             isFetchingMore ? (
               <View className="py-6 items-center">
@@ -233,7 +233,7 @@ export default function AutomationCenterScreen() {
             ) : null
           }
         />
-      )}
+      </ListState>
 
       {canCreate ? (
         <FloatingFooter
@@ -397,7 +397,10 @@ function TabBar({
   );
 }
 
-/** See the file header: three empty states, because there are three reasons. */
+/**
+ * See the file header: three empty states, because there are three reasons.
+ * The registry failing is the error above; these are the other two.
+ */
 function EmptyForTab({
   tab,
   onClearFilter,
@@ -405,52 +408,26 @@ function EmptyForTab({
   tab: AutomationFilterTab;
   onClearFilter: () => void;
 }) {
-  const { tokens } = useTheme();
-
   if (tab !== 'all') {
     return (
-      <View className="items-center py-12 px-6">
-        <Text style={{ color: tokens.color.text.primary }} className="text-base font-black mb-1">
-          Nothing in this list
-        </Text>
-        <Text
-          style={{ color: tokens.color.text.secondary }}
-          className="text-xs font-medium text-center leading-relaxed mb-4"
-        >
-          You have automations, but none of them are in this group right now.
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Show all automations"
-          onPress={onClearFilter}
-          style={{ borderColor: tokens.color.surface.border }}
-          className="rounded-xl border px-4 py-2.5"
-        >
-          <Text style={{ color: tokens.color.text.primary }} className="text-xs font-black">
-            Show all
-          </Text>
-        </Pressable>
-      </View>
+      <ListEmpty
+        icon="funnel-outline"
+        title="Nothing in this list"
+        message="You have automations, but none of them are in this group right now."
+        action={{ label: 'Show all', onPress: onClearFilter }}
+      />
     );
   }
 
   return (
-    <View className="items-center py-12 px-6">
-      <Ionicons name="sparkles-outline" size={40} color={tokens.color.primary[500]} />
-      <Text
-        style={{ color: tokens.color.text.primary }}
-        className="text-base font-black mt-4 mb-1 text-center"
-      >
-        Let Diaspora do the watching
-      </Text>
-      <Text
-        style={{ color: tokens.color.text.secondary }}
-        className="text-xs font-medium text-center leading-relaxed"
-      >
-        Set something up once and it keeps an eye out for you — a job in the right place, a home in
-        your budget, a reminder before an event starts.
-      </Text>
-    </View>
+    <>
+      <ListEmpty
+        icon="sparkles-outline"
+        title="Let Diaspora do the watching"
+        message="Set something up once and it keeps an eye out for you — a job in the right place, a home in your budget, a reminder before an event starts."
+      />
+      <BrowseTemplatesCard />
+    </>
   );
 }
 

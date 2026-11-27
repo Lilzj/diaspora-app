@@ -48,6 +48,7 @@ import { CommentThread, ReportContentSheet } from '@/components/community-social
 import { useContentComments } from '@/hooks/community-social';
 import type { CommunityContentType } from '@/types/community-social';
 import { GuideBody } from '@/components/guides/GuideBody';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { useMediaAsset } from '@/hooks/media';
 import {
   useCastGuideVote,
@@ -908,11 +909,7 @@ export default function GuideReaderScreen() {
               <FlatList
                 data={[...guide.sections].sort((a, b) => a.order - b.order)}
                 keyExtractor={(item) => item.sectionId}
-                ListEmptyComponent={
-                  <Text className="text-sm text-content-faint py-6 text-center">
-                    This guide has no sections yet.
-                  </Text>
-                }
+                ListEmptyComponent={<ListEmpty icon="list-outline" title="This guide has no sections yet." />}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     onPress={() => {
@@ -966,21 +963,16 @@ export default function GuideReaderScreen() {
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} className="py-2">
-                {versions.isLoading ? (
-                  <View
-                    accessible
-                    accessibilityRole="progressbar"
-                    accessibilityLabel="Loading version history"
-                    className="py-8 items-center"
-                  >
-                    <ActivityIndicator color="#F59300" />
-                  </View>
-                ) : versions.versions.length === 0 ? (
-                  <Text className="text-sm text-content-faint py-8 text-center">
-                    {versions.error ?? 'This guide has no published versions yet.'}
-                  </Text>
-                ) : (
-                  versions.versions.map((ver, idx) => (
+                {/* A failed read is said, not put where "no versions yet" goes (FARCH-007). */}
+                <ListState
+                  loading={versions.isLoading}
+                  loadingLabel="Loading version history"
+                  error={versions.error && versions.versions.length === 0 ? { title: 'Version history could not be loaded', message: versions.error } : null}
+                  onRetry={versions.refresh}
+                  isEmpty={versions.versions.length === 0}
+                  empty={{ icon: 'time-outline', title: 'This guide has no published versions yet.' }}
+                >
+                  {versions.versions.map((ver, idx) => (
                     <View key={ver.versionId} className="flex-row mb-6">
                       {/* timeline dot indicator */}
                       <View className="items-center mr-4">
@@ -1015,8 +1007,8 @@ export default function GuideReaderScreen() {
                         </Text>
                       </View>
                     </View>
-                  ))
-                )}
+                  ))}
+                </ListState>
               </ScrollView>
             </View>
           </TouchableWithoutFeedback>

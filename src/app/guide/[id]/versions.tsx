@@ -32,13 +32,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { ListState } from '@/components/ListState';
 import { useGuide, useGuideVersionDiff, useGuideVersions } from '@/hooks/guides';
+import { guideKeys } from '@/lib/api/guides-api';
 import { backOr } from '@/lib/platform/navigation';
 
 export default function GuideVersionsScreen() {
@@ -53,20 +56,13 @@ export default function GuideVersionsScreen() {
   const [comparing, setComparing] = useState<{ from: number; to: number } | null>(null);
 
   const diff = useGuideVersionDiff(id, comparing?.from ?? null, comparing?.to ?? null);
+  const queryClient = useQueryClient();
 
-  if (guideLoading || versions.isLoading) {
-    return (
-      <SafeAreaView
-        edges={['top']}
-        className="flex-1 bg-surface-background items-center justify-center"
-        accessible
-        accessibilityRole="progressbar"
-        accessibilityLabel="Loading version history"
-      >
-        <ActivityIndicator color="#F59300" />
-      </SafeAreaView>
-    );
-  }
+  /** The comparison asked for again: the diff hook has no refetch of its own. */
+  const retryDiff = () => {
+    if (!id || !comparing) return;
+    void queryClient.refetchQueries({ queryKey: guideKeys.versionDiff(id, comparing.from, comparing.to) });
+  };
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -83,19 +79,26 @@ export default function GuideVersionsScreen() {
       </View>
 
       <ScrollEndScrollView className="flex-1 p-6" contentContainerStyle={{ paddingBottom: bottomInset }}>
-        {versions.versions.length === 0 ? (
-          <View className="bg-surface-card rounded-xl p-6 border border-subtle items-center">
-            <Text className="text-3xl mb-2">🕘</Text>
-            <Text className="text-sm font-bold text-content-strong text-center">
-              No published versions
-            </Text>
-            <Text className="text-xs text-content-faint text-center mt-1 leading-relaxed max-w-[260px]">
-              {versions.error ??
-                'A version is minted each time this guide is published. This one has not been published yet.'}
-            </Text>
-          </View>
-        ) : (
-          versions.versions.map((version, index) => {
+        {/* The header stays while the history loads, and a failed read is said
+            rather than drawn as "No published versions" (FARCH-007, 27 Nov 2026). */}
+        <ListState
+          loading={guideLoading || versions.isLoading}
+          loadingLabel="Loading version history"
+          error={
+            versions.error && versions.versions.length === 0
+              ? { title: 'Version history could not be loaded', message: versions.error }
+              : null
+          }
+          onRetry={versions.refresh}
+          isEmpty={versions.versions.length === 0}
+          empty={{
+            icon: 'time-outline',
+            title: 'No published versions',
+            message:
+              'A version is minted each time this guide is published. This one has not been published yet.',
+          }}
+        >
+          {versions.versions.map((version, index) => {
             const isLatest = index === 0;
             const older = versions.versions[index + 1];
             const date = new Date(version.publishedAt).toLocaleDateString('en-GB', {
@@ -170,10 +173,17 @@ export default function GuideVersionsScreen() {
 
                 {isComparing ? (
                   <View className="mt-3 border-t border-faint pt-3">
-                    {diff.isLoading ? (
-                      <ActivityIndicator color="#F59300" />
-                    ) : diff.diff && diff.diff.sections.length > 0 ? (
-                      diff.diff.sections.map((section) => (
+                    <ListState
+                      loading={diff.isLoading}
+                      loadingLabel="Loading the changes"
+                      error={diff.error ? { title: 'Changes could not be loaded', message: diff.error } : null}
+                      onRetry={retryDiff}
+                      // Unchanged sections are **omitted** from the diff, so an
+                      // empty list genuinely means nothing structural changed.
+                      isEmpty={!diff.diff || diff.diff.sections.length === 0}
+                      empty={{ icon: 'git-compare-outline', title: 'No sections changed between these versions.' }}
+                    >
+                      {diff.diff?.sections.map((section) => (
                         <View key={section.sectionId} className="flex-row items-start mb-1.5">
                           <Text className="text-xs text-content-faint mr-1.5">•</Text>
                           <Text className="text-sm text-content-tertiary flex-1">
@@ -182,20 +192,14 @@ export default function GuideVersionsScreen() {
                             {section.toTitle ?? section.fromTitle ?? 'Untitled section'}
                           </Text>
                         </View>
-                      ))
-                    ) : (
-                      // Unchanged sections are **omitted** from the diff, so an
-                      // empty list genuinely means nothing structural changed.
-                      <Text className="text-sm text-content-faint italic">
-                        {diff.error ?? 'No sections changed between these versions.'}
-                      </Text>
-                    )}
+                      ))}
+                    </ListState>
                   </View>
                 ) : null}
               </View>
             );
-          })
-        )}
+          })}
+        </ListState>
       </ScrollEndScrollView>
     </SafeAreaView>
   );

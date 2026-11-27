@@ -36,7 +36,8 @@ export function useListingSearches(
   // Discover is the app's main feed and did nothing on a pull. It loads through
   // `useEffect` rather than TanStack, so `useEffectRefresh` supplies the nonce
   // its fetch effects key off.
-  const { nonce: refreshNonce, refreshControl } = useEffectRefresh(isLoading);
+  // `refresh` is the same re-read from a "Try again" button (FARCH-007).
+  const { nonce: refreshNonce, refreshControl, refresh } = useEffectRefresh(isLoading);
 
   // Housing specific filters state
   const [housingListings, setHousingListings] = useState<HousingListing[]>([]);
@@ -277,7 +278,7 @@ export function useListingSearches(
   const housingDistanceNote = distanceSortNote('Housing', housingSort, housingAppliedSort, scope);
 
   return {
-    isLoading, refreshControl, housingListings, housingError, marketplaceError, marketplaceListings,
+    isLoading, refreshControl, refresh, housingListings, housingError, marketplaceError, marketplaceListings,
     housingCursor, housingMore, marketCursor, marketMore, loadMoreHousing, loadMoreMarketplace,
     housingDistanceNote,
   };

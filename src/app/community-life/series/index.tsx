@@ -13,11 +13,11 @@ import { useTheme } from '@/design-system';
 import {
   ChipRow,
   CommunityScreen,
-  EmptyState,
   PrimaryButton,
   SecondaryButton,
   SeriesCard,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useCommunityAccess, useSeriesList } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
 
@@ -96,36 +96,40 @@ export default function SeriesListScreen() {
       </View>
 
       <View className="px-5 mt-4">
-        {series.length === 0 && !isLoading ? (
-          <EmptyState
-            icon="repeat-outline"
-            title="No recurring events"
-            body="Weekly meetups, monthly meetings and fortnightly matches all show up here once somebody sets one up."
-            action={access.canCreateSeries ? 'Set one up' : undefined}
-            onAction={() => router.push('/community-life/series/create')}
-          />
-        ) : (
-          series.map((item) => (
+        {/* The shell draws the list's loading and error; the list says when it is empty. */}
+        <ListState
+          isEmpty={series.length === 0}
+          empty={{
+            icon: 'repeat-outline',
+            title: 'No recurring events',
+            message:
+              'Weekly meetups, monthly meetings and fortnightly matches all show up here once somebody sets one up.',
+            action: access.canCreateSeries
+              ? { label: 'Set one up', onPress: () => router.push('/community-life/series/create') }
+              : undefined,
+          }}
+        >
+          {series.map((item) => (
             <View key={item.seriesId} className="mb-3">
               <SeriesCard
                 series={item}
                 onPress={() => router.push(`/community-life/series/${item.seriesId}` as never)}
               />
             </View>
-          ))
-        )}
+          ))}
 
-        {hasNextPage ? (
-          <View className="mt-2 mb-4">
-            {isFetchingNextPage ? (
-              <View className="py-4 items-center" accessibilityLabel="Loading more">
-                <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-              </View>
-            ) : (
-              <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
-            )}
-          </View>
-        ) : null}
+          {hasNextPage ? (
+            <View className="mt-2 mb-4">
+              {isFetchingNextPage ? (
+                <View className="py-4 items-center" accessibilityLabel="Loading more">
+                  <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+                </View>
+              ) : (
+                <SecondaryButton label="Show more" onPress={() => void fetchNextPage()} />
+              )}
+            </View>
+          ) : null}
+        </ListState>
 
         {access.canCreateSeries && series.length > 0 ? (
           <View className="mt-4">

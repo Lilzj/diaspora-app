@@ -42,12 +42,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { EmptyState } from '@/components/EmptyState';
+import { ListEmpty, ListState } from '@/components/ListState';
 import { Button } from '@/components/Button';
 import { router } from 'expo-router';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -203,36 +203,38 @@ export default function MyListingsScreen() {
     <SafeAreaView className="flex-1 bg-surface-background">
       <ScreenHeader title="My Listings" />
 
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator />
-          <Text className="text-sm text-content-muted mt-4">Loading your listings…</Text>
-        </View>
-      ) : isError ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-5xl mb-6">⚠️</Text>
-          <Text className="text-lg font-bold text-content-strong text-center">
-            Could not load your listings
-          </Text>
-          <Text className="text-sm text-content-muted text-center mt-2">
-            We could not reach Diaspora. Nothing has been removed — we simply cannot show it right
-            now.
-          </Text>
-          <Button label="Try again" variant="outline" className="mt-6" onPress={() => refetch()} />
-        </View>
-      ) : listings.length === 0 ? (
-        <EmptyState
-          icon="📋"
-          title="No listings yet"
-          description="Anything you list — an item, a home, or your business — appears here, published or not."
-          action={<Button label="Create Listing" size="sm" onPress={() => router.push('/(tabs)/post')} />}
-        />
-      ) : (
+      {/* Nothing shown and a read left unanswered is an error, never "No listings
+          yet" (FARCH-007, 27 Nov 2026). The three reads settle rather than throw, so
+          with every route down the list came back empty and the screen said the
+          member had listed nothing. Rows from the reads that did answer keep the
+          partial notice above them. */}
+      <ListState
+        loading={isLoading}
+        loadingLabel="Loading your listings…"
+        error={
+          (isError || data?.partial) && listings.length === 0
+            ? {
+                title: 'Could not load your listings',
+                message:
+                  'We could not reach Diaspora. Nothing has been removed — we simply cannot show it right now.',
+              }
+            : null
+        }
+        onRetry={() => void refetch()}
+      >
         <ScrollEndFlatList
           data={listings}
           keyExtractor={(item: OwnedListing) => item.key}
           refreshing={isRefetching}
           onRefresh={() => refetch()}
+          ListEmptyComponent={
+            <ListEmpty
+              icon="clipboard-outline"
+              title="No listings yet"
+              message="Anything you list — an item, a home, or your business — appears here, published or not."
+              action={{ label: 'Create Listing', onPress: () => router.push('/(tabs)/post') }}
+            />
+          }
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}
           ListHeaderComponent={
             <View className="mb-3">
@@ -282,7 +284,7 @@ export default function MyListingsScreen() {
             </View>
           )}
         />
-      )}
+      </ListState>
     </SafeAreaView>
   );
 }

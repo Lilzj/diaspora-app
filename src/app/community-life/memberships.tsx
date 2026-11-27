@@ -12,11 +12,11 @@ import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
 import {
   CommunityScreen,
-  EmptyState,
   MembershipCard,
   PrimaryButton,
   Section,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useMyMemberships } from '@/hooks/community-life';
 import { membershipGrantsBenefits } from '@/lib/domain/community-state';
 
@@ -52,68 +52,68 @@ export default function MyMembershipsScreen() {
       title="My memberships"
       load={{ isLoading, error: isError ? error : null, onRetry: refetch, onRefresh: refetch }}
     >
-      {memberships.length === 0 && !isLoading ? (
-        <EmptyState
-          icon="card-outline"
-          title="No memberships yet"
-          body="Associations, churches, professional networks and neighbourhood groups all take members through Diaspora."
-          action="Find a community"
-          onAction={() => router.push('/community-life/membership')}
-        />
-      ) : (
-        <>
-          {groups.active.length > 0 ? (
-            <Section title="Active" subtitle="Your benefits are live">
-              <View className="px-5">
-                {groups.active.map((membership) => (
-                  <View key={membership.membershipId} className="mb-2.5">
-                    <MembershipCard membership={membership} onPress={() => open(membership.membershipId)} />
-                  </View>
-                ))}
-              </View>
-            </Section>
-          ) : null}
+      {/* The shell draws the list's loading and error; the list says when it is empty. */}
+      <ListState
+        isEmpty={memberships.length === 0}
+        empty={{
+          icon: 'card-outline',
+          title: 'No memberships yet',
+          message:
+            'Associations, churches, professional networks and neighbourhood groups all take members through Diaspora.',
+          action: { label: 'Find a community', onPress: () => router.push('/community-life/membership') },
+        }}
+      >
+        {groups.active.length > 0 ? (
+          <Section title="Active" subtitle="Your benefits are live">
+            <View className="px-5">
+              {groups.active.map((membership) => (
+                <View key={membership.membershipId} className="mb-2.5">
+                  <MembershipCard membership={membership} onPress={() => open(membership.membershipId)} />
+                </View>
+              ))}
+            </View>
+          </Section>
+        ) : null}
 
-          {groups.pending.length > 0 ? (
-            <Section title="In progress" subtitle="Waiting on a decision or a payment">
-              <View className="px-5">
-                {groups.pending.map((membership) => (
-                  <View key={membership.membershipId} className="mb-2.5">
-                    <MembershipCard membership={membership} onPress={() => open(membership.membershipId)} />
-                  </View>
-                ))}
-              </View>
-            </Section>
-          ) : null}
+        {groups.pending.length > 0 ? (
+          <Section title="In progress" subtitle="Waiting on a decision or a payment">
+            <View className="px-5">
+              {groups.pending.map((membership) => (
+                <View key={membership.membershipId} className="mb-2.5">
+                  <MembershipCard membership={membership} onPress={() => open(membership.membershipId)} />
+                </View>
+              ))}
+            </View>
+          </Section>
+        ) : null}
 
-          {groups.past.length > 0 ? (
-            <Section title="Past">
-              <View className="px-5">
-                {groups.past.map((membership) => (
-                  <View key={membership.membershipId} className="mb-2.5">
-                    <MembershipCard membership={membership} onPress={() => open(membership.membershipId)} />
-                  </View>
-                ))}
-              </View>
-            </Section>
-          ) : null}
+        {groups.past.length > 0 ? (
+          <Section title="Past">
+            <View className="px-5">
+              {groups.past.map((membership) => (
+                <View key={membership.membershipId} className="mb-2.5">
+                  <MembershipCard membership={membership} onPress={() => open(membership.membershipId)} />
+                </View>
+              ))}
+            </View>
+          </Section>
+        ) : null}
 
-          <View className="px-5 mt-8">
-            <PrimaryButton
-              label="Find another community"
-              icon="search-outline"
-              onPress={() => router.push('/community-life/membership')}
-            />
-            <Text
-              style={{ color: tokens.color.text.placeholder }}
-              className="text-[11px] font-semibold text-center mt-3 leading-relaxed"
-            >
-              Membership payments and receipts live in your Diaspora wallet, alongside everything
-              else you have paid for.
-            </Text>
-          </View>
-        </>
-      )}
+        <View className="px-5 mt-8">
+          <PrimaryButton
+            label="Find another community"
+            icon="search-outline"
+            onPress={() => router.push('/community-life/membership')}
+          />
+          <Text
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-[11px] font-semibold text-center mt-3 leading-relaxed"
+          >
+            Membership payments and receipts live in your Diaspora wallet, alongside everything
+            else you have paid for.
+          </Text>
+        </View>
+      </ListState>
     </CommunityScreen>
   );
 }

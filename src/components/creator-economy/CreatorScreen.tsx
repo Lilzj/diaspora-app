@@ -28,7 +28,6 @@
 
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -42,6 +41,7 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design-system';
 import { AccessGate, FinancialErrorView } from '@/components/financial';
+import { ListState } from '@/components/ListState';
 import type { CreatorRefusal } from '@/lib/domain/creator-access';
 import { CreatorGapNotice, CreatorGapUnavailable } from './CreatorGapNotice';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -208,13 +208,10 @@ export function CreatorScreen({
         </View>
       ) : null}
 
-      {isLoading ? (
-        <View className="py-16 items-center" accessible accessibilityLabel="Loading">
-          <ActivityIndicator size="small" color={tokens.color.primary[500]} />
-        </View>
-      ) : (
-        children
-      )}
+      {/* The list state every list draws, since 27 Nov 2026 (FARCH-007). */}
+      <ListState loading={isLoading} loadingLabel="Loading">
+        {children}
+      </ListState>
     </>
   );
 

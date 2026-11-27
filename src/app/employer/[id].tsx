@@ -26,6 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { JobCard } from '@/components/JobCard';
+import { ListState } from '@/components/ListState';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useTheme } from '@/design-system';
@@ -261,35 +262,32 @@ export default function EmployerProfileScreen() {
             {openJobsLabel(employer.openJobCount)}
           </Text>
 
-          {jobs.isLoading ? (
-            <ActivityIndicator color={tokens.color.primary[500]} />
-          ) : jobs.error ? (
-            <View className="p-4 rounded-2xl bg-surface-card border border-subtle">
-              <Text className="text-sm text-content-secondary">We could not load this employer’s jobs.</Text>
-              <Button label="Try again" variant="outline" size="sm" className="mt-3" onPress={() => void jobs.refresh()} />
-            </View>
-          ) : jobs.jobs.length > 0 ? (
-            <>
-              {jobs.jobs.map((job) => (
-                // `JobCard` reads the wire card shape first; see its header.
-                <JobCard key={job.jobId} job={job} />
-              ))}
-              {jobs.hasMore ? (
-                <Button
-                  label="Show more jobs"
-                  variant="ghost"
-                  isLoading={jobs.isFetchingMore}
-                  onPress={jobs.loadMore}
-                />
-              ) : null}
-            </>
-          ) : (
-            <Text className="text-sm text-content-muted">
-              {employer.viewerRole
+          <ListState
+            loading={jobs.isLoading}
+            loadingLabel="Loading this employer’s jobs"
+            error={jobs.error && jobs.jobs.length === 0 ? { title: 'We could not load this employer’s jobs.' } : null}
+            onRetry={() => void jobs.refresh()}
+            isEmpty={jobs.jobs.length === 0}
+            empty={{
+              icon: 'briefcase-outline',
+              title: employer.viewerRole
                 ? 'None of your jobs are open right now.'
-                : 'This employer is not hiring through Diaspora right now.'}
-            </Text>
-          )}
+                : 'This employer is not hiring through Diaspora right now.',
+            }}
+          >
+            {jobs.jobs.map((job) => (
+              // `JobCard` reads the wire card shape first; see its header.
+              <JobCard key={job.jobId} job={job} />
+            ))}
+            {jobs.hasMore ? (
+              <Button
+                label="Show more jobs"
+                variant="ghost"
+                isLoading={jobs.isFetchingMore}
+                onPress={jobs.loadMore}
+              />
+            ) : null}
+          </ListState>
         </View>
       </ScrollEndScrollView>
     </SafeAreaView>

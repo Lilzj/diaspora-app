@@ -34,6 +34,7 @@ import {
   SecondaryButton,
   Section,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useCommunityAccess, useMembershipProgramme } from '@/hooks/community-life';
 import {
   canApplyForMembership,
@@ -229,14 +230,16 @@ export default function MembershipProgrammeScreen() {
             style={{ marginHorizontal: -20 }}
           >
             <View className="px-5">
-              {programme.tiers.length === 0 ? (
-                <EmptyState
-                  icon="pricetags-outline"
-                  title="No tiers published"
-                  body="This community has a membership programme but has not published its tiers yet."
-                />
-              ) : (
-                programme.tiers
+              {/* Part of the programme record, whose loading and error the shell draws. */}
+              <ListState
+                isEmpty={programme.tiers.length === 0}
+                empty={{
+                  icon: 'pricetags-outline',
+                  title: 'No tiers published',
+                  message: 'This community has a membership programme but has not published its tiers yet.',
+                }}
+              >
+                {programme.tiers
                   .slice()
                   .sort((a, b) => a.sortOrder - b.sortOrder)
                   .map((tier) => (
@@ -247,8 +250,8 @@ export default function MembershipProgrammeScreen() {
                         onSelect={() => setSelectedTierId(tier.tierId)}
                       />
                     </View>
-                  ))
-              )}
+                  ))}
+              </ListState>
             </View>
           </Section>
 

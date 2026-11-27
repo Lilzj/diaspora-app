@@ -47,7 +47,6 @@ import {
   CampaignCard,
   Card,
   CommunityScreen,
-  EmptyState,
   MembershipCard,
   OpportunityCard,
   PollCard,
@@ -55,6 +54,7 @@ import {
   Section,
   SecondaryButton,
 } from '@/components/community';
+import { ListState } from '@/components/ListState';
 import { useCommunityAccess, useCommunityLifeSummary, useDismissRecommendation } from '@/hooks/community-life';
 import { useMyMemberships } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
@@ -289,8 +289,29 @@ export default function CommunityLifeScreen() {
         onAction={() => router.push('/community-life/memberships')}
       >
         <View className="px-5">
-          {myMemberships.data.length ? (
-            myMemberships.data.slice(0, 3).map((membership) => (
+          <ListState
+            loading={myMemberships.isLoading}
+            loadingLabel="Loading your memberships"
+            error={myMemberships.isError && myMemberships.data.length === 0 && {
+              icon: 'card-outline',
+              title: 'We could not read your memberships',
+              message: 'This is not the same as having none. Pull down to try again.',
+            }}
+            onRetry={myMemberships.refetch}
+            isEmpty={myMemberships.data.length === 0}
+            // Two different things are both called a community here, and
+            // sending somebody to the wrong one is how this section became a
+            // dead end: a *membership* is a programme an organisation runs and
+            // you pay or apply for, and there are none on this deployment;
+            // *joining a community* is free, and the directory has twelve.
+            empty={{
+              icon: 'card-outline',
+              title: 'No memberships yet',
+              message: 'Some associations, churches and professional networks run a membership you pay or apply for. Joining a community itself is free and separate.',
+              action: { label: 'Browse communities', onPress: () => router.push('/community') },
+            }}
+          >
+            {myMemberships.data.slice(0, 3).map((membership) => (
               <View key={membership.membershipId} className="mb-2.5">
                 <MembershipCard
                   membership={membership}
@@ -299,27 +320,8 @@ export default function CommunityLifeScreen() {
                   }
                 />
               </View>
-            ))
-          ) : (
-            <EmptyState
-              icon="card-outline"
-              title={
-                myMemberships.isError ? 'We could not read your memberships' : 'No memberships yet'
-              }
-              // Two different things are both called a community here, and
-              // sending somebody to the wrong one is how this section became a
-              // dead end: a *membership* is a programme an organisation runs and
-              // you pay or apply for, and there are none on this deployment;
-              // *joining a community* is free, and the directory has twelve.
-              body={
-                myMemberships.isError
-                  ? 'This is not the same as having none. Pull down to try again.'
-                  : 'Some associations, churches and professional networks run a membership you pay or apply for. Joining a community itself is free and separate.'
-              }
-              action={myMemberships.isError ? undefined : 'Browse communities'}
-              onAction={() => router.push('/community')}
-            />
-          )}
+            ))}
+          </ListState>
         </View>
       </Section>
 
@@ -506,17 +508,16 @@ export default function CommunityLifeScreen() {
 
       {/* Nothing at all — said only once every list has answered, and worded
           differently when none of them could be read. */}
-      {!isLoading && !hasRails ? (
-        <EmptyState
-          icon="people-outline"
-          title={isError ? 'We could not reach Community Life' : 'Nothing here yet'}
-          body={
-            isError
-              ? 'This is not the same as there being nothing. Pull down to try again.'
-              : 'Once communities near you start posting, this is where you will find them.'
-          }
-        />
-      ) : null}
+      <ListState
+        error={!isLoading && !hasRails && isError && {
+          icon: 'people-outline',
+          title: 'We could not reach Community Life',
+          message: 'This is not the same as there being nothing. Pull down to try again.',
+        }}
+        onRetry={refetch}
+        isEmpty={!isLoading && !hasRails}
+        empty={{ icon: 'people-outline', title: 'Nothing here yet', message: 'Once communities near you start posting, this is where you will find them.' }}
+      />
 
       <View className="px-5 mt-8">
         <SecondaryButton

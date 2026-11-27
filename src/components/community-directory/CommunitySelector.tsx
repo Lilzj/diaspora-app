@@ -35,7 +35,6 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -48,6 +47,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import { ListState } from '@/components/ListState';
 import type {
   CommunityDirectoryEntry,
   CommunityId,
@@ -435,11 +435,6 @@ export function CommunitySelectorSheet({
                   <MultiCommunityGapNotice gapKey="communityDirectory" compact />
                 ) : null}
 
-                {directory.isLoading ? (
-                  <View className="py-6 items-center">
-                    <ActivityIndicator color={tokens.color.primary[500]} />
-                  </View>
-                ) : null}
               </View>
             }
             renderItem={({ item }) => (
@@ -452,30 +447,23 @@ export function CommunitySelectorSheet({
                 onPress={() => handleRow(item.community)}
               />
             )}
+            // Loading, a failed read and nothing to show, in that order (FARCH-007): a
+            // failed read used to say "No communities to show yet".
             ListEmptyComponent={
-              directory.isLoading ? undefined : (
-                <View className="py-8 items-center px-6">
-                  <Ionicons
-                    name="people-outline"
-                    size={30}
-                    color={tokens.color.text.placeholder}
-                  />
-                  <Text
-                    style={{ color: tokens.color.text.secondary }}
-                    className="text-xs font-bold mt-2 text-center"
-                  >
-                    {query ? 'No communities match that search' : 'No communities to show yet'}
-                  </Text>
-                  <Text
-                    style={{ color: tokens.color.text.placeholder }}
-                    className="text-[10px] font-semibold mt-1 text-center leading-relaxed"
-                  >
-                    {query
-                      ? 'Try a country, a region, or part of the community’s name.'
-                      : 'Communities will appear here once they are available.'}
-                  </Text>
-                </View>
-              )
+              <ListState
+                loading={directory.isLoading}
+                loadingLabel="Loading communities"
+                error={directory.isError && { icon: 'people-outline', title: 'Communities could not be loaded', message: 'Check your connection and try again.' }}
+                onRetry={() => void directory.refetch()}
+                isEmpty
+                empty={{
+                  icon: 'people-outline',
+                  title: query ? 'No communities match that search' : 'No communities to show yet',
+                  message: query
+                    ? 'Try a country, a region, or part of the community’s name.'
+                    : 'Communities will appear here once they are available.',
+                }}
+              />
             }
             ListFooterComponent={
               multiSelect ? (
